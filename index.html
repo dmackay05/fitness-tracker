@@ -707,7 +707,7 @@ button:active{opacity:0.7}
 <body>
 
 <!-- PIN -->
-<div id="pin-screen">
+<div id="pin-screen" style="display:none">
   <div class="pin-title">Health Tracker</div>
   <div class="pin-sub">Enter PIN to continue</div>
   <div class="pin-dots">
@@ -1281,7 +1281,7 @@ var store = (function() {
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
-var APP_PIN = store.get('ft_pin') || "";
+var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
 var START_WEIGHT = parseFloat(store.get('ft_start_weight')) || 200;
 var USER_NAME = store.get('ft_name') || "";
 var GOAL_WEIGHT = parseFloat(store.get('ft_goal_weight')) || 0;
@@ -1982,7 +1982,7 @@ function saveHealthSettings(){
   var nm=g("ft-name-input").trim(); store.set("ft_name",nm); USER_NAME=nm;
   var hn=document.getElementById("hname"); if(hn) hn.textContent=(nm?nm:"Athlete")+" 💪";
   var url=g("ft-sheets-url").trim(); store.set("ft_sheets_url",url); SHEETS_URL=url;
-  var pin=g("ft-pin-input").trim(); store.set("ft_pin",pin); APP_PIN=pin;
+  var pin=g("ft-pin-input").trim(); if(/^\d{4}$/.test(pin)){ store.set("ft_pin",pin); APP_PIN=pin; } else { store.set("ft_pin",""); APP_PIN=""; }
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
   var gw=parseFloat(g("ft-goal-weight"))||0; store.set("ft_goal_weight",gw||""); GOAL_WEIGHT=gw;
   ["cal","protein","carbs","fat","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
@@ -2138,7 +2138,7 @@ function checkPin(){
 }
 
 // ── INIT ────────────────────────────────────────────────────────────────
-if(!APP_PIN || sessionStorage.getItem("unlocked")==="1") document.getElementById("pin-screen").style.display="none";
+(function(){ var need = APP_PIN && sessionStorage.getItem("unlocked")!=="1"; document.getElementById("pin-screen").style.display = need ? "flex" : "none"; })();
 
 document.querySelectorAll(".tab-btn").forEach(function(btn){ btn.addEventListener("click",function(){ switchTab(btn.dataset.tab); }); });
 document.querySelectorAll(".rbtn[data-field]").forEach(function(btn){
