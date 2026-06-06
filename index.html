@@ -1392,14 +1392,22 @@ function pushToSheets(){
 
 // ── LOAD + MERGE FROM SHEET (sheet is source of truth on open/refresh) ───
 function fetchSheet(onRows){
+  if(!SHEETS_URL){ onRows(null,false); return; }
+  var done = false;
+  function finish(rows, ok){ if(done) return; done=true; onRows(rows,ok); }
+
+  // Timeout after 8 seconds regardless
+  var timeout = setTimeout(function(){ finish(null,false); }, 8000);
+
   fetch(SHEETS_URL+"?nocache="+Date.now())
     .then(function(r){return r.json();})
-    .then(function(rows){ onRows(rows,true); })
+    .then(function(rows){ clearTimeout(timeout); finish(rows,true); })
     .catch(function(){
+      // JSONP fallback
       var cb="ftCb_"+Date.now();
-      window[cb]=function(rows){ onRows(rows,true); delete window[cb]; };
+      window[cb]=function(rows){ clearTimeout(timeout); delete window[cb]; finish(rows,true); };
       var s=document.createElement("script");
-      s.onerror=function(){ onRows(null,false); };
+      s.onerror=function(){ delete window[cb]; finish(null,false); };
       s.src=SHEETS_URL+"?callback="+cb+"&nocache="+Date.now();
       document.head.appendChild(s);
     });
