@@ -120,7 +120,12 @@ function processDailyData(ss, data) {
     }).join(", ");
 
     var exStr = realExs.map(function(e) {
-      return e.name + " (" + (e.calories || 0) + " cal)";
+      var base = e.name + " (" + (e.calories || 0) + " cal";
+      if (e.sets && e.reps) {
+        var l = ((e.load||"")+"").replace(/[)\|,@]/g, "");
+        base += "|" + e.sets + "x" + e.reps + (l ? ("@"+l) : "");
+      }
+      return base + ")";
     }).join(", ");
 
     var med        = d.meditation || [];
