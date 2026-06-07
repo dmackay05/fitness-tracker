@@ -2,7 +2,7 @@
   "name": "Health Tracker",
   "short_name": "Health",
   "description": "Personal fitness, nutrition, and recomposition tracker.",
-  "start_url": "./david-health-suite.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
