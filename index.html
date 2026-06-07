@@ -875,9 +875,22 @@ button:active{opacity:0.7}
           <select id="ex-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select exercise —</option></select>
           <button class="bp" onclick="addDropdownEx()">+ Log</button>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
+          <input type="number" id="ex-sets" placeholder="Sets" style="margin-bottom:0"/>
+          <input type="text" id="ex-reps" placeholder="Reps" style="margin-bottom:0"/>
+          <input type="text" id="ex-load" placeholder="Band / weight" style="margin-bottom:0"/>
+        </div>
+        <div id="ex-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px"></div>
         <div id="ex-dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
       </div>
-      <div class="card"><div class="card-title">Custom Exercise</div><input type="text" id="ce-name" placeholder="Exercise name"/><input type="number" id="ce-cal" placeholder="Calories burned"/><button class="bp bfull" onclick="addCustomEx()">Add Custom</button></div>
+      <div class="card"><div class="card-title">Custom Exercise</div><input type="text" id="ce-name" placeholder="Exercise name" oninput="showLastHint(this.value,'ce-last-hint')"/><input type="number" id="ce-cal" placeholder="Calories burned"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
+          <input type="number" id="ce-sets" placeholder="Sets" style="margin-bottom:0"/>
+          <input type="text" id="ce-reps" placeholder="Reps" style="margin-bottom:0"/>
+          <input type="text" id="ce-load" placeholder="Band / weight" style="margin-bottom:0"/>
+        </div>
+        <div id="ce-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:6px"></div>
+        <button class="bp bfull" onclick="addCustomEx()">Add Custom</button></div>
       <div class="card">
         <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="card-title" style="margin-bottom:0">Today's Workouts</div><div style="font-size:12px;color:#fb923c;font-family:'DM Mono',monospace;font-weight:700" id="burned-lbl2">🔥 0 kcal</div></div>
         <div id="ex-log"><div class="empty">No workouts logged yet</div></div>
@@ -938,6 +951,9 @@ button:active{opacity:0.7}
 
       <div class="te-section-hdr">💊 Supplements</div>
       <div class="card"><div class="supp-list" id="supp-list"></div></div>
+
+      <div class="te-section-hdr">🔥 Daily Habits</div>
+      <div class="card"><div id="habits-list"></div></div>
 
       <div class="te-section-hdr">📍 Distance Tracker</div>
       <div class="card">
@@ -1211,6 +1227,11 @@ button:active{opacity:0.7}
         <div id="ft-plan"></div>
       </div>
       <div class="card" style="margin-top:10px">
+        <div class="card-title">🔥 Daily Habits</div>
+        <div id="ft-habits"></div>
+        <button class="bs bfull" onclick="addHabitRow()" style="margin-top:8px">+ Add Habit</button>
+      </div>
+      <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" />
@@ -1444,9 +1465,11 @@ function rowToDay(row){
     if(m) remote.foods.push({name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:"sheet_"+f});
     else remote.foods.push({name:f,cal:0,protein:0,carbs:0,fat:0,id:"sheet_"+f}); });
   if(row["Exercises"]) row["Exercises"].split(",").forEach(function(e){ e=e.trim(); if(!e) return;
-    var m=e.match(/^(.+)\((\d+)\s*cal\)$/);
-    if(m) remote.exercises.push({name:m[1].trim(),calories:parseInt(m[2]),type:"logged",id:"sheet_"+e});
-    else remote.exercises.push({name:e,calories:0,type:"logged",id:"sheet_"+e}); });
+    var m=e.match(/^(.+)\((\d+)\s*cal(?:\|([^)]+))?\)$/);
+    if(m){ var ex={name:m[1].trim(),calories:parseInt(m[2]),type:"logged",id:"sheet_"+e};
+      if(m[3]){ var dm=m[3].match(/^(\d+)x([^@]+)(?:@(.+))?$/); if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim(); ex.load=(dm[3]||"").trim(); } }
+      remote.exercises.push(ex);
+    } else remote.exercises.push({name:e,calories:0,type:"logged",id:"sheet_"+e}); });
   return remote;
 }
 function mergeDay(key,remote){
@@ -1692,19 +1715,24 @@ function populateExDropdown(){
   });
   dd.innerHTML=html;
   dd.onchange=function(){ var e=EXERCISES[dd.value];
-    document.getElementById("ex-dropdown-preview").textContent=e?("🔥 "+e.calories+" kcal"):""; };
+    document.getElementById("ex-dropdown-preview").textContent=e?("🔥 "+e.calories+" kcal"):"";
+    showLastHint(e?e.name:"","ex-last-hint"); };
 }
 function addDropdownEx(){
   var dd=document.getElementById("ex-dropdown"); if(dd.value==="") return;
   var e=EXERCISES[dd.value], day=getDay();
-  day.exercises.push({name:e.name,calories:e.calories,type:e.type,id:Date.now().toString()});
-  saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; renderAll();
+  var ex={name:e.name,calories:e.calories,type:e.type,id:Date.now().toString()};
+  _attachExDetail(ex,"ex-sets","ex-reps","ex-load");
+  day.exercises.push(ex);
+  saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; document.getElementById("ex-last-hint").textContent=""; _clearExDetail("ex-sets","ex-reps","ex-load"); renderAll();
 }
 function addCustomEx(){
   var n=document.getElementById("ce-name").value.trim(), c=+document.getElementById("ce-cal").value||0;
   if(!n) return;
-  var day=getDay(); day.exercises.push({name:n,calories:c,type:"custom",id:Date.now().toString()});
-  saveDay(day); document.getElementById("ce-name").value=""; document.getElementById("ce-cal").value=""; renderAll();
+  var day=getDay(); var ex={name:n,calories:c,type:"custom",id:Date.now().toString()};
+  _attachExDetail(ex,"ce-sets","ce-reps","ce-load");
+  day.exercises.push(ex);
+  saveDay(day); document.getElementById("ce-name").value=""; document.getElementById("ce-cal").value=""; document.getElementById("ce-last-hint").textContent=""; _clearExDetail("ce-sets","ce-reps","ce-load"); renderAll();
 }
 function removeEx(id){ var day=getDay(); day.exercises=day.exercises.filter(function(e){return e.id!=id;}); saveDay(day); renderAll(); }
 var editingExId=null;
@@ -1729,7 +1757,7 @@ function renderExLog(){
   var day=getDay(), el=document.getElementById("ex-log");
   document.getElementById("burned-lbl2").textContent="🔥 "+getBurned()+" kcal";
   el.innerHTML=(!day.exercises.length)?'<div class="empty">No workouts logged yet</div>':
-    day.exercises.map(function(e){return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+e.name+'</div><div class="row-sub">🔥 '+e.calories+' kcal</div></div>'+
+    day.exercises.map(function(e){var det=exDetailStr(e);return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+e.name+'</div><div class="row-sub">🔥 '+e.calories+' kcal'+(det?' · '+det:'')+'</div></div>'+
       '<div style="display:flex;gap:6px;flex-shrink:0"><button class="bs" onclick="editEx(\''+e.id+'\')">Edit</button>'+
       '<button class="bd" onclick="removeEx(\''+e.id+'\')">Remove</button></div></div>';}).join("");
 }
@@ -2007,7 +2035,7 @@ document.addEventListener("visibilitychange",function(){ if(document.visibilityS
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderQuickAdd(); renderFoodLog(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides(); renderTrackSummary();
+  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides(); renderTrackSummary();
   document.getElementById("wt-input").value="";
 }
 
@@ -2032,6 +2060,7 @@ function saveHealthSettings(){
   var days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], plan=[];
   document.querySelectorAll("#ft-plan .ft-plan-inp").forEach(function(el,i){ plan.push({day:days[i]||("D"+(i+1)),note:el.value}); });
   store.set("ft_plan",JSON.stringify(plan));
+  store.set("ft_habits", JSON.stringify(collectHabitsFromEditor()));
   var msg=document.getElementById("ft-settings-msg"); if(msg){ msg.textContent="✓ Saved"; setTimeout(function(){msg.textContent="";},2500); }
   var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display=url?"block":"none";
   pushConfig();
@@ -2057,6 +2086,7 @@ function initHealthSettings(){
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
   renderLabEditor();
   renderPlanEditor();
+  renderHabitEditor();
   if (store.get("ft_sheets_url")) { var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display="block"; }
   var ts = store.get("ft_last_backup");
   var lbl = document.getElementById("bk-last");
@@ -2396,13 +2426,13 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_plan"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_plan","ft_habits"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; }); return cfg;
 }
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_plan:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_plan:1,ft_habits:1};
   var any=false;
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
   if(!any) return false;
@@ -2430,6 +2460,63 @@ function pullConfigManual(){
   if(!SHEETS_URL){ toast("Add your Apps Script URL first"); return; }
   toast("Loading settings\u2026");
   pullConfig(true,function(ok,cfg,applied){ toast(ok?(applied?"\u2713 Settings loaded from Sheet":"No saved settings in the Sheet yet"):"Couldn\u2019t reach the Sheet"); });
+}
+
+
+// ── BATCH D: PROGRESSIVE OVERLOAD HELPERS ──────────────────────────────
+function _attachExDetail(ex,si,ri,li){
+  var s=parseInt((document.getElementById(si)||{}).value)||0;
+  var r=(((document.getElementById(ri)||{}).value)||"").trim();
+  var l=(((document.getElementById(li)||{}).value)||"").trim();
+  if(s) ex.sets=s; if(r) ex.reps=r; if(l) ex.load=l;
+}
+function _clearExDetail(si,ri,li){ [si,ri,li].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; }); }
+function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load)) return ""; var sr=(e.sets||e.reps)?((e.sets||"?")+"\u00d7"+(e.reps||"?")):""; return (sr+(e.load?(" @ "+e.load):"")).trim(); }
+function lastExercise(name){
+  if(!name) return null; name=String(name).toLowerCase().trim();
+  var keys=Object.keys(appData).filter(function(k){return k!==activeDate;}).sort().reverse();
+  for(var i=0;i<keys.length;i++){ var exs=(appData[keys[i]].exercises||[]); for(var j=exs.length-1;j>=0;j--){ var e=exs[j]; if((e.name||"").toLowerCase().trim()===name && (e.sets||e.reps||e.load)) return {e:e,date:keys[i]}; } }
+  return null;
+}
+function showLastHint(name,elId){
+  var el=document.getElementById(elId); if(!el) return;
+  var l=lastExercise(name);
+  el.innerHTML = l ? ("Last: "+escH(exDetailStr(l.e))+' <span style="color:#5eead4">\u2014 beat it \ud83d\udcaa</span>') : "";
+}
+// ── BATCH D: DAILY HABITS + STREAKS ─────────────────────────────────────
+function loadHabits(){ try{ var a=JSON.parse(store.get("ft_habits")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function toggleHabit(id){ var d=getDay(); d.habits=d.habits||{}; d.habits[id]=!d.habits[id]; saveDay(d); renderHabits(); }
+function habitStreak(id){
+  var streak=0, d=new Date(), todK=todayKey();
+  if(!(appData[todK]&&appData[todK].habits&&appData[todK].habits[id])) d.setDate(d.getDate()-1);
+  for(var guard=0; guard<400; guard++){ var k=localDateKey(d); if(appData[k]&&appData[k].habits&&appData[k].habits[id]){ streak++; d.setDate(d.getDate()-1); } else break; }
+  return streak;
+}
+function renderHabits(){
+  var el=document.getElementById("habits-list"); if(!el) return;
+  var habits=loadHabits();
+  if(!habits.length){ el.innerHTML='<div class="empty" style="padding:8px 0">Add daily habits in Settings \u2699 (e.g. Yoga, glute activation, wrist eccentrics).</div>'; return; }
+  var hb=getDay().habits||{};
+  el.innerHTML=habits.map(function(h){
+    var on=!!hb[h.id], st=habitStreak(h.id);
+    return '<div class="row" style="cursor:pointer" onclick="toggleHabit(\''+h.id+'\')"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'+
+      '<span style="font-size:18px">'+(on?"\u2705":"\u2b1c")+'</span>'+
+      '<span class="row-name" style="'+(on?"":"color:#aaa")+'">'+escH(h.name)+'</span></div>'+
+      (st>0?'<span class="tag" style="background:#fb923c22;color:#fb923c;border:1px solid #fb923c44">\ud83d\udd25 '+st+'</span>':'')+'</div>';
+  }).join("");
+}
+function _habitRow(h){ h=h||{}; return '<div class="ft-habit-row" style="display:flex;gap:6px;margin-bottom:8px;align-items:center"><input class="ft-habit-name" placeholder="Habit (e.g. Yoga 20 min)" value="'+escH(h.name||"")+'" style="margin-bottom:0;flex:1"/><button class="bd" onclick="removeHabitRow(this)" style="padding:8px 10px">\u2715</button></div>'; }
+function renderHabitEditor(){ var el=document.getElementById("ft-habits"); if(!el) return; var hs=loadHabits(); if(!hs.length) hs=[{name:""}]; el.innerHTML=hs.map(_habitRow).join(""); }
+function addHabitRow(){ var el=document.getElementById("ft-habits"); if(!el) return; var d=document.createElement("div"); d.innerHTML=_habitRow({}); el.appendChild(d.firstChild); }
+function removeHabitRow(btn){ var r=btn.closest(".ft-habit-row"); if(r) r.remove(); }
+function collectHabitsFromEditor(){
+  var existing=loadHabits(), out=[];
+  document.querySelectorAll("#ft-habits .ft-habit-row").forEach(function(r){
+    var nm=r.querySelector(".ft-habit-name").value.trim(); if(!nm) return;
+    var prev=existing.filter(function(x){return (x.name||"").toLowerCase()===nm.toLowerCase();})[0];
+    out.push({ id: prev?prev.id : ("h"+Date.now().toString(36)+Math.floor(Math.random()*1000)), name:nm });
+  });
+  return out;
 }
 
 initHealthSettings();
