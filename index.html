@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Health Tracker"/>
 <meta name="theme-color" content="#0d0d1a"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
 <title>Health Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
@@ -764,6 +766,11 @@ button:active{opacity:0.7}
       <div class="dash-strip" id="dash-averages"></div>
 
       <div class="card">
+        <div class="card-title">📅 This Week</div>
+        <div id="week-summary"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title" id="cal-title">Today's Calories</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px">
           <div class="big-num" id="net-cal" style="color:#5eead4">0</div>
@@ -804,6 +811,12 @@ button:active{opacity:0.7}
         <div style="font-size:10px;color:#555;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
       </div>
 
+      <div class="card">
+        <div class="card-title">📈 Trends</div>
+        <div id="trend-weight"></div>
+        <div id="trend-waist"></div>
+      </div>
+
       <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
 
       <div class="card"><div class="card-title">7-Day History</div><div id="week-hist"></div></div>
@@ -820,6 +833,24 @@ button:active{opacity:0.7}
       <div class="past-banner" id="banner-log" style="display:none"><span>&#9888; Editing <strong id="banner-log-lbl"></strong></span><button class="today-btn" onclick="goToToday()">Go to Today</button></div>
 
       <div class="te-section-hdr">🍽 Food</div>
+      <div class="card">
+        <div class="card-title">⚡ Quick Add</div>
+        <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
+        <div id="qa-fav-wrap" style="display:none">
+          <div class="rlbl" style="margin-top:0">★ Favorites</div>
+          <div id="qa-fav" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+        </div>
+        <div id="qa-recent-wrap" style="display:none">
+          <div class="rlbl" style="margin-top:0">Recent</div>
+          <div id="qa-recent" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+        </div>
+        <div class="rlbl" style="margin-top:0">🍱 Saved meals</div>
+        <div id="qa-meals" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="qa-meal-name" placeholder="Name today's foods as a meal" style="flex:1;margin-bottom:0"/>
+          <button class="bs" onclick="saveMealFromToday()">Save</button>
+        </div>
+      </div>
       <div class="card">
         <div class="card-title">Quick Add — Preset</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
@@ -1192,6 +1223,7 @@ button:active{opacity:0.7}
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:14px;line-height:1.6">Edits auto-sync a few seconds after you make them. Tap below to force a backup now.</div>
         <button class="bp bfull" id="bk-btn" onclick="doBackup()" style="margin-top:0">Backup Now</button>
         <button class="bo bfull" id="ft-open-sheet-btn" style="margin-top:8px;display:none" onclick="openHealthSheet()">&#128202; Open Google Sheet</button>
+        <button class="bo bfull" style="margin-top:8px" onclick="pullConfigManual()">&#11015; Load settings from Sheet</button>
         <button class="bo bfull" style="margin-top:8px;border-color:#f87171;color:#f87171" onclick="clearLocalData()">🗑 Clear Local Data</button>
         <div class="bk-status" id="bk-status"></div>
         <div class="bk-last" id="bk-last"></div>
@@ -1533,6 +1565,9 @@ function renderDash(){
       '<div><div style="font-size:11px;font-weight:'+(isT?700:500)+';color:'+(isA?"#fbbf24":isT?"#5eead4":"#f0f0f0")+'">'+prettyDate(k)+(isT?" — today":isA?" — viewing":"")+'</div>'+
       '<div class="row-sub">'+(ft>0?ft+" kcal":"--")+(et>0?" · 🔥 "+et:"")+(wt?" · "+wt+" lbs":"")+'</div></div></div>';
   }).join("");
+
+  renderWeekSummary();
+  renderTrends();
 }
 function renderRadials(items){
   var SIZE=72;
@@ -1635,7 +1670,7 @@ function renderFoodLog(){
   el.innerHTML = (!day.foods.length)?'<div class="empty">Nothing logged yet</div>':
     day.foods.map(function(f){return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+f.name+'</div>'+
       '<div class="row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F</div></div>'+
-      '<div style="display:flex;gap:6px;flex-shrink:0"><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
+      '<div style="display:flex;gap:6px;flex-shrink:0"><button class="bs" onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="padding:8px 10px">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
       '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></div>';}).join("");
   var t=getTotals();
   document.getElementById("macro-bars").innerHTML=[
@@ -1972,7 +2007,7 @@ document.addEventListener("visibilitychange",function(){ if(document.visibilityS
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderFoodLog(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides(); renderTrackSummary();
+  renderQuickAdd(); renderFoodLog(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides(); renderTrackSummary();
   document.getElementById("wt-input").value="";
 }
 
@@ -1999,6 +2034,7 @@ function saveHealthSettings(){
   store.set("ft_plan",JSON.stringify(plan));
   var msg=document.getElementById("ft-settings-msg"); if(msg){ msg.textContent="✓ Saved"; setTimeout(function(){msg.textContent="";},2500); }
   var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display=url?"block":"none";
+  pushConfig();
   renderAll();
 }
 
@@ -2213,10 +2249,194 @@ function openSettings(){ initHealthSettings(); document.getElementById("settings
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
+
+// ── BATCH A: WEEKLY SUMMARY + TREND CHARTS ──────────────────────────────
+function _weekStartMon(){ var d=new Date(); var wd=d.getDay(); var diff=(wd===0?6:wd-1); d.setDate(d.getDate()-diff); d.setHours(0,0,0,0); return d; }
+function renderWeekSummary(){
+  var el=document.getElementById("week-summary"); if(!el) return;
+  var start=_weekStartMon(), now=new Date(), keys=[];
+  for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); if(d>now) break; keys.push(localDateKey(d)); }
+  var logged=0,calSum=0,calDays=0,protSum=0,protDays=0,waterSum=0,waterDays=0,strength=0,rides=0;
+  keys.forEach(function(k){
+    var dd=appData[k]; if(!dd) return;
+    var hasFood=dd.foods&&dd.foods.length, hasEx=dd.exercises&&dd.exercises.length, hasW=!!dd.weight;
+    if(hasFood||hasEx||hasW||(dd.waterOz>0)) logged++;
+    if(hasFood){ var t=dd.foods.reduce(function(a,x){return {c:a.c+(+x.cal||0),p:a.p+(+x.protein||0)};},{c:0,p:0}); calSum+=t.c; calDays++; protSum+=t.p; protDays++; }
+    if(dd.waterOz>0){ waterSum+=dd.waterOz; waterDays++; }
+    if(hasEx && dd.exercises.some(function(e){return e.type==="strength";})) strength++;
+    rides += (dd.rides?dd.rides.length:0);
+  });
+  if(!logged){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:12px 0">Nothing logged this week yet.</div>'; return; }
+  function tile(val,label,color){ return '<div style="text-align:center;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:'+color+'">'+val+'</div><div style="font-size:9px;color:#888;font-family:\'DM Mono\',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+label+'</div></div>'; }
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+
+    tile(logged+"/"+keys.length,"Days","#5eead4")+
+    tile(calDays?Math.round(calSum/calDays):"\u2014","Avg Cal","#5eead4")+
+    tile(protDays?Math.round(protSum/protDays)+"g":"\u2014","Avg Protein","#fbbf24")+
+    tile(strength,"Workouts","#a78bfa")+
+    tile(rides,"Rides","#fb923c")+
+    tile(waterDays?Math.round(waterSum/waterDays)+"oz":"\u2014","Avg Water","#38bdf8")+
+  '</div>';
+}
+function _series(getter){
+  return Object.keys(appData).filter(function(k){return appData[k];}).sort().map(function(k){
+    var v=getter(appData[k]); if(v==null||v===""||isNaN(+v)) return null; return {t:keyToDate(k).getTime(),v:+v};
+  }).filter(Boolean);
+}
+function sparkSVG(series,opt){
+  opt=opt||{}; var W=320,H=opt.h||130,padL=34,padR=12,padT=12,padB=20;
+  if(series.length<2) return '';
+  var ts=series.map(function(p){return p.t;}), vs=series.map(function(p){return p.v;});
+  var tMin=Math.min.apply(null,ts),tMax=Math.max.apply(null,ts);
+  var vMin=Math.min.apply(null,vs),vMax=Math.max.apply(null,vs);
+  if(opt.goal){ vMin=Math.min(vMin,opt.goal); vMax=Math.max(vMax,opt.goal); }
+  var pad=(vMax-vMin)*0.12||1; vMin-=pad; vMax+=pad;
+  function sx(t){ return tMax===tMin?(padL):padL+(t-tMin)/(tMax-tMin)*(W-padL-padR); }
+  function sy(v){ return padT+(vMax-v)/(vMax-vMin)*(H-padT-padB); }
+  var color=opt.color||"#a78bfa";
+  var pts=series.map(function(p){return sx(p.t).toFixed(1)+","+sy(p.v).toFixed(1);}).join(" ");
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+  if(opt.goal){ var gy=sy(opt.goal).toFixed(1);
+    svg+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#5eead4" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>';
+    svg+='<text x="'+(W-padR)+'" y="'+(gy-3)+'" text-anchor="end" font-size="9" fill="#5eead4" font-family="monospace">goal '+opt.goal+'</text>';
+  }
+  svg+='<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  series.forEach(function(p,i){ var r=(i===series.length-1)?3.2:2; svg+='<circle cx="'+sx(p.t).toFixed(1)+'" cy="'+sy(p.v).toFixed(1)+'" r="'+r+'" fill="'+color+'"/>'; });
+  svg+='<text x="2" y="'+(padT+4)+'" font-size="9" fill="#888" font-family="monospace">'+(Math.round(vMax*10)/10)+'</text>';
+  svg+='<text x="2" y="'+(H-padB+4)+'" font-size="9" fill="#888" font-family="monospace">'+(Math.round(vMin*10)/10)+'</text>';
+  function md(t){ var d=new Date(t); return (d.getMonth()+1)+"/"+d.getDate(); }
+  svg+='<text x="'+padL+'" y="'+(H-4)+'" font-size="9" fill="#666" font-family="monospace">'+md(tMin)+'</text>';
+  svg+='<text x="'+(W-padR)+'" y="'+(H-4)+'" text-anchor="end" font-size="9" fill="#666" font-family="monospace">'+md(tMax)+'</text>';
+  return svg+'</svg>';
+}
+function _trendHdr(label,series,unit){
+  var f=series[0].v,l=series[series.length-1].v,c=l-f;
+  var down=c<=0, col=down?"#5eead4":"#fb923c", arr=down?"\u25bc ":"\u25b2 ";
+  return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 4px"><span style="font-size:11px;color:#aaa;font-family:\'DM Mono\',monospace;letter-spacing:1px">'+label+'</span><span style="font-size:11px;color:'+col+';font-family:\'DM Mono\',monospace">'+arr+Math.abs(Math.round(c*10)/10)+" "+unit+'</span></div>';
+}
+function renderTrends(){
+  var wEl=document.getElementById("trend-weight"), waEl=document.getElementById("trend-waist"); if(!wEl) return;
+  var ws=_series(function(d){return d.weight;});
+  var was=_series(function(d){return d.measurements&&d.measurements.waist;});
+  if(ws.length<2){ wEl.innerHTML='<div style="font-size:11px;color:#aaa;font-family:\'DM Mono\',monospace;letter-spacing:1px;margin-bottom:4px">WEIGHT</div><div style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace;padding:6px 0">Log at least 2 weigh-ins to see your trend.</div>'; }
+  else { wEl.innerHTML=_trendHdr("WEIGHT",ws,"lbs")+sparkSVG(ws,{color:"#a78bfa",goal:(GOAL_WEIGHT||0)}); }
+  if(was.length<2){ waEl.innerHTML='<div style="font-size:10px;color:#555;font-family:\'DM Mono\',monospace;margin-top:12px">Add waist measurements (Log tab) to track your waistline here.</div>'; }
+  else { waEl.innerHTML='<div style="margin-top:14px"></div>'+_trendHdr("WAIST",was,"in")+sparkSVG(was,{color:"#38bdf8"}); }
+}
+
+
+// ── BATCH B: FAST FOOD LOGGING (copy / recent / favorites / meals) ──────
+var _recentCache=[];
+function loadFav(){ try{ var a=JSON.parse(store.get("ft_fav_foods")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function saveFav(a){ store.set("ft_fav_foods", JSON.stringify(a)); }
+function loadMeals(){ try{ var a=JSON.parse(store.get("ft_meals")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function saveMeals(a){ store.set("ft_meals", JSON.stringify(a)); }
+function _foodKey(f){ return (f.name||"").toLowerCase().trim()+"|"+(+f.cal||0); }
+function _foodCopy(f){ return {name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; }
+function isFavObj(f){ var k=_foodKey(f); return loadFav().some(function(x){return _foodKey(x)===k;}); }
+function addFoodObj(f){ var day=getDay(); var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); saveDay(day); renderAll(); }
+function toggleFavById(id){
+  var f=getDay().foods.filter(function(x){return x.id==id;})[0]; if(!f) return;
+  var fav=loadFav(), k=_foodKey(f), i=fav.map(_foodKey).indexOf(k);
+  if(i>=0){ fav.splice(i,1); toast("Removed from favorites"); } else { fav.push(_foodCopy(f)); toast("\u2605 Favorited"); }
+  saveFav(fav); renderAll();
+}
+function addFav(i){ var f=loadFav()[i]; if(f){ addFoodObj(f); toast("Added "+f.name); } }
+function delFav(i){ var fav=loadFav(); fav.splice(i,1); saveFav(fav); renderQuickAdd(); }
+function addRecentIdx(i){ var f=_recentCache[i]; if(f){ addFoodObj(f); toast("Added "+f.name); } }
+function copyYesterday(){
+  var d=keyToDate(activeDate); d.setDate(d.getDate()-1); var yk=localDateKey(d);
+  var src=appData[yk]; if(!src||!src.foods||!src.foods.length){ toast("No food logged the day before"); return; }
+  var day=getDay(); src.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); });
+  saveDay(day); renderAll(); toast("Copied "+src.foods.length+" item"+(src.foods.length>1?"s":""));
+}
+function recentFoods(){
+  var keys=Object.keys(appData).sort().reverse(), seen={}, out=[], favKeys=loadFav().map(_foodKey);
+  for(var i=0;i<keys.length && out.length<10;i++){
+    var fs=(appData[keys[i]]&&appData[keys[i]].foods)||[];
+    for(var j=fs.length-1;j>=0;j--){ var fo=fs[j], k=_foodKey(fo); if(!fo.name||seen[k]||favKeys.indexOf(k)>=0) continue; seen[k]=1; out.push(_foodCopy(fo)); if(out.length>=10) break; }
+  }
+  return out;
+}
+function saveMealFromToday(){
+  var el=document.getElementById("qa-meal-name"), name=(el.value||"").trim();
+  var foods=getDay().foods; if(!foods.length){ toast("Log some food first"); return; }
+  if(!name){ toast("Name the meal first"); return; }
+  var meals=loadMeals(); meals.push({name:name,foods:foods.map(_foodCopy)}); saveMeals(meals);
+  el.value=""; renderQuickAdd(); toast("Saved meal: "+name);
+}
+function addMeal(i){
+  var m=loadMeals()[i]; if(!m) return; var day=getDay();
+  m.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); });
+  saveDay(day); renderAll(); toast("Added "+m.name);
+}
+function delMeal(i){ var meals=loadMeals(); meals.splice(i,1); saveMeals(meals); renderQuickAdd(); }
+function _chip(label,onclick,delClick){
+  var x=delClick?'<b onclick="event.stopPropagation();'+delClick+'" style="margin-left:7px;color:#ff6b6b;font-weight:700">\u2715</b>':'';
+  return '<span class="tag" style="cursor:pointer;background:#5eead416;color:#cfeee9;border:1px solid #5eead430;padding:6px 10px" onclick="'+onclick+'">'+label+x+'</span>';
+}
+function renderQuickAdd(){
+  var favWrap=document.getElementById("qa-fav-wrap"); if(!favWrap) return;
+  var recWrap=document.getElementById("qa-recent-wrap");
+  var fav=loadFav();
+  if(fav.length){ favWrap.style.display="block"; document.getElementById("qa-fav").innerHTML=fav.map(function(f,i){return _chip("\u2605 "+escH(f.name)+" \u00b7 "+f.cal,"addFav("+i+")","delFav("+i+")");}).join(""); }
+  else favWrap.style.display="none";
+  _recentCache=recentFoods();
+  if(_recentCache.length){ recWrap.style.display="block"; document.getElementById("qa-recent").innerHTML=_recentCache.map(function(f,i){return _chip(escH(f.name)+" \u00b7 "+f.cal,"addRecentIdx("+i+")");}).join(""); }
+  else recWrap.style.display="none";
+  var meals=loadMeals();
+  document.getElementById("qa-meals").innerHTML = meals.length? meals.map(function(m,i){ var cal=m.foods.reduce(function(a,x){return a+(+x.cal||0);},0); return _chip("\ud83c\udf71 "+escH(m.name)+" \u00b7 "+cal,"addMeal("+i+")","delMeal("+i+")"); }).join("")
+    : '<span style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace">No saved meals yet \u2014 log foods, name them below, and Save.</span>';
+}
+function toast(msg){
+  var t=document.getElementById("ft-toast");
+  if(!t){ t=document.createElement("div"); t.id="ft-toast"; t.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#1f2937;color:#e6fffb;border:1px solid #5eead455;padding:10px 16px;border-radius:20px;font-size:13px;z-index:99999;opacity:0;transition:opacity .2s;pointer-events:none;max-width:80%;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.4)"; document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity="1"; clearTimeout(t._tm); t._tm=setTimeout(function(){ t.style.opacity="0"; }, 1500);
+}
+
+
+// ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
+function buildConfig(){
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_plan"];
+  var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; }); return cfg;
+}
+function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
+function applyConfig(cfg){
+  if(!cfg||typeof cfg!=="object") return false;
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_plan:1};
+  var any=false;
+  Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
+  if(!any) return false;
+  USER_NAME=store.get('ft_name')||"";
+  START_WEIGHT=parseFloat(store.get('ft_start_weight'))||START_WEIGHT;
+  GOAL_WEIGHT=parseFloat(store.get('ft_goal_weight'))||0;
+  GOALS.cal=parseInt(store.get('ft_cal'))||GOALS.cal; GOALS.protein=parseInt(store.get('ft_protein'))||GOALS.protein;
+  GOALS.carbs=parseInt(store.get('ft_carbs'))||GOALS.carbs; GOALS.fat=parseInt(store.get('ft_fat'))||GOALS.fat; GOALS.burned=parseInt(store.get('ft_burned'))||GOALS.burned;
+  WATER_GOAL=parseInt(store.get('ft_water'))||WATER_GOAL;
+  try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){}
+  if(typeof initHealthSettings==="function") initHealthSettings();
+  renderAll();
+  return true;
+}
+function pullConfig(apply,cb){
+  if(!SHEETS_URL){ if(cb)cb(false); return; }
+  var done=false; function fin(ok,cfg){ if(done)return; done=true; var applied=false; if(ok&&apply&&cfg) applied=applyConfig(cfg); if(cb)cb(ok,cfg,applied); }
+  var to=setTimeout(function(){fin(false);},8000);
+  fetch(SHEETS_URL+"?config=1&nocache="+Date.now()).then(function(r){return r.json();}).then(function(c){clearTimeout(to);fin(true,c);}).catch(function(){
+    var nm="cfgCb_"+Date.now(); window[nm]=function(c){clearTimeout(to);delete window[nm];fin(true,c);};
+    var s=document.createElement("script"); s.onerror=function(){delete window[nm];fin(false);}; s.src=SHEETS_URL+"?config=1&callback="+nm+"&nocache="+Date.now(); document.head.appendChild(s);
+  });
+}
+function pullConfigManual(){
+  if(!SHEETS_URL){ toast("Add your Apps Script URL first"); return; }
+  toast("Loading settings\u2026");
+  pullConfig(true,function(ok,cfg,applied){ toast(ok?(applied?"\u2713 Settings loaded from Sheet":"No saved settings in the Sheet yet"):"Couldn\u2019t reach the Sheet"); });
+}
+
 initHealthSettings();
 
 // Sheet is source of truth: pull + merge on open, then re-render
 var _bn=document.getElementById("sync-banner");
+if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
 _lastSheetPull=Date.now();
 fetchSheet(function(rows,ok){
   if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets";_bn.style.color="#4ade80";} }
@@ -3542,5 +3762,8 @@ renderPoses();
 
 </script>
 
+<script>
+if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('service-worker.js').catch(function(){}); }); }
+</script>
 </body>
 </html>

@@ -37,8 +37,12 @@ var LAB_HEADERS      = ["Date","A1c (%)","HDL (mg/dL)","LDL (mg/dL)","Triglyceri
 function doGet(e) {
   var ss       = SpreadsheetApp.getActiveSpreadsheet();
   var callback = e && e.parameter && e.parameter.callback;
-  var rows     = getDailyRows(ss);
-  var json     = JSON.stringify(rows);
+  var json;
+  if (e && e.parameter && e.parameter.config) {
+    json = JSON.stringify(getConfig_(ss));
+  } else {
+    json = JSON.stringify(getDailyRows(ss));
+  }
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + json + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -54,6 +58,12 @@ function doPost(e) {
     var payload = JSON.parse(raw);
     if (!payload || typeof payload !== "object") return okResponse("invalid");
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Config payload (settings sync): { config: {...} }
+    if (payload.config) {
+      saveConfig_(ss, payload.config);
+      return okResponse("config-saved");
+    }
 
     // Rides payload is a separate push: { rides: [...] }
     if (payload.rides || payload.workouts || payload.overload || payload.labs) {
@@ -361,5 +371,20 @@ function uniqueArr(arr) {
 function okResponse(msg) {
   return ContentService.createTextOutput(JSON.stringify({ status: "ok", msg: msg }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── SETTINGS SYNC (config stored as JSON in a "Config" tab) ──────────────
+function getConfig_(ss){
+  var sh = ss.getSheetByName("Config");
+  if (!sh) return {};
+  var v = sh.getRange("A1").getValue();
+  if (!v) return {};
+  try { return JSON.parse(v); } catch(e){ return {}; }
+}
+function saveConfig_(ss, cfg){
+  var sh = ss.getSheetByName("Config");
+  if (!sh) sh = ss.insertSheet("Config");
+  sh.getRange("A1").setValue(JSON.stringify(cfg));
+  sh.getRange("C1").setValue(new Date());
 }
 
