@@ -771,6 +771,11 @@ button:active{opacity:0.7}
       </div>
 
       <div class="card">
+        <div class="card-title">🚴 Distance · last 7 days</div>
+        <div id="dash-distance" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title" id="cal-title">Today's Calories</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px">
           <div class="big-num" id="net-cal" style="color:#5eead4">0</div>
@@ -986,7 +991,6 @@ button:active{opacity:0.7}
             <button class="bp" onclick="trkSaveManual()">Save</button>
           </div>
         </div>
-        <div id="trk-summary" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px"></div>
       </div>
 
       <div class="te-section-hdr">🚵 Rides</div>
@@ -999,7 +1003,6 @@ button:active{opacity:0.7}
           <input type="text" id="ride-notes" placeholder="Notes (hills, route, how it felt...)" style="margin-top:10px"/>
           <div style="display:flex;gap:8px;margin-top:4px"><button class="bs" style="flex:1" onclick="toggleRideForm()">Cancel</button><button class="bp" style="flex:1" onclick="saveRide()">Save Ride</button></div>
         </div>
-        <div id="ride-summary" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"></div>
         <div id="rides-list"></div>
       </div>
 
@@ -1606,6 +1609,7 @@ function renderDash(){
 
   renderWeekSummary();
   renderTrends();
+  renderTrackSummary();
 }
 function renderRadials(items){
   var SIZE=72;
@@ -1708,7 +1712,7 @@ function renderFoodLog(){
   el.innerHTML = (!day.foods.length)?'<div class="empty">Nothing logged yet</div>':
     day.foods.map(function(f){return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+f.name+'</div>'+
       '<div class="row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F</div></div>'+
-      '<div style="display:flex;gap:6px;flex-shrink:0"><button class="bs" onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="padding:8px 10px">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
+      '<div style="display:flex;gap:6px;flex-shrink:0;align-items:stretch"><button onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="font-size:20px;line-height:1;padding:4px 12px;border-radius:8px;background:'+(isFavObj(f)?"#fbbf2422":"transparent")+';border:1px solid '+(isFavObj(f)?"#fbbf24":"#3a3a58")+';color:'+(isFavObj(f)?"#fbbf24":"#6b6b80")+'">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
       '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></div>';}).join("");
   var t=getTotals();
   document.getElementById("macro-bars").innerHTML=[
@@ -1902,10 +1906,6 @@ function renderRides(){
   rides.sort(function(a,b){return b.date.localeCompare(a.date);});
   var totMiles=rides.reduce(function(a,r){return a+(+r.miles||0);},0);
   var totMin=rides.reduce(function(a,r){return a+(+r.duration||0);},0);
-  document.getElementById("ride-summary").innerHTML=
-    '<div class="hsum-stat"><div class="hsum-val" style="color:#fb923c">'+rides.length+'</div><div class="hsum-lbl">Rides</div></div>'+
-    '<div class="hsum-stat"><div class="hsum-val" style="color:#5eead4">'+totMiles.toFixed(1)+'</div><div class="hsum-lbl">Miles</div></div>'+
-    '<div class="hsum-stat"><div class="hsum-val" style="color:#a78bfa">'+totMin+'</div><div class="hsum-lbl">Minutes</div></div>';
   document.getElementById("rides-list").innerHTML=(!rides.length)?'<div class="empty">No rides logged yet</div>':
     rides.map(function(r){return '<div class="row"><div><div class="row-name">'+prettyDate(r.date)+(r.daughter?" 👧":"")+'</div>'+
       '<div class="row-sub">'+(r.miles?r.miles+" mi · ":"")+(r.duration?r.duration+" min · ":"")+(r.effort||"")+(r.notes?" · "+r.notes:"")+'</div></div></div>';}).join("");
@@ -2038,7 +2038,8 @@ function renderTrackSummary(){
       if(m){ walkMi+=parseFloat(m[1])||0; sessions++; }
     });
   });
-  document.getElementById("trk-summary").innerHTML=
+  var _dd=document.getElementById("dash-distance"); if(!_dd) return;
+  _dd.innerHTML=
     '<div class="hsum-stat"><div class="hsum-val" style="color:#fb923c">'+rideMi.toFixed(1)+'</div><div class="hsum-lbl">Ride mi (7d)</div></div>'+
     '<div class="hsum-stat"><div class="hsum-val" style="color:#5eead4">'+walkMi.toFixed(1)+'</div><div class="hsum-lbl">Walk mi (7d)</div></div>'+
     '<div class="hsum-stat"><div class="hsum-val" style="color:#a78bfa">'+(rideMi+walkMi).toFixed(1)+'</div><div class="hsum-lbl">Total mi (7d)</div></div>';
@@ -2050,7 +2051,7 @@ document.addEventListener("visibilitychange",function(){ if(document.visibilityS
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides(); renderTrackSummary();
+  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides();
   document.getElementById("wt-input").value="";
 }
 
