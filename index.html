@@ -926,6 +926,7 @@ button:active{opacity:0.7}
       <div class="card">
         <div class="rlbl" style="margin-top:0">Duration</div>
         <div style="display:flex;gap:8px;align-items:center"><input type="number" id="med-mins" class="winput" placeholder="e.g. 10" min="1" max="120"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">min</div></div>
+        <button class="ba bfull" style="margin-top:10px" onclick="openMedTimer()">▷ Meditation Timer</button>
         <div class="rlbl">Type</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="med-type-btn" data-type="Breathwork" onclick="setMedType(this)">Breathwork</button><button class="med-type-btn" data-type="Guided" onclick="setMedType(this)">Guided</button><button class="med-type-btn" data-type="Silent" onclick="setMedType(this)">Silent</button><button class="med-type-btn" data-type="Body Scan" onclick="setMedType(this)">Body Scan</button></div>
         <div class="rlbl">Clarity After</div><div class="rating-row" id="row-medClarity"><button class="rbtn" data-field="medClarity" data-val="1">1</button><button class="rbtn" data-field="medClarity" data-val="2">2</button><button class="rbtn" data-field="medClarity" data-val="3">3</button><button class="rbtn" data-field="medClarity" data-val="4">4</button><button class="rbtn" data-field="medClarity" data-val="5">5</button></div><div class="range-hint"><span>Foggy</span><span>Clear</span></div>
@@ -2543,6 +2544,74 @@ function collectHabitsFromEditor(){
   return out;
 }
 
+
+// ── MEDITATION POP-OUT TIMER ────────────────────────────────────────────
+var medTimer={dur:600,remaining:600,running:false,endTime:0,iv:null,wl:null,done:false};
+var MED_PRESETS=[3,5,10,15,20];
+function _fmtMMSS(s){ s=Math.max(0,s|0); var m=Math.floor(s/60),x=s%60; return (m<10?"0":"")+m+":"+(x<10?"0":"")+x; }
+function medRenderTime(){ var el=document.getElementById("med-time"); if(el) el.textContent=_fmtMMSS(medTimer.remaining); }
+function medUpdateChips(){
+  var el=document.getElementById("med-chips"); if(!el) return;
+  el.innerHTML=MED_PRESETS.map(function(m){ var on=medTimer.dur===m*60;
+    return '<span onclick="medSetDur('+m+')" style="cursor:'+(medTimer.running?"default":"pointer")+';opacity:'+(medTimer.running?".35":"1")+';font-size:12px;padding:7px 13px;border-radius:16px;font-family:\'DM Mono\',monospace;border:1px solid '+(on?"#a78bfa":"#2a2a45")+';background:'+(on?"#a78bfa22":"transparent")+';color:'+(on?"#a78bfa":"#8b8ba0")+'">'+m+'m</span>';
+  }).join("");
+}
+function medUpdateBtns(){
+  var main=document.getElementById("med-btn-main"),fin=document.getElementById("med-btn-finish"),rst=document.getElementById("med-btn-reset");
+  if(!main) return;
+  if(medTimer.done){ main.textContent="Log session"; fin.style.display="none"; rst.style.display="inline-block"; }
+  else if(medTimer.running){ main.textContent="Pause"; fin.style.display="inline-block"; rst.style.display="none"; }
+  else if(medTimer.remaining<medTimer.dur){ main.textContent="Resume"; fin.style.display="inline-block"; rst.style.display="inline-block"; }
+  else { main.textContent="Start"; fin.style.display="none"; rst.style.display="none"; }
+}
+function openMedTimer(){
+  var pre=parseInt(document.getElementById("med-mins").value)||0;
+  medTimer.dur=(pre>0?Math.min(pre,120):10)*60; medTimer.remaining=medTimer.dur; medTimer.running=false; medTimer.done=false;
+  var st=document.getElementById("med-status"); if(st) st.textContent="";
+  var c=document.getElementById("med-circle"); if(c) c.classList.remove("breathing");
+  document.getElementById("med-timer-overlay").style.display="flex";
+  medRenderTime(); medUpdateChips(); medUpdateBtns();
+}
+function closeMedTimer(){ medStop(); document.getElementById("med-timer-overlay").style.display="none"; }
+function medSetDur(m){ if(medTimer.running) return; medTimer.dur=m*60; medTimer.remaining=m*60; medTimer.done=false; var st=document.getElementById("med-status"); if(st) st.textContent=""; medRenderTime(); medUpdateChips(); medUpdateBtns(); }
+function medMain(){ if(medTimer.done) return medFinishLog(); if(medTimer.running) medPause(); else medStart(); }
+function medStart(){
+  if(medTimer.remaining<=0) medTimer.remaining=medTimer.dur;
+  medTimer.running=true; medTimer.done=false; medTimer.endTime=Date.now()+medTimer.remaining*1000;
+  clearInterval(medTimer.iv); medTimer.iv=setInterval(medTick,250);
+  var c=document.getElementById("med-circle"); if(c) c.classList.add("breathing");
+  document.getElementById("med-status").textContent="Breathe\u2026"; medWakeOn(); medUpdateChips(); medUpdateBtns();
+}
+function medPause(){
+  medTimer.running=false; clearInterval(medTimer.iv); medTimer.iv=null;
+  medTimer.remaining=Math.max(0,Math.round((medTimer.endTime-Date.now())/1000));
+  var c=document.getElementById("med-circle"); if(c) c.classList.remove("breathing");
+  document.getElementById("med-status").textContent="Paused"; medWakeOff(); medRenderTime(); medUpdateChips(); medUpdateBtns();
+}
+function medStop(){ medTimer.running=false; clearInterval(medTimer.iv); medTimer.iv=null; var c=document.getElementById("med-circle"); if(c) c.classList.remove("breathing"); medWakeOff(); }
+function medReset(){ medStop(); medTimer.remaining=medTimer.dur; medTimer.done=false; var st=document.getElementById("med-status"); if(st) st.textContent=""; medRenderTime(); medUpdateChips(); medUpdateBtns(); }
+function medTick(){ medTimer.remaining=Math.max(0,Math.round((medTimer.endTime-Date.now())/1000)); medRenderTime(); if(medTimer.remaining<=0) medComplete(); }
+function medComplete(){
+  medTimer.running=false; clearInterval(medTimer.iv); medTimer.iv=null; medTimer.done=true; medTimer.remaining=0;
+  var c=document.getElementById("med-circle"); if(c) c.classList.remove("breathing");
+  document.getElementById("med-status").textContent="\u2713 Session complete"; medRenderTime(); medUpdateBtns(); medWakeOff(); medBell();
+}
+function medFinishLog(){
+  var elapsed = medTimer.done ? Math.round(medTimer.dur/60) : Math.max(1, Math.ceil((medTimer.dur-medTimer.remaining)/60));
+  var mm=document.getElementById("med-mins"); if(mm) mm.value=elapsed;
+  closeMedTimer();
+  if(typeof toast==="function") toast("Meditation: "+elapsed+" min \u2014 pick type/clarity, then Log Session");
+  if(mm&&mm.scrollIntoView) mm.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function medWakeOn(){ try{ if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){medTimer.wl=w;}).catch(function(){}); } }catch(e){} }
+function medWakeOff(){ try{ if(medTimer.wl){ medTimer.wl.release(); medTimer.wl=null; } }catch(e){} }
+function medBell(){
+  try{ var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return; var ctx=new Ctx(); var notes=[528,660,792];
+    [0,0.5,1.0].forEach(function(t,i){ var o=ctx.createOscillator(),g=ctx.createGain(); o.type="sine"; o.frequency.value=notes[i]; o.connect(g); g.connect(ctx.destination);
+      var stt=ctx.currentTime+t; g.gain.setValueAtTime(0,stt); g.gain.linearRampToValueAtTime(0.25,stt+0.04); g.gain.exponentialRampToValueAtTime(0.0001,stt+1.6); o.start(stt); o.stop(stt+1.7); });
+  }catch(e){}
+}
+
 initHealthSettings();
 
 // Sheet is source of truth: pull + merge on open, then re-render
@@ -3873,6 +3942,30 @@ renderPoses();
 
 </script>
 
+<!-- MEDITATION TIMER OVERLAY -->
+<div id="med-timer-overlay" style="display:none;position:fixed;inset:0;background:radial-gradient(circle at 50% 32%,#16213a,#0a0a14);z-index:9999;flex-direction:column;align-items:center;padding:18px">
+  <style>
+    @keyframes medBreathe{0%,100%{transform:scale(.80);box-shadow:0 0 40px #5eead433}50%{transform:scale(1.12);box-shadow:0 0 95px #a78bfa66}}
+    #med-circle.breathing{animation:medBreathe 11s ease-in-out infinite}
+  </style>
+  <div style="width:100%;display:flex;justify-content:space-between;align-items:center">
+    <button class="bs" onclick="closeMedTimer()">✕ Close</button>
+    <div style="font-size:13px;color:#a78bfa;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase">Meditation</div>
+    <div style="width:60px"></div>
+  </div>
+  <div id="med-chips" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:22px"></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%">
+    <div id="med-circle" style="width:230px;height:230px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#5eead4,#7c6cf0);display:flex;align-items:center;justify-content:center;transform:scale(.80)">
+      <div id="med-time" style="font-size:46px;font-weight:800;color:#0a0a14;font-family:'DM Mono',monospace">10:00</div>
+    </div>
+  </div>
+  <div id="med-status" style="font-size:12px;color:#8b8ba0;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:12px;letter-spacing:1px"></div>
+  <div style="display:flex;gap:10px;width:100%;max-width:420px;margin-bottom:14px">
+    <button id="med-btn-main" class="bp" style="flex:2;font-size:15px;padding:14px" onclick="medMain()">Start</button>
+    <button id="med-btn-finish" class="ba" style="flex:1.4;font-size:13px;padding:14px;display:none" onclick="medFinishLog()">Finish &amp; log</button>
+    <button id="med-btn-reset" class="bs" style="flex:1;font-size:13px;padding:14px;display:none" onclick="medReset()">Reset</button>
+  </div>
+</div>
 <script>
 if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('service-worker.js').catch(function(){}); }); }
 </script>
