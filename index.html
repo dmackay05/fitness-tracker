@@ -3066,7 +3066,9 @@ var collapsed = {beginner:false, intermediate:false, advanced:false};
 // CALORIE CALC
 // ═══════════════════════════════════════════════════
 function cal(cpm, secs) {
-  return Math.round(cpm * (secs/60) * (WEIGHT/150));
+  var w = (typeof getLatestWeight==="function" && getLatestWeight()) ||
+          (typeof START_WEIGHT!=="undefined" && START_WEIGHT) || WEIGHT || 200;
+  return Math.round(cpm * (secs/60) * (w/150));
 }
 
 // ═══════════════════════════════════════════════════
@@ -3452,9 +3454,11 @@ function ygShowDone() {
     var label="Yoga ("+totMins+" min)";
     var already=ftData[dk].exercises.some(function(x){return x.name===label;});
     if (!already) {
-      ftData[dk].exercises.push({name:label,calories:totCal,id:Date.now().toString()});
+      ftData[dk].exercises.push({name:label,calories:totCal,type:"yoga",id:Date.now().toString()});
       store.set("ft_data",JSON.stringify(ftData));
       if(typeof appData!=="undefined") appData=ftData;
+      if(typeof renderAll==="function") renderAll();
+      if(typeof pushToSheets==="function") pushToSheets();
     }
   } catch(e){}
 }
