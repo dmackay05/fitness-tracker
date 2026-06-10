@@ -10,7 +10,16 @@
 //
 // IF YOU HAVE DUPLICATE ROWS from a previous version:
 //   Select repairAll from the function dropdown and click Run once.
+//
+// v2 CHANGES (USDA integration):
+//   • Foods column now carries fiber when present: Name (240 kcal|3p|13c|22f|10.1fb)
+//     Old-format entries are unaffected; the app parses both.
+//   • New "Food Detail" sheet: one row per logged food (Date, Food, Grams,
+//     FDC ID, Calories, Protein, Carbs, Fat, Fiber, Net Carbs) — flat and
+//     typed for Tableau / pandas. Rows are replaced per-date on each push,
+//     matching the upsert philosophy of the other sheets.
 // ═══════════════════════════════════════════════════════════════════════════
+
 
 var SHEET_DAILY    = "Daily Log";
 var SHEET_MEASURE  = "Measurements";
@@ -18,20 +27,27 @@ var SHEET_RIDES    = "Rides";
 var SHEET_WORKOUTS = "Workout Log";
 var SHEET_OVERLOAD = "Progressive Overload";
 var SHEET_LABS     = "Lab Results";
+var SHEET_FOOD_DETAIL = "Food Detail";
+
 
 var DAILY_HEADERS = [
   "Date","Weight (lbs)","Calories Eaten","Protein (g)","Carbs (g)","Fat (g)",
   "Calories Burned","Water (oz)","Sleep Hours","Sleep Quality (1-5)","Energy (1-5)",
   "Mood (1-5)","Steps","Meditation (min)","Meditation Types","Meditation Clarity (avg)",
   "Waist (in)","Chest (in)","Hips (in)","Thighs (in)","Neck (in)",
-  "Fish Oil","Simvastatin","Foods","Exercises"
+  "Fish Oil","Simvastatin","Foods","Exercises",
+  "Fiber (g)","Net Carbs (g)"   // v2: appended at the end so existing columns never shift
 ];
+
 
 var MEASURE_HEADERS  = ["Date","Waist (in)","Chest (in)","Hips (in)","Thighs (in)","Neck (in)"];
 var RIDE_HEADERS     = ["Date","Miles","Duration (min)","Effort","With Daughter","Notes"];
 var WORKOUT_HEADERS  = ["Date","Exercises Completed","Exercise Count"];
 var OVERLOAD_HEADERS = ["Row Key","Exercise ID","Exercise","Date","Band / Weight","Reps","Sets"];
 var LAB_HEADERS      = ["Date","A1c (%)","HDL (mg/dL)","LDL (mg/dL)","Triglycerides (mg/dL)","Notes"];
+var FOOD_DETAIL_HEADERS = ["Date","Food","Grams","FDC ID","Calories",
+                          "Protein (g)","Carbs (g)","Fat (g)","Fiber (g)","Net Carbs (g)"];
+
 
 // ── doGet — returns all daily rows as JSON (supports JSONP for CORS fallback)
 function doGet(e) {
@@ -51,6 +67,7 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+
 // ── doPost — receives full appData blob and writes to sheets
 function doPost(e) {
   try {
@@ -59,17 +76,20 @@ function doPost(e) {
     if (!payload || typeof payload !== "object") return okResponse("invalid");
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
+
     // Config payload (settings sync): { config: {...} }
     if (payload.config) {
       saveConfig_(ss, payload.config);
       return okResponse("config-saved");
     }
 
+
     // Rides payload is a separate push: { rides: [...] }
     if (payload.rides || payload.workouts || payload.overload || payload.labs) {
       processSupplementalData(ss, payload);
     } else {
       processDailyData(ss, payload);
+      writeFoodDetail_(ss, payload);   // v2: per-food analysis sheet
     }
     return okResponse("saved");
   } catch(err) {
@@ -79,28 +99,32 @@ function doPost(e) {
   }
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PROCESS — Daily health data (food, water, weight, wellness, supplements)
 // ═══════════════════════════════════════════════════════════════════════════
 function processDailyData(ss, data) {
   var sheet   = getOrCreate(ss, SHEET_DAILY,   DAILY_HEADERS);
+  ensureHeaders_(sheet, DAILY_HEADERS);  // v2: adds trailing Fiber / Net Carbs labels to existing sheets
   var msSheet = getOrCreate(ss, SHEET_MEASURE, MEASURE_HEADERS);
+
 
   var dailyIdx = buildIndex(sheet);
   var msIdx    = buildIndex(msSheet);
+
 
   Object.keys(data).sort().forEach(function(dateKey) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
     var d = data[dateKey];
     if (!d) return;
 
+
     // Filter out placeholder/restored foods
-    var realFoods = (d.foods || []).filter(function(f) {
-      return f.name !== "Restored from backup" && (f.cal || 0) > 0;
-    });
+    var realFoods = realFoods_(d);
     var realExs = (d.exercises || []).filter(function(e) {
       return e.type !== "restored";
     });
+
 
     // Skip completely empty days
     var hasData = realFoods.length > 0
@@ -111,13 +135,14 @@ function processDailyData(ss, data) {
       || hasMeasurementData(d.measurements);
     if (!hasData) return;
 
+
     var w    = d.wellness     || {};
     var sup  = d.supplements  || {};
     var meas = d.measurements || {};
 
-    var foodsStr = realFoods.map(function(f) {
-      return f.name + " (" + (f.cal || 0) + " kcal|" + Math.round(f.protein||0) + "p|" + Math.round(f.carbs||0) + "c|" + Math.round(f.fat||0) + "f)";
-    }).join(", ");
+
+    var foodsStr = realFoods.map(foodToStr_).join(", ");
+
 
     var exStr = realExs.map(function(e) {
       var base = e.name + " (" + (e.calories || 0) + " cal";
@@ -128,12 +153,14 @@ function processDailyData(ss, data) {
       return base + ")";
     }).join(", ");
 
+
     var med        = d.meditation || [];
     var medMins    = med.reduce(function(a, s) { return a + (s.mins || 0); }, 0);
     var medTypes   = med.length ? uniqueArr(med.map(function(s) { return s.type || ""; })).join(", ") : "";
     var medCArr    = med.filter(function(s) { return s.clarity; }).map(function(s) { return s.clarity; });
     var medClarity = medCArr.length
       ? (medCArr.reduce(function(a, v) { return a + v; }, 0) / medCArr.length).toFixed(1) : "";
+
 
     var row = [
       dateKey,
@@ -152,7 +179,15 @@ function processDailyData(ss, data) {
       foodsStr, exStr
     ];
 
+    // v2: Fiber + Net Carbs (carbs − fiber), appended at the end
+    var fiberSum = realFoods.reduce(function(a, f) { return a + (parseFloat(f.fiber) || 0); }, 0);
+    var carbsSum = realFoods.reduce(function(a, f) { return a + (parseFloat(f.carbs) || 0); }, 0);
+    row.push(fiberSum > 0 ? round1_(fiberSum) : "");
+    row.push((realFoods.length && fiberSum > 0) ? round1_(Math.max(0, carbsSum - fiberSum)) : "");
+
+
     upsertRow(sheet, dateKey, row, dailyIdx);
+
 
     // Measurements on separate sheet too
     if (meas.waist || meas.chest || meas.hips || meas.thighs || meas.neck) {
@@ -162,6 +197,104 @@ function processDailyData(ss, data) {
     }
   });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v2 — FOOD HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Same placeholder filter used everywhere foods are written
+function realFoods_(d) {
+  return (d.foods || []).filter(function(f) {
+    return f.name !== "Restored from backup" && (f.cal || 0) > 0;
+  });
+}
+
+// Foods column formatter. Appends a fiber segment only when fiber > 0,
+// so entries without fiber are byte-identical to the old format.
+//   Old: Name (240 kcal|3p|13c|22f)
+//   New: Name (240 kcal|3p|13c|22f|10.1fb)
+function foodToStr_(f) {
+  var s = f.name + " (" + (f.cal || 0) + " kcal|"
+        + Math.round(f.protein || 0) + "p|"
+        + Math.round(f.carbs   || 0) + "c|"
+        + Math.round(f.fat     || 0) + "f";
+  var fb = parseFloat(f.fiber) || 0;
+  if (fb > 0) s += "|" + (Math.round(fb * 10) / 10) + "fb";
+  return s + ")";
+}
+
+// "Food Detail" — one row per logged food, replaced per-date on each push.
+// Dates NOT present in this push keep their existing rows, so history is
+// preserved even if a device pushes with partial local data.
+function writeFoodDetail_(ss, data) {
+  var sheet = getOrCreate(ss, SHEET_FOOD_DETAIL, FOOD_DETAIL_HEADERS);
+  var tz    = ss.getSpreadsheetTimeZone();
+
+  // Dates this push is authoritative for
+  var pushDates = {};
+  Object.keys(data).forEach(function(k) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) pushDates[k] = true;
+  });
+
+  // Keep existing rows whose date is not in this push
+  var existing = sheet.getDataRange().getValues();
+  var kept = [];
+  for (var i = 1; i < existing.length; i++) {
+    var dk = normDate(existing[i][0], tz);
+    if (dk && !pushDates[dk]) kept.push(existing[i].slice(0, FOOD_DETAIL_HEADERS.length));
+  }
+
+  // Fresh rows from the payload
+  var fresh = [];
+  Object.keys(data).forEach(function(dateKey) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+    var d = data[dateKey];
+    if (!d) return;
+    realFoods_(d).forEach(function(f) {
+      // grams: structured field on USDA-logged entries, else parse "(170g)" from the name
+      var grams = parseFloat(f.grams) || 0;
+      if (!grams && f.name) {
+        var m = String(f.name).match(/\((\d+(?:\.\d+)?)g\)/);
+        if (m) grams = parseFloat(m[1]);
+      }
+      var carbs = parseFloat(f.carbs) || 0;
+      var fiber = parseFloat(f.fiber) || 0;
+      fresh.push([
+        dateKey, f.name || "", grams || "", f.fdcId || "",
+        Math.round(parseFloat(f.cal) || 0),
+        round1_(f.protein), round1_(carbs), round1_(f.fat),
+        fiber ? round1_(fiber) : "",
+        fiber ? round1_(Math.max(0, carbs - fiber)) : ""
+      ]);
+    });
+  });
+
+  // Rewrite below the header, sorted by date for a tidy sheet
+  var all = kept.concat(fresh).sort(function(a, b) {
+    return String(a[0]) < String(b[0]) ? -1 : (String(a[0]) > String(b[0]) ? 1 : 0);
+  });
+  var maxRows = sheet.getMaxRows();
+  if (maxRows > 1) sheet.getRange(2, 1, maxRows - 1, FOOD_DETAIL_HEADERS.length).clearContent();
+  if (all.length) {
+    sheet.getRange(2, 1, all.length, FOOD_DETAIL_HEADERS.length).setValues(all);
+    sheet.getRange(2, 1, all.length, 1).setNumberFormat("@"); // keep dates as text
+  }
+}
+
+function round1_(n) { return Math.round((parseFloat(n) || 0) * 10) / 10; }
+
+// Writes any header labels the existing sheet is missing (new columns are
+// only ever appended at the end, so this never shifts existing data).
+function ensureHeaders_(sheet, headers) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol >= headers.length) return;
+  var tail = headers.slice(lastCol);
+  var rng = sheet.getRange(1, lastCol + 1, 1, tail.length);
+  rng.setValues([tail]);
+  rng.setFontWeight("bold").setBackground("#1a1a2e").setFontColor("#ffffff");
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROCESS — Rides, Workouts, Overload, Labs
@@ -178,6 +311,7 @@ function processSupplementalData(ss, D) {
     });
   }
 
+
   if (D.labs && D.labs.length) {
     var lSheet = getOrCreate(ss, SHEET_LABS, LAB_HEADERS);
     var lIdx   = buildIndex(lSheet);
@@ -188,6 +322,7 @@ function processSupplementalData(ss, D) {
         lIdx);
     });
   }
+
 
   if (D.overload && Object.keys(D.overload).length) {
     var oSheet = getOrCreate(ss, SHEET_OVERLOAD, OVERLOAD_HEADERS);
@@ -204,6 +339,7 @@ function processSupplementalData(ss, D) {
     });
   }
 
+
   if (D.workouts && Object.keys(D.workouts).length) {
     var wSheet = getOrCreate(ss, SHEET_WORKOUTS, WORKOUT_HEADERS);
     var wIdx   = buildIndex(wSheet);
@@ -217,6 +353,7 @@ function processSupplementalData(ss, D) {
     });
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // READ — return array of row objects for doGet
@@ -239,6 +376,7 @@ function getDailyRows(ss) {
   });
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ONE-TIME REPAIR — run repairAll() from the function dropdown if you have
 // duplicate rows from a previous version. Safe to run multiple times.
@@ -257,9 +395,11 @@ function repairAll() {
   Logger.log(report.join("\n"));
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════════════════════════════════════════
+
 
 // Normalize any date value to "YYYY-MM-DD" string
 function normDate(v, tz) {
@@ -276,6 +416,7 @@ function normDate(v, tz) {
   return s;
 }
 
+
 // Build { key -> sheetRowNumber } map, normalizing date keys
 function buildIndex(sheet) {
   var tz    = sheet.getParent().getSpreadsheetTimeZone();
@@ -287,6 +428,7 @@ function buildIndex(sheet) {
   }
   return index;
 }
+
 
 // Update existing row or append new one
 function upsertRow(sheet, key, row, index) {
@@ -300,6 +442,7 @@ function upsertRow(sheet, key, row, index) {
     sheet.getRange(index[key], 1).setNumberFormat("@");
   }
 }
+
 
 function getOrCreate(ss, name, headers) {
   var sheet = ss.getSheetByName(name);
@@ -316,6 +459,7 @@ function getOrCreate(ss, name, headers) {
   }
   return sheet;
 }
+
 
 function dedupeSheet(sheet) {
   var tz   = sheet.getParent().getSpreadsheetTimeZone();
@@ -338,6 +482,7 @@ function dedupeSheet(sheet) {
   return toDelete.length;
 }
 
+
 function textifyDateColumn(sheet) {
   var tz   = sheet.getParent().getSpreadsheetTimeZone();
   var last = sheet.getLastRow();
@@ -348,21 +493,25 @@ function textifyDateColumn(sheet) {
   rng.setValues(vals);
 }
 
+
 function sumField(arr, field) {
   if (!arr || !arr.length) return "";
   var total = arr.reduce(function(a, x) { return a + (parseFloat(x[field]) || 0); }, 0);
   return total ? Math.round(total) : "";
 }
 
+
 function hasWellnessData(w) {
   if (!w) return false;
   return w.sleepHours || w.sleepQ || w.energy || w.mood || w.steps;
 }
 
+
 function hasMeasurementData(m) {
   if (!m) return false;
   return m.waist || m.chest || m.hips || m.thighs || m.neck;
 }
+
 
 function uniqueArr(arr) {
   var seen = {};
@@ -373,10 +522,12 @@ function uniqueArr(arr) {
   });
 }
 
+
 function okResponse(msg) {
   return ContentService.createTextOutput(JSON.stringify({ status: "ok", msg: msg }))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
 
 // ── SETTINGS SYNC (config stored as JSON in a "Config" tab) ──────────────
 function getConfig_(ss){
