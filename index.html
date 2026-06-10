@@ -865,9 +865,19 @@ button:active{opacity:0.7}
         <div id="dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
       </div>
       <div class="card">
+        <div class="card-title">🔍 USDA Food Search</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <input type="text" id="usda-q" placeholder="e.g. greek yogurt nonfat" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')usdaSearch()"/>
+          <button class="bp" onclick="usdaSearch()">Go</button>
+        </div>
+        <div id="usda-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
+        <div id="usda-results"></div>
+      </div>
+      <div class="card">
         <div class="card-title">Custom Entry</div>
         <input type="text" id="cf-name" placeholder="Food name"/>
         <div class="g2"><input type="number" id="cf-cal" placeholder="Calories"/><input type="number" id="cf-protein" placeholder="Protein (g)"/><input type="number" id="cf-carbs" placeholder="Carbs (g)"/><input type="number" id="cf-fat" placeholder="Fat (g)"/></div>
+        <input type="number" id="cf-fiber" placeholder="Fiber (g) — optional" style="margin-top:8px"/>
         <button class="bp bfull" onclick="addCustomFood()">Add to Log</button>
       </div>
       <div class="card"><div class="card-title" id="log-title">Today's Food Log</div><div id="food-log"><div class="empty">Nothing logged yet</div></div></div>
@@ -1167,9 +1177,35 @@ button:active{opacity:0.7}
     <div class="card-title">Edit Food</div>
     <input type="text" id="ef-name" placeholder="Food name"/>
     <div class="g2"><input type="number" id="ef-cal" placeholder="Calories"/><input type="number" id="ef-protein" placeholder="Protein (g)"/><input type="number" id="ef-carbs" placeholder="Carbs (g)"/><input type="number" id="ef-fat" placeholder="Fat (g)"/></div>
+    <input type="number" id="ef-fiber" placeholder="Fiber (g) — optional" style="margin-top:8px"/>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="bs" style="flex:1" onclick="closeFoodEdit()">Cancel</button>
       <button class="bp" style="flex:1" onclick="saveFoodEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="usda-modal" style="display:none">
+  <div class="modal-card">
+    <div class="card-title" id="usda-m-title">Log USDA Food</div>
+    <div id="usda-m-name" style="font-size:13px;font-weight:700;margin-bottom:2px;line-height:1.3"></div>
+    <div id="usda-m-sub" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:12px"></div>
+    <input type="number" id="usda-grams" placeholder="Weight (grams)" inputmode="decimal" oninput="usdaPreview()"/>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="bs" style="flex:1" onclick="usdaSetG(50)">50g</button>
+      <button class="bs" style="flex:1" onclick="usdaSetG(100)">100g</button>
+      <button class="bs" style="flex:1" onclick="usdaSetG(150)">150g</button>
+      <button class="bs" style="flex:1" onclick="usdaSetG(170)">6oz</button>
+      <button class="bs" style="flex:1" onclick="usdaSetG(227)">8oz</button>
+    </div>
+    <div style="background:#1a1a2e;border-radius:10px;padding:12px;margin-bottom:12px;font-family:'DM Mono',monospace">
+      <div id="usda-pv-cal" style="font-size:22px;font-weight:700;color:#5eead4">0 kcal</div>
+      <div id="usda-pv-macros" style="font-size:11px;color:#aaa;margin-top:6px">P 0g · C 0g · F 0g</div>
+      <div id="usda-pv-fiber" style="font-size:10px;color:#666;margin-top:3px"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="bs" style="flex:1" onclick="usdaClose()">Cancel</button>
+      <button class="bp" style="flex:1" onclick="usdaLog()">+ Log It</button>
     </div>
   </div>
 </div>
@@ -1239,6 +1275,8 @@ button:active{opacity:0.7}
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" />
+        <div class="rlbl">USDA API Key (free at fdc.nal.usda.gov — blank uses DEMO_KEY, 30 req/hr)</div>
+        <input type="text" id="ft-usda-key" placeholder="DEMO_KEY" style="font-size:11px;margin-bottom:8px" />
         <div class="rlbl">PIN (optional, 4 digits)</div>
         <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
@@ -1393,8 +1431,8 @@ function getDay(key){
 }
 function getTotals(){
   return getDay().foods.reduce(function(a,x){
-    return {cal:a.cal+(+x.cal||0),protein:a.protein+(+x.protein||0),carbs:a.carbs+(+x.carbs||0),fat:a.fat+(+x.fat||0)};
-  },{cal:0,protein:0,carbs:0,fat:0});
+    return {cal:a.cal+(+x.cal||0),protein:a.protein+(+x.protein||0),carbs:a.carbs+(+x.carbs||0),fat:a.fat+(+x.fat||0),fiber:a.fiber+(+x.fiber||0)};
+  },{cal:0,protein:0,carbs:0,fat:0,fiber:0});
 }
 function getBurned(){ return getDay().exercises.reduce(function(a,e){return a+(+e.calories||0);},0); }
 function getLatestWeight(){
@@ -1477,8 +1515,8 @@ function rowToDay(row){
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||""}
   };
   if(row["Foods"]) row["Foods"].split(",").forEach(function(f){ f=f.trim(); if(!f) return;
-    var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f)?\)$/);
-    if(m) remote.foods.push({name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:"sheet_"+f});
+    var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?)?\)$/);
+    if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:"sheet_"+f}; if(m[6]) _pf.fiber=parseFloat(m[6]); remote.foods.push(_pf); }
     else remote.foods.push({name:f,cal:0,protein:0,carbs:0,fat:0,id:"sheet_"+f}); });
   if(row["Exercises"]) row["Exercises"].split(",").forEach(function(e){ e=e.trim(); if(!e) return;
     var m=e.match(/^(.+)\((\d+)\s*cal(?:\|([^)]+))?\)$/);
@@ -1675,10 +1713,13 @@ function addCustomFood(){
   var n=document.getElementById("cf-name").value.trim(), c=+document.getElementById("cf-cal").value||0;
   if(!n||!c) return;
   var day=getDay();
-  day.foods.push({name:n,cal:c,protein:+document.getElementById("cf-protein").value||0,
-    carbs:+document.getElementById("cf-carbs").value||0,fat:+document.getElementById("cf-fat").value||0,id:Date.now().toString()});
+  var _cfb=+document.getElementById("cf-fiber").value||0;
+  var _cfo={name:n,cal:c,protein:+document.getElementById("cf-protein").value||0,
+    carbs:+document.getElementById("cf-carbs").value||0,fat:+document.getElementById("cf-fat").value||0,id:Date.now().toString()};
+  if(_cfb) _cfo.fiber=_cfb;
+  day.foods.push(_cfo);
   saveDay(day);
-  ["cf-name","cf-cal","cf-protein","cf-carbs","cf-fat"].forEach(function(i){document.getElementById(i).value="";});
+  ["cf-name","cf-cal","cf-protein","cf-carbs","cf-fat","cf-fiber"].forEach(function(i){document.getElementById(i).value="";});
   renderAll();
 }
 function removeFood(id){ var day=getDay(); day.foods=day.foods.filter(function(f){return f.id!=id;}); saveDay(day); renderAll(); }
@@ -1691,6 +1732,7 @@ function editFood(id){
   document.getElementById("ef-protein").value=(f.protein||0);
   document.getElementById("ef-carbs").value=(f.carbs||0);
   document.getElementById("ef-fat").value=(f.fat||0);
+  document.getElementById("ef-fiber").value=(f.fiber||"");
   document.getElementById("food-edit-modal").style.display="flex";
 }
 function closeFoodEdit(){ editingFoodId=null; document.getElementById("food-edit-modal").style.display="none"; }
@@ -1704,6 +1746,7 @@ function saveFoodEdit(){
   f.protein=+document.getElementById("ef-protein").value||0;
   f.carbs=+document.getElementById("ef-carbs").value||0;
   f.fat=+document.getElementById("ef-fat").value||0;
+  var _fb=+document.getElementById("ef-fiber").value||0; if(_fb) f.fiber=_fb; else delete f.fiber;
   saveDay(day); closeFoodEdit(); renderAll();
 }
 function renderFoodLog(){
@@ -1711,7 +1754,7 @@ function renderFoodLog(){
   document.getElementById("log-title").textContent=isToday()?"Today's Food Log":prettyDate(activeDate)+" Food";
   el.innerHTML = (!day.foods.length)?'<div class="empty">Nothing logged yet</div>':
     day.foods.map(function(f){return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+f.name+'</div>'+
-      '<div class="row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F</div></div>'+
+      '<div class="row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+'</div></div>'+
       '<div style="display:flex;gap:6px;flex-shrink:0;align-items:stretch"><button onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="font-size:20px;line-height:1;padding:4px 12px;border-radius:8px;background:'+(isFavObj(f)?"#fbbf2422":"transparent")+';border:1px solid '+(isFavObj(f)?"#fbbf24":"#3a3a58")+';color:'+(isFavObj(f)?"#fbbf24":"#6b6b80")+'">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
       '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></div>';}).join("");
   var t=getTotals();
@@ -1719,7 +1762,8 @@ function renderFoodLog(){
     {l:"Calories",v:t.cal,g:GOALS.cal,c:"#5eead4",u:""},{l:"Protein",v:Math.round(t.protein),g:GOALS.protein,c:"#a78bfa",u:"g"},
     {l:"Carbs",v:Math.round(t.carbs),g:GOALS.carbs,c:"#fbbf24",u:"g"},{l:"Fat",v:Math.round(t.fat),g:GOALS.fat,c:"#fb923c",u:"g"}
   ].map(function(m){return '<div class="mrow"><div class="mlrow"><span>'+m.l+'</span><span>'+m.v+m.u+' / '+m.g+m.u+'</span></div>'+
-    '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g?"#ff6b6b":m.c)+'"></div></div></div>';}).join("");
+    '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g?"#ff6b6b":m.c)+'"></div></div></div>';}).join("")+
+    (t.fiber?'<div style="font-size:10px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Fiber '+(Math.round(t.fiber*10)/10)+'g · Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g</div>':"");
 }
 
 // ── LOG: EXERCISE ───────────────────────────────────────────────────────
@@ -2061,6 +2105,7 @@ function saveHealthSettings(){
   var nm=g("ft-name-input").trim(); store.set("ft_name",nm); USER_NAME=nm;
   var hn=document.getElementById("hname"); if(hn) hn.textContent=(nm?nm:"Athlete")+" 💪";
   var url=g("ft-sheets-url").trim(); store.set("ft_sheets_url",url); SHEETS_URL=url;
+  var uk=g("ft-usda-key").trim(); store.set("ft_usda_key",uk); USDA_KEY=uk||"DEMO_KEY";
   var pin=g("ft-pin-input").trim(); if(/^\d{4}$/.test(pin)){ store.set("ft_pin",pin); APP_PIN=pin; } else { store.set("ft_pin",""); APP_PIN=""; }
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
   var gw=parseFloat(g("ft-goal-weight"))||0; store.set("ft_goal_weight",gw||""); GOAL_WEIGHT=gw;
@@ -2093,6 +2138,7 @@ function initHealthSettings(){
   var setv=function(id,val){var e=document.getElementById(id); if(e) e.value=val;};
   setv("ft-name-input", store.get("ft_name")||"");
   setv("ft-sheets-url", store.get("ft_sheets_url")||"");
+  setv("ft-usda-key", store.get("ft_usda_key")||"");
   setv("ft-pin-input", store.get("ft_pin")||"");
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
@@ -2387,7 +2433,7 @@ function saveFav(a){ store.set("ft_fav_foods", JSON.stringify(a)); }
 function loadMeals(){ try{ var a=JSON.parse(store.get("ft_meals")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function saveMeals(a){ store.set("ft_meals", JSON.stringify(a)); }
 function _foodKey(f){ return (f.name||"").toLowerCase().trim()+"|"+(+f.cal||0); }
-function _foodCopy(f){ return {name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; }
+function _foodCopy(f){ var o={name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; if(+f.fiber) o.fiber=+f.fiber; if(f.fdcId) o.fdcId=f.fdcId; if(+f.grams) o.grams=+f.grams; return o; }
 function isFavObj(f){ var k=_foodKey(f); return loadFav().some(function(x){return _foodKey(x)===k;}); }
 function addFoodObj(f){ var day=getDay(); var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); saveDay(day); renderAll(); }
 function toggleFavById(id){
@@ -2624,6 +2670,94 @@ fetchSheet(function(rows,ok){
   else if(_bn){ _bn.textContent="Offline — using local data"; _bn.style.color="#f87171"; }
   if(_bn) setTimeout(function(){ _bn.style.display="none"; },2200);
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// USDA FOOD SEARCH (FoodData Central) — ported from food_nutrition_info.py
+// Searches USDA, scales per-100g nutrients to a logged weight, and pushes
+// the result through addFoodObj() so it lands in the normal food log,
+// macro totals, and Google Sheets sync like any other entry.
+// ══════════════════════════════════════════════════════════════════════
+var USDA_KEY = store.get("ft_usda_key") || "DEMO_KEY";
+var USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
+var _usdaResults = [], _usdaSel = null;
+
+// Same nutrient mapping as the Python target_nutrients; handles both the
+// Search schema (nutrientName/value) and Details schema (nutrient.name/amount)
+function usdaExtract(foodNutrients){
+  var p={cal:0,protein:0,fat:0,carbs:0,fiber:0}, gotKcal=false, atwater=0;
+  var map={"Protein":"protein","Total lipid (fat)":"fat","Carbohydrate, by difference":"carbs","Fiber, total dietary":"fiber"};
+  (foodNutrients||[]).forEach(function(item){
+    var ni=item.nutrient||{};
+    var name=ni.name||item.nutrientName||"";
+    var unit=(ni.unitName||item.unitName||"").toUpperCase();
+    var amt=(item.amount!=null)?item.amount:(item.value!=null?item.value:0);
+    if(name==="Energy"){ if(unit==="KCAL"){p.cal=amt;gotKcal=true;} }
+    else if(name==="Energy (Atwater General Factors)"&&unit==="KCAL"){ atwater=amt; }
+    else if(map[name]){ p[map[name]]=amt; }
+  });
+  if(!gotKcal&&atwater) p.cal=atwater;
+  return p;
+}
+function usdaScale(per100,grams){
+  var s=grams/100.0, r=function(n){return Math.round(n*10)/10;};
+  return {cal:r(per100.cal*s),protein:r(per100.protein*s),fat:r(per100.fat*s),carbs:r(per100.carbs*s),fiber:r(per100.fiber*s)};
+}
+function _uEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function _uR1(n){ return (Math.round((+n||0)*10)/10).toString().replace(/\.0$/,""); }
+
+function usdaSearch(){
+  var q=document.getElementById("usda-q").value.trim(); if(!q) return;
+  var st=document.getElementById("usda-status"), res=document.getElementById("usda-results");
+  st.textContent="Searching USDA…"; res.innerHTML="";
+  var url=USDA_SEARCH_URL+"?api_key="+encodeURIComponent(USDA_KEY)+"&query="+encodeURIComponent(q)+"&pageSize=12";
+  fetch(url).then(function(r){ if(!r.ok) throw new Error("USDA "+r.status); return r.json(); }).then(function(data){
+    var foods=data.foods||[];
+    // Foundation / SR Legacy first — canonical per-100g profiles; Branded after
+    var rank={"Foundation":0,"SR Legacy":1,"Survey (FNDDS)":2,"Branded":3};
+    foods.sort(function(a,b){ return (rank[a.dataType]!=null?rank[a.dataType]:9)-(rank[b.dataType]!=null?rank[b.dataType]:9); });
+    _usdaResults=foods;
+    st.textContent=foods.length?foods.length+" results — tap to log":"No results. Try a simpler term.";
+    res.innerHTML=foods.map(function(f,i){
+      var p=usdaExtract(f.foodNutrients);
+      return '<div class="row" onclick="usdaPick('+i+')" style="cursor:pointer">'
+        +'<div style="flex:1;min-width:0"><div class="row-name">'+_uEsc(f.description)+(f.brandOwner?' <span style="color:#888;font-weight:400">· '+_uEsc(f.brandOwner)+'</span>':'')+'</div>'
+        +'<div class="row-sub">per 100g · '+Math.round(p.cal)+' kcal · P '+_uR1(p.protein)+' · C '+_uR1(p.carbs)+' · F '+_uR1(p.fat)+'</div></div>'
+        +'<span class="tag" style="background:'+(f.dataType==="Branded"?"#a78bfa22;color:#a78bfa":"#5eead422;color:#5eead4")+'">'+_uEsc(f.dataType||"")+'</span></div>';
+    }).join("");
+  }).catch(function(e){
+    st.textContent="⚠ "+e.message+(USDA_KEY==="DEMO_KEY"?" — DEMO_KEY allows 30 req/hr; add a free key in Settings.":" — check your API key in Settings.");
+  });
+}
+function usdaPick(i){
+  var f=_usdaResults[i]; if(!f) return;
+  _usdaSel={ name:f.description, per100:usdaExtract(f.foodNutrients), fdcId:f.fdcId, dataType:f.dataType };
+  document.getElementById("usda-m-name").textContent=f.description+(f.brandOwner?" · "+f.brandOwner:"");
+  document.getElementById("usda-m-sub").textContent="FDC "+f.fdcId+" · "+(f.dataType||"")+" · per-100g baseline";
+  document.getElementById("usda-grams").value="";
+  usdaPreview();
+  document.getElementById("usda-modal").style.display="flex";
+  setTimeout(function(){ document.getElementById("usda-grams").focus(); },150);
+}
+function usdaSetG(g){ document.getElementById("usda-grams").value=g; usdaPreview(); }
+function usdaPreview(){
+  var g=parseFloat(document.getElementById("usda-grams").value)||0;
+  var p=_usdaSel?usdaScale(_usdaSel.per100,g):{cal:0,protein:0,fat:0,carbs:0,fiber:0};
+  document.getElementById("usda-pv-cal").textContent=Math.round(p.cal)+" kcal";
+  document.getElementById("usda-pv-macros").textContent="P "+_uR1(p.protein)+"g · C "+_uR1(p.carbs)+"g · F "+_uR1(p.fat)+"g";
+  document.getElementById("usda-pv-fiber").textContent=p.fiber?("Fiber "+_uR1(p.fiber)+"g · Net carbs "+_uR1(Math.max(0,p.carbs-p.fiber))+"g"):"";
+}
+function usdaClose(){ document.getElementById("usda-modal").style.display="none"; _usdaSel=null; }
+function usdaLog(){
+  var g=parseFloat(document.getElementById("usda-grams").value)||0;
+  if(!_usdaSel||!g){ toast("Enter a weight in grams"); return; }
+  var p=usdaScale(_usdaSel.per100,g);
+  // Strip commas/pipes from USDA names — the sheet's Foods column is
+  // comma-joined and pipe-delimited, so they'd corrupt the round-trip.
+  var clean=_usdaSel.name.replace(/\s*,\s*/g," ").replace(/\|/g," ").trim();
+  addFoodObj({ name:clean+" ("+_uR1(g)+"g)", cal:p.cal, protein:p.protein, carbs:p.carbs, fat:p.fat, fiber:p.fiber, grams:g, fdcId:_usdaSel.fdcId });
+  usdaClose();
+  toast("✓ Logged "+_uR1(g)+"g — "+Math.round(p.cal)+" kcal");
+}
 
 </script>
 
