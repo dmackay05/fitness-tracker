@@ -866,9 +866,14 @@ button:active{opacity:0.7}
       </div>
       <div class="card">
         <div class="card-title">🔍 USDA Food Search</div>
+        <div id="usda-myfoods-wrap" style="display:none">
+          <div class="rlbl" style="margin-top:0">⚡ My USDA Foods — tap to log</div>
+          <div id="usda-myfoods" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
           <input type="text" id="usda-q" placeholder="e.g. greek yogurt nonfat" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')usdaSearch()"/>
           <button class="bp" onclick="usdaSearch()">Go</button>
+          <button class="bs" onclick="usdaScanOpen()" style="padding:8px 10px;font-size:15px" title="Scan barcode">📷</button>
         </div>
         <div id="usda-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
         <div id="usda-results"></div>
@@ -1207,6 +1212,29 @@ button:active{opacity:0.7}
       <button class="bs" style="flex:1" onclick="usdaClose()">Cancel</button>
       <button class="bp" style="flex:1" onclick="usdaLog()">+ Log It</button>
     </div>
+    <div id="usda-m-remove" style="display:none;text-align:center;margin-top:10px"><button class="bd" style="font-size:10px" onclick="usdaRemoveCached()">Remove from My USDA Foods</button></div>
+  </div>
+</div>
+
+<!-- BARCODE SCANNER OVERLAY -->
+<div id="usda-scan-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9999;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px">
+    <button class="bs" onclick="usdaScanClose()">✕ Close</button>
+    <div style="font-size:12px;color:#5eead4;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase">Scan Barcode</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+    <video id="usda-scan-video" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+      <div style="width:78%;max-width:340px;height:150px;border:2px solid #5eead4;border-radius:14px;box-shadow:0 0 0 2000px #0d0d1a88"></div>
+    </div>
+  </div>
+  <div style="padding:14px 18px 30px">
+    <div id="usda-scan-status" style="font-size:11px;color:#888;font-family:'DM Mono',monospace;text-align:center;min-height:16px;margin-bottom:10px">Point at the barcode…</div>
+    <div style="display:flex;gap:8px">
+      <input type="number" id="usda-scan-manual" placeholder="…or type the UPC digits" inputmode="numeric" style="flex:1;margin-bottom:0"/>
+      <button class="bp" onclick="usdaScanManual()">Look up</button>
+    </div>
   </div>
 </div>
 
@@ -1246,6 +1274,7 @@ button:active{opacity:0.7}
           <div><div class="rlbl" style="margin-top:0">Protein (g)</div><input type="number" id="ft-protein" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Carbs (g)</div><input type="number" id="ft-carbs" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Fat (g)</div><input type="number" id="ft-fat" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Fiber (g)</div><input type="number" id="ft-fiber" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Burn target</div><input type="number" id="ft-burned" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Water (oz)</div><input type="number" id="ft-water" style="margin-bottom:0"/></div>
         </div>
@@ -1385,6 +1414,7 @@ var GOALS = {
   protein: parseInt(store.get('ft_protein')) || 150,
   carbs:   parseInt(store.get('ft_carbs'))   || 200,
   fat:     parseInt(store.get('ft_fat'))     || 65,
+  fiber:   parseInt(store.get('ft_fiber'))   || 30,
   burned:  parseInt(store.get('ft_burned'))  || 400
 };
 var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
@@ -1398,6 +1428,7 @@ var TREND_METRICS=[
   {key:"neck",    label:"Neck",     unit:"in",  dir:"lower",   color:"#60a5fa", get:function(d){return _meas(d,"neck");}},
   {key:"cal",     label:"Calories", unit:"kcal",dir:"neutral", color:"#5eead4", goal:function(){return GOALS.cal||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.cal||0);},0):null;}},
   {key:"protein", label:"Protein",  unit:"g",   dir:"higher",  color:"#fbbf24", goal:function(){return GOALS.protein||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.protein||0);},0):null;}},
+  {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
   {key:"burned",  label:"Burned",   unit:"kcal",dir:"higher",  color:"#fb923c", goal:function(){return GOALS.burned||0;}, get:function(d){return (d.exercises&&d.exercises.length)?d.exercises.reduce(function(a,x){return a+(+x.calories||0);},0):null;}},
   {key:"water",   label:"Water",    unit:"oz",  dir:"higher",  color:"#38bdf8", goal:function(){return WATER_GOAL||0;}, get:function(d){return (d.waterOz>0)?d.waterOz:null;}}
 ];
@@ -1760,10 +1791,11 @@ function renderFoodLog(){
   var t=getTotals();
   document.getElementById("macro-bars").innerHTML=[
     {l:"Calories",v:t.cal,g:GOALS.cal,c:"#5eead4",u:""},{l:"Protein",v:Math.round(t.protein),g:GOALS.protein,c:"#a78bfa",u:"g"},
-    {l:"Carbs",v:Math.round(t.carbs),g:GOALS.carbs,c:"#fbbf24",u:"g"},{l:"Fat",v:Math.round(t.fat),g:GOALS.fat,c:"#fb923c",u:"g"}
+    {l:"Carbs",v:Math.round(t.carbs),g:GOALS.carbs,c:"#fbbf24",u:"g"},{l:"Fat",v:Math.round(t.fat),g:GOALS.fat,c:"#fb923c",u:"g"},
+    {l:"Fiber",v:Math.round(t.fiber*10)/10,g:GOALS.fiber,c:"#4ade80",u:"g",hi:true}
   ].map(function(m){return '<div class="mrow"><div class="mlrow"><span>'+m.l+'</span><span>'+m.v+m.u+' / '+m.g+m.u+'</span></div>'+
-    '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g?"#ff6b6b":m.c)+'"></div></div></div>';}).join("")+
-    (t.fiber?'<div style="font-size:10px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Fiber '+(Math.round(t.fiber*10)/10)+'g · Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g</div>':"");
+    '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g&&!m.hi?"#ff6b6b":m.c)+'"></div></div></div>';}).join("")+
+    '<div style="font-size:10px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g (carbs − fiber)</div>';
 }
 
 // ── LOG: EXERCISE ───────────────────────────────────────────────────────
@@ -2109,7 +2141,7 @@ function saveHealthSettings(){
   var pin=g("ft-pin-input").trim(); if(/^\d{4}$/.test(pin)){ store.set("ft_pin",pin); APP_PIN=pin; } else { store.set("ft_pin",""); APP_PIN=""; }
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
   var gw=parseFloat(g("ft-goal-weight"))||0; store.set("ft_goal_weight",gw||""); GOAL_WEIGHT=gw;
-  ["cal","protein","carbs","fat","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
+  ["cal","protein","carbs","fat","fiber","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
   var w=parseInt(g("ft-water"))||0; if(w>0){ store.set("ft_water",w); WATER_GOAL=w; }
   var supps=[]; document.querySelectorAll(".ft-sup-inp").forEach(function(el,i){ if(el.value.trim()) supps.push({id:"s"+i,name:el.value.trim(),desc:"",emoji:"💊"}); });
   SUPPS=supps; store.set("ft_supps",JSON.stringify(supps));
@@ -2143,7 +2175,7 @@ function initHealthSettings(){
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal", GOALS.cal); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
-  setv("ft-fat", GOALS.fat); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL);
+  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL);
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
   renderLabEditor();
@@ -2348,12 +2380,12 @@ function renderWeekSummary(){
   var el=document.getElementById("week-summary"); if(!el) return;
   var start=_weekStartMon(), now=new Date(), keys=[];
   for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); if(d>now) break; keys.push(localDateKey(d)); }
-  var logged=0,calSum=0,calDays=0,protSum=0,protDays=0,waterSum=0,waterDays=0,strength=0,rides=0;
+  var logged=0,calSum=0,calDays=0,protSum=0,protDays=0,fibSum=0,fibDays=0,waterSum=0,waterDays=0,strength=0,rides=0;
   keys.forEach(function(k){
     var dd=appData[k]; if(!dd) return;
     var hasFood=dd.foods&&dd.foods.length, hasEx=dd.exercises&&dd.exercises.length, hasW=!!dd.weight;
     if(hasFood||hasEx||hasW||(dd.waterOz>0)) logged++;
-    if(hasFood){ var t=dd.foods.reduce(function(a,x){return {c:a.c+(+x.cal||0),p:a.p+(+x.protein||0)};},{c:0,p:0}); calSum+=t.c; calDays++; protSum+=t.p; protDays++; }
+    if(hasFood){ var t=dd.foods.reduce(function(a,x){return {c:a.c+(+x.cal||0),p:a.p+(+x.protein||0),fb:a.fb+(+x.fiber||0)};},{c:0,p:0,fb:0}); calSum+=t.c; calDays++; protSum+=t.p; protDays++; if(t.fb>0){fibSum+=t.fb; fibDays++;} }
     if(dd.waterOz>0){ waterSum+=dd.waterOz; waterDays++; }
     if(hasEx && dd.exercises.some(function(e){return e.type==="strength";})) strength++;
     rides += (dd.rides?dd.rides.length:0);
@@ -2364,6 +2396,7 @@ function renderWeekSummary(){
     tile(logged+"/"+keys.length,"Days","#5eead4")+
     tile(calDays?Math.round(calSum/calDays):"\u2014","Avg Cal","#5eead4")+
     tile(protDays?Math.round(protSum/protDays)+"g":"\u2014","Avg Protein","#fbbf24")+
+    tile(fibDays?Math.round(fibSum/fibDays)+"g":"\u2014","Avg Fiber","#4ade80")+
     tile(strength,"Workouts","#a78bfa")+
     tile(rides,"Rides","#fb923c")+
     tile(waterDays?Math.round(waterSum/waterDays)+"oz":"\u2014","Avg Water","#38bdf8")+
@@ -2679,7 +2712,64 @@ fetchSheet(function(rows,ok){
 // ══════════════════════════════════════════════════════════════════════
 var USDA_KEY = store.get("ft_usda_key") || "DEMO_KEY";
 var USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
+var USDA_DETAILS_URL = "https://api.nal.usda.gov/fdc/v1/food/";
 var _usdaResults = [], _usdaSel = null;
+
+// ── MY USDA FOODS — per-100g cache + portion memory ─────────────────────
+// { key: {name, fdcId, per100:{cal,protein,fat,carbs,fiber}|null, lastGrams, t} }
+var USDA_CACHE = {};
+try { USDA_CACHE = JSON.parse(store.get("ft_usda_cache")||"{}")||{}; } catch(e){ USDA_CACHE={}; }
+// Seed with the original food_nutrition_info.py registry (per-100g fetched once on first use)
+(function(){
+  var seeds = {
+    "fdc_1102652":{name:"Avocado raw",                    fdcId:1102652},
+    "fdc_1103859":{name:"Yogurt Greek plain nonfat",      fdcId:1103859},
+    "fdc_1104523":{name:"Chicken breast meat only raw",   fdcId:1104523},
+    "fdc_1098179":{name:"Ground beef 93% lean raw",       fdcId:1098179},
+    "fdc_1102702":{name:"Blueberries raw",                fdcId:1102702}
+  };
+  Object.keys(seeds).forEach(function(k){ if(!USDA_CACHE[k]) USDA_CACHE[k]={name:seeds[k].name,fdcId:seeds[k].fdcId,per100:null,lastGrams:0,t:0}; });
+})();
+function saveUsdaCache(){ try{ store.set("ft_usda_cache", JSON.stringify(USDA_CACHE)); }catch(e){} }
+function usdaCacheKey(fdcId,name){ return fdcId ? "fdc_"+fdcId : "nm_"+String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"_").slice(0,40); }
+function renderUsdaMyFoods(){
+  var wrap=document.getElementById("usda-myfoods-wrap"), el=document.getElementById("usda-myfoods");
+  if(!wrap||!el) return;
+  var keys=Object.keys(USDA_CACHE).sort(function(a,b){ return (USDA_CACHE[b].t||0)-(USDA_CACHE[a].t||0); });
+  if(!keys.length){ wrap.style.display="none"; return; }
+  wrap.style.display="block";
+  el.innerHTML=keys.map(function(k){
+    var c=USDA_CACHE[k];
+    var short=c.name.length>26?c.name.slice(0,24)+"…":c.name;
+    return '<button class="bs" style="font-size:10px;text-transform:none;letter-spacing:0;padding:7px 11px;border-radius:16px" onclick="usdaOpenCached(\''+k+'\')">'+_uEsc(short)+(c.lastGrams?' <span style="color:#5eead4">'+_uR1(c.lastGrams)+'g</span>':'')+'</button>';
+  }).join("");
+}
+function usdaOpenCached(key){
+  var c=USDA_CACHE[key]; if(!c) return;
+  _usdaSel={ name:c.name, per100:c.per100, fdcId:c.fdcId, dataType:"cached", cacheKey:key };
+  document.getElementById("usda-m-name").textContent=c.name;
+  document.getElementById("usda-m-sub").textContent=(c.fdcId?"FDC "+c.fdcId+" · ":"")+"cached · per-100g baseline";
+  document.getElementById("usda-m-remove").style.display="block";
+  document.getElementById("usda-grams").value=c.lastGrams||"";
+  usdaPreview();
+  document.getElementById("usda-modal").style.display="flex";
+  if(!c.per100){ // seed entry — fetch details once, cache forever
+    document.getElementById("usda-m-sub").textContent="Fetching nutrients from USDA…";
+    fetch(USDA_DETAILS_URL+c.fdcId+"?api_key="+encodeURIComponent(USDA_KEY))
+      .then(function(r){ if(!r.ok) throw new Error("USDA "+r.status); return r.json(); })
+      .then(function(raw){
+        c.per100=usdaExtract(raw.foodNutrients); _usdaSel.per100=c.per100; saveUsdaCache();
+        document.getElementById("usda-m-sub").textContent="FDC "+c.fdcId+" · cached · per-100g baseline";
+        usdaPreview();
+      }).catch(function(e){ document.getElementById("usda-m-sub").textContent="⚠ "+e.message+" — check API key in Settings"; });
+  }
+  var inp=document.getElementById("usda-grams");
+  setTimeout(function(){ inp.focus(); if(inp.value) inp.select(); },150);
+}
+function usdaRemoveCached(){
+  if(_usdaSel&&_usdaSel.cacheKey){ delete USDA_CACHE[_usdaSel.cacheKey]; saveUsdaCache(); renderUsdaMyFoods(); }
+  usdaClose();
+}
 
 // Same nutrient mapping as the Python target_nutrients; handles both the
 // Search schema (nutrientName/value) and Details schema (nutrient.name/amount)
@@ -2730,13 +2820,18 @@ function usdaSearch(){
 }
 function usdaPick(i){
   var f=_usdaResults[i]; if(!f) return;
-  _usdaSel={ name:f.description, per100:usdaExtract(f.foodNutrients), fdcId:f.fdcId, dataType:f.dataType };
+  var key=usdaCacheKey(f.fdcId,f.description);
+  _usdaSel={ name:f.description, per100:usdaExtract(f.foodNutrients), fdcId:f.fdcId, dataType:f.dataType, cacheKey:key };
   document.getElementById("usda-m-name").textContent=f.description+(f.brandOwner?" · "+f.brandOwner:"");
   document.getElementById("usda-m-sub").textContent="FDC "+f.fdcId+" · "+(f.dataType||"")+" · per-100g baseline";
-  document.getElementById("usda-grams").value="";
+  document.getElementById("usda-m-remove").style.display="none";
+  // Portion memory: prefill last-used grams if we've logged this food before
+  var prev=USDA_CACHE[key];
+  document.getElementById("usda-grams").value=(prev&&prev.lastGrams)?prev.lastGrams:"";
   usdaPreview();
   document.getElementById("usda-modal").style.display="flex";
-  setTimeout(function(){ document.getElementById("usda-grams").focus(); },150);
+  var inp=document.getElementById("usda-grams");
+  setTimeout(function(){ inp.focus(); if(inp.value) inp.select(); },150);
 }
 function usdaSetG(g){ document.getElementById("usda-grams").value=g; usdaPreview(); }
 function usdaPreview(){
@@ -2750,14 +2845,101 @@ function usdaClose(){ document.getElementById("usda-modal").style.display="none"
 function usdaLog(){
   var g=parseFloat(document.getElementById("usda-grams").value)||0;
   if(!_usdaSel||!g){ toast("Enter a weight in grams"); return; }
+  if(!_usdaSel.per100){ toast("Still fetching nutrients — one sec"); return; }
   var p=usdaScale(_usdaSel.per100,g);
   // Strip commas/pipes from USDA names — the sheet's Foods column is
   // comma-joined and pipe-delimited, so they'd corrupt the round-trip.
   var clean=_usdaSel.name.replace(/\s*,\s*/g," ").replace(/\|/g," ").trim();
   addFoodObj({ name:clean+" ("+_uR1(g)+"g)", cal:p.cal, protein:p.protein, carbs:p.carbs, fat:p.fat, fiber:p.fiber, grams:g, fdcId:_usdaSel.fdcId });
+  // Cache for My USDA Foods + remember this portion
+  var key=_usdaSel.cacheKey||usdaCacheKey(_usdaSel.fdcId,clean);
+  USDA_CACHE[key]={ name:clean, fdcId:_usdaSel.fdcId||"", per100:_usdaSel.per100, lastGrams:g, t:Date.now() };
+  saveUsdaCache(); renderUsdaMyFoods();
   usdaClose();
   toast("✓ Logged "+_uR1(g)+"g — "+Math.round(p.cal)+" kcal");
 }
+
+// ── BARCODE SCANNER — native BarcodeDetector (Android Chrome), ZXing fallback ──
+var _scanStream=null, _scanTimer=null, _zxReader=null;
+function usdaScanOpen(){
+  var ov=document.getElementById("usda-scan-overlay");
+  ov.style.display="flex";
+  document.getElementById("usda-scan-status").textContent="Starting camera…";
+  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})
+    .then(function(stream){
+      _scanStream=stream;
+      var v=document.getElementById("usda-scan-video");
+      v.srcObject=stream; v.play();
+      if("BarcodeDetector" in window){ _scanNative(v); }
+      else { _scanZxing(v); }
+    })
+    .catch(function(){
+      document.getElementById("usda-scan-status").textContent="Camera unavailable — type the UPC below instead.";
+    });
+}
+function _scanNative(video){
+  document.getElementById("usda-scan-status").textContent="Point at the barcode…";
+  var det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
+  _scanTimer=setInterval(function(){
+    if(video.readyState<2) return;
+    det.detect(video).then(function(codes){
+      if(codes&&codes.length){ usdaScanHit(codes[0].rawValue); }
+    }).catch(function(){});
+  },350);
+}
+function _scanZxing(video){
+  document.getElementById("usda-scan-status").textContent="Loading scanner…";
+  function start(){
+    try{
+      _zxReader=new ZXing.BrowserMultiFormatReader();
+      document.getElementById("usda-scan-status").textContent="Point at the barcode…";
+      _zxReader.decodeFromVideoElement(video,function(result){ if(result) usdaScanHit(result.getText()); });
+    }catch(e){ document.getElementById("usda-scan-status").textContent="Scanner failed — type the UPC below instead."; }
+  }
+  if(window.ZXing){ start(); return; }
+  var s=document.createElement("script");
+  s.src="https://cdnjs.cloudflare.com/ajax/libs/zxing-library/0.21.3/umd/index.min.js";
+  s.onload=start;
+  s.onerror=function(){ document.getElementById("usda-scan-status").textContent="Scanner library unavailable — type the UPC below instead."; };
+  document.head.appendChild(s);
+}
+function usdaScanClose(){
+  clearInterval(_scanTimer); _scanTimer=null;
+  if(_zxReader){ try{_zxReader.reset();}catch(e){} _zxReader=null; }
+  if(_scanStream){ _scanStream.getTracks().forEach(function(t){t.stop();}); _scanStream=null; }
+  document.getElementById("usda-scan-overlay").style.display="none";
+}
+function usdaScanManual(){
+  var code=document.getElementById("usda-scan-manual").value.trim();
+  if(code) usdaScanHit(code);
+}
+function usdaScanHit(code){
+  code=String(code).replace(/\D/g,""); if(!code) return;
+  usdaScanClose();
+  if(navigator.vibrate) navigator.vibrate(60);
+  var st=document.getElementById("usda-status");
+  st.textContent="Looking up UPC "+code+"…";
+  document.getElementById("usda-q").value=code;
+  var url=USDA_SEARCH_URL+"?api_key="+encodeURIComponent(USDA_KEY)+"&query="+encodeURIComponent(code)+"&dataType=Branded&pageSize=6";
+  fetch(url).then(function(r){ if(!r.ok) throw new Error("USDA "+r.status); return r.json(); }).then(function(data){
+    var foods=data.foods||[];
+    // Exact gtinUpc match first (UPC-A is the EAN-13 minus its leading zero)
+    var exact=foods.filter(function(f){ var g=String(f.gtinUpc||"").replace(/\D/g,""); return g===code||g==="0"+code||code==="0"+g; });
+    _usdaResults=exact.length?exact:foods;
+    if(!_usdaResults.length){ st.textContent="UPC not in USDA's branded database — try a name search."; return; }
+    st.textContent=_usdaResults.length+" match"+(_usdaResults.length>1?"es":"");
+    if(_usdaResults.length===1){ document.getElementById("usda-results").innerHTML=""; usdaPick(0); return; }
+    document.getElementById("usda-results").innerHTML=_usdaResults.map(function(f,i){
+      var p=usdaExtract(f.foodNutrients);
+      return '<div class="row" onclick="usdaPick('+i+')" style="cursor:pointer">'
+        +'<div style="flex:1;min-width:0"><div class="row-name">'+_uEsc(f.description)+(f.brandOwner?' <span style="color:#888;font-weight:400">· '+_uEsc(f.brandOwner)+'</span>':'')+'</div>'
+        +'<div class="row-sub">per 100g · '+Math.round(p.cal)+' kcal · P '+_uR1(p.protein)+' · C '+_uR1(p.carbs)+' · F '+_uR1(p.fat)+'</div></div>'
+        +'<span class="tag" style="background:#a78bfa22;color:#a78bfa">Branded</span></div>';
+    }).join("");
+  }).catch(function(e){ st.textContent="⚠ "+e.message; });
+}
+
+renderUsdaMyFoods();
 
 </script>
 
