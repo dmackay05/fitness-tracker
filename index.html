@@ -1292,7 +1292,7 @@ button:active{opacity:0.7}
     margin-top: 8px;
     line-height: 1.3;
   }#tg-app /* ── Option B: 3-mode nav + collapsible Week cards ── */
-  .mode-nav{ justify-content: center; gap: 8px; }#tg-app .mode-nav .day-tab{ flex: 1; max-width: 200px; justify-content: center; text-align: center; }#tg-app .day-panel.week-collapsed{ cursor: pointer; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; margin: 0 auto 12px; padding: 0 16px 10px; max-width: 700px; background: rgba(255,255,255,.02); }#tg-app .day-panel.week-collapsed > .day-header{ margin: 0 -16px; padding: 16px 44px 16px 20px; position: relative; cursor: pointer; }#tg-app .day-panel.week-collapsed:not(.week-open) > :not(.day-header){ display: none !important; }#tg-app .day-panel.week-collapsed > .day-header::after{ content: '\25BC'; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 11px; transition: transform .2s; }#tg-app .day-panel.week-collapsed.week-open > .day-header::after{ transform: translateY(-50%) rotate(180deg); }#tg-app #eg-gear{ position: fixed; top: 12px; right: 12px; z-index: 120; width: 40px; height: 40px; border-radius: 50%; background: rgba(20,20,20,.85); border: 1px solid rgba(255,255,255,.15); color: #bbb; font-size: 18px; cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }#tg-app #eg-gear:hover{ color: var(--accent); border-color: var(--accent); }
+  .mode-nav{ justify-content: center; gap: 8px; }#tg-app .mode-nav .day-tab{ flex: 1; max-width: 200px; justify-content: center; text-align: center; }#tg-app .day-panel.week-collapsed{ cursor: pointer; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; margin: 0 auto 12px; padding: 0 16px 10px; max-width: 700px; background: rgba(255,255,255,.02); }#tg-app .day-panel.week-collapsed > .day-header{ margin: 0 -16px; padding: 16px 44px 16px 20px; position: relative; cursor: pointer; }#tg-app .day-panel.week-collapsed:not(.week-open) > :not(.day-header){ display: none !important; }#tg-app .day-panel.week-collapsed > .day-header::after{ content: '\25BC'; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 11px; transition: transform .2s; }#tg-app .day-panel.week-collapsed.week-open > .day-header::after{ transform: translateY(-50%) rotate(180deg); }
 
 </style>
 </head>
@@ -3103,6 +3103,11 @@ button:active{opacity:0.7}
       <div class="bike-stat" style="border-color:rgba(255,100,100,0.4)"><div class="label">Total session</div><div class="value" style="color:#ff6464;">560–690 cal ✓</div></div>
     </div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6;">Wednesday now comfortably clears 500 cal. The slam ball adds the metabolic spike yoga can't provide. Wear your compression sleeve for the ride and during slams. Stop slam ball if elbow flares. Eat 2,000 cal today — active recovery still requires full fuel.</p>
+
+    <div id="yoga-complete-card" style="margin-top:18px;padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(255,255,255,.03);text-align:center">
+      <button id="yoga-complete-btn" onclick="tgYogaToggle()" style="width:100%;padding:14px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.5px">Mark Wednesday Yoga Complete</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px">Counts toward your weekly streak · logs 130 cal burned to today's tracker</div>
+    </div>
   </div>
 
 </div>
@@ -5011,7 +5016,7 @@ button:active{opacity:0.7}
 <div class="day-panel" id="day-10">
   <div class="day-header">
     <div class="day-title">📊 Progress</div>
-    <div class="day-subtitle">Your training at a glance — set the URL via the ⚙ gear (top-right) to sync.</div>
+    <div class="day-subtitle">Your training at a glance — syncs through the Apps Script URL in the tracker’s Settings tab</div>
   </div>
   <div class="exercise-card" style="cursor:default">
     <div id="eg-dash" style="padding:18px 20px"></div>
@@ -5021,23 +5026,7 @@ button:active{opacity:0.7}
 
 
 <!-- ── SETTINGS (gear popup) ── -->
-<button id="eg-gear" onclick="egOpenSettings()" title="Settings" aria-label="Settings">⚙</button>
-<div id="eg-settings" onclick="if(event.target===this)egCloseSettings()" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.78);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)">
-  <div style="max-width:460px;margin:8vh auto 0;background:#141414;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:22px 22px 26px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <div style="font-size:18px;font-weight:800;color:#fff">⚙ Settings</div>
-      <button onclick="egCloseSettings()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1">✕</button>
-    </div>
-    <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Sync to Google Sheet</div>
-    <input id="eg-url" type="text" placeholder="Apps Script /exec URL" style="width:100%;box-sizing:border-box;background:#161616;border:1px solid #333;border-radius:8px;padding:11px;color:#eee;font-size:12px;margin-bottom:8px"/>
-    <div style="display:flex;gap:8px">
-      <button onclick="egSaveUrl()" style="flex:1;background:var(--accent);color:#0f0f0f;border:none;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;font-size:13px">Save URL</button>
-      <button onclick="egPushNow()" style="flex:1;background:#13283a;color:#7dd3fc;border:1px solid #7dd3fc55;border-radius:8px;padding:11px;font-weight:700;cursor:pointer;font-size:13px">Push now</button>
-    </div>
-    <div id="eg-sync-status" style="font-size:11px;color:#5eead4;margin-top:10px;min-height:14px;font-family:monospace"></div>
-    <div style="font-size:11px;color:#666;margin-top:8px;line-height:1.5">Uses the same Sheet and URL as your tracker — completed exercises land in the <strong>Workout Log</strong> tab. If you set the URL in the tracker on this device, it's already filled in.</div>
-  </div>
-</div>
+
 
 
 </div></div>
@@ -7225,6 +7214,33 @@ function usdaScanHit(code){
 
 renderUsdaMyFoods();
 
+// ── WEDNESDAY YOGA ↔ TRACKER BRIDGE ─────────────────────────────────────
+// One tap in the Guide marks the yoga flow complete in eg_done (streak,
+// week view, auto-push to Workout Log) AND logs a 130 cal exercise entry
+// to TODAY's tracker day (Calories Burned, dashboards, Exercises column).
+var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=130, TG_YOGA_NAME="Wednesday Yoga Flow (20-25 min)";
+function tgYogaRefresh(){
+  var b=document.getElementById("yoga-complete-btn"); if(!b) return;
+  var on=(typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID);
+  b.textContent=on?"\u2713 Yoga Complete \u2014 tap to undo":"Mark Wednesday Yoga Complete";
+  b.style.background=on?"var(--accent)":"transparent";
+  b.style.color=on?"#0f0f0f":"var(--accent)";
+}
+function tgYogaToggle(){
+  var on=!((typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID));
+  if(typeof egSetDone==="function") egSetDone(TG_YOGA_ID,on);
+  var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
+  if(on){
+    if(!day.exercises.some(function(e){return e.id===exId;})){
+      day.exercises.push({name:TG_YOGA_NAME,calories:TG_YOGA_CAL,type:"yoga",id:exId});
+    }
+  } else {
+    day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
+  }
+  saveDay(day,tk); renderAll(); tgYogaRefresh();
+  toast(on?("\u2713 Yoga logged \u2014 "+TG_YOGA_CAL+" cal"):"Yoga unmarked");
+}
+
 </script>
 
 <script>
@@ -8971,6 +8987,10 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
   function saveDone(o){try{localStorage.setItem("eg_done",JSON.stringify(o));}catch(e){}}
   function url(){return localStorage.getItem("ft_sheets_url")||"";}
   window.egSlug=slug; window.egToday=today;
+  // Bridge hooks for the tracker's yoga completion card (dash + streak + auto-push)
+  window.egIsDone=function(exid){ return !!((loadDone()[today()]||{})[exid]); };
+  window.egSetDone=function(exid,on){ var d=loadDone(),t=today(); d[t]=d[t]||{}; if(on)d[t][exid]=true; else delete d[t][exid]; if(!Object.keys(d[t]).length)delete d[t]; saveDone(d); renderDash(); scheduleSync(); };
+  document.addEventListener("DOMContentLoaded",function(){ if(typeof tgYogaRefresh==="function") tgYogaRefresh(); });
 
   function tagCards(){
     document.querySelectorAll(".exercise-card").forEach(function(card){
