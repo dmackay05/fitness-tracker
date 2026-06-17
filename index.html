@@ -9006,8 +9006,28 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     var d=loadDone(), t=today(); d[t]=d[t]||{};
     if(all) d[t][exid]=true; else delete d[t][exid];
     if(!Object.keys(d[t]).length) delete d[t];
-    saveDone(d); renderDash(); scheduleSync();
+    saveDone(d); egCrossLog(); renderDash(); scheduleSync();
   };
+
+  // Log estimated calories from completed strength exercises into TODAY's tracker day.
+  // Excludes the Wednesday yoga flow (logged separately) so it isn't double-counted.
+  function egCrossLog(){
+    try{
+      if(typeof getDay!=="function"||typeof saveDay!=="function"||typeof todayKey!=="function") return;
+      var set=loadDone()[today()]||{};
+      var n=Object.keys(set).filter(function(k){return k!=="wednesday-yoga-flow";}).length;
+      var tk=todayKey(), day=getDay(tk), id="eg-strength-"+tk;
+      day.exercises=(day.exercises||[]).filter(function(e){return e.id!==id;});
+      if(n>0){
+        var w=(typeof getLatestWeight==="function"&&getLatestWeight())||200;
+        var perEx=Math.round(20*(w/150));
+        day.exercises.push({name:"Strength \u2014 "+n+" exercise"+(n>1?"s":"")+" (guide)",calories:perEx*n,type:"strength",id:id});
+      }
+      saveDay(day,tk);
+      if(typeof renderAll==="function") renderAll();
+      if(typeof pushToSheets==="function") pushToSheets();
+    }catch(e){}
+  }
 
   function restoreToday(){
     var set=(loadDone()[today()])||{};
