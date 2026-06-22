@@ -1414,6 +1414,11 @@ button:active{opacity:0.7}
 #panel-today .ds-resetbar button{background:transparent;border:1px solid rgba(255,255,255,.08);color:#9a9d8c;border-radius:99px;padding:8px 16px;font-size:12px;cursor:pointer;}
 #panel-today .ds-foot{font-size:11px;color:#9a9d8c;text-align:center;margin-top:18px;line-height:1.6;}
 #ds-toast{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:#a78bfa;color:#1a1240;font-weight:700;padding:11px 18px;border-radius:99px;font-size:14px;display:none;z-index:9999;}
+#panel-today .ds-rirrow{display:flex;align-items:center;gap:6px;margin:0 0 9px;flex-wrap:wrap;}
+#panel-today .ds-rirchip{min-width:30px;text-align:center;font-size:13px;color:#9a9d8c;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:5px 8px;cursor:pointer;}
+#panel-today .ds-rirchip.on{background:#cfe84f;color:#1a1d0e;border-color:#cfe84f;font-weight:700;}
+#panel-today .ds-deload{display:inline-block;font-size:12px;color:#cfe84f;border:1px solid rgba(207,232,79,.4);border-radius:99px;padding:3px 10px;margin-bottom:12px;}
+#panel-today .ds-deload.warn{color:#f5b14c;border-color:rgba(245,177,76,.5);}
 #panel-today .ds-prbtn{display:block;width:100%;text-align:center;border:1px solid #a78bfa;background:transparent;color:#cdbcff;border-radius:11px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:9px;}
 #panel-today .ds-prpanel{display:none;background:#1b1630;border:1px solid #a78bfa;border-radius:12px;padding:14px;margin-bottom:11px;text-align:center;}
 #panel-today .ds-prpanel.on{display:block;}
@@ -1427,6 +1432,7 @@ button:active{opacity:0.7}
   <div class="ds-eyebrow" id="ds-eyebrow">Today</div>
   <h1 class="ds-h1" id="ds-title">—</h1>
   <div class="ds-sub" id="ds-sub">—</div>
+  <div class="ds-deload" id="ds-deload"></div>
   <div class="ds-statbar">
     <div class="ds-stat"><div class="ds-k">Done</div><div class="ds-v" id="ds-done">0 / 0</div><div class="ds-progress"><i id="ds-bar"></i></div></div>
     <div class="ds-stat"><div class="ds-k">Burned</div><div class="ds-v"><span id="ds-burned">0</span> <span class="ds-unit">kcal</span></div></div>
@@ -7775,6 +7781,17 @@ var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end ran
 
 
 /* ===================== DAILY SESSION — render + logging (integrated) ===================== */
+
+DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Eccentric Wrist Rehab",rx:"3\u00d715",cal:12,demo:null,log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Slow on the lower \u2014 this is the rehab that actually works",setup:"Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3\u20134 seconds using only the working side. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer's elbow."});
+var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"toward your first rep \u00b7 alternating days",blurb:"Your road to the first unassisted pull-up. Log each drill so the numbers climb \u2014 that climb is the progress. Take the hardest drill close to failure; ease off if the elbow flares.",moves:[
+ {id:"pu-hang",name:"Dead Hang \u2014 log seconds",rx:"3 \u00d7 max hold",cal:10,demo:null,log:"setsreps",sets:3,target:"Grip \u00b7 Shoulders \u00b7 Lats",equip:"Monkey bars",cue:"Shoulders active, pulled down away from your ears \u2014 don't just dangle",setup:"Hang from the bar, full grip, arms straight, shoulder blades pulled down and back. Put the seconds you held into the Reps box and beat last time."},
+ {id:"pu-scap",name:"Scapular Pulls",rx:"3\u00d78",cal:10,demo:null,log:"setsreps",sets:3,target:"Lower Traps \u00b7 Lats",equip:"Monkey bars",cue:"Arms stay straight \u2014 the shoulder blades do all the work",setup:"Hang with straight arms. Without bending the elbows, pull the shoulder blades down to lift your chest a couple inches, then lower with control. This is the very start of the pull."},
+ {id:"pu-neg",name:"Negatives \u2014 log slow seconds",rx:"3\u00d73",cal:15,demo:null,log:"setsreps",sets:3,target:"Full pulling chain",equip:"Monkey bars",cue:"Fight gravity the whole way \u2014 slower is the whole point",setup:"Jump or step to the top with your chin over the bar, then lower as slowly as you can. Log the seconds the slow part lasted in Reps \u2014 longer negatives over the weeks means you're nearly strong enough to pull up."},
+ {id:"pu-band",name:"Band-Assisted Pull-ups",rx:"3\u00d75",cal:15,demo:null,log:"setsreps",sets:3,target:"Full pulling chain",equip:"Tube band over the bar",cue:"Elbows drive down and back, chest toward the bar",setup:"Loop a band over the bar, foot or knee in it. Do full pull-ups, logging reps and which band in the weight box. The progression: same reps on a lighter band over time, until you need none."}
+]};
+function dsSetRir(id,v){ var st=dsItemState(id); st._rir=(st._rir===v?null:v); dsSaveUI(); dsRender(); }
+function dsBlockWeek(){ try{ var s=store.get("ds_start"); if(!s){ s=todayKey(); store.set("ds_start",s); } var a=new Date(s+"T12:00:00"), b=new Date(activeDate+"T12:00:00"); var w=Math.floor((b-a)/(7*86400000)); return w<0?0:w; }catch(e){ return 0; } }
+
 var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};}
 var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){DS_SWAPS={};}
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
@@ -7783,7 +7800,7 @@ function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[
 function dsItemState(id){ var d=dsDayState(); if(!d[id])d[id]={sets:[]}; if(!d[id].sets)d[id].sets=[]; return d[id]; }
 var ds_timers={};
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); return DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves); }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); return DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
 function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
 function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
@@ -7793,7 +7810,7 @@ function dsComplete(id){ var d=getDay(); return d.exercises.some(function(e){ret
 function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:item.cal),type:"session",id:sid};
-  if(st.sets&&st.sets.length){ ex.sets=st.sets.length; var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; }
+  if(st.sets&&st.sets.length){ ex.sets=st.sets.length; var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; if(l.rir!=null)ex.rir=l.rir; }
   else if(st.mins){ ex.reps=st.mins+" min"; }
   day.exercises.push(ex); saveDay(day);
 }
@@ -7803,7 +7820,7 @@ function dsLastTime(id){ var sid="sess_"+id;
   var keys=Object.keys(appData).filter(function(k){return k<activeDate&&appData[k]&&appData[k].exercises&&appData[k].exercises.some(function(e){return e.id===sid;});}).sort();
   if(!keys.length)return null;
   var arr=appData[keys[keys.length-1]].exercises;
-  for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid)return {reps:arr[i].reps,load:arr[i].load}; }
+  for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid)return {reps:arr[i].reps,load:arr[i].load,rir:arr[i].rir}; }
   return null;
 }
 function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
@@ -7836,8 +7853,9 @@ function dsRenderItem(rawItem,idx){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
     h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><span class="ds-stepval" id="ds-reps-'+item.id+'">'+(st._reps||10)+'</span><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div><input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')"><div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+    h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsLogSet(\''+item.id+'\','+target+')">'+(done?'\u2713 Logged \u2014 tap to clear':'Log set ('+st.sets.length+'/'+target+')')+'</button>';
   } else if(item.log==='time'){
     h+='<div class="ds-timerwrap"><button class="ds-tbtn" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">\u23F1 Start '+dsMMSS(item.secs)+'</button></div>';
@@ -7863,11 +7881,13 @@ function dsRender(){
   var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=(activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk];
   var tt=document.getElementById('ds-title'); if(tt)tt.textContent=SS.title;
   var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
+  var dl=document.getElementById('ds-deload'); if(dl){var wk=dsBlockWeek()%6; if(wk===5){dl.textContent='Deload week \u2014 cut volume ~40%, keep it easy';dl.className='ds-deload warn';}else{dl.textContent='Training block \u00b7 week '+(wk+1)+' of 6';dl.className='ds-deload';}}
   var html=dsRenderSection('The Session','',SS.accent,SS.moves,'');
   html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
   html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
   html+=dsRenderSection('Joint Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
+  html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }
@@ -7889,7 +7909,7 @@ function dsLogSet(id,target){
   if(dsComplete(id)){ dsUnlog(id); st.sets=[]; dsSaveUI(); dsRender(); renderAll(); return; }
   if(st.sets.length>=target)return;
   var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
-  st.sets.push({reps:reps,load:load});
+  st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null)});
   var nowDone=false;
   if(st.sets.length>=target){ dsLogComplete(dsViewOf(dsRawItem(id))); nowDone=true; }
   dsSaveUI(); dsRender(); if(nowDone)renderAll();
