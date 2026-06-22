@@ -1345,12 +1345,94 @@ button:active{opacity:0.7}
     <button class="tab-btn" data-tab="log"><span class="tab-icon">✎</span>Log</button>
     <button class="tab-btn" data-tab="train"><span class="tab-icon">💪</span>Training</button>
     <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
-    <button class="tab-btn" data-tab="guide"><span class="tab-icon">📖</span>Guide</button>
+    <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
+    <button class="tab-btn" data-tab="guide"><span class="tab-icon">📖</span>Reference</button>
   </div>
 
   <div class="content">
+<style id="ds-style">
+#panel-today{padding-bottom:60px;}
+#panel-today .ds-eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#9a9d8c;}
+#panel-today .ds-h1{font-size:25px;margin:1px 0;font-weight:700;color:#f1f3e8;}
+#panel-today .ds-sub{font-size:13px;color:#9a9d8c;margin-bottom:14px;}
+#panel-today .ds-statbar{display:flex;gap:9px;margin:6px 0 16px;}
+#panel-today .ds-stat{flex:1;background:#1d1f15;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 11px;}
+#panel-today .ds-k{font-size:11px;color:#9a9d8c;letter-spacing:.04em;text-transform:uppercase;}
+#panel-today .ds-v{font-size:19px;font-weight:700;color:#f1f3e8;margin-top:2px;}
+#panel-today .ds-unit{font-size:12px;color:#9a9d8c;font-weight:400;}
+#panel-today .ds-progress{height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:7px;}
+#panel-today .ds-progress>i{display:block;height:100%;background:#cfe84f;width:0;transition:width .3s;}
+#panel-today .ds-seclabel{display:flex;align-items:center;gap:9px;margin:20px 0 11px;}
+#panel-today .ds-seclabel .ds-t{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
+#panel-today .ds-seclabel .ds-ln{flex:1;height:1px;background:rgba(255,255,255,.08);}
+#panel-today .ds-seclabel .ds-meta{font-size:11px;color:#9a9d8c;}
+#panel-today .ds-move{background:#1d1f15;border:1px solid rgba(255,255,255,.08);border-radius:15px;margin-bottom:10px;overflow:hidden;}
+#panel-today .ds-move.ds-done{opacity:.55;}
+#panel-today .ds-mhead{display:flex;align-items:flex-start;gap:11px;padding:13px;cursor:pointer;}
+#panel-today .ds-midx{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,.08);color:#9a9d8c;}
+#panel-today .ds-move.ds-done .ds-midx{background:#4ec98a;border-color:#4ec98a;color:#0c2418;}
+#panel-today .ds-minfo{flex:1;min-width:0;}
+#panel-today .ds-mname{font-size:16px;font-weight:600;color:#f1f3e8;}
+#panel-today .ds-mcue{font-size:13px;color:#cfe84f;margin-top:2px;line-height:1.4;}
+#panel-today .ds-mrx{font-size:12px;color:#9a9d8c;white-space:nowrap;padding-top:3px;text-align:right;}
+#panel-today .ds-mtags{font-size:11px;color:#9a9d8c;margin-top:5px;}
+#panel-today .ds-mtags span{display:inline-block;background:#24261a;border-radius:6px;padding:2px 7px;margin:2px 4px 0 0;}
+#panel-today .ds-chev{color:#9a9d8c;font-size:12px;transition:transform .2s;padding-top:4px;}
+#panel-today .ds-move.ds-open .ds-chev{transform:rotate(180deg);}
+#panel-today .ds-mbody{display:none;padding:0 13px 13px;}
+#panel-today .ds-move.ds-open .ds-mbody{display:block;}
+#panel-today .ds-demo{background:#24261a;border-radius:11px;padding:6px;margin-bottom:11px;text-align:center;}
+#panel-today .ds-demo svg{max-width:210px;width:100%;height:auto;}
+#panel-today .ds-demo-cap{font-size:11px;color:#9a9d8c;margin-top:2px;}
+#panel-today .ds-setup{font-size:13px;color:#9a9d8c;line-height:1.55;margin-bottom:11px;}
+#panel-today .ds-lastline{font-size:12px;color:#9a9d8c;margin-bottom:9px;}
+#panel-today .ds-lastline b{color:#f1f3e8;font-weight:600;}
+#panel-today .ds-logrow{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap;}
+#panel-today .ds-lbl{font-size:12px;color:#9a9d8c;width:40px;}
+#panel-today .ds-stepper{display:flex;align-items:center;gap:6px;}
+#panel-today .ds-stepbtn{width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:transparent;color:#f1f3e8;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#panel-today .ds-stepval{font-size:16px;font-weight:700;min-width:26px;text-align:center;color:#f1f3e8;}
+#panel-today .ds-wt{width:80px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:transparent;color:#f1f3e8;text-align:center;font-size:14px;}
+#panel-today .ds-calprev{font-size:13px;color:#9a9d8c;margin-left:auto;}
+#panel-today .ds-dots{display:flex;gap:7px;align-items:center;margin-left:auto;}
+#panel-today .ds-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.28);}
+#panel-today .ds-dot.on{background:#cfe84f;border-color:#cfe84f;}
+#panel-today .ds-btn{display:block;width:100%;text-align:center;border:none;border-radius:11px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;background:#cfe84f;color:#1a1d0e;margin-top:4px;}
+#panel-today .ds-btn.ds-lit{background:#4ec98a;color:#0c2418;}
+#panel-today .ds-timerwrap{display:flex;gap:9px;align-items:center;margin-bottom:9px;}
+#panel-today .ds-tbtn{flex:1;border:1px solid rgba(255,255,255,.08);background:transparent;color:#f1f3e8;border-radius:11px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;}
+#panel-today .ds-tbtn.ds-run{background:#a78bfa;color:#1a1240;border-color:#a78bfa;}
+#panel-today .ds-swap{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#9a9d8c;border:1px solid rgba(255,255,255,.08);border-radius:99px;padding:5px 11px;cursor:pointer;margin-bottom:8px;}
+#panel-today .ds-variants{margin:0 0 11px;border:1px solid rgba(255,255,255,.08);border-radius:11px;overflow:hidden;}
+#panel-today .ds-vh{font-size:11px;color:#9a9d8c;padding:8px 11px;background:#24261a;letter-spacing:.06em;text-transform:uppercase;}
+#panel-today .ds-vopt{padding:10px 11px;border-top:1px solid rgba(255,255,255,.08);cursor:pointer;font-size:14px;color:#f1f3e8;}
+#panel-today .ds-vopt.ds-sel{background:rgba(207,232,79,.1);}
+#panel-today .ds-vn{font-weight:600;}
+#panel-today .ds-vopt.ds-sel .ds-vn{color:#cfe84f;}
+#panel-today .ds-vc{font-size:12px;color:#9a9d8c;margin-top:1px;}
+#panel-today .ds-resetbar{text-align:center;margin:22px 0 8px;}
+#panel-today .ds-resetbar button{background:transparent;border:1px solid rgba(255,255,255,.08);color:#9a9d8c;border-radius:99px;padding:8px 16px;font-size:12px;cursor:pointer;}
+#panel-today .ds-foot{font-size:11px;color:#9a9d8c;text-align:center;margin-top:18px;line-height:1.6;}
+#ds-toast{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:#a78bfa;color:#1a1240;font-weight:700;padding:11px 18px;border-radius:99px;font-size:14px;display:none;z-index:9999;}
+#panel-guide .set-tracker{display:none !important;}
+</style>
+<div class="panel" id="panel-today">
+  <div class="ds-eyebrow" id="ds-eyebrow">Today</div>
+  <h1 class="ds-h1" id="ds-title">—</h1>
+  <div class="ds-sub" id="ds-sub">—</div>
+  <div class="ds-statbar">
+    <div class="ds-stat"><div class="ds-k">Done</div><div class="ds-v" id="ds-done">0 / 0</div><div class="ds-progress"><i id="ds-bar"></i></div></div>
+    <div class="ds-stat"><div class="ds-k">Burned</div><div class="ds-v"><span id="ds-burned">0</span> <span class="ds-unit">kcal</span></div></div>
+  </div>
+  <div id="ds-session"></div>
+  <div class="ds-resetbar"><button onclick="dsResetDay()">Reset this day's session log</button></div>
+  <div class="ds-foot">Every item you check writes its calories into your tracker and syncs to your Sheet. Tap a move to log reps &amp; weight; tap Swap to rotate an exercise.</div>
+  <div id="ds-toast"></div>
+</div>
+
 <!-- ════════ TRAINING GUIDE (merged from David's Training Guide) ════════ -->
 <div class="panel" id="panel-guide"><div id="tg-app">
+<div style="background:#24261a;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin:10px 12px 4px;font-size:12px;color:#9a9d8c;line-height:1.5;">📖 Reference only — look up how a move works here. Do and log your workout in the <b style="color:#cfe84f;">Today</b> tab.</div>
 
 
 <!-- ── FLOATING TIMER WIDGET ── -->
@@ -5851,7 +5933,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderTraining(); renderLabs(); renderWeeklyPlan(); renderWeightTargets(); }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderTraining(); renderLabs(); renderWeeklyPlan(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -5974,6 +6056,7 @@ function switchTab(id){
   var btn=document.querySelector("[data-tab="+id+"]"), panel=document.getElementById("panel-"+id);
   if(btn) btn.classList.add("active"); if(panel) panel.classList.add("active");
   if(id==="yoga" && typeof renderPoses==="function") renderPoses();
+  if(id==="today" && typeof renderToday==="function") renderToday();
   document.querySelector(".content").scrollTop=0;
 }
 var _lastSheetPull = 0;
@@ -7240,6 +7323,581 @@ function tgYogaToggle(){
   saveDay(day,tk); renderAll(); tgYogaRefresh();
   toast(on?("\u2713 Yoga logged \u2014 "+TG_YOGA_CAL+" cal"):"Yoga unmarked");
 }
+
+
+/* ===== DAILY SESSION MODULE (injected) ===== */
+var DS_FIG='#9a9d8c', DS_BAND='#4ec98a', DS_ARR='#f5b14c';
+function dsS(dur,attr,vals){return '<animate attributeName="'+attr+'" values="'+vals+'" keyTimes="0;0.5;1" dur="'+dur+'s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>';}
+var DS_DEMOS={
+  pulldown:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="172" y1="16" x2="172" y2="122" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="156" y1="30" x2="172" y2="30" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="156" cy="30" r="3" fill="#5F5E5A"/>'+
+    '<line x1="30" y1="122" x2="172" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="90" y1="96" x2="90" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="120" x2="70" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="96" x2="86" y2="56" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="84" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<polyline points="86,58 108,50 132,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.6,'points','86,58 108,50 132,40; 86,58 104,84 94,64; 86,58 108,50 132,40')+'</polyline>'+
+    '<line x1="156" y1="30" x2="132" y2="40" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.6,'x2','132;94;132')+dsS(2.6,'y2','40;64;40')+'</line>'+
+    '</svg>';},
+  row:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="126" x2="150" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="96" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="122" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="128" cy="54" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<polyline points="122,62 124,86 128,104" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','122,62 124,86 128,104; 122,62 140,72 120,80; 122,62 124,86 128,104')+'</polyline>'+
+    '<line x1="128" y1="124" x2="128" y2="104" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'y2','104;80;104')+'</line>'+
+    '</svg>';},
+  press:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="100" y1="74" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="64" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="108" x2="88" y2="130" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="108" x2="112" y2="130" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="86,76 80,58 84,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','86,76 80,90 90,80; 86,76 80,58 84,30; 86,76 80,90 90,80')+'</polyline>'+
+    '<polyline points="114,76 120,58 116,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','114,76 120,90 110,80; 114,76 120,58 116,30; 114,76 120,90 110,80')+'</polyline>'+
+    '<rect x="78" y="34" width="12" height="8" rx="2" fill="#4ec98a"><animateTransform attributeName="transform" type="translate" values="0,46;0,0;0,46" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></rect>'+
+    '<rect x="110" y="34" width="12" height="8" rx="2" fill="#4ec98a"><animateTransform attributeName="transform" type="translate" values="0,46;0,0;0,46" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></rect>'+
+    '</svg>';},
+  pushup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="126" x2="170" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<polyline points="156,118 110,110 74,102" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','156,118 110,110 74,102; 156,120 110,116 74,114; 156,118 110,110 74,102')+'</polyline>'+
+    '<circle cx="62" cy="100" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"><animate attributeName="cy" values="100;112;100" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
+    '<line x1="74" y1="102" x2="70" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'y1','102;114;102')+'</line>'+
+    '<line x1="120" y1="124" x2="126" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</svg>';},
+  squat:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,26;0,0" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="52" x2="100" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="78" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="122" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '<polyline points="100,86 84,104 86,130" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,86 84,104 86,130; 100,112 74,116 86,130; 100,86 84,104 86,130')+'</polyline>'+
+    '<polyline points="100,86 116,104 114,130" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,86 116,104 114,130; 100,112 126,116 114,130; 100,86 116,104 114,130')+'</polyline>'+
+    '<line x1="60" y1="132" x2="140" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  hinge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="100" y1="92" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g transform="rotate(0 100 92)"><animateTransform attributeName="transform" type="rotate" values="0 100 92; -62 100 92; 0 100 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="92" x2="100" y2="40" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="30" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="54" x2="100" y2="86" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/></g>'+
+    '<line x1="64" y1="130" x2="136" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  nordic:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="120" x2="150" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="92" y1="118" x2="118" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="116" y1="114" x2="122" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 92 118;-52 92 118;0 92 118" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="92" y1="118" x2="92" y2="66" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="92" cy="56" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="92" y1="78" x2="92" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  bridge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="120" x2="160" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="56" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<polyline points="64,108 96,108 128,108" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','64,108 100,108 128,108; 64,108 100,70 128,108; 64,108 100,108 128,108')+'</polyline>'+
+    '<line x1="128" y1="108" x2="128" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'y1','108;72;108')+'</line>'+
+    '</svg>';},
+  fly:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="100" y1="66" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="56" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="104" x2="88" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="112" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="88,72 64,76 44,72" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','88,72 64,76 44,72; 88,72 80,74 72,72; 88,72 64,76 44,72')+'</polyline>'+
+    '<polyline points="112,72 136,76 156,72" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','112,72 136,76 156,72; 112,72 120,74 128,72; 112,72 136,76 156,72')+'</polyline>'+
+    '</svg>';},
+  catcow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<path d="M55 70 Q100 60 145 70" fill="none" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round">'+
+    '<animate attributeName="d" values="M55 70 Q100 60 145 70; M55 64 Q100 96 145 64; M55 70 Q100 60 145 70" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
+    '<circle cx="48" cy="64" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="58" y1="72" x2="58" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="142" y1="72" x2="142" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="40" y1="118" x2="160" y2="118" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  kneehug:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="34" y1="122" x2="170" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="52" cy="114" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="60" y1="116" x2="98" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="-3 98 116;3 98 116;-3 98 116" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
+    '<line x1="98" y1="116" x2="82" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="82" y1="82" x2="98" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="66" y1="116" x2="86" y2="88" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  nine90:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="126" x2="162" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;5,0;0,0" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="88" y1="124" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="124" x2="88" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="98" x2="120" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="88" y2="54" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="88" y1="64" x2="116" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  child:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="120" x2="162" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
+    '<line x1="124" y1="104" x2="120" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="116" x2="148" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M124 104 Q104 100 80 113" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="98" y1="110" x2="58" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="72" cy="112" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
+    '</svg>';},
+  dragon:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="126" x2="162" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,4;0,0" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="94" y1="104" x2="70" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="124" x2="52" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="94" y1="104" x2="122" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="122" y1="108" x2="122" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="94" y1="104" x2="90" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="89" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="91" y1="74" x2="118" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  caterpillar:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="120" x2="162" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
+    '<line x1="72" y1="114" x2="142" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M72 112 Q92 102 112 110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="104" y1="108" x2="134" y2="114" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="112" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
+    '</svg>';},
+  twist:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="34" y1="122" x2="170" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+    '<circle cx="60" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="68" y1="112" x2="112" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="112" x2="150" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="110" x2="100" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="120" x2="118" y2="121" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="76" y1="110" x2="50" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  legsup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="150" y1="28" x2="150" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="34" y1="120" x2="150" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite"/>'+
+    '<circle cx="56" cy="112" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="64" y1="114" x2="120" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="114" x2="144" y2="40" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="80" y1="114" x2="66" y2="120" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  swan:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="120" x2="162" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+    '<line x1="102" y1="104" x2="52" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="102" y1="104" x2="124" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="124" y1="112" x2="98" y2="117" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M102 104 Q120 104 134 106" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="140" cy="106" r="7" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="126" y1="106" x2="150" y2="113" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  hollow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="34" y1="124" x2="170" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
+    '<path d="M58 100 Q100 120 146 96" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="54" cy="98" r="7" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
+    '</svg>';},
+  plank:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="124" x2="170" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
+    '<line x1="78" y1="124" x2="100" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="80" y1="124" x2="82" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="82" y1="100" x2="152" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="72" cy="96" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
+    '</svg>';},
+  curl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="47" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="94" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="94" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="56" x2="86" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="56" x2="114" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="86" y1="86" x2="80" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','80;90;80')+dsS(2.2,'y2','110;64;110')+'</line>'+
+    '<line x1="114" y1="86" x2="120" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','120;110;120')+dsS(2.2,'y2','110;64;110')+'</line>'+
+    '</svg>';},
+  triceps:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="84" y1="14" x2="116" y2="14" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="51" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="60" x2="90" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="108" y1="60" x2="110" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="88" x2="94" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','94;88;94')+dsS(2.2,'y2','72;114;72')+'</line>'+
+    '<line x1="110" y1="88" x2="106" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','106;112;106')+dsS(2.2,'y2','72;114;72')+'</line>'+
+    '<line x1="100" y1="18" x2="94" y2="72" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.2,'x2','94;88;94')+dsS(2.2,'y2','72;114;72')+'</line>'+
+    '</svg>';},
+  lateralraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="51" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="58" x2="78" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','78;52;78')+dsS(2.4,'y2','92;58;92')+'</line>'+
+    '<line x1="110" y1="58" x2="122" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','122;148;122')+dsS(2.4,'y2','92;58;92')+'</line>'+
+    '</svg>';},
+  calf:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-12;0,0" keyTimes="0;0.5;1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="53" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="64" x2="86" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="108" y1="64" x2="114" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="100" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="114" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  legraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="34" y1="120" x2="170" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="52" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="60" y1="112" x2="104" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="104" y1="112" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'x2','150;108;150')+dsS(2.6,'y2','112;62;112')+'</line>'+
+    '</svg>';},
+  pallof:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="22" y1="34" x2="22" y2="122" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="22" y1="72" x2="36" y2="72" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="60" y1="124" x2="150" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="53" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="90" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="110" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="68" x2="120" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','120;142;120')+'</line>'+
+    '<line x1="36" y1="72" x2="120" y2="72" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','120;142;120')+'</line>'+
+    '</svg>';},
+  slam:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="124" x2="140" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="57" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="60" x2="96" y2="30" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'x2','96;94;96')+dsS(1.8,'y2','30;108;30')+'</line>'+
+    '<line x1="108" y1="60" x2="104" y2="30" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'x2','104;106;104')+dsS(1.8,'y2','30;108;30')+'</line>'+
+    '<circle cx="100" cy="22" r="7" fill="#4ec98a">'+dsS(1.8,'cy','22;112;22')+'</circle>'+
+    '</svg>';},
+  latwalk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="124" x2="160" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="57" x2="100" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="62" x2="80" y2="84" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="108" y1="62" x2="120" y2="84" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="88" x2="84" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="84" y1="104" x2="84" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="88" x2="118" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','118;134;118')+'</line>'+
+    '<line x1="118" y1="104" x2="118" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x1','118;134;118')+dsS(2.2,'x2','118;134;118')+'</line>'+
+    '<line x1="84" y1="100" x2="118" y2="100" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.2,'x2','118;134;118')+'</line>'+
+    '</svg>';},
+  stepup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="20" y1="124" x2="180" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<rect x="122" y="100" width="48" height="24" rx="2" fill="none" stroke="#5F5E5A" stroke-width="3"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;-6,-22;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="96" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="96" y1="53" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="94" x2="134" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="94" x2="90" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  russiantwist:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="124" x2="160" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="80" cy="74" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="84" y1="82" x2="100" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="114" x2="132" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="132" y1="100" x2="124" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="98" x2="108" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1.8,'x1','92;104;92')+dsS(1.8,'x2','108;120;108')+'</line>'+
+    '<circle cx="100" cy="98" r="5" fill="#4ec98a">'+dsS(1.8,'cx','100;112;100')+'</circle>'+
+    '</svg>';},
+  woodchop:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="124" x2="140" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="55" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="100,64 84,52 70,44" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','100,64 84,52 70,44; 100,64 116,84 130,98; 100,64 84,52 70,44')+'</polyline>'+
+    '<circle cx="70" cy="42" r="5" fill="#4ec98a">'+dsS(2.2,'cx','70;130;70')+dsS(2.2,'cy','42;100;42')+'</circle>'+
+    '</svg>';},
+  deadbug:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="120" x2="172" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="56" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="64" y1="112" x2="110" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="98" y1="112" x2="98" y2="82" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="78" y1="112" x2="60" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.6,'x2','60;42;60')+dsS(2.6,'y2','98;110;98')+'</line>'+
+    '<polyline points="110,112 118,86 110,82" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<line x1="110" y1="112" x2="138" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'x2','138;158;138')+dsS(2.6,'y2','98;112;98')+'</line>'+
+    '</svg>';},
+  bicycle:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="122" x2="172" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="56" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="64" y1="112" x2="104" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="110" x2="58" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<polyline points="104,112 112,92 96,86" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2,'points','104,112 112,92 96,86; 104,112 130,98 152,96; 104,112 112,92 96,86')+'</polyline>'+
+    '<polyline points="104,112 130,98 152,96" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2,'points','104,112 130,98 152,96; 104,112 112,92 96,86; 104,112 130,98 152,96')+'</polyline>'+
+    '</svg>';}
+};
+
+var DS_DEMOMAP={"mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "curl", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "thu-russian": "russiantwist", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
+var DS_DEMOCAP={"pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down"};
+var DS_SETUPS={"warmup": "Balance board 2 min, easy rope 3–4 min, then 8 lb KB halos and around-the-worlds to open the shoulders.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "walkride": "After the session: a brisk 30-min walk, then an easy 20-min spin. Compression sleeve on the ride.", "tue-squat": "Stand on the tube, handles at the shoulders; sit back and down, knees tracking out over the toes.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Kneel with the feet anchored under a couch; keeping the hips straight, lower forward like a falling plank.", "fri-calf": "Stand on the tube for resistance; rise as high onto the toes as you can, 2-sec squeeze, slow descent.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
+
+/* ============================ ROUTINES (every day) ============================ */
+var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'10 min · every day',
+  blurb:'Before anything else. Resets the spine, wakes the hips, clears the hip flexors that compressed your low back overnight.',
+  moves:[
+    {id:'m-kneehug',name:'Supine Knee Hugs',rx:'90s',cal:10,demo:'kneehug',log:'time',secs:90,target:'Lower Back · Sacrum',
+      setup:'On your back, both knees to chest, arms around shins. Rock gently side to side, one rock per breath. Let the low back soften on each exhale.'},
+    {id:'m-catcow',name:'Cat-Cow (breath-led)',rx:'10 slow reps',cal:10,demo:'catcow',log:'done',target:'Full Spine',
+      setup:'Hands and knees. Inhale to arch (belly drops, chest lifts), exhale to round (back up, chin tucks). 4–6 sec per rep. Let it ripple through the whole spine.'},
+    {id:'m-9090',name:'90/90 Hip Flexor Stretch',rx:'60s/side',cal:10,demo:'nine90',log:'time',secs:120,target:'Hip Flexors · Psoas',
+      setup:'Half-kneel, back knee is the side stretched, front shin vertical, hips square. Shift hips forward; lightly squeeze the back glute to deepen it. 60 sec per side.'},
+    {id:'m-child',name:"Child's Pose",rx:'90s',cal:10,demo:'child',log:'time',secs:90,target:'Lower Back · Hips · Lats',
+      setup:'From kneeling, sit back toward heels, arms forward, forehead down. Wide knees for more hip space. Breathe into the back body. Do this before checking your phone.'}
+  ]};
+var DS_PRE={key:'pre',title:'Pre-Workout Activation',accent:'var(--accent)',meta:'5 min · before band days',
+  blurb:'Before every band session. If the glutes are asleep, your low back does their job. Clear the hip flexors, fire the glutes. Non-negotiable while the SI joint is touchy.',
+  moves:[
+    {id:'p-9090',name:'90/90 Hip Flexor Stretch',rx:'60s/side',cal:12,demo:'nine90',log:'time',secs:120,target:'Hip Flexors · Psoas',
+      setup:'Same as morning. Favor the tighter side. Squeeze the back glute while holding — fires the glute and releases the hip flexor at once. Clear this before any loading.'},
+    {id:'p-bridge',name:'Glute Bridge Activation',rx:'2×10',cal:13,demo:'bridge',log:'done',target:'Glutes · SI Stabilizers',
+      setup:'On your back, knees bent, feet flat. Drive through heels, squeeze glutes hard 2 sec at the top, lower slow. 2×10, no weight — activation, not a workout. Ball version (upper back on the stability ball) is recommended for the SI joint.'}
+  ]};
+var DS_YIN={key:'yin',title:'Evening Yin',accent:'var(--purple)',meta:'30 min · every evening',
+  blurb:'Before bed. Yin holds run 3–5 min because fascia takes that long to release. Exhale twice as long as you inhale. This is your recovery engine.',
+  moves:[
+    {id:'y-kneehug',name:'Supine Knee Hugs',rx:'2 min',cal:7,demo:'kneehug',log:'time',secs:120,target:'Arrive',
+      setup:'On your back, knees to chest, rock gently. Transition in from the day. No agenda yet.'},
+    {id:'y-swan',name:'Sleeping Swan (Yin Pigeon)',rx:'5 min/side',cal:10,demo:'swan',log:'time',secs:300,target:'SI Joint · Outer Hip · Glute',
+      setup:'From all fours, one knee forward behind the wrist, back leg straight. Fold forward passively, forehead down. Pillow under the front hip if needed. Gravity does it over 3–5 min. Deep dull ache in the outer glute is right; sharp knee pain means add support. Switch sides.'},
+    {id:'y-dragon',name:'Dragon (Low Lunge)',rx:'5 min/side',cal:8,demo:'dragon',log:'time',secs:300,target:'Hip Flexors · Psoas',
+      setup:'Front foot forward, back knee down on a blanket. Sink the hips low and hold passively, hands on the front knee or blocks. Let gravity pull the hips down with each exhale. First 90 sec can feel intense; the release comes after.'},
+    {id:'y-cat',name:'Caterpillar',rx:'5 min',cal:8,demo:'caterpillar',log:'time',secs:300,target:'Back Body · Hamstrings',
+      setup:'Seated, legs straight. Let the spine round forward — don\'t straighten it. Reach toward the feet, completely passive. The rounding is the release. Blanket under the knees if hamstrings are tight.'},
+    {id:'y-twist',name:'Supine Twist',rx:'3 min/side',cal:7,demo:'twist',log:'time',secs:180,target:'SI Joint · Lower Back',
+      setup:'On your back, bring one knee across the body toward the floor. Arms wide, palms up. Don\'t push the knee — let it rest. Gaze away from the bent knee. Switch sides.'},
+    {id:'y-legsup',name:'Legs Up the Wall',rx:'5–10 min',cal:10,demo:'legsup',log:'time',secs:600,target:'Full Decompression',
+      setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'}
+  ]};
+
+/* ============================ DS_SESSIONS (Mon–Sun) ============================ */
+function dsCore(id,name,rx,cal,cue,demo){return {id:id,name:name,slot:'Core',target:'Core',equip:'Bodyweight',rx:rx,cal:cal,cue:cue,demo:demo||null,log:'setsreps',sets:3};}
+var DS_WARMUP={id:'warmup',name:'Warm-Up — board + rope + halos',slot:'Warm-up',target:'Full body prime',equip:'Balance board · jump rope · 8 lb KB',rx:'9 min',cal:60,cue:'Wake the ankles, lift the heart rate, open the shoulders',demo:null,log:'done'};
+var DS_WALKRIDE={id:'walkride',name:'Post-session Walk + Easy Ride',slot:'Cardio',target:'Close the calorie gap',equip:'Compression sleeve on the ride',rx:'~50 min',cal:290,cue:'Easy pace on both — this is volume, not intensity',demo:null,log:'done'};
+
+var DS_SESSIONS={
+  mon:{title:'Upper Body Push + Pull',sub:'Chest · Shoulders · Back · Arms',accent:'var(--accent)',
+    moves:[DS_WARMUP,
+      {id:'mon-pushup',name:'Banded Push-ups',slot:'Horizontal Push',target:'Chest · Triceps',equip:'Tube band or bodyweight',rx:'3–4×10–15',cal:35,cue:'Chest to floor, elbows 45° back — push the floor away explosively',demo:'pushup',log:'setsreps',sets:4,
+        variants:[{name:'Floor DB Press',equip:'10 lb dumbbells',rx:'3×12',cue:'Lower under control, press to the ceiling',demo:'press'},
+                  {name:'Banded Chest Press (anchor)',equip:'Tube 20–30 lb',rx:'3×12–15',cue:'Drive the handles together in front of your chest',demo:'press'}]},
+      {id:'mon-ohp',name:'Overhead Press',slot:'Vertical Push',target:'Shoulders',equip:'Tube 20–30 → 40–50 lb',rx:'3×10–12',cal:35,cue:"Press straight to the ceiling — don't let your low back arch",demo:'press',log:'setsreps',sets:3},
+      {id:'mon-pullapart',name:'Band Pull-Apart',slot:'Rear Delts',target:'Rear Delts',equip:'Tube 10–20 lb',rx:'3×15–20',cal:25,cue:'Crack a walnut between your shoulder blades — arms stay straight',demo:'fly',log:'setsreps',sets:3},
+      {id:'mon-row',name:'Bent-Over Row',slot:'Horizontal Pull',target:'Back · Biceps',equip:'Tube 30–40 → 50–70 lb',rx:'3–4×10–12',cal:35,cue:'Drive elbows into your back pockets — not hands to your chest',demo:'row',log:'setsreps',sets:4,
+        variants:[{name:'Wide Row (free)',equip:'Tube 20–30 lb',rx:'3×12',cue:'Pull wide to the ribs, squeeze the mid-back',demo:'row'}]},
+      {id:'mon-curl',name:'Bicep Curl',slot:'Biceps',target:'Biceps',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:25,cue:'Upper arms glued to your sides — only forearms move',demo:null,log:'setsreps',sets:3},
+      {id:'mon-tri',name:'Triceps Pushdown',slot:'Triceps',target:'Triceps',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:25,cue:'Elbows pinned to ribs — only forearms move',demo:null,log:'setsreps',sets:3},
+      dsCore('mon-hollow','Hollow Body Hold','1×20–30s',20,'Press low back into floor, ribs down — one rigid curved line','hollow'),
+      dsCore('mon-bike','Bicycle Crunch','1×12/side',20,'Rotate from the ribcage — slow, 2 sec each side'),
+      dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
+      DS_WALKRIDE]},
+
+  tue:{title:'Lower Body + Core',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
+    moves:[DS_WARMUP,
+      {id:'tue-squat',name:'Banded Squat',slot:'Squat',target:'Quads · Glutes',equip:'Tube 40–50 → 70–90 lb',rx:'4×12–15',cal:40,cue:'Sit back into the chair behind you — chest proud, knees out',demo:'squat',log:'setsreps',sets:4},
+      {id:'tue-rdl',name:'Romanian Deadlift',slot:'Hinge',target:'Hamstrings',equip:'Tube 40–50 → 90+ lb',rx:'3–4×10–12',cal:35,cue:'Push hips back to the wall — handles glued to your legs',demo:'hinge',log:'setsreps',sets:4},
+      {id:'tue-lat',name:'Banded Lateral Walk',slot:'Abductors',target:'Hip Abductors',equip:'Mini loop above knees',rx:'3×12/side',cal:25,cue:"Stay in the quarter squat — don't stand up between steps",demo:null,log:'setsreps',sets:3},
+      {id:'tue-bridge',name:'Banded Glute Bridge',slot:'Glutes',target:'Glutes',equip:'Tube 30–40 → 50+ lb',rx:'3×15–20',cal:30,cue:'Drive through heels, squeeze hard at the top — hold 2 sec',demo:'bridge',log:'setsreps',sets:3},
+      {id:'tue-pallof',name:'Banded Pallof Press',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',demo:null,log:'setsreps',sets:3},
+      {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3},
+      {id:'tue-step',name:'Step-Up',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",demo:null,log:'setsreps',sets:3},
+      DS_WALKRIDE]},
+
+  wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
+    moves:[
+      {id:'wed-hollow',name:'Hollow Hold — breath focus',slot:'Core',target:'Full Core',equip:'Bodyweight',rx:'2×30s',cal:20,cue:'Exhale everything out, ribs down — hold the compression',demo:'hollow',log:'time',secs:30},
+      {id:'wed-bike',name:'Slow Bicycle Crunch',slot:'Core',target:'Obliques',equip:'Bodyweight',rx:'2×8/side',cal:18,cue:'Rotate from the ribcage — 2 full seconds each way',demo:null,log:'setsreps',sets:2},
+      {id:'wed-legraise',name:'Leg Raise — slow descent',slot:'Core',target:'Lower Abs',equip:'Bodyweight',rx:'2×8',cal:18,cue:'3 seconds down — low back stays flat the whole time',demo:null,log:'setsreps',sets:2},
+      {id:'wed-tgu',name:'Turkish Get-Up',slot:'Full Body',target:'Core · Shoulder Stability',equip:'8 lb kettlebell',rx:'2×3/side',cal:30,cue:'Eye stays on the weight the whole time — slow, one step at a time',demo:null,log:'setsreps',sets:2},
+      {id:'wed-slam',name:'Ball Slam',slot:'Power',target:'Full Body',equip:'10 lb slam ball',rx:'3×10',cal:35,cue:'Full reach overhead first — drive the ball through the floor',demo:null,log:'setsreps',sets:3},
+      {id:'wed-rotslam',name:'Rotational Slam',slot:'Power',target:'Obliques',equip:'10 lb slam ball',rx:'3×8/side',cal:30,cue:'Hips lead the rotation — arms just guide it',demo:null,log:'setsreps',sets:3}]},
+
+  thu:{title:'Upper Body Hypertrophy',sub:'Chest · Back · Shoulders · Arms',accent:'var(--accent)',
+    moves:[DS_WARMUP,
+      {id:'thu-chest',name:'Chest — Pull-Apart / Fly',slot:'Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest',demo:'fly',log:'setsreps',sets:3,
+        variants:[{name:'Banded Push-up',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
+                  {name:'Floor DB Press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'}]},
+      {id:'thu-facepull',name:'Rear Delts / Face Pull',slot:'Rear Delts',target:'Rear Delts · Traps',equip:'Tube 10–20 → 30 lb',rx:'3–4×15–20',cal:30,cue:'Pull to your temples, elbows high — thumbs point behind you at the finish',demo:'fly',log:'setsreps',sets:4},
+      {id:'thu-lat',name:'Lats / Pulldown',slot:'Vertical Pull',target:'Lats · Back',equip:'Tube 20–30 → 50 lb',rx:'3–4×10–12',cal:35,cue:'Drive elbows into your back pockets — chest up, slight lean back',demo:'pulldown',log:'setsreps',sets:4,
+        variants:[{name:'Wide Row (free)',equip:'Tube 20–30 lb',rx:'3×12',cue:'Pull wide to the ribs, squeeze the mid-back',demo:'row'}]},
+      {id:'thu-lateral',name:'Lateral Raise',slot:'Side Delts',target:'Side Delts',equip:'Tube 10 → 20 lb',rx:'3×12–15',cal:25,cue:'Lead with elbows, not hands — pour water from a pitcher',demo:null,log:'setsreps',sets:3},
+      {id:'thu-hammer',name:'Hammer Curl',slot:'Biceps',target:'Biceps · Forearms',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:25,cue:'Thumbs up the whole time — slow and controlled on the way down',demo:null,log:'setsreps',sets:3},
+      {id:'thu-tri',name:'Triceps Pushdown',slot:'Triceps',target:'Triceps',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:25,cue:'Elbows pinned to ribs — only forearms move',demo:null,log:'setsreps',sets:3},
+      dsCore('thu-hollow','Hollow Body Hold','1×20–30s',20,'Press low back into floor, ribs down — one rigid curved line','hollow'),
+      dsCore('thu-bike','Bicycle Crunch','1×12/side',20,'Rotate from the ribcage — slow, 2 sec each side'),
+      dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
+      dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing'),
+      DS_WALKRIDE]},
+
+  fri:{title:'Lower Body + Core Strength',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
+    moves:[DS_WARMUP,
+      {id:'fri-bulg',name:'Banded Bulgarian Split Squat',slot:'Unilateral Squat',target:'Quads · Balance',equip:'Tube 20–30 → 40–50 lb',rx:'3×10/leg',cal:40,cue:'Front heel drives through the floor — torso stays tall',demo:'squat',log:'setsreps',sets:3},
+      {id:'fri-sumo',name:'Banded Sumo Squat',slot:'Squat',target:'Inner Thigh · Glutes',equip:'Tube 40–50 lb stacked',rx:'3×12–15',cal:35,cue:'Wide stance, toes out, knees push out — sit straight down',demo:'squat',log:'setsreps',sets:3},
+      {id:'fri-nordic',name:'Nordic Hamstring Curl',slot:'Hinge',target:'Hamstrings',equip:'Anchor feet under couch',rx:'3×6–8',cal:30,cue:'Fall like a plank — hips don\'t bend, lower as one rigid unit',demo:'nordic',log:'setsreps',sets:3},
+      {id:'fri-calf',name:'Banded Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 30–40 → 50+ lb',rx:'3×15–20',cal:25,cue:'Rise as high as possible, 2-sec squeeze at the top — slow descent',demo:null,log:'setsreps',sets:3},
+      {id:'fri-obliques',name:'Obliques / Rotation',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives',demo:null,log:'setsreps',sets:3},
+      {id:'fri-deadbug',name:'Dead Bug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',demo:null,log:'setsreps',sets:3},
+      {id:'fri-sqpress',name:'Squat to Press',slot:'Power',target:'Full Body',equip:'10 lb DBs or slam ball',rx:'3×10',cal:35,cue:'Legs drive up first, then press — one fluid motion',demo:'press',log:'setsreps',sets:3},
+      {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40},
+      DS_WALKRIDE]},
+
+  sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost',accent:'var(--blue)',
+    moves:[
+      {id:'sat-ride',name:'Mountain Bike Ride',slot:'Cardio',target:'Aerobic base',equip:'Roadmaster · compression sleeve',rx:'30–60 min',cal:0,cue:'Mostly easy with a few honest climbs — keep it conversational',demo:null,log:'cardio',perMin:9.2,defMin:45},
+      {id:'sat-walk',name:'Optional Recovery Walk',slot:'Cardio',target:'NEAT',equip:'Outdoors',rx:'20–30 min',cal:0,cue:'Loose and easy — protect the joints, keep moving',demo:null,log:'cardio',perMin:4.3,defMin:30}]},
+
+  sun:{title:'Sunday Recovery',sub:'Active recovery · Walk + Gentle Flow',accent:'var(--green)',
+    moves:[
+      {id:'sun-walk',name:'Recovery Walk',slot:'Cardio',target:'NEAT · circulation',equip:'Outdoors',rx:'30–45 min',cal:0,cue:'Easy pace, nose breathing — let the body recover, not work',demo:null,log:'cardio',perMin:4.3,defMin:35},
+      {id:'sun-flow',name:'Gentle Mobility Flow',slot:'Mobility',target:'Whole body',equip:'Mat',rx:'15–20 min',cal:50,cue:'Move where you feel stuck — slow, breath-led, no intensity',demo:'catcow',log:'done'}]}
+};
+
+var DS_WEEKMAP=['sun','mon','tue','wed','thu','fri','sat'];
+var DS_DAYLABEL={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+var DS_ORDER=['mon','tue','wed','thu','fri','sat','sun'];
+function dsSessionKey(dk){var d=new Date(dk+'T12:00:00');return DS_WEEKMAP[d.getDay()];}
+
+
+/* ===================== DAILY SESSION — render + logging (integrated) ===================== */
+var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};}
+var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){DS_SWAPS={};}
+function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
+function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catch(e){} }
+function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[activeDate]; }
+function dsItemState(id){ var d=dsDayState(); if(!d[id])d[id]={sets:[]}; if(!d[id].sets)d[id].sets=[]; return d[id]; }
+var ds_timers={};
+
+function dsAllItems(){ var sk=dsSessionKey(activeDate); return DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves); }
+function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
+function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
+function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
+  return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:item.cal,cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants}; }
+
+function dsComplete(id){ var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
+function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
+  day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
+  var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:item.cal),type:"session",id:sid};
+  if(st.sets&&st.sets.length){ ex.sets=st.sets.length; var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; }
+  else if(st.mins){ ex.reps=st.mins+" min"; }
+  day.exercises.push(ex); saveDay(day);
+}
+function dsUnlog(id){ var day=getDay(), sid="sess_"+id; day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
+
+function dsLastTime(id){ var sid="sess_"+id;
+  var keys=Object.keys(appData).filter(function(k){return k<activeDate&&appData[k]&&appData[k].exercises&&appData[k].exercises.some(function(e){return e.id===sid;});}).sort();
+  if(!keys.length)return null;
+  var arr=appData[keys[keys.length-1]].exercises;
+  for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid)return {reps:arr[i].reps,load:arr[i].load}; }
+  return null;
+}
+function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
+function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var h='';for(var i=0;i<target;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
+
+function dsRenderItem(rawItem,idx){
+  var item=dsViewOf(rawItem); var st=dsItemState(item.id); var done=dsComplete(item.id);
+  var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
+  var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
+  var h='<div class="'+cls+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
+  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+item.name+'</div>';
+  if(item.cue)h+='<div class="ds-mcue">'+item.cue+'</div>';
+  h+='<div class="ds-mtags"><span>'+item.target+'</span><span>'+item.equip+'</span></div></div>';
+  h+='<div style="text-align:right"><div class="ds-mrx">'+item.rx+'</div><div class="ds-chev">\u25BC</div></div></div>';
+  h+='<div class="ds-mbody">';
+  var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
+  if(demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
+  var setupTxt=rawItem.setup||DS_SETUPS[item.id];
+  if(setupTxt)h+='<div class="ds-setup">'+setupTxt+'</div>';
+  if(rawItem.variants&&rawItem.variants.length){
+    h+='<div class="ds-swap" onclick="dsToggleSwap(\''+item.id+'\')">\u21C4 Swap this exercise</div>';
+    if(st._swapOpen){
+      var sel=DS_SWAPS[item.id]||0;
+      h+='<div class="ds-variants"><div class="ds-vh">Same slot: '+rawItem.slot+'</div>';
+      h+='<div class="ds-vopt '+(sel===0?'ds-sel':'')+'" onclick="dsPickVariant(\''+item.id+'\',0)"><div class="ds-vn">'+rawItem.name+'</div><div class="ds-vc">'+rawItem.cue+'</div></div>';
+      rawItem.variants.forEach(function(v,i){h+='<div class="ds-vopt '+(sel===i+1?'ds-sel':'')+'" onclick="dsPickVariant(\''+item.id+'\','+(i+1)+')"><div class="ds-vn">'+v.name+'</div><div class="ds-vc">'+(v.cue||'')+'</div></div>';});
+      h+='</div>';
+    }
+  }
+  if(item.log==='setsreps'){
+    var target=item.sets||3; var lt=dsLastTime(item.id);
+    if(lt)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><span class="ds-stepval" id="ds-reps-'+item.id+'">'+(st._reps||10)+'</span><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div><input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')"><div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+    h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsLogSet(\''+item.id+'\','+target+')">'+(done?'\u2713 Logged \u2014 tap to clear':'Log set ('+st.sets.length+'/'+target+')')+'</button>';
+  } else if(item.log==='time'){
+    h+='<div class="ds-timerwrap"><button class="ds-tbtn" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">\u23F1 Start '+dsMMSS(item.secs)+'</button></div>';
+    h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
+  } else if(item.log==='cardio'){
+    var mins=st.mins||item.defMin;
+    h+='<div class="ds-logrow"><span class="ds-lbl">Min</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',-5,'+item.perMin+')">\u2212</button><span class="ds-stepval" id="ds-min-'+item.id+'">'+mins+'</span><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',5,'+item.perMin+')">+</button></div><span class="ds-calprev" id="ds-calprev-'+item.id+'">\u2248'+Math.round(mins*item.perMin)+' kcal</span></div>';
+    h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsLogCardio(\''+item.id+'\','+item.perMin+')">'+(done?'\u2713 Logged':'Log it')+'</button>';
+  } else {
+    h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
+  }
+  h+='</div></div>'; return h;
+}
+function dsRenderSection(label,meta,accent,items,blurb){
+  var h='<div class="ds-seclabel"><div class="ds-t" style="color:'+accent+'">'+label+'</div><div class="ds-ln"></div><div class="ds-meta">'+meta+'</div></div>';
+  if(blurb)h+='<div class="ds-setup" style="margin:-2px 0 12px">'+blurb+'</div>';
+  items.forEach(function(it,i){h+=dsRenderItem(it,i+1);});
+  return h;
+}
+function dsRender(){
+  var host=document.getElementById('ds-session'); if(!host)return;
+  var sk=dsSessionKey(activeDate); var SS=DS_SESSIONS[sk];
+  var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=(activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk];
+  var tt=document.getElementById('ds-title'); if(tt)tt.textContent=SS.title;
+  var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
+  var html=dsRenderSection('The Session','',SS.accent,SS.moves,'');
+  html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
+  html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
+  html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
+  host.innerHTML=html; dsUpdateStats();
+}
+function renderToday(){ try{dsRender();}catch(e){} }
+function dsUpdateStats(){
+  var items=dsAllItems(), total=items.length, done=0, burned=0, d=getDay();
+  items.forEach(function(it){ var e=d.exercises.filter(function(x){return x.id==="sess_"+it.id;})[0]; if(e){done++;burned+=(+e.calories||0);} });
+  var dn=document.getElementById('ds-done'); if(dn)dn.textContent=done+' / '+total;
+  var bu=document.getElementById('ds-burned'); if(bu)bu.textContent=burned;
+  var bar=document.getElementById('ds-bar'); if(bar)bar.style.width=(total?Math.round(done/total*100):0)+'%';
+}
+
+function dsToggleCard(id){ var st=dsItemState(id); st._open=!st._open; dsSaveUI(); dsRender(); }
+function dsToggleSwap(id){ var st=dsItemState(id); st._swapOpen=!st._swapOpen; dsSaveUI(); dsRender(); }
+function dsPickVariant(id,i){ DS_SWAPS[id]=i; dsSaveSwaps(); var st=dsItemState(id); st._swapOpen=false; dsSaveUI(); dsRender(); }
+function dsBump(id,delta){ var st=dsItemState(id); st._reps=Math.max(1,(st._reps||10)+delta); var el=document.getElementById('ds-reps-'+id); if(el)el.textContent=st._reps; dsSaveUI(); }
+function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
+function dsLogSet(id,target){
+  var st=dsItemState(id);
+  if(dsComplete(id)){ dsUnlog(id); st.sets=[]; dsSaveUI(); dsRender(); renderAll(); return; }
+  if(st.sets.length>=target)return;
+  var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
+  st.sets.push({reps:reps,load:load});
+  var nowDone=false;
+  if(st.sets.length>=target){ dsLogComplete(dsViewOf(dsRawItem(id))); nowDone=true; }
+  dsSaveUI(); dsRender(); if(nowDone)renderAll();
+}
+function dsMarkDone(id){ if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
+function dsBumpMin(id,delta,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var cur=st.mins||raw.defMin||30; cur=Math.max(5,cur+delta); st.mins=cur; dsSaveUI();
+  var m=document.getElementById('ds-min-'+id); if(m)m.textContent=cur;
+  var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+Math.round(cur*perMin)+' kcal'; }
+function dsLogCardio(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id);
+  if(dsComplete(id)){ dsUnlog(id); st._cal=null; dsSaveUI(); dsRender(); renderAll(); return; }
+  var mins=st.mins||raw.defMin||30; st.mins=mins; st._cal=Math.round(mins*perMin);
+  dsLogComplete(dsViewOf(raw)); dsSaveUI(); dsRender(); renderAll(); }
+function dsResetDay(){ if(!confirm("Clear this day's session log (sets, completions, calories)?"))return;
+  DS_UI[activeDate]={}; var day=getDay(); day.exercises=day.exercises.filter(function(e){return !(e.id&&String(e.id).indexOf("sess_")===0);}); saveDay(day);
+  dsSaveUI(); dsRender(); renderAll(); }
+function dsStartTimer(id,secs){ var btn=document.getElementById('ds-t-'+id); if(!btn)return;
+  if(ds_timers[id]){ clearInterval(ds_timers[id]); delete ds_timers[id]; btn.classList.remove('ds-run'); btn.textContent='\u23F1 Start '+dsMMSS(secs); return; }
+  var left=secs; btn.classList.add('ds-run');
+  ds_timers[id]=setInterval(function(){ left--; if(left<=0){ clearInterval(ds_timers[id]); delete ds_timers[id]; btn.classList.remove('ds-run'); btn.textContent='\u2713 done \u2014 mark it'; dsToast('Hold complete'); return; } btn.textContent='\u23F8 '+dsMMSS(left); },1000); }
+function dsToast(msg){ var t=document.getElementById('ds-toast'); if(!t)return; t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(function(){t.style.display='none';},2200); }
 
 </script>
 
@@ -9014,18 +9672,10 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
   function egCrossLog(){
     try{
       if(typeof getDay!=="function"||typeof saveDay!=="function"||typeof todayKey!=="function") return;
-      var set=loadDone()[today()]||{};
-      var n=Object.keys(set).filter(function(k){return k!=="wednesday-yoga-flow";}).length;
       var tk=todayKey(), day=getDay(tk), id="eg-strength-"+tk;
       day.exercises=(day.exercises||[]).filter(function(e){return e.id!==id;});
-      if(n>0){
-        var w=(typeof getLatestWeight==="function"&&getLatestWeight())||200;
-        var perEx=Math.round(20*(w/150));
-        day.exercises.push({name:"Strength \u2014 "+n+" exercise"+(n>1?"s":"")+" (guide)",calories:perEx*n,type:"strength",id:id});
-      }
       saveDay(day,tk);
       if(typeof renderAll==="function") renderAll();
-      if(typeof pushToSheets==="function") pushToSheets();
     }catch(e){}
   }
 
