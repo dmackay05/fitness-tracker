@@ -1427,6 +1427,15 @@ button:active{opacity:0.7}
 #panel-today .ds-prcue{font-size:13px;color:#cbb8ff;line-height:1.5;min-height:38px;}
 #panel-today .ds-prstop{margin-top:9px;font-size:12px;color:#9a9d8c;border:1px solid rgba(255,255,255,.12);background:transparent;border-radius:99px;padding:6px 14px;cursor:pointer;}
 #panel-guide .set-tracker{display:none !important;}
+#panel-log .ld-tabs{display:flex;gap:6px;margin-bottom:14px;}
+#panel-log .ld-tab{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #2a2a45;border-radius:10px;padding:11px 2px;cursor:pointer;}
+#panel-log .ld-tab .ld-ic{font-size:20px;line-height:1;}
+#panel-log .ld-tab .ld-lbl{display:none;}
+#panel-log .ld-tab.on{background:#5eead41a;border-color:#5eead4;}
+#panel-log .ld-pane-hdr{font-size:13px;font-weight:700;color:#e6fffb;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+#panel-log .ld-pane-hdr .ld-ic{font-size:15px;}
+#panel-log .ld-pane{display:none;}
+#panel-log .ld-pane.on{display:block;}
 </style>
 <div class="panel" id="panel-today">
   <div class="ds-eyebrow" id="ds-eyebrow">Today</div>
@@ -5206,143 +5215,182 @@ button:active{opacity:0.7}
       <div class="past-banner" id="banner-log" style="display:none"><span>&#9888; Editing <strong id="banner-log-lbl"></strong></span><button class="today-btn" onclick="goToToday()">Go to Today</button></div>
 
       <div class="te-section-hdr">🍽 Food</div>
-      <div class="card">
-        <div class="card-title">⚡ Quick Add</div>
-        <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
-        <div id="qa-fav-wrap" style="display:none">
-          <div class="rlbl" style="margin-top:0">★ Favorites</div>
-          <div id="qa-fav" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div class="card" style="padding-bottom:14px">
+        <div class="ld-tabs" id="ld-food-tabs">
+          <button class="ld-tab" data-ldtab="qa" onclick="ldSwitch('food','qa')"><span class="ld-ic">⚡</span><span class="ld-lbl">Quick</span></button>
+          <button class="ld-tab" data-ldtab="preset" onclick="ldSwitch('food','preset')"><span class="ld-ic">📋</span><span class="ld-lbl">Preset</span></button>
+          <button class="ld-tab" data-ldtab="usda" onclick="ldSwitch('food','usda')"><span class="ld-ic">🔍</span><span class="ld-lbl">Search</span></button>
+          <button class="ld-tab" data-ldtab="custom" onclick="ldSwitch('food','custom')"><span class="ld-ic">✏️</span><span class="ld-lbl">Custom</span></button>
         </div>
-        <div id="qa-recent-wrap" style="display:none">
-          <div class="rlbl" style="margin-top:0">Recent</div>
-          <div id="qa-recent" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+        <div class="ld-pane" data-ldpane="qa">
+          <div class="ld-pane-hdr"><span class="ld-ic">⚡</span>Quick Add</div>
+          <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
+          <div id="qa-fav-wrap" style="display:none">
+            <div class="rlbl" style="margin-top:0">★ Favorites</div>
+            <select id="qa-fav-select" style="margin-bottom:10px" onchange="if(this.value!==''){addFav(+this.value);this.value='';}"><option value="">★ Favorites — pick one to add…</option></select>
+            <div id="qa-fav-manage" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+          </div>
+          <div id="qa-recent-wrap" style="display:none">
+            <div class="rlbl" style="margin-top:0">Recent</div>
+            <div id="qa-recent" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+          </div>
+          <div class="rlbl" style="margin-top:0">🍱 Saved meals</div>
+          <div id="qa-meals" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="qa-meal-name" placeholder="Name today's foods as a meal" style="flex:1;margin-bottom:0"/>
+            <button class="bs" onclick="saveMealFromToday()">Save</button>
+          </div>
         </div>
-        <div class="rlbl" style="margin-top:0">🍱 Saved meals</div>
-        <div id="qa-meals" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="qa-meal-name" placeholder="Name today's foods as a meal" style="flex:1;margin-bottom:0"/>
-          <button class="bs" onclick="saveMealFromToday()">Save</button>
+        <div class="ld-pane" data-ldpane="preset">
+          <div class="ld-pane-hdr"><span class="ld-ic">📋</span>Preset</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <select id="food-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select a food —</option></select>
+            <button class="bp" onclick="addDropdownFood()">+ Add</button>
+          </div>
+          <div id="dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
         </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Quick Add — Preset</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <select id="food-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select a food —</option></select>
-          <button class="bp" onclick="addDropdownFood()">+ Add</button>
+        <div class="ld-pane" data-ldpane="usda">
+          <div class="ld-pane-hdr"><span class="ld-ic">🔍</span>Search</div>
+          <div id="usda-myfoods-wrap" style="display:none">
+            <div class="rlbl" style="margin-top:0">⚡ My USDA Foods — tap to log</div>
+            <div id="usda-myfoods" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input type="text" id="usda-q" placeholder="e.g. greek yogurt nonfat" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')usdaSearch()"/>
+            <button class="bp" onclick="usdaSearch()">Go</button>
+            <button class="bs" onclick="usdaScanOpen()" style="padding:8px 10px;font-size:15px" title="Scan barcode">📷</button>
+          </div>
+          <div id="usda-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
+          <div id="usda-results"></div>
         </div>
-        <div id="dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">🔍 USDA Food Search</div>
-        <div id="usda-myfoods-wrap" style="display:none">
-          <div class="rlbl" style="margin-top:0">⚡ My USDA Foods — tap to log</div>
-          <div id="usda-myfoods" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div class="ld-pane" data-ldpane="custom">
+          <div class="ld-pane-hdr"><span class="ld-ic">✏️</span>Custom</div>
+          <input type="text" id="cf-name" placeholder="Food name"/>
+          <div class="g2"><input type="number" id="cf-cal" placeholder="Calories"/><input type="number" id="cf-protein" placeholder="Protein (g)"/><input type="number" id="cf-carbs" placeholder="Carbs (g)"/><input type="number" id="cf-fat" placeholder="Fat (g)"/></div>
+          <input type="number" id="cf-fiber" placeholder="Fiber (g) — optional" style="margin-top:8px"/>
+          <button class="bp bfull" onclick="addCustomFood()">Add to Log</button>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <input type="text" id="usda-q" placeholder="e.g. greek yogurt nonfat" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')usdaSearch()"/>
-          <button class="bp" onclick="usdaSearch()">Go</button>
-          <button class="bs" onclick="usdaScanOpen()" style="padding:8px 10px;font-size:15px" title="Scan barcode">📷</button>
-        </div>
-        <div id="usda-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
-        <div id="usda-results"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Custom Entry</div>
-        <input type="text" id="cf-name" placeholder="Food name"/>
-        <div class="g2"><input type="number" id="cf-cal" placeholder="Calories"/><input type="number" id="cf-protein" placeholder="Protein (g)"/><input type="number" id="cf-carbs" placeholder="Carbs (g)"/><input type="number" id="cf-fat" placeholder="Fat (g)"/></div>
-        <input type="number" id="cf-fiber" placeholder="Fiber (g) — optional" style="margin-top:8px"/>
-        <button class="bp bfull" onclick="addCustomFood()">Add to Log</button>
       </div>
       <div class="card"><div class="card-title" id="log-title">Today's Food Log</div><div id="food-log"><div class="empty">Nothing logged yet</div></div></div>
       <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
 
       <div class="te-section-hdr">💪 Exercise</div>
-      <div class="card">
-        <div class="card-title">Log Exercise</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <select id="ex-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select exercise —</option></select>
-          <button class="bp" onclick="addDropdownEx()">+ Log</button>
+      <div class="card" style="padding-bottom:14px">
+        <div class="ld-tabs" id="ld-ex-tabs">
+          <button class="ld-tab" data-ldtab="dropdown" onclick="ldSwitch('ex','dropdown')"><span class="ld-ic">💪</span><span class="ld-lbl">Log</span></button>
+          <button class="ld-tab" data-ldtab="custom" onclick="ldSwitch('ex','custom')"><span class="ld-ic">✏️</span><span class="ld-lbl">Custom</span></button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
-          <input type="number" id="ex-sets" placeholder="Sets" style="margin-bottom:0"/>
-          <input type="text" id="ex-reps" placeholder="Reps" style="margin-bottom:0"/>
-          <input type="text" id="ex-load" placeholder="Band / weight" style="margin-bottom:0"/>
+        <div class="ld-pane" data-ldpane="dropdown">
+          <div class="ld-pane-hdr"><span class="ld-ic">💪</span>Log Exercise</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <select id="ex-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select exercise —</option></select>
+            <button class="bp" onclick="addDropdownEx()">+ Log</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
+            <input type="number" id="ex-sets" placeholder="Sets" style="margin-bottom:0"/>
+            <input type="text" id="ex-reps" placeholder="Reps" style="margin-bottom:0"/>
+            <input type="text" id="ex-load" placeholder="Band / weight" style="margin-bottom:0"/>
+          </div>
+          <div id="ex-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px"></div>
+          <div id="ex-dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
         </div>
-        <div id="ex-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px"></div>
-        <div id="ex-dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
+        <div class="ld-pane" data-ldpane="custom">
+          <div class="ld-pane-hdr"><span class="ld-ic">✏️</span>Custom</div>
+          <select id="ce-fav-select" style="margin-bottom:8px" onchange="loadCeFav(this.value)"><option value="">★ Favorites — pick one to reuse…</option></select>
+          <input type="text" id="ce-name" placeholder="Exercise name" oninput="showLastHint(this.value,'ce-last-hint')"/><input type="number" id="ce-cal" placeholder="Calories burned"/>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
+            <input type="number" id="ce-sets" placeholder="Sets" style="margin-bottom:0"/>
+            <input type="text" id="ce-reps" placeholder="Reps" style="margin-bottom:0"/>
+            <input type="text" id="ce-load" placeholder="Band / weight" style="margin-bottom:0"/>
+          </div>
+          <div id="ce-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:6px"></div>
+          <div style="display:flex;gap:8px"><button class="bp bfull" onclick="addCustomEx()">Add Custom</button><button class="bp" style="white-space:nowrap" onclick="saveCeFav()">★ Save as favorite</button></div>
+        </div>
       </div>
-      <div class="card"><div class="card-title">Custom Exercise</div><input type="text" id="ce-name" placeholder="Exercise name" oninput="showLastHint(this.value,'ce-last-hint')"/><input type="number" id="ce-cal" placeholder="Calories burned"/>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
-          <input type="number" id="ce-sets" placeholder="Sets" style="margin-bottom:0"/>
-          <input type="text" id="ce-reps" placeholder="Reps" style="margin-bottom:0"/>
-          <input type="text" id="ce-load" placeholder="Band / weight" style="margin-bottom:0"/>
-        </div>
-        <div id="ce-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:6px"></div>
-        <button class="bp bfull" onclick="addCustomEx()">Add Custom</button></div>
       <div class="card">
         <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="card-title" style="margin-bottom:0">Today's Workouts</div><div style="font-size:12px;color:#fb923c;font-family:'DM Mono',monospace;font-weight:700" id="burned-lbl2">🔥 0 kcal</div></div>
         <div id="ex-log"><div class="empty">No workouts logged yet</div></div>
       </div>
 
-      <div class="te-section-hdr">💧 Water</div>
-      <div class="card">
-        <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px"><div class="water-num" id="water-oz">0</div><div class="water-unit">oz</div><div style="font-size:11px;color:#38bdf866;font-family:'DM Mono',monospace;margin-bottom:6px" id="water-cups-lbl">0 of 8 cups</div></div>
-        <div class="water-bar-wrap"><div class="water-bar" id="water-bar" style="width:0%"></div></div>
-        <div class="water-cups" id="water-cups"></div>
-        <div class="water-btns"><button class="bw" style="flex:1" onclick="addWater(8)">+ 8 oz</button><button class="bw" onclick="addWater(16)">+ 16 oz</button><button class="bw" onclick="addWater(32)">+ 32 oz</button><button class="bs" onclick="removeWater(8)" style="font-size:13px">&#8722;</button></div>
-        <div style="display:flex;gap:8px;margin-top:10px"><input type="number" id="water-custom" placeholder="Enter oz..." style="flex:1;margin-bottom:0;background:#0d2235;border:1px solid #38bdf833;color:#38bdf8;border-radius:10px;padding:10px 14px;font-size:14px;outline:none;-webkit-appearance:none" onkeydown="if(event.key==='Enter')addCustomWater()"/><button class="bw" onclick="addCustomWater()">+ Add</button></div>
-        <div class="water-hint" id="water-hint"></div>
-      </div>
-
-      <div class="te-section-hdr">⚖️ Weight</div>
-      <div class="card"><div class="card-title">Log Weight</div><div style="display:flex;gap:10px"><input type="number" id="wt-input" placeholder="e.g. 229.5" step="0.1" style="flex:1;margin-bottom:0"/><button class="bp" onclick="logWeight()">Save</button></div><div style="font-size:10px;color:#555;margin-top:8px;font-family:'DM Mono',monospace">Same time each morning, after bathroom, before eating</div></div>
-
-      <div class="te-section-hdr">💡 Wellness</div>
-      <div class="card">
-        <div class="rlbl" style="margin-top:0">Sleep Hours</div>
-        <div style="display:flex;gap:8px;align-items:center"><input type="number" id="sleep-hrs" class="winput" placeholder="e.g. 7.5" step="0.5" min="0" max="24"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">hrs</div></div>
-        <div class="rlbl">Sleep Quality</div><div class="rating-row" id="row-sleepQ"><button class="rbtn" data-field="sleepQ" data-val="1">1</button><button class="rbtn" data-field="sleepQ" data-val="2">2</button><button class="rbtn" data-field="sleepQ" data-val="3">3</button><button class="rbtn" data-field="sleepQ" data-val="4">4</button><button class="rbtn" data-field="sleepQ" data-val="5">5</button></div><div class="range-hint"><span>Poor</span><span>Great</span></div>
-        <div class="rlbl">Energy</div><div class="rating-row" id="row-energy"><button class="rbtn" data-field="energy" data-val="1">1</button><button class="rbtn" data-field="energy" data-val="2">2</button><button class="rbtn" data-field="energy" data-val="3">3</button><button class="rbtn" data-field="energy" data-val="4">4</button><button class="rbtn" data-field="energy" data-val="5">5</button></div><div class="range-hint"><span>Drained</span><span>Energized</span></div>
-        <div class="rlbl">Mood</div><div class="rating-row" id="row-mood"><button class="rbtn" data-field="mood" data-val="1">😞</button><button class="rbtn" data-field="mood" data-val="2">😟</button><button class="rbtn" data-field="mood" data-val="3">😐</button><button class="rbtn" data-field="mood" data-val="4">🙂</button><button class="rbtn" data-field="mood" data-val="5">😁</button></div>
-        <div class="rlbl">Steps Today</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="steps-in" class="winput" placeholder="e.g. 8500"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">steps</div></div>
-        <div class="steps-bar-wrap"><div class="steps-bar" id="steps-bar" style="width:0%"></div></div>
-        <button class="bp bfull" style="margin-top:14px" onclick="saveWellness()">Save Wellness</button>
-        <div id="well-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
-      </div>
-
-      <div class="te-section-hdr">🧘 Meditation</div>
-      <div class="card">
-        <div class="rlbl" style="margin-top:0">Duration</div>
-        <div style="display:flex;gap:8px;align-items:center"><input type="number" id="med-mins" class="winput" placeholder="e.g. 10" min="1" max="120"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">min</div></div>
-        <button class="ba bfull" style="margin-top:10px" onclick="openMedTimer()">▷ Meditation Timer</button>
-        <div class="rlbl">Type</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="med-type-btn" data-type="Breathwork" onclick="setMedType(this)">Breathwork</button><button class="med-type-btn" data-type="Guided" onclick="setMedType(this)">Guided</button><button class="med-type-btn" data-type="Silent" onclick="setMedType(this)">Silent</button><button class="med-type-btn" data-type="Body Scan" onclick="setMedType(this)">Body Scan</button></div>
-        <div class="rlbl">Clarity After</div><div class="rating-row" id="row-medClarity"><button class="rbtn" data-field="medClarity" data-val="1">1</button><button class="rbtn" data-field="medClarity" data-val="2">2</button><button class="rbtn" data-field="medClarity" data-val="3">3</button><button class="rbtn" data-field="medClarity" data-val="4">4</button><button class="rbtn" data-field="medClarity" data-val="5">5</button></div><div class="range-hint"><span>Foggy</span><span>Clear</span></div>
-        <button class="bp bfull" style="margin-top:14px" onclick="saveMeditation()">Log Session</button>
-        <div id="med-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
-        <div id="med-history" style="margin-top:8px"></div>
-      </div>
-
-      <div class="te-section-hdr">📏 Measurements</div>
-      <div class="card">
-        <div style="font-size:10px;color:#555;font-family:'DM Mono',monospace;margin-bottom:14px">All in inches. Measure every 2 weeks. These sync to the sheet.</div>
-        <div class="g2" style="gap:10px">
-          <div><div class="rlbl" style="margin:0 0 4px">Waist</div><input type="number" id="m-waist" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
-          <div><div class="rlbl" style="margin:0 0 4px">Chest</div><input type="number" id="m-chest" placeholder="e.g. 44.0" step="0.25" style="margin-bottom:0"/></div>
-          <div><div class="rlbl" style="margin:0 0 4px">Hips</div><input type="number" id="m-hips" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
-          <div><div class="rlbl" style="margin:0 0 4px">Thighs</div><input type="number" id="m-thighs" placeholder="e.g. 25.0" step="0.25" style="margin-bottom:0"/></div>
-          <div><div class="rlbl" style="margin:0 0 4px">Neck</div><input type="number" id="m-neck" placeholder="e.g. 17.0" step="0.25" style="margin-bottom:0"/></div>
+      <div class="te-section-hdr">📝 Daily Tracking</div>
+      <div class="card" style="padding-bottom:14px">
+        <div class="ld-tabs" id="ld-track-tabs">
+          <button class="ld-tab" data-ldtab="water" onclick="ldSwitch('track','water')"><span class="ld-ic">💧</span><span class="ld-lbl">Water</span></button>
+          <button class="ld-tab" data-ldtab="weight" onclick="ldSwitch('track','weight')"><span class="ld-ic">⚖️</span><span class="ld-lbl">Weight</span></button>
+          <button class="ld-tab" data-ldtab="wellness" onclick="ldSwitch('track','wellness')"><span class="ld-ic">💡</span><span class="ld-lbl">Wellness</span></button>
+          <button class="ld-tab" data-ldtab="med" onclick="ldSwitch('track','med')"><span class="ld-ic">🧘</span><span class="ld-lbl">Meditate</span></button>
+          <button class="ld-tab" data-ldtab="measure" onclick="ldSwitch('track','measure')"><span class="ld-ic">📏</span><span class="ld-lbl">Measure</span></button>
+          <button class="ld-tab" data-ldtab="supps" onclick="ldSwitch('track','supps')"><span class="ld-ic">💊</span><span class="ld-lbl">Supps</span></button>
+          <button class="ld-tab" data-ldtab="habits" onclick="ldSwitch('track','habits')"><span class="ld-ic">🔥</span><span class="ld-lbl">Habits</span></button>
         </div>
-        <button class="bp bfull" onclick="logMeasurements()" style="margin-top:14px">Save Measurements</button>
-        <div id="measure-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
-        <div id="measurements-history" style="margin-top:12px"></div>
+
+        <div class="ld-pane" data-ldpane="water">
+          <div class="ld-pane-hdr"><span class="ld-ic">💧</span>Water</div>
+          <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px"><div class="water-num" id="water-oz">0</div><div class="water-unit">oz</div><div style="font-size:11px;color:#38bdf866;font-family:'DM Mono',monospace;margin-bottom:6px" id="water-cups-lbl">0 of 8 cups</div></div>
+          <div class="water-bar-wrap"><div class="water-bar" id="water-bar" style="width:0%"></div></div>
+          <div class="water-cups" id="water-cups"></div>
+          <div class="water-btns"><button class="bw" style="flex:1" onclick="addWater(8)">+ 8 oz</button><button class="bw" onclick="addWater(16)">+ 16 oz</button><button class="bw" onclick="addWater(32)">+ 32 oz</button><button class="bs" onclick="removeWater(8)" style="font-size:13px">&#8722;</button></div>
+          <div style="display:flex;gap:8px;margin-top:10px"><input type="number" id="water-custom" placeholder="Enter oz..." style="flex:1;margin-bottom:0;background:#0d2235;border:1px solid #38bdf833;color:#38bdf8;border-radius:10px;padding:10px 14px;font-size:14px;outline:none;-webkit-appearance:none" onkeydown="if(event.key==='Enter')addCustomWater()"/><button class="bw" onclick="addCustomWater()">+ Add</button></div>
+          <div class="water-hint" id="water-hint"></div>
+        </div>
+
+        <div class="ld-pane" data-ldpane="weight">
+          <div class="ld-pane-hdr"><span class="ld-ic">⚖️</span>Weight</div>
+          <div class="card-title">Log Weight</div><div style="display:flex;gap:10px"><input type="number" id="wt-input" placeholder="e.g. 229.5" step="0.1" style="flex:1;margin-bottom:0"/><button class="bp" onclick="logWeight()">Save</button></div><div style="font-size:10px;color:#555;margin-top:8px;font-family:'DM Mono',monospace">Same time each morning, after bathroom, before eating</div>
+        </div>
+
+        <div class="ld-pane" data-ldpane="wellness">
+          <div class="ld-pane-hdr"><span class="ld-ic">💡</span>Wellness</div>
+          <div class="rlbl" style="margin-top:0">Sleep Hours</div>
+          <div style="display:flex;gap:8px;align-items:center"><input type="number" id="sleep-hrs" class="winput" placeholder="e.g. 7.5" step="0.5" min="0" max="24"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">hrs</div></div>
+          <div class="rlbl">Sleep Quality</div><div class="rating-row" id="row-sleepQ"><button class="rbtn" data-field="sleepQ" data-val="1">1</button><button class="rbtn" data-field="sleepQ" data-val="2">2</button><button class="rbtn" data-field="sleepQ" data-val="3">3</button><button class="rbtn" data-field="sleepQ" data-val="4">4</button><button class="rbtn" data-field="sleepQ" data-val="5">5</button></div><div class="range-hint"><span>Poor</span><span>Great</span></div>
+          <div class="rlbl">Energy</div><div class="rating-row" id="row-energy"><button class="rbtn" data-field="energy" data-val="1">1</button><button class="rbtn" data-field="energy" data-val="2">2</button><button class="rbtn" data-field="energy" data-val="3">3</button><button class="rbtn" data-field="energy" data-val="4">4</button><button class="rbtn" data-field="energy" data-val="5">5</button></div><div class="range-hint"><span>Drained</span><span>Energized</span></div>
+          <div class="rlbl">Mood</div><div class="rating-row" id="row-mood"><button class="rbtn" data-field="mood" data-val="1">😞</button><button class="rbtn" data-field="mood" data-val="2">😟</button><button class="rbtn" data-field="mood" data-val="3">😐</button><button class="rbtn" data-field="mood" data-val="4">🙂</button><button class="rbtn" data-field="mood" data-val="5">😁</button></div>
+          <div class="rlbl">Steps Today</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="steps-in" class="winput" placeholder="e.g. 8500"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">steps</div></div>
+          <div class="steps-bar-wrap"><div class="steps-bar" id="steps-bar" style="width:0%"></div></div>
+          <button class="bp bfull" style="margin-top:14px" onclick="saveWellness()">Save Wellness</button>
+          <div id="well-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
+        </div>
+
+        <div class="ld-pane" data-ldpane="med">
+          <div class="ld-pane-hdr"><span class="ld-ic">🧘</span>Meditate</div>
+          <div class="rlbl" style="margin-top:0">Duration</div>
+          <div style="display:flex;gap:8px;align-items:center"><input type="number" id="med-mins" class="winput" placeholder="e.g. 10" min="1" max="120"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">min</div></div>
+          <button class="ba bfull" style="margin-top:10px" onclick="openMedTimer()">▷ Meditation Timer</button>
+          <div class="rlbl">Type</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="med-type-btn" data-type="Breathwork" onclick="setMedType(this)">Breathwork</button><button class="med-type-btn" data-type="Guided" onclick="setMedType(this)">Guided</button><button class="med-type-btn" data-type="Silent" onclick="setMedType(this)">Silent</button><button class="med-type-btn" data-type="Body Scan" onclick="setMedType(this)">Body Scan</button></div>
+          <div class="rlbl">Clarity After</div><div class="rating-row" id="row-medClarity"><button class="rbtn" data-field="medClarity" data-val="1">1</button><button class="rbtn" data-field="medClarity" data-val="2">2</button><button class="rbtn" data-field="medClarity" data-val="3">3</button><button class="rbtn" data-field="medClarity" data-val="4">4</button><button class="rbtn" data-field="medClarity" data-val="5">5</button></div><div class="range-hint"><span>Foggy</span><span>Clear</span></div>
+          <button class="bp bfull" style="margin-top:14px" onclick="saveMeditation()">Log Session</button>
+          <div id="med-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
+          <div id="med-history" style="margin-top:8px"></div>
+        </div>
+
+        <div class="ld-pane" data-ldpane="measure">
+          <div class="ld-pane-hdr"><span class="ld-ic">📏</span>Measurements</div>
+          <div style="font-size:10px;color:#555;font-family:'DM Mono',monospace;margin-bottom:14px">All in inches. Measure every 2 weeks. These sync to the sheet.</div>
+          <div class="g2" style="gap:10px">
+            <div><div class="rlbl" style="margin:0 0 4px">Waist</div><input type="number" id="m-waist" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Chest</div><input type="number" id="m-chest" placeholder="e.g. 44.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Hips</div><input type="number" id="m-hips" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Thighs</div><input type="number" id="m-thighs" placeholder="e.g. 25.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Neck</div><input type="number" id="m-neck" placeholder="e.g. 17.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Biceps</div><input type="number" id="m-biceps" placeholder="e.g. 14.0" step="0.25" style="margin-bottom:0"/></div>
+          </div>
+          <button class="bp bfull" onclick="logMeasurements()" style="margin-top:14px">Save Measurements</button>
+          <div id="measure-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
+          <div id="measurements-history" style="margin-top:12px"></div>
+        </div>
+
+        <div class="ld-pane" data-ldpane="supps">
+          <div class="ld-pane-hdr"><span class="ld-ic">💊</span>Supplements</div>
+          <div class="supp-list" id="supp-list"></div>
+        </div>
+
+        <div class="ld-pane" data-ldpane="habits">
+          <div class="ld-pane-hdr"><span class="ld-ic">🔥</span>Daily Habits</div>
+          <div id="habits-list"></div>
+        </div>
       </div>
-
-      <div class="te-section-hdr">💊 Supplements</div>
-      <div class="card"><div class="supp-list" id="supp-list"></div></div>
-
-      <div class="te-section-hdr">🔥 Daily Habits</div>
-      <div class="card"><div id="habits-list"></div></div>
 
       <div class="te-section-hdr">📍 Distance Tracker</div>
       <div class="card">
@@ -5911,7 +5959,7 @@ function rowToDay(row){
       steps:row["Steps"]?parseFloat(row["Steps"]):0
     },
     supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
-    measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||""}
+    measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""}
   };
   if(row["Foods"]) row["Foods"].split(",").forEach(function(f){ f=f.trim(); if(!f) return;
     var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?)?\)$/);
@@ -6070,6 +6118,7 @@ function switchTab(id){
   if(btn) btn.classList.add("active"); if(panel) panel.classList.add("active");
   if(id==="yoga" && typeof renderPoses==="function") renderPoses();
   if(id==="today" && typeof renderToday==="function") renderToday();
+  if(id==="log" && typeof ldInit==="function") ldInit();
   document.querySelector(".content").scrollTop=0;
 }
 var _lastSheetPull = 0;
@@ -6198,6 +6247,56 @@ function addCustomEx(){
   day.exercises.push(ex);
   saveDay(day); document.getElementById("ce-name").value=""; document.getElementById("ce-cal").value=""; document.getElementById("ce-last-hint").textContent=""; _clearExDetail("ce-sets","ce-reps","ce-load"); renderAll();
 }
+function loadCeFavs(){ try{ var a=JSON.parse(store.get("ce_fav_ex")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function saveCeFavs(a){ store.set("ce_fav_ex", JSON.stringify(a)); }
+function renderCeFavSelect(){
+  var sel=document.getElementById("ce-fav-select"); if(!sel) return;
+  var favs=loadCeFavs();
+  sel.innerHTML='<option value="">\u2605 Favorites \u2014 pick one to reuse\u2026</option>'+favs.map(function(f,i){
+    return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal'+(f.reps?(' \u00b7 '+escH(f.reps)):'')+'</option>';
+  }).join("");
+}
+function saveCeFav(){
+  var n=(document.getElementById("ce-name").value||"").trim();
+  var c=+document.getElementById("ce-cal").value||0;
+  if(!n){ toast("Enter an exercise name first"); return; }
+  var sets=(document.getElementById("ce-sets").value||"").trim();
+  var reps=(document.getElementById("ce-reps").value||"").trim();
+  var load=(document.getElementById("ce-load").value||"").trim();
+  var favs=loadCeFavs();
+  var key=n.toLowerCase();
+  favs=favs.filter(function(f){return f.name.toLowerCase()!==key;});
+  favs.unshift({name:n,cal:c,sets:sets,reps:reps,load:load});
+  if(favs.length>20) favs=favs.slice(0,20);
+  saveCeFavs(favs); renderCeFavSelect(); toast("\u2605 Saved \""+n+"\" as a favorite");
+}
+function loadCeFav(idx){
+  if(idx==="") return;
+  var f=loadCeFavs()[+idx]; if(!f) return;
+  document.getElementById("ce-name").value=f.name||"";
+  document.getElementById("ce-cal").value=f.cal||"";
+  document.getElementById("ce-sets").value=f.sets||"";
+  document.getElementById("ce-reps").value=f.reps||"";
+  document.getElementById("ce-load").value=f.load||"";
+  showLastHint(f.name,"ce-last-hint");
+}
+function delCeFav(idx){ var favs=loadCeFavs(); favs.splice(+idx,1); saveCeFavs(favs); renderCeFavSelect(); }
+var LD_DEFAULTS={food:"qa",ex:"dropdown",track:"water"};
+function ldSwitch(group,tab){
+  store.set("ld_tab_"+group, tab);
+  var tabsWrap=document.getElementById("ld-"+group+"-tabs"); if(!tabsWrap) return;
+  var card=tabsWrap.parentElement;
+  tabsWrap.querySelectorAll(".ld-tab").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-ldtab")===tab); });
+  card.querySelectorAll(".ld-pane").forEach(function(p){ p.classList.toggle("on", p.getAttribute("data-ldpane")===tab); });
+}
+function ldInit(){
+  ["food","ex","track"].forEach(function(group){
+    var saved=store.get("ld_tab_"+group)||LD_DEFAULTS[group];
+    var tabsWrap=document.getElementById("ld-"+group+"-tabs"); if(!tabsWrap) return;
+    var valid=Array.prototype.some.call(tabsWrap.querySelectorAll(".ld-tab"), function(b){return b.getAttribute("data-ldtab")===saved;});
+    ldSwitch(group, valid?saved:LD_DEFAULTS[group]);
+  });
+}
 function removeEx(id){ var day=getDay(); day.exercises=day.exercises.filter(function(e){return e.id!=id;}); saveDay(day); renderAll(); }
 var editingExId=null;
 function editEx(id){
@@ -6295,7 +6394,7 @@ function renderWellness(){
 // ── LOG: MEASUREMENTS ───────────────────────────────────────────────────
 function logMeasurements(){
   var d=getDay(); d.measurements=d.measurements||{};
-  ["waist","chest","hips","thighs","neck"].forEach(function(k){
+  ["waist","chest","hips","thighs","neck","biceps"].forEach(function(k){
     var v=document.getElementById("m-"+k).value; if(v!=="") d.measurements[k]=v;
   });
   saveDay(d);
@@ -6304,7 +6403,7 @@ function logMeasurements(){
 }
 function renderMeasurements(){
   var ms=getDay().measurements||{};
-  ["waist","chest","hips","thighs","neck"].forEach(function(k){ var el=document.getElementById("m-"+k); if(el) el.value=ms[k]||""; });
+  ["waist","chest","hips","thighs","neck","biceps"].forEach(function(k){ var el=document.getElementById("m-"+k); if(el) el.value=ms[k]||""; });
   // recent waist trend
   var keys=Object.keys(appData).filter(function(k){return appData[k].measurements&&appData[k].measurements.waist;}).sort().slice(-5);
   var el=document.getElementById("measurements-history");
@@ -6680,6 +6779,7 @@ document.querySelectorAll(".rbtn[data-field]").forEach(function(btn){
 populateFoodDropdown();
 populateExDropdown();
 renderAll();
+if(typeof ldInit==="function"){ try{ldInit();}catch(e){} }
 
 // ── CUSTOMIZATION RENDERS (config-driven) ───────────────────────────────
 function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -6879,10 +6979,15 @@ function _chip(label,onclick,delClick){
   return '<span class="tag" style="cursor:pointer;background:#5eead416;color:#cfeee9;border:1px solid #5eead430;padding:6px 10px" onclick="'+onclick+'">'+label+x+'</span>';
 }
 function renderQuickAdd(){
+  if(typeof renderCeFavSelect==="function") renderCeFavSelect();
   var favWrap=document.getElementById("qa-fav-wrap"); if(!favWrap) return;
   var recWrap=document.getElementById("qa-recent-wrap");
   var fav=loadFav();
-  if(fav.length){ favWrap.style.display="block"; document.getElementById("qa-fav").innerHTML=fav.map(function(f,i){return _chip("\u2605 "+escH(f.name)+" \u00b7 "+f.cal,"addFav("+i+")","delFav("+i+")");}).join(""); }
+  if(fav.length){ favWrap.style.display="block";
+    var favSel=document.getElementById("qa-fav-select");
+    if(favSel) favSel.innerHTML='<option value="">\u2605 Favorites \u2014 pick one to add\u2026</option>'+fav.map(function(f,i){return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal</option>';}).join("");
+    var favMgr=document.getElementById("qa-fav-manage");
+    if(favMgr) favMgr.innerHTML=fav.map(function(f,i){return _chip(escH(f.name)+" \u00b7 remove","void(0)","delFav("+i+")");}).join(""); }
   else favWrap.style.display="none";
   _recentCache=recentFoods();
   if(_recentCache.length){ recWrap.style.display="block"; document.getElementById("qa-recent").innerHTML=_recentCache.map(function(f,i){return _chip(escH(f.name)+" \u00b7 "+f.cal,"addRecentIdx("+i+")");}).join(""); }
