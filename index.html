@@ -9938,5 +9938,336 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 })();
 
 </script>
+<!-- ════ EXERCISE EDITOR (hide/restore + add custom + move between days) ════ -->
+<style>
+  #tg-app .eg-editbar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin:2px auto 10px;max-width:700px;padding:0 24px;}
+  #tg-app .eg-edit-toggle{background:#1a1a28;border:1px solid #e8ff4744;color:#e8ff47;font:700 12px/1 'DM Mono',monospace;letter-spacing:1px;padding:9px 16px;border-radius:10px;cursor:pointer;}
+  #tg-app.eg-edit .eg-edit-toggle{background:#e8ff47;color:#111;border-color:#e8ff47;}
+  #tg-app .eg-hidden-count{font:600 11px 'DM Mono',monospace;color:#888;}
+  #tg-app.eg-edit .exercise-card{position:relative;}
+  #tg-app .eg-tools{display:none;position:absolute;top:8px;right:8px;gap:6px;z-index:6;}
+  #tg-app.eg-edit .eg-tools{display:flex;}
+  #tg-app .eg-t-btn{font:600 11px/1 'DM Mono',monospace;padding:6px 10px;border-radius:8px;border:1px solid #ffffff22;background:#13131f;color:#cfe84f;cursor:pointer;}
+  #tg-app .eg-t-btn.move{color:#7dd3fc;border-color:#7dd3fc40;}
+  #tg-app .eg-t-btn.danger{color:#ff8a6b;border-color:#ff6b3540;}
+  #tg-app .exercise-card.eg-hidden{display:none;}
+  #tg-app.eg-edit .exercise-card.eg-hidden{display:block;opacity:.45;outline:1px dashed #ffffff35;outline-offset:-2px;}
+  #tg-app .exercise-card.eg-moved-from-home::before{content:'moved here';position:absolute;top:8px;left:10px;font:600 9px 'DM Mono',monospace;letter-spacing:.5px;color:#7dd3fc;background:#7dd3fc14;border:1px solid #7dd3fc30;padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .2s;}
+  #tg-app.eg-edit .exercise-card.eg-moved-from-home::before{opacity:1;}
+  #eg-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  #eg-modal.open{display:block;}
+  #eg-modal .eg-sheet{max-width:520px;margin:0 auto;min-height:100%;background:#0f0f17;border-left:1px solid #ffffff10;border-right:1px solid #ffffff10;padding:48px 22px 60px;}
+  #eg-modal h2{font:800 22px 'DM Sans',sans-serif;color:#fff;margin-bottom:4px;}
+  #eg-modal .eg-sub{font:400 12px 'DM Mono',monospace;color:#888;margin-bottom:22px;}
+  #eg-modal label{display:block;font:700 11px 'DM Mono',monospace;letter-spacing:.5px;text-transform:uppercase;color:#9aa;margin:16px 0 6px;}
+  #eg-modal input,#eg-modal textarea,#eg-modal select{width:100%;background:#15151f;border:1px solid #ffffff1a;border-radius:10px;color:#f0f0f0;font:400 14px 'DM Sans',sans-serif;padding:11px 12px;}
+  #eg-modal textarea{resize:vertical;min-height:60px;line-height:1.5;}
+  #eg-modal .eg-hint{font:400 11px 'DM Sans',sans-serif;color:#666;margin-top:5px;}
+  #eg-modal .eg-row{display:flex;gap:12px;}
+  #eg-modal .eg-row>div{flex:1;}
+  #eg-modal .eg-actions{display:flex;gap:10px;margin-top:28px;}
+  #eg-modal .eg-save{flex:1;background:#e8ff47;color:#111;border:none;border-radius:11px;font:800 14px 'DM Sans',sans-serif;padding:14px;cursor:pointer;}
+  #eg-modal .eg-cancel{background:#1a1a28;color:#bbb;border:1px solid #ffffff1a;border-radius:11px;font:700 13px 'DM Sans',sans-serif;padding:14px 20px;cursor:pointer;}
+  #eg-move{display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.78);}
+  #eg-move.open{display:flex;align-items:center;justify-content:center;padding:24px;}
+  #eg-move .eg-move-sheet{width:100%;max-width:430px;max-height:86vh;overflow-y:auto;background:#0f0f17;border:1px solid #ffffff12;border-radius:18px;padding:22px;}
+  #eg-move .eg-move-title{font:800 18px 'DM Sans',sans-serif;color:#fff;margin-bottom:2px;}
+  #eg-move .eg-move-name{font:400 12px 'DM Mono',monospace;color:#888;margin-bottom:16px;}
+  #eg-move .eg-move-days{display:flex;flex-direction:column;gap:8px;}
+  #eg-move .eg-day-opt{text-align:left;background:#15151f;border:1px solid #ffffff1a;border-radius:11px;color:#f0f0f0;font:600 14px 'DM Sans',sans-serif;padding:13px 14px;cursor:pointer;}
+  #eg-move .eg-day-opt small{display:block;font:400 11px 'DM Mono',monospace;color:#777;margin-top:3px;}
+  #eg-move .eg-day-opt.cur{opacity:.5;cursor:default;border-style:dashed;}
+  #eg-move .eg-day-opt.cur .eg-cur-tag{color:#e8ff47;font:700 10px 'DM Mono',monospace;margin-left:6px;}
+  #eg-move .eg-move-cancel{width:100%;margin-top:14px;background:#1a1a28;color:#bbb;border:1px solid #ffffff1a;border-radius:11px;font:700 13px 'DM Sans',sans-serif;padding:13px;cursor:pointer;}
+  #eg-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#e8ff47;color:#111;font:700 13px 'DM Sans',sans-serif;padding:11px 18px;border-radius:30px;z-index:10001;opacity:0;transition:all .25s;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  #eg-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+<script>
+(function(){
+  var KH="eg_hidden_v1", KC="eg_custom_v1", KM="eg_moved_v1";
+  function jget(k,f){try{return JSON.parse(localStorage.getItem(k))||f;}catch(e){return f;}}
+  function hidden(){return jget(KH,[]);}
+  function saveHidden(a){localStorage.setItem(KH,JSON.stringify(a));}
+  function custom(){return jget(KC,{});}
+  function saveCustom(o){localStorage.setItem(KC,JSON.stringify(o));}
+  function moved(){return jget(KM,{});}
+  function saveMoved(o){localStorage.setItem(KM,JSON.stringify(o));}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function escA(s){return esc(s).replace(/'/g,"&#39;");}
+  function slug(s){return (window.egSlug?egSlug(s):String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""));}
+  function today(){return window.egToday?egToday():new Date().toISOString().slice(0,10);}
+  function uid(){return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  function fmt(sec){sec=+sec||0;var m=Math.floor(sec/60),s=sec%60;return m+":"+(s<10?"0":"")+s;}
+  function lines(t){return String(t||"").split("\n").map(function(x){return x.trim();}).filter(Boolean);}
+  function dotsHtml(n){var s="";for(var i=1;i<=n;i++)s+='<div class="set-dot" onclick="dotClick(this)" title="Set '+i+'"></div>';return s;}
+  function cardExid(card){return card.dataset.exid||slug((card.querySelector(".exercise-name")||{}).textContent||"");}
+  function cardName(card){return (card.querySelector(".exercise-name")||{}).textContent||"";}
+  function dayTitle(pid){var p=document.getElementById(pid);return p?((p.querySelector(".day-title")||{}).textContent||pid):pid;}
+  function daySub(pid){var p=document.getElementById(pid);if(!p)return"";var s=(p.querySelector(".day-subtitle")||{}).textContent||"";return s.split("\u00b7")[0].trim();}
+  function panelsList(){var a=[];document.querySelectorAll("#tg-app .day-panel").forEach(function(p){if(p.id==="day-10")return;a.push({id:p.id,title:dayTitle(p.id),sub:daySub(p.id)});});return a;}
+  function anchorOf(panel){return panel.querySelector(".eg-add-btn");}
+
+  // ── TOAST ──
+  var toastT=null;
+  function toast(msg){var el=document.getElementById("eg-toast");if(!el){el=document.createElement("div");el.id="eg-toast";document.body.appendChild(el);}el.textContent=msg;el.classList.add("show");clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove("show");},1800);}
+
+  // ── CUSTOM CARDS ──
+  function buildCard(c){
+    var d=document.createElement("div");
+    d.className="exercise-card eg-custom";
+    d.setAttribute("onclick","toggle(this)");
+    d.dataset.custom=c.id;
+    d.dataset.exid=slug(c.name);
+    var h='<div class="card-header"><div class="exercise-num" style="color:#e8ff47">+</div>'
+      +'<div class="card-info"><div class="exercise-name">'+esc(c.name)+'</div><div class="exercise-meta">'
+      +(c.target?'<span class="tag tag-target">'+esc(c.target)+'</span>':'')
+      +(c.band?'<span class="tag tag-band">'+esc(c.band)+'</span>':'')
+      +'</div></div>'
+      +(c.setsReps?'<div class="sets-reps">'+esc(c.setsReps)+'<span>sets &times; reps</span></div>':'')
+      +'<div class="chevron">&#9660;</div></div>';
+    var b="";
+    if(c.cue) b+='<div class="mirror-cue">'+esc(c.cue)+'</div>';
+    if(c.setup) b+='<div class="section-label">Setup</div><div class="setup-box">'+esc(c.setup)+'</div>';
+    if(c.cues&&c.cues.length) b+='<div class="section-label">Form Cues</div><ul class="cues-list">'+c.cues.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>';
+    if(c.mistakes&&c.mistakes.length) b+='<div class="section-label">Common Mistakes</div><ul class="mistakes-list">'+c.mistakes.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>';
+    if(c.note) b+='<div class="note-box">&#128161; '+esc(c.note)+'</div>';
+    var dn=Math.max(1,+c.dots||3);
+    b+='<div class="set-tracker"><span class="set-tracker-label">Sets</span><div class="set-dots">'+dotsHtml(dn)+'</div><button class="set-reset" onclick="resetDots(this)" title="Reset">&#8634;</button><span class="set-complete-msg">Done! &#10003;</span></div>';
+    if(c.rest) b+='<div class="timer-row"><button class="timer-btn" onclick="tgStartTimer('+(+c.rest)+", 'Rest &mdash; "+escA(c.name)+"', 'REST')"+'"><span class="timer-icon">&#9201;</span>'+fmt(c.rest)+' rest</button></div>';
+    var tools='<div class="eg-tools"><button class="eg-t-btn move" data-act="move">Move</button><button class="eg-t-btn" data-act="edit">Edit</button><button class="eg-t-btn danger" data-act="del">Delete</button></div>';
+    d.innerHTML=h+'<div class="card-body">'+b+'</div>'+tools;
+    d.querySelector(".eg-tools").addEventListener("click",function(e){
+      e.stopPropagation();
+      var act=e.target.getAttribute("data-act");
+      if(act==="move") openMove({type:"custom",pid:d.dataset.panel,id:c.id,name:c.name,current:d.dataset.panel});
+      else if(act==="edit") openModal(d.dataset.panel,c.id);
+      else if(act==="del"){ if(confirm('Delete "'+c.name+'"? Your completion history is kept.')) delCustom(d.dataset.panel,c.id); }
+    });
+    return d;
+  }
+
+  function renderCustom(){
+    document.querySelectorAll("#tg-app .exercise-card.eg-custom").forEach(function(n){n.remove();});
+    var store=custom();
+    Object.keys(store).forEach(function(pid){
+      var panel=document.getElementById(pid); if(!panel) return;
+      var addBtn=anchorOf(panel);
+      (store[pid]||[]).forEach(function(c){
+        var card=buildCard(c); card.dataset.panel=pid;
+        if(addBtn) panel.insertBefore(card,addBtn); else panel.appendChild(card);
+      });
+    });
+    restoreCustomToday();
+  }
+
+  function restoreCustomToday(){
+    var set=(jget("eg_done",{})[today()])||{};
+    document.querySelectorAll("#tg-app .exercise-card.eg-custom").forEach(function(card){
+      if(!set[card.dataset.exid]) return;
+      var tr=card.querySelector(".set-tracker"); if(!tr) return;
+      tr.querySelectorAll(".set-dot").forEach(function(x){x.classList.add("done");});
+      var m=tr.querySelector(".set-complete-msg"); if(m) m.classList.add("show");
+    });
+  }
+
+  function delCustom(pid,id){
+    var s=custom(); if(s[pid]){ s[pid]=s[pid].filter(function(c){return c.id!==id;}); if(!s[pid].length) delete s[pid]; saveCustom(s); }
+    renderCustom();
+  }
+
+  function moveCustom(pid,id,target){
+    var s=custom(); if(!s[pid]) return;
+    var c=null;
+    s[pid]=s[pid].filter(function(x){ if(x.id===id){c=x;return false;} return true; });
+    if(!s[pid].length) delete s[pid];
+    if(c){ (s[target]=s[target]||[]).push(c); }
+    saveCustom(s); renderCustom();
+  }
+
+  // ── PREBUILT CARDS: tools + hide + move ──
+  function injectPrebuilt(){
+    document.querySelectorAll("#tg-app .exercise-card:not(.eg-custom)").forEach(function(card){
+      if(card.querySelector(".eg-tools")) return;
+      card.dataset.home=(card.closest(".day-panel")||{}).id||"";
+      var exid=cardExid(card);
+      if(hidden().indexOf(exid)>=0) card.classList.add("eg-hidden");
+      var t=document.createElement("div"); t.className="eg-tools";
+      t.innerHTML='<button class="eg-t-btn move" data-act="move">Move</button><button class="eg-t-btn" data-act="hide"></button>';
+      card.appendChild(t);
+      syncBtn(card);
+      t.addEventListener("click",function(e){
+        e.stopPropagation();
+        var act=e.target.getAttribute("data-act");
+        if(act==="move"){ openMove({type:"pre",card:card,name:cardName(card),current:(card.closest(".day-panel")||{}).id}); return; }
+        var h=hidden(),i=h.indexOf(exid);
+        if(i>=0){h.splice(i,1);card.classList.remove("eg-hidden");}
+        else{h.push(exid);card.classList.add("eg-hidden");}
+        saveHidden(h); syncBtn(card); updateCount();
+      });
+    });
+  }
+  function syncBtn(card){var b=card.querySelector('.eg-tools [data-act="hide"]'); if(b) b.textContent=card.classList.contains("eg-hidden")?"Restore":"Hide";}
+
+  function findPrebuilt(exid){
+    var found=null;
+    document.querySelectorAll("#tg-app .exercise-card:not(.eg-custom)").forEach(function(c){ if(!found && cardExid(c)===exid) found=c; });
+    return found;
+  }
+  function applyMoves(){
+    var mv=moved();
+    Object.keys(mv).forEach(function(exid){
+      var pid=mv[exid], panel=document.getElementById(pid); if(!panel) return;
+      var card=findPrebuilt(exid); if(!card) return;
+      var anchor=anchorOf(panel);
+      if(anchor) panel.insertBefore(card,anchor); else panel.appendChild(card);
+      if(card.dataset.home!==pid) card.classList.add("eg-moved-from-home");
+    });
+  }
+  function movePrebuilt(card,target){
+    var exid=cardExid(card), home=card.dataset.home||(card.closest(".day-panel")||{}).id||"", mv=moved();
+    if(target===home){ delete mv[exid]; card.classList.remove("eg-moved-from-home"); }
+    else { mv[exid]=target; card.classList.add("eg-moved-from-home"); }
+    saveMoved(mv);
+    var panel=document.getElementById(target), anchor=anchorOf(panel);
+    if(anchor) panel.insertBefore(card,anchor); else panel.appendChild(card);
+  }
+
+  // ── ADD BUTTONS + EDIT BAR ──
+  function injectAddButtons(){
+    document.querySelectorAll("#tg-app .day-panel").forEach(function(p){
+      if(p.id==="day-10"||p.querySelector(".eg-add-btn")) return;
+      var b=document.createElement("button"); b.className="eg-add-btn"; b.type="button"; b.textContent="+ Add exercise";
+      b.addEventListener("click",function(){openModal(p.id,null);});
+      p.appendChild(b);
+    });
+  }
+  function updateCount(){var el=document.querySelector("#tg-app .eg-hidden-count"); if(el){var n=hidden().length; el.textContent=n?(n+" hidden"):"";}}
+  function injectBar(){
+    var nav=document.querySelector("#tg-app .mode-nav"); if(!nav||document.querySelector("#tg-app .eg-editbar")) return;
+    var bar=document.createElement("div"); bar.className="eg-editbar";
+    bar.innerHTML='<button type="button" class="eg-edit-toggle">&#9999; Edit exercises</button><span class="eg-hidden-count"></span>';
+    nav.insertAdjacentElement("afterend",bar);
+    bar.querySelector(".eg-edit-toggle").addEventListener("click",function(){
+      var app=document.getElementById("tg-app"); app.classList.toggle("eg-edit");
+      this.innerHTML=app.classList.contains("eg-edit")?"&#10003; Done editing":"&#9999; Edit exercises";
+    });
+  }
+
+  // ── MOVE PICKER ──
+  function buildMoveModal(){
+    if(document.getElementById("eg-move")) return;
+    var m=document.createElement("div"); m.id="eg-move";
+    m.innerHTML='<div class="eg-move-sheet"><div class="eg-move-title">Move to\u2026</div><div class="eg-move-name" id="eg-move-name"></div><div class="eg-move-days" id="eg-move-days"></div><button type="button" class="eg-move-cancel" id="eg-move-cancel">Cancel</button></div>';
+    document.body.appendChild(m);
+    document.getElementById("eg-move-cancel").addEventListener("click",closeMove);
+    m.addEventListener("click",function(e){if(e.target===m)closeMove();});
+  }
+  function openMove(ctx){
+    buildMoveModal();
+    document.getElementById("eg-move-name").textContent=ctx.name||"";
+    var wrap=document.getElementById("eg-move-days"); wrap.innerHTML="";
+    panelsList().forEach(function(p){
+      var b=document.createElement("button"); b.type="button"; b.className="eg-day-opt";
+      b.innerHTML=esc(p.title)+(p.id===ctx.current?'<span class="eg-cur-tag">CURRENT</span>':'')+(p.sub?'<small>'+esc(p.sub)+'</small>':'');
+      if(p.id===ctx.current){ b.classList.add("cur"); b.disabled=true; }
+      else b.addEventListener("click",function(){ doMove(ctx,p.id); closeMove(); });
+      wrap.appendChild(b);
+    });
+    document.getElementById("eg-move").classList.add("open");
+  }
+  function closeMove(){var m=document.getElementById("eg-move"); if(m)m.classList.remove("open");}
+  function doMove(ctx,target){
+    if(ctx.type==="custom") moveCustom(ctx.pid,ctx.id,target);
+    else movePrebuilt(ctx.card,target);
+    toast("Moved to "+dayTitle(target));
+  }
+
+  // ── ADD / EDIT MODAL ──
+  function buildModal(){
+    if(document.getElementById("eg-modal")) return;
+    var dayOpts="";
+    panelsList().forEach(function(p){ dayOpts+='<option value="'+p.id+'">'+esc(p.title)+'</option>'; });
+    var m=document.createElement("div"); m.id="eg-modal";
+    m.innerHTML='<div class="eg-sheet">'
+      +'<h2 id="eg-m-title">Add exercise</h2><div class="eg-sub">Custom exercises live on this device and track sets just like the built-in ones.</div>'
+      +'<label>Name *</label><input id="eg-f-name" placeholder="e.g. Cable Face Pull"/>'
+      +'<label>Day</label><select id="eg-f-day">'+dayOpts+'</select>'
+      +'<div class="eg-row"><div><label>Target</label><input id="eg-f-target" placeholder="Rear Delts &middot; Traps"/></div><div><label>Band / Equipment</label><input id="eg-f-band" placeholder="Tube 20&ndash;30 lb"/></div></div>'
+      +'<div class="eg-row"><div><label>Sets &times; Reps</label><input id="eg-f-sr" placeholder="3&times;12&ndash;15"/></div><div><label>Set dots</label><input id="eg-f-dots" type="number" min="1" max="8" value="3"/></div></div>'
+      +'<label>One-line cue</label><input id="eg-f-cue" placeholder="Pull to your forehead, elbows high"/>'
+      +'<label>Setup</label><textarea id="eg-f-setup" placeholder="How to get into position\u2026"></textarea>'
+      +'<label>Form cues <span class="eg-hint">one per line</span></label><textarea id="eg-f-cues" placeholder="Squeeze shoulder blades\nElbows stay high\nSlow return"></textarea>'
+      +'<label>Common mistakes <span class="eg-hint">one per line</span></label><textarea id="eg-f-miss" placeholder="Using momentum\nShrugging"></textarea>'
+      +'<label>Note (tip box)</label><textarea id="eg-f-note" placeholder="Optional coaching note\u2026"></textarea>'
+      +'<label>Rest timer (seconds) <span class="eg-hint">blank = no timer</span></label><input id="eg-f-rest" type="number" min="0" max="600" placeholder="60"/>'
+      +'<div class="eg-actions"><button type="button" class="eg-cancel" id="eg-cancel">Cancel</button><button type="button" class="eg-save" id="eg-save">Save</button></div>'
+      +'</div>';
+    document.body.appendChild(m);
+    document.getElementById("eg-cancel").addEventListener("click",closeModal);
+    m.addEventListener("click",function(e){if(e.target===m)closeModal();});
+    document.getElementById("eg-save").addEventListener("click",saveModal);
+  }
+  var editing=null;
+  function setV(id,v){document.getElementById(id).value=v==null?"":v;}
+  function getV(id){return document.getElementById(id).value;}
+  function openModal(pid,id){
+    buildModal();
+    editing=null;
+    document.getElementById("eg-m-title").textContent=id?"Edit exercise":"Add exercise";
+    setV("eg-f-name","");setV("eg-f-target","");setV("eg-f-band","");setV("eg-f-sr","");setV("eg-f-dots",3);
+    setV("eg-f-cue","");setV("eg-f-setup","");setV("eg-f-cues","");setV("eg-f-miss","");setV("eg-f-note","");setV("eg-f-rest","");
+    setV("eg-f-day",pid||"day-0");
+    if(id){
+      var arr=custom()[pid]||[],c=null;
+      arr.forEach(function(x){if(x.id===id)c=x;});
+      if(c){
+        editing={pid:pid,id:id};
+        setV("eg-f-name",c.name);setV("eg-f-target",c.target);setV("eg-f-band",c.band);setV("eg-f-sr",c.setsReps);
+        setV("eg-f-dots",c.dots||3);setV("eg-f-cue",c.cue);setV("eg-f-setup",c.setup);
+        setV("eg-f-cues",(c.cues||[]).join("\n"));setV("eg-f-miss",(c.mistakes||[]).join("\n"));
+        setV("eg-f-note",c.note);setV("eg-f-rest",c.rest||"");
+      }
+    }
+    document.getElementById("eg-modal").classList.add("open");
+  }
+  function closeModal(){var m=document.getElementById("eg-modal"); if(m)m.classList.remove("open");}
+  function saveModal(){
+    var name=getV("eg-f-name").trim();
+    if(!name){alert("Give the exercise a name.");return;}
+    var rest=getV("eg-f-rest").trim();
+    var c={
+      name:name,target:getV("eg-f-target").trim(),band:getV("eg-f-band").trim(),
+      setsReps:getV("eg-f-sr").trim(),dots:Math.max(1,Math.min(8,+getV("eg-f-dots")||3)),
+      cue:getV("eg-f-cue").trim(),setup:getV("eg-f-setup").trim(),
+      cues:lines(getV("eg-f-cues")),mistakes:lines(getV("eg-f-miss")),
+      note:getV("eg-f-note").trim(),rest:rest?Math.max(0,+rest):0
+    };
+    var day=getV("eg-f-day"),s=custom();
+    if(editing){
+      c.id=editing.id;
+      if(s[editing.pid]) s[editing.pid]=s[editing.pid].filter(function(x){return x.id!==editing.id;});
+      if(s[editing.pid] && !s[editing.pid].length) delete s[editing.pid];
+      (s[day]=s[day]||[]).push(c);
+    } else {
+      c.id=uid();
+      (s[day]=s[day]||[]).push(c);
+    }
+    saveCustom(s); renderCustom(); closeModal();
+  }
+
+  function init(){
+    if(!document.getElementById("tg-app")) return;
+    injectBar();
+    injectAddButtons();   // anchors must exist before moves/custom inserts
+    injectPrebuilt();     // tools + stamp home + apply hidden
+    applyMoves();         // relocate moved built-in cards
+    renderCustom();       // render custom cards into their day
+    updateCount();
+  }
+  if(document.readyState!=="loading") setTimeout(init,0);
+  else document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0);});
+})();
+</script>
+
 </body>
 </html>
