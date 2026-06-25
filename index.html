@@ -1353,7 +1353,6 @@ html body div.app{max-width:480px}
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="dash"><span class="tab-icon">◈</span>Dashboard</button>
     <button class="tab-btn" data-tab="log"><span class="tab-icon">✎</span>Log</button>
-    <button class="tab-btn" data-tab="train"><span class="tab-icon">💪</span>Training</button>
     <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
     <button class="tab-btn" data-tab="guide"><span class="tab-icon">📖</span>Reference</button>
@@ -5439,23 +5438,14 @@ html body div.app{max-width:480px}
         <div id="rides-list"></div>
       </div>
 
-    </div>
-
-    <!-- ════════ TRAINING ════════ -->
-    <div class="panel" id="panel-train">
-      <div class="card wk-card">
-        <div class="card-title">Weekly Plan</div>
-        <div id="weekly-plan-list"></div>
-        <div style="font-size:10px;color:#555;margin-top:10px;font-family:'DM Mono',monospace">Edit your plan in the Log tab → Settings.</div>
-      </div>
-
+      <div class="te-section-hdr">📋 Weekly Check-In</div>
       <div class="card">
-        <div class="card-title">📋 Weekly Check-In</div>
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:14px">Sunday · 2 minutes · rate each 1–5.</div>
         <div id="ci-form"></div>
         <div id="ci-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
         <div id="ci-history" style="margin-top:8px"></div>
       </div>
+
     </div>
 
     <!-- ════════ YOGA ════════ -->
@@ -5708,10 +5698,6 @@ html body div.app{max-width:480px}
         <div class="card-title">Lab Targets</div>
         <div id="ft-labs"></div>
         <button class="bs bfull" onclick="addLabRow()" style="margin-top:8px">+ Add Lab</button>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">Weekly Plan</div>
-        <div id="ft-plan"></div>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">🔥 Daily Habits</div>
@@ -6037,7 +6023,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderTraining(); renderLabs(); renderWeeklyPlan(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderCheckin(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -6646,9 +6632,6 @@ function saveHealthSettings(){
     if(n) labs.push({name:n,target:r.querySelector(".ft-lab-tgt").value.trim(),current:r.querySelector(".ft-lab-val").value.trim()});
   });
   store.set("ft_labs",JSON.stringify(labs));
-  var days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], plan=[];
-  document.querySelectorAll("#ft-plan .ft-plan-inp").forEach(function(el,i){ plan.push({day:days[i]||("D"+(i+1)),note:el.value}); });
-  store.set("ft_plan",JSON.stringify(plan));
   store.set("ft_habits", JSON.stringify(collectHabitsFromEditor()));
   var msg=document.getElementById("ft-settings-msg"); if(msg){ msg.textContent="✓ Saved"; setTimeout(function(){msg.textContent="";},2500); }
   var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display=url?"block":"none";
@@ -6675,7 +6658,6 @@ function initHealthSettings(){
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
   renderLabEditor();
-  renderPlanEditor();
   renderHabitEditor();
   if (store.get("ft_sheets_url")) { var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display="block"; }
   var ts = store.get("ft_last_backup");
@@ -6738,7 +6720,7 @@ function clearLocalData(){
   store.remove("ft_data"); appData={}; renderAll();
 }
 
-// ── TRAINING ────────────────────────────────────────────────────────────
+// ── WEEKLY CHECK-IN ─────────────────────────────────────────────────────
 var CI_QUESTIONS=[
   {id:"workouts",q:"How many resistance sessions did you hit this week?"},
   {id:"rides",q:"Did you get your Saturday ride in?"},
@@ -6747,7 +6729,6 @@ var CI_QUESTIONS=[
   {id:"energy",q:"Energy / recovery this week?"}
 ];
 var ciAnswers={};
-function renderTraining(){ renderCheckin(); }
 function renderCheckin(){
   var saved={};
   try{ saved=JSON.parse(store.get("ci_"+ciWeekKey())||"{}"); }catch(e){}
@@ -6828,15 +6809,6 @@ function renderLabs(){
       '<span class="tag" style="background:#5eead422;color:#5eead4;border:1px solid #5eead444">'+escH(l.current||"\u2014")+'</span></div>';
   }).join("");
 }
-function renderWeeklyPlan(){
-  var el=document.getElementById("weekly-plan-list"); if(!el) return;
-  var plan=[]; try{plan=JSON.parse(store.get("ft_plan")||"[]");}catch(e){}
-  var active=plan.filter(function(p){return p&&p.note;});
-  if(!active.length){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No plan yet \u2014 add one in the Log tab \u2192 Settings.</div>'; return; }
-  el.innerHTML=active.map(function(p){
-    return '<div class="wk-row"><span class="wk-day">'+escH(p.day)+'</span><span style="color:#bbb">'+escH(p.note)+'</span></div>';
-  }).join("");
-}
 // settings editors
 function _labRowHtml(l){ l=l||{};
   return '<div class="ft-lab-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-bottom:8px;align-items:center">'+
@@ -6853,17 +6825,6 @@ function renderLabEditor(){
 }
 function addLabRow(){ var el=document.getElementById("ft-labs"); if(!el) return; var d=document.createElement("div"); d.innerHTML=_labRowHtml({}); el.appendChild(d.firstChild); }
 function removeLabRow(btn){ var r=btn.closest(".ft-lab-row"); if(r) r.remove(); }
-function renderPlanEditor(){
-  var el=document.getElementById("ft-plan"); if(!el) return;
-  var days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  var plan=[]; try{plan=JSON.parse(store.get("ft_plan")||"[]");}catch(e){}
-  el.innerHTML=days.map(function(d,i){
-    var note=(plan[i]&&plan[i].note)||"";
-    return '<div style="display:grid;grid-template-columns:40px 1fr;gap:8px;align-items:center;margin-bottom:6px">'+
-      '<div style="font-size:11px;color:#5eead4;font-family:\'DM Mono\',monospace;font-weight:700">'+d+'</div>'+
-      '<input type="text" class="ft-plan-inp" placeholder="Rest / Upper body / Ride..." value="'+escH(note)+'" style="margin-bottom:0"/></div>';
-  }).join("");
-}
 
 
 function openSettings(){ initHealthSettings(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
@@ -7033,13 +6994,13 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_plan","ft_habits"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; }); return cfg;
 }
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_plan:1,ft_habits:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1};
   var any=false;
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
   if(!any) return false;
