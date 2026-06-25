@@ -56,7 +56,7 @@ var DAILY_HEADERS = [
 var MEASURE_HEADERS  = ["Date","Waist (in)","Chest (in)","Hips (in)","Thighs (in)","Neck (in)","Biceps (in)"];
 var RIDE_HEADERS     = ["Date","Miles","Duration (min)","Effort","With Daughter","Notes"];
 var WORKOUT_HEADERS  = ["Date","Exercises Completed","Exercise Count"];
-var OVERLOAD_HEADERS = ["Row Key","Exercise ID","Exercise","Date","Band / Weight","Reps","Sets"];
+var OVERLOAD_HEADERS = ["Row Key","Exercise ID","Exercise","Date","Band / Weight","Reps","Sets","RIR"];
 var LAB_HEADERS      = ["Date","A1c (%)","HDL (mg/dL)","LDL (mg/dL)","Triglycerides (mg/dL)","Notes"];
 var FOOD_DETAIL_HEADERS = ["Date","Food","Grams","FDC ID","Calories",
                           "Protein (g)","Carbs (g)","Fat (g)","Fiber (g)","Net Carbs (g)"];
@@ -71,6 +71,8 @@ function doGet(e) {
   var json;
   if (e && e.parameter && e.parameter.config) {
     json = JSON.stringify(getConfig_(ss));
+  } else if (e && e.parameter && e.parameter.overload) {
+    json = JSON.stringify(getOverloadRows_(ss));
   } else {
     json = JSON.stringify(getDailyRows(ss));
   }
@@ -401,7 +403,7 @@ function processSupplementalData(ss, D) {
         var rowKey = exId + "|" + entry.date;
         upsertRow(oSheet, rowKey,
           [rowKey, exId, exId.replace(/-/g," "), entry.date,
-           entry.band||"", entry.reps||"", entry.sets||""],
+           entry.band||"", entry.reps||"", entry.sets||"", (entry.rir==null?"":entry.rir)],
           oIdx);
       });
     });
@@ -630,6 +632,23 @@ function okResponse(msg) {
 
 
 // ── SETTINGS SYNC (config stored as JSON in a "Config" tab) ──────────────
+function getOverloadRows_(ss) {
+  var sheet = ss.getSheetByName(SHEET_OVERLOAD);
+  if (!sheet) return [];
+  var tz   = ss.getSpreadsheetTimeZone();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var headers = data[0];
+  return data.slice(1).map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) {
+      obj[String(h)] = (String(h) === "Date")
+        ? normDate(row[i], tz)
+        : (row[i] !== undefined ? String(row[i]) : "");
+    });
+    return obj;
+  });
+}
 function getConfig_(ss){
   var sh = ss.getSheetByName("Config");
   if (!sh) return {};
@@ -643,4 +662,5 @@ function saveConfig_(ss, cfg){
   sh.getRange("A1").setValue(JSON.stringify(cfg));
   sh.getRange("C1").setValue(new Date());
 }
+
 
