@@ -7837,6 +7837,29 @@ var DS_YIN={key:'yin',title:'Evening Yin',accent:'var(--purple)',meta:'30 min ·
       setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'}
   ]};
 
+var DS_DESK={key:'desk',title:'Desk Mobility',accent:'var(--blue)',meta:'office days · standing desk',
+  blurb:'Snack-sized resets between meetings. Stack 3–5 across the day rather than doing them all at once. Skip any elbow-loaded wrist stretch if it\'s flaring — go straight to the band rows instead.',
+  moves:[
+    {id:'desk-posture',name:'Standing Posture Reset',rx:'30s · hourly',cal:3,demo:null,log:'done',target:'Posture',equip:'None',
+      setup:'Feet rooted, tuck the tailbone slightly, roll shoulders back and down, lengthen through the crown of the head. Reset before the next call.'},
+    {id:'desk-glutebridge',name:'Standing Glute Squeeze',rx:'10 reps',cal:5,demo:null,log:'done',target:'Glutes',equip:'None',
+      setup:'Standing, squeeze both glutes hard for 5 sec, release. 10 reps. Direct activation for the SI joint pattern — no setup needed.'},
+    {id:'desk-figure4',name:'Standing Figure-4 Hip Opener',rx:'30s/side',cal:5,demo:null,log:'done',target:'Hips · Piriformis',equip:'Desk for balance',
+      setup:'Cross one ankle over the opposite knee, hold the desk for balance, hinge forward slightly until you feel the outer hip open. 30 sec per side.'},
+    {id:'desk-hipcircles',name:'Standing Hip Circles (CARs)',rx:'8/direction',cal:5,demo:null,log:'done',target:'Hip Joint',equip:'None',
+      setup:'Hands on hips, trace the biggest slow circle each hip can make, 8 per direction per side. Ribs stay down — nothing else moves.'},
+    {id:'desk-deskcatcow',name:'Standing Cat-Cow (hands on desk)',rx:'10 reps',cal:5,demo:'catcow',log:'done',target:'Spine',equip:'Desk edge',
+      setup:'Hands on the desk edge, hips back. Round and arch the spine slowly with the breath, 10 reps. Same pattern as the floor version, just standing.'},
+    {id:'desk-chestopen',name:'Doorway / Desk Chest Opener',rx:'30s/side',cal:3,demo:null,log:'done',target:'Chest · Posture',equip:'Door frame or wall',
+      setup:'Forearm on the door frame or wall at shoulder height, rotate your body away from it. 30 sec per side. Direct counter to hunched screen posture.'},
+    {id:'desk-lowlunge',name:'Standing Low Lunge (hands on desk)',rx:'30s/side',cal:5,demo:null,log:'done',target:'Hip Flexors',equip:'Desk for balance',
+      setup:'Step one foot back into a long stance, hands on the desk, sink the hips gently forward. 30 sec per side — counters hours of hip flexion from sitting/cycling.'},
+    {id:'desk-wallpushup',name:'Wall or Desk-Edge Push-ups',rx:'12 reps',cal:8,demo:'pushup',log:'setsreps',sets:1,target:'Chest · Triceps',equip:'Wall or sturdy desk edge',
+      setup:'Hands on the wall or desk edge, walk feet back to set the angle, lower chest toward your hands and push back. Keep wrists neutral — skip this one entirely if the elbow is flaring and do band rows instead.'},
+    {id:'desk-calfraise',name:'Standing Calf Raises',rx:'15 reps',cal:5,demo:null,log:'done',target:'Calves',equip:'None',
+      setup:'Rise onto the toes, 2-sec hold at the top, slow descent. 15 reps. Easy blood-flow break between calls.'}
+  ]};
+
 /* ============================ DS_SESSIONS (Mon–Sun) ============================ */
 function dsCore(id,name,rx,cal,cue,demo){return {id:id,name:name,slot:'Core',target:'Core',equip:'Bodyweight',rx:rx,cal:cal,cue:cue,demo:demo||null,log:'setsreps',sets:3};}
 var DS_WARMUP={id:'warmup',name:'Warm-Up — board + rope + halos',slot:'Warm-up',target:'Full body prime',equip:'Balance board · jump rope · 8 lb KB',rx:'9 min',cal:60,cue:'Wake the ankles, lift the heart rate, open the shoulders',demo:null,log:'done'};
@@ -7948,7 +7971,7 @@ function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[
 function dsItemState(id){ var d=dsDayState(); if(!d[id])d[id]={sets:[]}; if(!d[id].sets)d[id].sets=[]; return d[id]; }
 var ds_timers={};
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); return DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); return items; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
 function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
 function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
@@ -8047,6 +8070,7 @@ function dsRender(){
   var _tcBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleTimeCrunch()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_tcOn?'#e8c98a':'#ffffff1a')+';background:'+(_tcOn?'#e8c98a18':'transparent')+';color:'+(_tcOn?'#e8c98a':'#888')+';">'+(_tcOn?'\u26A1 Time Crunch ON \u2014 compounds only \u00b7 ~'+_estNow+' min  (tap for full)':'\u26A1 Time Crunch \u2014 full session ~'+_estFull+' min  (tap to trim)')+'</button></div>';
   var html=_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
   html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
+  if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
   html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
   html+=dsRenderSection('Joint Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
