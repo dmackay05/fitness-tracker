@@ -5705,6 +5705,11 @@ html body div.app{max-width:480px}
         <button class="bs bfull" onclick="addHabitRow()" style="margin-top:8px">+ Add Habit</button>
       </div>
       <div class="card" style="margin-top:10px">
+        <div class="card-title">🏋️ Custom Exercise Set</div>
+        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from existing exercises and assign it to any day. Shows alongside that day's routine on the Today tab.</div>
+        <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
+      </div>
+      <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" />
@@ -5725,6 +5730,37 @@ html body div.app{max-width:480px}
         <div class="bk-last" id="bk-last"></div>
         <div id="bk-today-row"></div>
       </div>
+  </div>
+</div>
+
+<!-- CUSTOM SET BUILDER OVERLAY -->
+<div id="ds-custom-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
+  <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
+    <button class="bs" onclick="dsCustomClose()">✕ Close</button>
+    <div style="font-size:15px;font-weight:800;color:#f0f0f0">🏋️ Custom Set</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:18px;max-width:520px;margin:0 auto;width:100%">
+
+    <div class="card">
+      <div class="card-title">Days</div>
+      <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Pick which day(s) this set shows on. You can pick more than one.</div>
+      <div id="ds-custom-daypicker" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:0">Your Set <span id="ds-custom-count" style="color:#888;font-weight:400"></span></div>
+      </div>
+      <div id="ds-custom-selected"><div style="text-align:center;color:#555;font-size:12px;font-family:'DM Mono',monospace;padding:14px 0">No exercises picked yet — add from the library below.</div></div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div class="card-title">Exercise Library</div>
+      <input type="text" id="ds-custom-search" placeholder="Search exercises..." oninput="dsCustomRenderLibrary()" style="margin-bottom:10px"/>
+      <div id="ds-custom-library" style="max-height:420px;overflow-y:auto"></div>
+    </div>
+
   </div>
 </div>
 
@@ -7918,8 +7954,122 @@ function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[
 function dsItemState(id){ var d=dsDayState(); if(!d[id])d[id]={sets:[]}; if(!d[id].sets)d[id].sets=[]; return d[id]; }
 var ds_timers={};
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); items=items.concat(dsCustomMoves(sk)); return items; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
+
+// ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
+function dsMasterPool(){
+  var pool=[]; var seen={};
+  var groups=[];
+  DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
+  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves);
+  groups.forEach(function(arr){
+    arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
+  });
+  return pool;
+}
+function dsMasterLookup(id){ var p=dsMasterPool(); for(var i=0;i<p.length;i++){ if(p[i].id===id) return p[i]; } return null; }
+var DS_CUSTOM={}; try{ DS_CUSTOM=JSON.parse(store.get("ds_custom")||"{}"); }catch(e){ DS_CUSTOM={}; }
+function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){} }
+function dsCustomMoves(dayKey){
+  var ids=DS_CUSTOM[dayKey]||[];
+  return ids.map(function(id){ return dsMasterLookup(id); }).filter(Boolean);
+}
+
+// ── CUSTOM SET BUILDER ───────────────────────────────────────────────────
+var DS_CUSTOM_DAYS={}; // working selection of days while builder is open: {mon:true, wed:true, ...}
+var DS_CUSTOM_PICK=[]; // working ordered list of move ids while builder is open
+
+function dsCustomOpen(){
+  var sk=dsSessionKey(activeDate);
+  DS_CUSTOM_PICK=(DS_CUSTOM[sk]||[]).slice();
+  DS_CUSTOM_PICK_ORIGINAL=DS_CUSTOM_PICK.slice();
+  DS_CUSTOM_DAYS={};
+  if(DS_CUSTOM_PICK.length){
+    // Pre-check every day that currently holds this exact same set, not just the day we opened from.
+    DS_ORDER.forEach(function(d){
+      if(DS_CUSTOM[d] && arraysEqualDS(DS_CUSTOM[d], DS_CUSTOM_PICK)) DS_CUSTOM_DAYS[d]=true;
+    });
+  }
+  document.getElementById("ds-custom-search").value="";
+  dsCustomRenderDayPicker();
+  dsCustomRenderSelected();
+  dsCustomRenderLibrary();
+  document.getElementById("ds-custom-overlay").style.display="flex";
+  document.getElementById("ds-custom-overlay").scrollTop=0;
+}
+function dsCustomClose(){
+  dsCustomCommit();
+  document.getElementById("ds-custom-overlay").style.display="none";
+  dsRender();
+}
+var DS_CUSTOM_PICK_ORIGINAL=null;
+function dsCustomCommit(){
+  // Any day that previously held this exact working set but got unchecked: clear it.
+  DS_ORDER.forEach(function(d){
+    var wasHome = DS_CUSTOM_PICK_ORIGINAL && DS_CUSTOM_PICK_ORIGINAL.length && DS_CUSTOM[d] && arraysEqualDS(DS_CUSTOM[d], DS_CUSTOM_PICK_ORIGINAL);
+    if(wasHome && !DS_CUSTOM_DAYS[d]) delete DS_CUSTOM[d];
+  });
+  // Assign the current pick to every checked day; clear a checked day if the pick is now empty.
+  DS_ORDER.forEach(function(d){
+    if(DS_CUSTOM_DAYS[d]){
+      if(DS_CUSTOM_PICK.length) DS_CUSTOM[d]=DS_CUSTOM_PICK.slice();
+      else delete DS_CUSTOM[d];
+    }
+  });
+  dsCustomSave();
+}
+function arraysEqualDS(a,b){ if(a.length!==b.length) return false; for(var i=0;i<a.length;i++){ if(a[i]!==b[i]) return false; } return true; }
+function dsCustomRenderDayPicker(){
+  var el=document.getElementById("ds-custom-daypicker"); if(!el) return;
+  el.innerHTML=DS_ORDER.map(function(d){
+    var on=!!DS_CUSTOM_DAYS[d];
+    return '<button class="bs" style="padding:8px 14px;'+(on?'background:#5eead422;border-color:#5eead4;color:#5eead4':'')+'" onclick="dsCustomToggleDay(\''+d+'\')">'+DS_DAYLABEL[d]+'</button>';
+  }).join("");
+}
+function dsCustomToggleDay(d){
+  if(DS_CUSTOM_DAYS[d]) delete DS_CUSTOM_DAYS[d]; else DS_CUSTOM_DAYS[d]=true;
+  dsCustomRenderDayPicker();
+}
+function dsCustomRenderSelected(){
+  var el=document.getElementById("ds-custom-selected"), cnt=document.getElementById("ds-custom-count");
+  if(cnt) cnt.textContent=DS_CUSTOM_PICK.length?("("+DS_CUSTOM_PICK.length+")"):"";
+  if(!DS_CUSTOM_PICK.length){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No exercises picked yet — add from the library below.</div>'; return; }
+  el.innerHTML=DS_CUSTOM_PICK.map(function(id,i){
+    var m=dsMasterLookup(id); if(!m) return "";
+    return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+m.name+'</div><div class="row-sub">'+(m.target||"")+(m.equip?(" · "+m.equip):"")+'</div></div>'+
+      '<div style="display:flex;gap:6px;flex-shrink:0">'+
+      (i>0?'<button class="bs" onclick="dsCustomMove('+i+',-1)" style="padding:6px 10px">↑</button>':'')+
+      (i<DS_CUSTOM_PICK.length-1?'<button class="bs" onclick="dsCustomMove('+i+',1)" style="padding:6px 10px">↓</button>':'')+
+      '<button class="bd" onclick="dsCustomRemove(\''+id+'\')" style="padding:6px 10px">✕</button></div></div>';
+  }).join("");
+}
+function dsCustomMove(i,dir){
+  var j=i+dir; if(j<0||j>=DS_CUSTOM_PICK.length) return;
+  var tmp=DS_CUSTOM_PICK[i]; DS_CUSTOM_PICK[i]=DS_CUSTOM_PICK[j]; DS_CUSTOM_PICK[j]=tmp;
+  dsCustomRenderSelected();
+}
+function dsCustomRemove(id){
+  DS_CUSTOM_PICK=DS_CUSTOM_PICK.filter(function(x){return x!==id;});
+  dsCustomRenderSelected(); dsCustomRenderLibrary();
+}
+function dsCustomAdd(id){
+  if(DS_CUSTOM_PICK.indexOf(id)===-1) DS_CUSTOM_PICK.push(id);
+  dsCustomRenderSelected(); dsCustomRenderLibrary();
+}
+function dsCustomRenderLibrary(){
+  var el=document.getElementById("ds-custom-library"); if(!el) return;
+  var q=(document.getElementById("ds-custom-search").value||"").toLowerCase().trim();
+  var pool=dsMasterPool();
+  if(q) pool=pool.filter(function(m){ return (m.name+" "+(m.target||"")+" "+(m.slot||"")).toLowerCase().indexOf(q)!==-1; });
+  if(!pool.length){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No matches.</div>'; return; }
+  el.innerHTML=pool.map(function(m){
+    var picked=DS_CUSTOM_PICK.indexOf(m.id)!==-1;
+    return '<div class="row" style="cursor:pointer" onclick="'+(picked?'dsCustomRemove':'dsCustomAdd')+'(\''+m.id+'\')">'+
+      '<div style="flex:1;min-width:0"><div class="row-name">'+m.name+'</div><div class="row-sub">'+(m.target||"")+(m.equip?(" · "+m.equip):"")+'</div></div>'+
+      '<div style="flex-shrink:0;font-size:18px;color:'+(picked?"#5eead4":"#555")+'">'+(picked?"✓":"+")+'</div></div>';
+  }).join("");
+}
 function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
 function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:item.cal,cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants}; }
@@ -8016,6 +8166,12 @@ function dsRender(){
   var _estFull=dsEstMin(_allMoves), _estNow=dsEstMin(_moves), _tcOn=DS_TIME_CRUNCH;
   var _tcBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleTimeCrunch()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_tcOn?'#e8c98a':'#ffffff1a')+';background:'+(_tcOn?'#e8c98a18':'transparent')+';color:'+(_tcOn?'#e8c98a':'#888')+';">'+(_tcOn?'\u26A1 Time Crunch ON \u2014 compounds only \u00b7 ~'+_estNow+' min  (tap for full)':'\u26A1 Time Crunch \u2014 full session ~'+_estFull+' min  (tap to trim)')+'</button></div>';
   var html=_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
+  var _customMoves=dsCustomMoves(sk);
+  if(_customMoves.length){
+    html+='<div class="ds-seclabel"><div class="ds-t" style="color:#fbbf24">Custom Set</div><div class="ds-ln"></div><div class="ds-meta">'+_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' · '+DS_DAYLABEL[sk]+'</div></div>';
+    html+='<div class="ds-setup" style="margin:-2px 0 12px">Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span></div>';
+    _customMoves.forEach(function(it,i){html+=dsRenderItem(it,i+1);});
+  }
   html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
   if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
