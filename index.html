@@ -109,6 +109,9 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+@media (min-width:701px){ .app{max-width:700px} }
+@media (min-width:1024px){ .app{max-width:920px} }
+@media (min-width:1400px){ .app{max-width:1100px} }
 .header{padding:52px 20px 0;border-bottom:1px solid #1e1e35;flex-shrink:0}
 .header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
 .greeting{font-size:11px;color:#5eead4;letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:2px}
@@ -128,6 +131,11 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
 .content{padding:20px;padding-bottom:60px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .panel{display:none;animation:fadeIn 0.2s ease}
 .panel.active{display:block}
+@media (min-width:701px){
+  #panel-dash.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #panel-dash.active .card{margin-bottom:0;min-width:0;overflow:hidden}
+  #panel-dash.active #dash-averages{grid-column:1 / -1}
+}
 .card{background:#13131f;border:1px solid #1e1e35;border-radius:16px;padding:18px;margin-bottom:14px}
 .card-title{font-size:9px;color:#5eead4;letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:14px;font-weight:700}
 .big-num{font-size:42px;font-weight:900;letter-spacing:-2px;line-height:1}
@@ -159,7 +167,7 @@ button:active{opacity:0.7}
 .mbar{height:100%;border-radius:3px;transition:width 0.5s cubic-bezier(.4,0,.2,1)}
 .mrow{margin-bottom:10px}
 .mlrow{display:flex;justify-content:space-between;margin-bottom:4px;font-size:10px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px}
-.radials{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;justify-items:center}
+.radials{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;justify-items:center}
 .radial-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
 .radial-lbl{font-size:9px;color:#aaa;letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace}
 .hint-box{margin-top:12px;padding:8px 12px;background:#0d2d1f;border:1px solid #5eead433;border-radius:8px;font-size:11px;color:#5eead4;font-family:'DM Mono',monospace}
@@ -648,7 +656,7 @@ button:active{opacity:0.7}
 
 /* ── rebuild additions ── */
 .te-section-hdr{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5eead4;margin:22px 4px 10px;font-weight:700}
-.dash-strip{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.dash-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
 .cal-meta{display:flex;gap:14px;font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:8px;flex-wrap:wrap}
 .bar-lbls{display:flex;justify-content:space-between;font-size:9px;color:#666;font-family:'DM Mono',monospace;margin-top:4px}
 .hint-box{margin-top:12px;background:#5eead410;border:1px solid #5eead430;border-radius:10px;padding:10px 12px;font-size:11px;color:#5eead4;font-family:'DM Mono',monospace}
@@ -5149,7 +5157,7 @@ button:active{opacity:0.7}
 
       <div class="card">
         <div class="card-title">🚴 Distance · last 7 days</div>
-        <div id="dash-distance" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"></div>
+        <div id="dash-distance" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
       </div>
 
       <div class="card">
@@ -5180,7 +5188,11 @@ button:active{opacity:0.7}
         <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
       </div>
 
-      <div class="card"><div class="card-title">Exercise</div><div id="dash-ex"><div class="empty">No workouts logged yet</div></div></div>
+      <div class="card">
+        <div class="card-title">📈 Trends</div>
+        <div id="trend-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div id="trend-chart"></div>
+      </div>
 
       <div class="card">
         <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -5195,20 +5207,7 @@ button:active{opacity:0.7}
         <div style="font-size:10px;color:#555;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
       </div>
 
-      <div class="card">
-        <div class="card-title">📈 Trends</div>
-        <div id="trend-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-        <div id="trend-chart"></div>
-      </div>
-
       <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-
-      <div class="card"><div class="card-title">7-Day History</div><div id="week-hist"></div></div>
-
-      <div class="card" id="labs-card" style="display:none">
-        <div class="card-title">Lab Targets</div>
-        <div id="labs-list"></div>
-      </div>
     </div>
 
     <!-- ════════ LOG ════════ -->
@@ -6105,12 +6104,8 @@ function renderDash(){
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal;
 
-  // Exercise
-  var day=getDay(), exEl=document.getElementById("dash-ex");
-  exEl.innerHTML = (!day.exercises.length)?'<div class="empty">No workouts logged yet</div>':
-    day.exercises.map(function(e){return '<div class="row"><div><div class="row-name">'+e.name+'</div><div class="row-sub">🔥 '+e.calories+' kcal</div></div></div>';}).join("");
-
   // Weight
+  var day=getDay();
   var lw=getLatestWeight(), lost=START_WEIGHT-lw;
   document.getElementById("dash-wt").textContent=day.weight||lw;
   document.getElementById("dash-lost").textContent=lost>0?"-"+lost.toFixed(1)+" from start":"";
@@ -6121,18 +6116,6 @@ function renderDash(){
     var on=!!sup[s.id];
     return '<span class="tag" style="background:'+(on?"#5eead422":"#88888816")+';color:'+(on?"#5eead4":"#777")+';border:1px solid '+(on?"#5eead444":"#88888830")+'">'+s.emoji+' '+s.name+(on?" ✓":"")+'</span>';
   }).join(" ");
-
-  // 7-day strip
-  var todK=todayKey();
-  document.getElementById("week-hist").innerHTML = getWeekKeys().map(function(k){
-    var dd=appData[k];
-    var ft=dd&&dd.foods?dd.foods.reduce(function(a,f){return a+(+f.cal||0);},0):0;
-    var et=dd&&dd.exercises?dd.exercises.reduce(function(a,e){return a+(+e.calories||0);},0):0;
-    var wt=dd&&dd.weight?dd.weight:0, isA=k===activeDate, isT=k===todK;
-    return '<div class="row" style="opacity:'+(isT||isA?1:0.7)+';cursor:pointer" onclick="jumpToDate(\''+k+'\')">'+
-      '<div><div style="font-size:11px;font-weight:'+(isT?700:500)+';color:'+(isA?"#fbbf24":isT?"#5eead4":"#f0f0f0")+'">'+prettyDate(k)+(isT?" — today":isA?" — viewing":"")+'</div>'+
-      '<div class="row-sub">'+(ft>0?ft+" kcal":"--")+(et>0?" · 🔥 "+et:"")+(wt?" · "+wt+" lbs":"")+'</div></div></div>';
-  }).join("");
 
   renderWeekSummary();
   renderTrends();
