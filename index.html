@@ -5911,6 +5911,20 @@ function buildWkPayload(){
   });
   return rides.length ? {rides:rides} : null;
 }
+function buildOverloadPayload(){
+  var ov={};
+  Object.keys(appData).forEach(function(k){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+    (appData[k].exercises||[]).forEach(function(e){
+      if(!e || !e.id || String(e.id).indexOf("sess_")!==0) return;
+      if(!e.sets && !e.reps && !e.load) return;
+      var exId=String(e.id).slice(5);
+      if(!ov[exId]) ov[exId]=[];
+      ov[exId].push({date:k, band:e.load||"", reps:(e.reps!=null?String(e.reps):""), sets:(e.sets!=null?String(e.sets):""), rir:(e.rir!=null?e.rir:"")});
+    });
+  });
+  return Object.keys(ov).length ? {overload:ov} : null;
+}
 function postPayload(payload){
   return fetch(SHEETS_URL,{method:"POST",mode:"no-cors",
     headers:{"Content-Type":"application/x-www-form-urlencoded"},
@@ -5921,9 +5935,36 @@ function pushToSheets(){
   var chain = postPayload(buildFtPayload());
   var wk = buildWkPayload();
   if(wk){ chain = chain.then(function(){return new Promise(function(r){setTimeout(r,700);});}).then(function(){return postPayload(wk);}); }
+  var ov = buildOverloadPayload();
+  if(ov){ chain = chain.then(function(){return new Promise(function(r){setTimeout(r,700);});}).then(function(){return postPayload(ov);}); }
   return chain.catch(function(){});
 }
 
+// ── PROGRESSIVE OVERLOAD CLOUD CACHE (cross-device last-time history) ───
+var DS_CLOUD_LAST = {};
+function fetchOverloadCache(){
+  if(!SHEETS_URL) return;
+  function ingest(rows){
+    if(!rows || !rows.length) return;
+    rows.forEach(function(r){
+      var exId=r["Exercise ID"]||""; var date=r["Date"]||"";
+      if(!exId||!date) return;
+      var prev=DS_CLOUD_LAST[exId];
+      if(!prev || date>prev.date){
+        DS_CLOUD_LAST[exId]={date:date, reps:r["Reps"]||"", load:r["Band / Weight"]||"", sets:r["Sets"]||"", rir:r["RIR"]||""};
+      }
+    });
+  }
+  fetch(SHEETS_URL+"?overload=1&nocache="+Date.now())
+    .then(function(r){return r.json();}).then(ingest).catch(function(){
+      var cb="ovCb_"+Date.now();
+      window[cb]=function(rows){ delete window[cb]; ingest(rows); };
+      var s=document.createElement("script");
+      s.onerror=function(){ delete window[cb]; };
+      s.src=SHEETS_URL+"?overload=1&callback="+cb+"&nocache="+Date.now();
+      document.head.appendChild(s);
+    });
+}
 // ── LOAD + MERGE FROM SHEET (sheet is source of truth on open/refresh) ───
 function fetchSheet(onRows){
   if(!SHEETS_URL){ onRows(null,false); return; }
@@ -6137,6 +6178,7 @@ function shiftDay(delta){
 function goToToday(){ activeDate=todayKey(); wellnessRatings={sleepQ:0,energy:0,mood:0,medClarity:0}; renderAll(); bgRefresh(); }
 function jumpToDate(k){ activeDate=k; wellnessRatings={sleepQ:0,energy:0,mood:0,medClarity:0}; renderAll(); bgRefresh(); }
 function doRefresh(which){
+  fetchOverloadCache();
   _lastSheetPull=Date.now();
   var icon=document.getElementById("refresh-icon-"+which);
   if(icon){ icon.style.transition="transform .6s ease"; icon.style.transform="rotate(360deg)";
@@ -7171,6 +7213,7 @@ initHealthSettings();
 // Sheet is source of truth: pull + merge on open, then re-render
 var _bn=document.getElementById("sync-banner");
 if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
+fetchOverloadCache();
 _lastSheetPull=Date.now();
 fetchSheet(function(rows,ok){
   if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets";_bn.style.color="#4ade80";} }
@@ -7921,12 +7964,15 @@ function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemSt
 }
 function dsUnlog(id){ var day=getDay(), sid="sess_"+id; day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
 
-function dsLastTime(id){ var sid="sess_"+id;
+function dsLastTime(id){ var sid="sess_"+id; var local=null;
   var keys=Object.keys(appData).filter(function(k){return k<activeDate&&appData[k]&&appData[k].exercises&&appData[k].exercises.some(function(e){return e.id===sid;});}).sort();
-  if(!keys.length)return null;
-  var arr=appData[keys[keys.length-1]].exercises;
-  for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid)return {reps:arr[i].reps,load:arr[i].load,rir:arr[i].rir}; }
-  return null;
+  if(keys.length){ var lk=keys[keys.length-1], arr=appData[lk].exercises;
+    for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid){ local={date:lk,reps:arr[i].reps,load:arr[i].load,rir:arr[i].rir}; break; } } }
+  var cloud=(typeof DS_CLOUD_LAST!=="undefined")?DS_CLOUD_LAST[id]:null;
+  if(cloud && cloud.date<activeDate && (!local || cloud.date>local.date)){
+    return {reps:cloud.reps,load:cloud.load,rir:(cloud.rir!==""&&cloud.rir!=null?cloud.rir:null)};
+  }
+  return local ? {reps:local.reps,load:local.load,rir:local.rir} : null;
 }
 function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
 function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var h='';for(var i=0;i<target;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
@@ -7980,6 +8026,13 @@ function dsRenderSection(label,meta,accent,items,blurb){
   items.forEach(function(it,i){h+=dsRenderItem(it,i+1);});
   return h;
 }
+var DS_REST_SECS = 60;
+var DS_TIME_CRUNCH = (function(){ try{ return store.get("ds_tc")==="1"; }catch(e){ return false; } })();
+var DS_TC_KEEP_SLOTS = {"Warm-up":1,"Horizontal Push":1,"Vertical Push":1,"Horizontal Pull":1,"Vertical Pull":1,"Squat":1,"Hinge":1};
+var DS_TC_KEEP_IDS = {"tue-bridge":1,"tue-lat":1};  // glute activation kept on crunch days (SI-joint priority)
+function dsTcKeep(m){ return !!(DS_TC_KEEP_SLOTS[m.slot] || DS_TC_KEEP_IDS[m.id]); }
+function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("ds_tc", DS_TIME_CRUNCH?"1":"0"); }catch(e){} dsRender(); }
+function dsEstMin(moves){ var t=0; moves.forEach(function(m){ if(m.log==="setsreps"){ t+=(m.sets||3)*2; } else if(m.log==="time"){ t+=Math.ceil((m.secs||30)/60)*(m.sets||1)+1; } else if(m.log==="cardio"){ t+=(m.defMin||20); } else { t+=2; } }); return t; }
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
   var sk=dsSessionKey(activeDate); var SS=DS_SESSIONS[sk];
@@ -7987,7 +8040,12 @@ function dsRender(){
   var tt=document.getElementById('ds-title'); if(tt)tt.textContent=SS.title;
   var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
   var dl=document.getElementById('ds-deload'); if(dl){var wk=dsBlockWeek()%6; if(wk===5){dl.textContent='Deload week \u2014 cut volume ~40%, keep it easy';dl.className='ds-deload warn';}else{dl.textContent='Training block \u00b7 week '+(wk+1)+' of 6';dl.className='ds-deload';}}
-  var html=dsRenderSection('The Session','',SS.accent,SS.moves,'');
+  var _allMoves=SS.moves;
+  var _moves=DS_TIME_CRUNCH?_allMoves.filter(dsTcKeep):_allMoves;
+  if(!_moves.length)_moves=_allMoves;  // no compounds to isolate (e.g. core/yoga day) -> show full
+  var _estFull=dsEstMin(_allMoves), _estNow=dsEstMin(_moves), _tcOn=DS_TIME_CRUNCH;
+  var _tcBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleTimeCrunch()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_tcOn?'#e8c98a':'#ffffff1a')+';background:'+(_tcOn?'#e8c98a18':'transparent')+';color:'+(_tcOn?'#e8c98a':'#888')+';">'+(_tcOn?'\u26A1 Time Crunch ON \u2014 compounds only \u00b7 ~'+_estNow+' min  (tap for full)':'\u26A1 Time Crunch \u2014 full session ~'+_estFull+' min  (tap to trim)')+'</button></div>';
+  var html=_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
   html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
   html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
@@ -8017,6 +8075,7 @@ function dsLogSet(id,target){
   st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null)});
   var nowDone=false;
   if(st.sets.length>=target){ dsLogComplete(dsViewOf(dsRawItem(id))); nowDone=true; }
+  if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
   dsSaveUI(); dsRender(); if(nowDone)renderAll();
 }
 function dsMarkDone(id){ if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
