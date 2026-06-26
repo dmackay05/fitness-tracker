@@ -314,7 +314,10 @@ body{overflow-x:hidden}
 .pose-card.selected{border-color:var(--gold)55;background:linear-gradient(135deg,var(--bg2),#c9a96e06)}
 .pose-header{padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
 .pose-header:active{opacity:0.8}
-.pose-emoji{font-size:28px;width:46px;height:46px;background:var(--bg3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pose-emoji{font-size:28px;width:46px;height:46px;background:var(--bg3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.pose-emoji svg{width:100%;height:100%}
+.pose-demo-large{background:var(--bg3);border-radius:12px;padding:6px;margin-bottom:10px}
+.pose-demo-large svg{width:100%;height:110px;display:block}
 .pose-info{flex:1;min-width:0}
 .pose-name{font-family:var(--font-serif);font-size:18px;font-weight:400;line-height:1.2;margin-bottom:2px}
 .pose-sanskrit{font-family:var(--font-serif);font-style:italic;font-size:11px;color:var(--gold);display:block;margin-bottom:5px}
@@ -324,6 +327,11 @@ body{overflow-x:hidden}
 .tag-i{background:#c9a96e18;color:var(--gold);border:1px solid #c9a96e2a}
 .tag-a{background:#c97b7b18;color:var(--rose);border:1px solid #c97b7b2a}
 .tag-c{background:#9b8ec418;color:var(--lav);border:1px solid #9b8ec42a}
+.tag-usage{background:#c9a96e18;color:#c9a96e;border:1px solid #c9a96e2a}
+.yoga-stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 14px}
+.yoga-stat{background:#ffffff05;border:1px solid #ffffff0d;border-radius:10px;padding:10px 8px;text-align:center}
+.yoga-stat-val{font-size:18px;font-weight:800;color:#c9a96e;font-family:'DM Mono',monospace;line-height:1.1}
+.yoga-stat-lbl{font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-top:3px}
 .pose-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .add-btn{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);color:var(--muted);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
 .add-btn:active{transform:scale(0.88)}
@@ -380,11 +388,17 @@ body{overflow-x:hidden}
 .sess-ov.open{display:flex;animation:fadeIn 0.3s ease}
 .sess-close{position:absolute;top:52px;right:24px;background:var(--bg2);border:1px solid var(--border);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px}
 .sess-prog{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;text-align:center}
-.sess-emoji{font-size:72px;margin-bottom:20px;animation:pulse 3s ease-in-out infinite}
+.sess-demo{width:160px;height:140px;margin:0 auto 16px;background:#ffffff08;border-radius:16px;padding:8px}
+.sess-demo svg{width:100%;height:100%;display:block}
+#sess-emoji-badge{font-size:20px;margin-right:6px;vertical-align:middle}
 .sess-name{font-family:var(--font-serif);font-size:32px;font-weight:300;text-align:center;margin-bottom:4px}
 .sess-sans{font-family:var(--font-serif);font-style:italic;font-size:14px;color:var(--gold);text-align:center;margin-bottom:28px}
 .timer-wrap{width:110px;height:110px;position:relative;margin:0 auto 20px}
 .timer-wrap svg{transform:rotate(-90deg)}
+#breath-ring{transform-origin:55px 55px;transform-box:fill-box;animation:breathPulse 10s ease-in-out infinite;animation-play-state:paused}
+#breath-ring.on{animation-play-state:running}
+@keyframes breathPulse{0%{transform:scale(0.72)}40%{transform:scale(1.18)}100%{transform:scale(0.72)}}
+.breath-lbl{text-align:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c9a96e99;margin:-12px 0 14px;transition:opacity .4s}
 .timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:300;font-family:var(--font-serif)}
 .sess-cue{font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:28px;max-width:280px}
 .sess-btns{display:flex;gap:10px;width:100%}
@@ -5461,6 +5475,7 @@ html body div.app{max-width:480px}
             <div style="font-size:18px">🧘</div>
           </div>
         </div>
+        <div class="yoga-stats-bar" id="yoga-stats-bar"></div>
         <div class="yg-inner-tabbar">
           <button class="yg-tab-btn active" data-ytab="poses">Poses</button>
           <button class="yg-tab-btn" data-ytab="presets">Presets</button>
@@ -5548,16 +5563,18 @@ html body div.app{max-width:480px}
 <div class="sess-ov" id="sess-ov">
   <button class="sess-close" onclick="ygEndSession()">✕</button>
   <div class="sess-prog" id="sess-prog">Pose 1 of 5</div>
-  <div class="sess-emoji" id="sess-emoji">🧘</div>
-  <div class="sess-name" id="sess-name">Pose</div>
+  <div class="sess-demo" id="sess-demo"></div>
+  <div class="sess-name"><span id="sess-emoji-badge">🧘</span> <span id="sess-name">Pose</span></div>
   <div class="sess-sans" id="sess-sans">Sanskrit</div>
   <div class="timer-wrap">
     <svg width="110" height="110" viewBox="0 0 110 110">
       <circle cx="55" cy="55" r="48" fill="none" stroke="#ffffff0d" stroke-width="7"/>
       <circle cx="55" cy="55" r="48" fill="none" stroke="#c9a96e" stroke-width="7" stroke-linecap="round" id="t-arc" stroke-dasharray="301.6" stroke-dashoffset="0"/>
+      <circle cx="55" cy="55" r="30" fill="#c9a96e14" stroke="#c9a96e55" stroke-width="1.5" id="breath-ring"/>
     </svg>
     <div class="timer-num" id="t-num">1:00</div>
   </div>
+  <div class="breath-lbl" id="breath-lbl">Inhale</div>
   <div class="sess-cue" id="sess-cue">Breathe and find stillness.</div>
   <div class="sess-btns">
     <button class="sbtn" onclick="ygPrevPose()">&#8249; Prev</button>
@@ -7465,6 +7482,7 @@ function tgYogaToggle(){
     day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
   }
   saveDay(day,tk); renderAll(); tgYogaRefresh();
+  try { ygRenderStatsBar(); } catch(e) {}
   toast(on?("\u2713 Yoga logged \u2014 "+TG_YOGA_CAL+" cal"):"Yoga unmarked");
 }
 
@@ -8305,6 +8323,671 @@ function dsPRStop(id){ if(ds_pr[id]){clearInterval(ds_pr[id]); delete ds_pr[id];
 <script>
 
 var WEIGHT = 231;
+var YOGA_DEMOS={
+  "mountain":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="52" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="88" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="112" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="52" x2="90" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="52" x2="110" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "childs":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="140" y1="108" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="108" x2="105" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="98" x2="80" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="80" y1="108" x2="55" y2="116" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="80" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "catcow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="62" y1="122" x2="62" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="122" x2="140" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M62 98 Q100 90 140 98" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M62 98 Q100 84 140 98;M62 98 Q100 108 140 98;M62 98 Q100 84 140 98" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite"/></path>'+
+    '<circle cx="150" cy="94" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</svg>';},
+  "downdog":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="108" y1="82" x2="70" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="108" y1="82" x2="150" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="108" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "cobra":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="150" y1="122" x2="80" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="80" y1="108" x2="95" y2="122" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="70" cy="96" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "sphinx":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="150" y1="122" x2="85" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="85" y1="114" x2="85" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="72" cy="100" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "seated-forward":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="58" y1="122" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="58" y1="122" x2="90" y2="102" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="90" y1="102" x2="122" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="122" y1="116" x2="142" y2="120" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="122" cy="116" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "bridge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="58" y1="122" x2="85" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="85" y1="98" x2="130" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="130" y1="98" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="50" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "butterfly":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="122" x2="80" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="120" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "happy-baby":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="122" x2="72" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="72" y1="92" x2="72" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="128" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="128" y1="92" x2="128" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="128" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "reclined-butterfly":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="4.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="122" x2="78" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="122" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="100" y2="46" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="60" cy="46" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "corpse":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="122" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="110" x2="40" y2="108" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="140" y1="110" x2="170" y2="108" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="35" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "legs-up":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="4.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="58" y1="124" x2="150" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="150" y1="124" x2="156" y2="40" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="158" y1="12" x2="158" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="50" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "supine-twist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="118" x2="95" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="95" y1="118" x2="125" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="125" y1="100" x2="140" y2="82" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="55" y1="108" x2="55" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="45" cy="118" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "staff":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="122" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="122" x2="60" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="60" cy="70" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "puppy":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="135" y1="124" x2="135" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="135" y1="100" x2="95" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="95" y1="108" x2="70" y2="120" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="70" y1="120" x2="55" y2="124" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="70" cy="120" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "easy-pose":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="122" x2="78" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="122" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="100" y2="72" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="72" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "standing-forward":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="100" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="100" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="92" x2="100" y2="126" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="92" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "low-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="88" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="118" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="118" y1="98" x2="118" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "warrior1":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="88" y1="96" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="98" x2="120" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="44" x2="70" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="88" y1="44" x2="106" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "warrior2":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="100" y2="46" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="68" y1="66" x2="132" y2="66" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "reverse-warrior":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="100" y2="46" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="128" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="46" x2="80" y2="40" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "ext-side-angle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="135" y1="118" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="132" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="132" y1="76" x2="150" y2="58" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="132" cy="76" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "triangle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="124" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="150" y1="124" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="98" x2="132" y2="58" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="120" y1="98" x2="95" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="132" y1="58" x2="140" y2="46" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="132" cy="58" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "warrior3":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="95" y1="124" x2="95" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="98" x2="55" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="98" x2="135" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="55" y1="90" x2="38" y2="86" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="55" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "half-moon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="124" x2="90" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="92" x2="68" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="90" y1="92" x2="130" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="92" x2="108" y2="50" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="98" cy="84" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "chair":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="88" y1="124" x2="88" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="100" x2="112" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="100" x2="100" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="52" x2="82" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="52" x2="118" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "eagle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="124" x2="96" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="96" y1="100" x2="108" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="96" y1="100" x2="100" y2="48" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="48" x2="96" y2="52" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "tree":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="124" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="80" x2="82" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="80" x2="100" y2="58" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="94" y1="68" x2="106" y2="68" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="72" y1="124" x2="110" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="118" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="118" x2="110" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="110" cy="62" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "boat":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="105" y1="122" x2="150" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="122" x2="70" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="86" x2="45" y2="92" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="70" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "camel":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="95" y1="124" x2="95" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="100" x2="118" y2="84" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="118" y1="84" x2="128" y2="72" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="95" y1="100" x2="112" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="128" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "bow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="125" y1="118" x2="100" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="116" x2="85" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="85" y1="100" x2="90" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="125" y1="118" x2="118" y2="96" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="85" y1="100" x2="118" y2="96" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "locust":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="118" x2="60" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="118" x2="48" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="60" y1="118" x2="35" y2="106" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="118" x2="168" y2="104" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="48" cy="112" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "seated-twist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="122" x2="95" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="95" y1="116" x2="100" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="116" x2="108" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="108" y1="72" x2="85" y2="96" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="108" y1="72" x2="128" y2="84" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="108" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "rev-warrior":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="72" y1="124" x2="115" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="148" y1="124" x2="115" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="115" y1="100" x2="95" y2="64" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="95" y1="64" x2="80" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="95" y1="64" x2="116" y2="40" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="95" cy="64" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "thread-needle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="122" x2="60" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="150" y1="122" x2="150" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="98" x2="150" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="60" y1="98" x2="130" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="140" cy="114" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "pyramid":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="76" y1="124" x2="135" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="76" y1="124" x2="95" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="95" y1="104" x2="112" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="112" cy="98" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "wide-fold":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="58" y1="124" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="142" y1="124" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="108" x2="100" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="118" x2="88" y2="124" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
+    '<line x1="100" y1="118" x2="112" y2="124" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="118" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "crescent-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="88" y1="124" x2="88" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="60" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="44" x2="72" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="88" y1="44" x2="104" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "upward-dog":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="150" y1="124" x2="90" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="108" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="108" x2="82" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="82" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "half-pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="122" x2="108" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="108" y1="118" x2="148" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="108" y1="118" x2="88" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="88" y1="108" x2="72" y2="100" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="72" cy="100" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "dolphin":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="90" x2="70" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="118" x2="70" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="150" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="95" cy="80" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "fish":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="122" x2="90" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="118" x2="118" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="118" y1="98" x2="132" y2="116" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="118" y1="98" x2="145" y2="120" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="132" cy="116" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "hero":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="95" y1="122" x2="105" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="122" x2="100" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="76" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "cow-face":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="122" x2="85" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="115" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="100" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="74" x2="80" y2="70" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="74" x2="122" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="74" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "half-lord":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="72" y1="122" x2="98" y2="114" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="98" y1="114" x2="102" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="98" y1="114" x2="118" y2="108" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="102" y1="116" x2="110" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="72" x2="90" y2="94" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="110" y1="72" x2="128" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="110" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "crow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="92" y1="120" x2="100" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="108" y1="120" x2="100" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="108" x2="100" y2="96" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="94" y1="96" x2="108" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="106" y1="96" x2="112" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="86" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "side-crow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="92" y1="120" x2="100" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="108" y1="120" x2="100" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="108" x2="100" y2="96" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="75" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="75" y1="108" x2="60" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="86" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "headstand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    ''+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="18" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="85" y1="80" x2="115" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="18" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "forearm-stand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    ''+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="20" x2="100" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="80" y1="98" x2="120" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="80" y1="98" x2="100" y2="78" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="120" y1="98" x2="100" y2="78" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="20" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "shoulder-stand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    ''+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="124" x2="80" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="80" y1="124" x2="95" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="90" x2="95" y2="36" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="55" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "plow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    ''+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="122" x2="95" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="104" x2="140" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="55" cy="124" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "wheel":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="124" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="90" x2="130" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="130" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="78" cy="98" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "king-pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="68" y1="122" x2="105" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="116" x2="112" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="86" x2="118" y2="72" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="105" y1="116" x2="140" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="140" y1="78" x2="124" y2="58" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="118" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "side-plank":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="118" x2="95" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="108" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="108" x2="85" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="102" cy="98" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "king-dancer":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="92" y1="124" x2="92" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="92" x2="105" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="76" x2="112" y2="64" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="112" y1="64" x2="130" y2="52" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="105" y1="76" x2="108" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="112" cy="64" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "firefly":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="88" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="112" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="100" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="158" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "eight-angle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="120" x2="98" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="106" y1="120" x2="98" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="98" y1="108" x2="98" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="98" y1="104" x2="130" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="130" y1="96" x2="140" y2="108" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="98" cy="92" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "peacock":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="120" x2="90" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="90" y1="108" x2="160" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="172" cy="104" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "flying-pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="95" y1="118" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="112" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="100" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="140" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "scale":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="86" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="114" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="94" y1="104" x2="100" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="106" y1="104" x2="100" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="92" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "handstand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    ''+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="18" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="85" y1="80" x2="115" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="18" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "wild-thing":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="62" y1="122" x2="88" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="106" x2="112" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="94" x2="126" y2="102" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="112" y1="94" x2="146" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="126" cy="102" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "lotus":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="118" x2="85" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="118" x2="115" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="118" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="86" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "standing-split":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="95" y1="124" x2="95" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="95" y1="98" x2="90" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="90" y1="90" x2="76" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="95" y1="98" x2="120" y2="48" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "splits":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="40" y1="122" x2="100" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="160" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="122" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "chin-stand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    ''+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="80" y1="124" x2="98" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="98" y1="106" x2="122" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="122" y1="100" x2="140" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="140" y1="86" x2="132" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';}
+};
+
 var POSES = [
 
 // ═══════════════════════════════════════════════════
@@ -8764,6 +9447,53 @@ document.querySelectorAll(".yg-tab-btn").forEach(function(btn){
   btn.addEventListener("click", function(){ yogaSwitchTab(btn.dataset.ytab); });
 });
 
+// ── Yoga stats bar: minutes this month, sessions this month, current daily streak ──
+function ygYogaDays() {
+  // Returns sorted array of date keys (ascending) that have at least one type:"yoga" exercise logged
+  var days = [];
+  Object.keys(appData).forEach(function(k){
+    var d = appData[k];
+    if (d && d.exercises && d.exercises.some(function(e){ return e.type==="yoga"; })) days.push(k);
+  });
+  return days.sort();
+}
+function ygComputeStats() {
+  var todayK = todayKey();
+  var monthPrefix = todayK.slice(0,7); // "YYYY-MM"
+  var totalMin = 0, sessions = 0;
+  Object.keys(appData).forEach(function(k){
+    if (k.slice(0,7)!==monthPrefix) return;
+    var d = appData[k]; if (!d || !d.exercises) return;
+    d.exercises.forEach(function(e){
+      if (e.type!=="yoga") return;
+      sessions++;
+      var m = /\((\d+)(?:-(\d+))?\s*min/.exec(e.name||"");
+      if (m) totalMin += m[2] ? Math.round((parseInt(m[1],10)+parseInt(m[2],10))/2) : parseInt(m[1],10);
+    });
+  });
+  // Streak: consecutive days up to and including today (or yesterday, if today not logged yet)
+  var days = ygYogaDays();
+  var daySet = {}; days.forEach(function(k){ daySet[k]=true; });
+  var streak = 0;
+  var cursor = new Date(keyToDate(todayK));
+  if (!daySet[todayK]) cursor.setDate(cursor.getDate()-1); // allow streak to still show if today just hasn't happened yet
+  while (true) {
+    var k = localDateKey(cursor);
+    if (daySet[k]) { streak++; cursor.setDate(cursor.getDate()-1); }
+    else break;
+  }
+  return {totalMin:totalMin, sessions:sessions, streak:streak};
+}
+function ygRenderStatsBar() {
+  var el = document.getElementById("yoga-stats-bar"); if (!el) return;
+  var s = ygComputeStats();
+  el.innerHTML =
+    '<div class="yoga-stat"><div class="yoga-stat-val">'+s.streak+'</div><div class="yoga-stat-lbl">Day streak</div></div>'+
+    '<div class="yoga-stat"><div class="yoga-stat-val">'+s.totalMin+'</div><div class="yoga-stat-lbl">Min this month</div></div>'+
+    '<div class="yoga-stat"><div class="yoga-stat-val">'+s.sessions+'</div><div class="yoga-stat-lbl">Sessions this month</div></div>';
+}
+try { ygRenderStatsBar(); } catch(e) {}
+
 // ═══════════════════════════════════════════════════
 // FILTERS
 // ═══════════════════════════════════════════════════
@@ -8805,9 +9535,10 @@ function renderPoses() {
       var inR = routine.some(function(r){ return r.pose.id===p.id; });
       var c = cal(p.cpm, p.dur);
       var tagCls = p.l==="beginner"?"tag-b":p.l==="intermediate"?"tag-i":"tag-a";
+      var demoHtml = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : p.e;
       html += '<div class="pose-card'+(inR?" selected":"") +'" id="card-'+p.id+'">';
       html += '<div class="pose-header" onclick="toggleDetail(\''+p.id+'\')">';
-      html += '<div class="pose-emoji">'+p.e+'</div>';
+      html += '<div class="pose-emoji">'+demoHtml+'</div>';
       html += '<div class="pose-info">';
       html += '<div class="pose-name">'+p.n+'</div>';
       html += '<span class="pose-sanskrit">'+p.s+'</span>';
@@ -8819,6 +9550,7 @@ function renderPoses() {
       html += '</div></div>';
       // Detail panel
       html += '<div class="pose-detail" id="det-'+p.id+'">';
+      html += '<div class="pose-demo-large">'+demoHtml+'</div>';
       html += '<div class="det-sec"><div class="det-lbl">About</div><div class="det-txt">'+p.desc+'</div></div>';
       html += '<div class="det-sec"><div class="det-lbl">How To</div><ol class="steps-list">';
       p.steps.forEach(function(step,i){
@@ -8973,7 +9705,31 @@ function ygStartSession() {
     src.start(0);
   } catch(e) {}
   document.getElementById("sess-ov").classList.add("open");
+  ygBreathStart();
   ygLoadPose();
+}
+
+// ── Breath-sync ring: 4s inhale, 6s exhale, matches the breathPulse CSS keyframe ──
+var ygBreathInt=null;
+function ygBreathStart(){
+  var ring=document.getElementById("breath-ring"); if(ring)ring.classList.add("on");
+  ygBreathTick(); clearInterval(ygBreathInt);
+  ygBreathInt=setInterval(ygBreathTick, 100);
+}
+function ygBreathTick(){
+  if(ygPaused)return;
+  var lbl=document.getElementById("breath-lbl"); if(!lbl)return;
+  var t=(Date.now()/1000)%10;
+  var phase=t<4?"Inhale":"Exhale";
+  if(lbl.textContent!==phase){ lbl.textContent=phase; lbl.style.opacity=0; setTimeout(function(){lbl.style.opacity=1;},50); }
+}
+function ygBreathPause(on){
+  var ring=document.getElementById("breath-ring"); if(!ring)return;
+  if(on) ring.classList.remove("on"); else ring.classList.add("on");
+}
+function ygBreathStop(){
+  clearInterval(ygBreathInt); ygBreathInt=null;
+  var ring=document.getElementById("breath-ring"); if(ring)ring.classList.remove("on");
 }
 
 function ygLoadPose() {
@@ -8981,7 +9737,9 @@ function ygLoadPose() {
   if (!item) return;
   var p=item.pose;
   document.getElementById("sess-prog").textContent="Pose "+(sessIdx+1)+" of "+routine.length;
-  document.getElementById("sess-emoji").textContent=p.e;
+  var demoEl=document.getElementById("sess-demo");
+  if (demoEl) demoEl.innerHTML = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : "";
+  var badge=document.getElementById("sess-emoji-badge"); if(badge) badge.textContent=p.e;
   document.getElementById("sess-name").textContent=p.n;
   document.getElementById("sess-sans").textContent=p.s;
   document.getElementById("sess-cue").textContent=p.cue;
@@ -9043,6 +9801,7 @@ function ygTogglePause() {
   ygPaused = !ygPaused;
   var btn = document.getElementById("yg-pause-btn");
   if (btn) btn.innerHTML = ygPaused ? "&#9654; Resume" : "&#9646;&#9646; Pause";
+  ygBreathPause(ygPaused);
 }
 function startTimer(secs) {
   clearInterval(timerInt);
@@ -9110,6 +9869,7 @@ function ygPrevPose() {
 
 function ygEndSession() {
   clearInterval(timerInt);
+  ygBreathStop();
   document.getElementById("sess-ov").classList.remove("open");
 }
 
@@ -9136,6 +9896,7 @@ function ygShowDone() {
       if(typeof pushToSheets==="function") pushToSheets();
     }
   } catch(e){}
+  try { ygRenderStatsBar(); } catch(e) {}
 }
 
 function ygCloseDone() {
@@ -9449,7 +10210,17 @@ var loadedPresetId = null;
 
 function renderPresets() {
   var html = "";
-  PRESETS.forEach(function(pr) {
+  var log = ygPresetLog();
+  var today = new Date().toISOString().slice(0,10);
+  var ordered = PRESETS.slice().sort(function(a,b){
+    var la=log[a.id], lb=log[b.id];
+    var ta=la&&la.last?la.last:"", tb=lb&&lb.last?lb.last:"";
+    if(ta!==tb) return ta<tb?1:-1; // most recent last-used first
+    var ca=la&&la.count||0, cb=lb&&lb.count||0;
+    if(ca!==cb) return cb-ca; // then most used
+    return 0; // stable, preserves original order otherwise
+  });
+  ordered.forEach(function(pr) {
     // Calculate total cal and duration
     var totSecs = 0, totCal = 0, poseCount = 0;
     var validPoses = [];
@@ -9460,15 +10231,22 @@ function renderPresets() {
     var mins = Math.round(totSecs/60);
     var lvlCls = pr.level==="beginner"?"tag-b":pr.level==="intermediate"?"tag-i":"tag-a";
     var isLoaded = loadedPresetId===pr.id;
+    var usage = log[pr.id];
+    var usageBadge = "";
+    if (usage && usage.last) {
+      var daysAgo = Math.round((new Date(today)-new Date(usage.last))/86400000);
+      var whenLbl = daysAgo<=0?"Today":daysAgo===1?"Yesterday":daysAgo+"d ago";
+      usageBadge = '<span class="tag tag-usage">'+(usage.count>1?usage.count+'x \u00b7 ':'')+whenLbl+'</span>';
+    }
 
     html += '<div class="preset-card" id="pc-'+pr.id+'">';
     html += '<div class="preset-top">';
     html += '<div class="preset-icon">'+pr.icon+'</div>';
     html += '<div class="preset-info">';
     html += '<div class="preset-name">'+pr.name+'</div>';
-    html += '<div class="preset-meta">'+pr.duration+' &nbsp;·&nbsp; '+poseCount+' poses</div>';
+    html += '<div class="preset-meta">'+pr.duration+' &nbsp;\u00b7&nbsp; '+poseCount+' poses</div>';
     html += '<div class="preset-desc">'+pr.desc+'</div>';
-    html += '<div class="preset-tags"><span class="tag '+lvlCls+'">'+pr.level+'</span><span class="tag tag-c">'+pr.focus+'</span></div>';
+    html += '<div class="preset-tags"><span class="tag '+lvlCls+'">'+pr.level+'</span><span class="tag tag-c">'+pr.focus+'</span>'+usageBadge+'</div>';
     html += '</div></div>';
     html += '<div class="preset-stats">';
     html += '<div class="pstat"><div class="pstat-val">'+poseCount+'</div><div class="pstat-lbl">Poses</div></div>';
@@ -9476,9 +10254,9 @@ function renderPresets() {
     html += '<div class="pstat"><div class="pstat-val">~'+totCal+'</div><div class="pstat-lbl">Calories</div></div>';
     html += '</div>';
     html += '<button class="preset-load-btn" data-pid="'+pr.id+'" onclick="loadPreset(this.dataset.pid)">'+
-      (isLoaded ? '✓ Loaded — Go to My Routine' : '▶ Load This Routine')+'</button>';
-    html += '<div class="loaded-badge" id="lb-'+pr.id+'" style="'+(isLoaded?'display:block':'')+'">✓ Currently loaded in My Routine</div>';
-    html += '<button class="toggle-poses-btn" data-pid="'+pr.id+'" onclick="togglePresetPoses(this.dataset.pid)">See poses ▾</button>';
+      (isLoaded ? '\u2713 Loaded \u2014 Go to My Routine' : '\u25B6 Load This Routine')+'</button>';
+    html += '<div class="loaded-badge" id="lb-'+pr.id+'" style="'+(isLoaded?'display:block':'')+'">\u2713 Currently loaded in My Routine</div>';
+    html += '<button class="toggle-poses-btn" data-pid="'+pr.id+'" onclick="togglePresetPoses(this.dataset.pid)">See poses \u25BE</button>';
     html += '<div class="preset-pose-list" id="ppl-'+pr.id+'">';
     validPoses.forEach(function(vp,i){
       var durLbl = vp.dur<60?vp.dur+"s":(vp.dur/60).toFixed(vp.dur%60===0?0:1)+"m";
@@ -9499,6 +10277,18 @@ function togglePresetPoses(id) {
   if (el) el.classList.toggle("open");
 }
 
+// ── Preset usage tracking: powers "Last practiced" / "Most used" badges ──
+function ygPresetLog() { try{ return JSON.parse(store.get("yoga_preset_log")||"{}"); }catch(e){ return {}; } }
+function ygPresetLogSave(log) { try{ store.set("yoga_preset_log", JSON.stringify(log)); }catch(e){} }
+function ygPresetMarkUsed(presetId) {
+  var log = ygPresetLog();
+  var entry = log[presetId] || {count:0, last:null};
+  entry.count = (entry.count||0)+1;
+  entry.last = new Date().toISOString().slice(0,10);
+  log[presetId] = entry;
+  ygPresetLogSave(log);
+}
+
 function loadPreset(presetId) {
   if (loadedPresetId === presetId) {
     // Already loaded — navigate to routine tab
@@ -9516,6 +10306,7 @@ function loadPreset(presetId) {
 
   routine = newRoutine;
   loadedPresetId = presetId;
+  ygPresetMarkUsed(presetId);
   updateCount();
   renderPresets();
   renderPoses(); // update + buttons
