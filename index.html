@@ -401,6 +401,13 @@ body{overflow-x:hidden}
 .breath-lbl{text-align:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c9a96e99;margin:-12px 0 14px;transition:opacity .4s}
 .timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:300;font-family:var(--font-serif)}
 .sess-cue{font-size:11px;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:28px;max-width:280px}
+.sess-upnext{display:flex;align-items:center;gap:10px;max-width:280px;width:100%;margin:-16px 0 20px;padding:8px 12px;border-radius:12px;background:#ffffff06;border:1px solid #ffffff0d;opacity:0;max-height:0;overflow:hidden;transition:opacity .5s ease,max-height .5s ease,margin .5s ease,padding .5s ease;}
+.sess-upnext.show{opacity:1;max-height:60px;margin:-4px 0 20px;}
+.sess-upnext-demo{width:40px;height:40px;flex-shrink:0;background:#ffffff08;border-radius:8px;padding:3px}
+.sess-upnext-demo svg{width:100%;height:100%;display:block}
+.sess-upnext-info{flex:1;min-width:0;text-align:left}
+.sess-upnext-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#c9a96e99;}
+.sess-upnext-name{font-size:13px;color:#e8e8e0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sess-btns{display:flex;gap:10px;width:100%}
 .sbtn{flex:1;padding:13px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:10px;cursor:pointer;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;transition:all 0.2s}
 .sbtn.primary{background:var(--gold);color:#0e0e14;border-color:var(--gold)}
@@ -5587,6 +5594,10 @@ html body div.app{max-width:480px}
   </div>
   <div class="breath-lbl" id="breath-lbl">Inhale</div>
   <div class="sess-cue" id="sess-cue">Breathe and find stillness.</div>
+  <div class="sess-upnext" id="sess-upnext">
+    <div class="sess-upnext-demo" id="sess-upnext-demo"></div>
+    <div class="sess-upnext-info"><div class="sess-upnext-lbl">Up next</div><div class="sess-upnext-name" id="sess-upnext-name">—</div></div>
+  </div>
   <div class="sess-btns">
     <button class="sbtn" onclick="ygPrevPose()">&#8249; Prev</button>
     <button class="sbtn" id="yg-pause-btn" onclick="ygTogglePause()">&#9646;&#9646; Pause</button>
@@ -9870,13 +9881,16 @@ function startTimer(secs) {
   clearInterval(timerInt);
   timerSecs=secs;
   var total=secs;
+  ygHideUpNext();
   tick(secs,total);
+  if (secs<=5) ygShowUpNext(); // short pose — preview immediately, there's no later 5s mark to catch
   timerInt=setInterval(function(){
     if (ygPaused) return;
     timerSecs--;
     tick(timerSecs,total);
     if (timerSecs===5) {
       yogaBeepWarning(); // warn at 5 seconds left
+      ygShowUpNext(); // preview the next pose so there's time to get ready
     }
     if (timerSecs<=0){
       clearInterval(timerInt);
@@ -9901,6 +9915,19 @@ function startTimer(secs) {
       }
     }
   },1000);
+}
+
+function ygShowUpNext() {
+  if (sessIdx>=routine.length-1) return; // last pose, nothing to preview
+  var next=routine[sessIdx+1]; if(!next) return;
+  var p=next.pose;
+  var demoEl=document.getElementById("sess-upnext-demo");
+  if (demoEl) demoEl.innerHTML = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : p.e;
+  var nameEl=document.getElementById("sess-upnext-name"); if(nameEl) nameEl.textContent=p.n;
+  var strip=document.getElementById("sess-upnext"); if(strip) strip.classList.add("show");
+}
+function ygHideUpNext() {
+  var strip=document.getElementById("sess-upnext"); if(strip) strip.classList.remove("show");
 }
 
 function ygLoadPoseWithStartBeep() {
