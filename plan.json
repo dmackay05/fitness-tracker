@@ -1,0 +1,70 @@
+{
+  "title": "Body Recomposition Plan",
+  "subtitle": "Mild deficit — muscle building priority",
+  "updated": "2026",
+  "sections": [
+    {
+      "type": "stats",
+      "heading": "Daily Targets",
+      "stats": [
+        {"label": "Rest day (Sun)", "value": "~2,050 cal"},
+        {"label": "Active recovery (Wed)", "value": "~2,200 cal"},
+        {"label": "Lift days (Mon/Tue/Thu/Fri)", "value": "~2,250 cal"},
+        {"label": "Ride day (Sat)", "value": "~2,350 cal"},
+        {"label": "Protein target", "value": "170g+ daily"},
+        {"label": "Approach", "value": "Mediterranean-style"}
+      ]
+    },
+    {
+      "type": "text",
+      "heading": "The Goal",
+      "body": "Shift from an aggressive cut to a mild deficit that still supports building muscle, not just losing weight. Calories above the old 1,800–2,000 flat target give recovery and growth room to work, while staying low enough to keep fat loss moving — just slower than a hard cut."
+    },
+    {
+      "type": "text",
+      "heading": "Why Protein Is The Anchor",
+      "body": "Hitting ~170g of protein per day matters more than hitting an exact calorie number. Calories function as a range; protein is the non-negotiable target. This is what lets muscle be preserved (and built) even while in a deficit — the body pulls energy from fat stores first when training and protein both signal \u201ckeep this tissue.\u201d"
+    },
+    {
+      "type": "list",
+      "heading": "Key Principles",
+      "items": [
+        "Mild deficit, not a steep one — real muscle growth needs maintenance or near-maintenance fuel, not a 1,800 cal floor.",
+        "Calories vary by day type (rest / active recovery / lift / ride) — fuel matches the work being done that day.",
+        "Protein stays flat and high regardless of day type.",
+        "Progressive overload (band/weight, reps, RIR) is the main driver of muscle growth — logged every session.",
+        "Olive oil, nuts, legumes and avocado cover the same heart-health goals fish normally would, for days fish isn't on the menu.",
+        "Consistency beats perfection — a good week is 5 of 7 days on plan, not 7 of 7."
+      ]
+    },
+    {
+      "type": "rows",
+      "heading": "Weekly Structure",
+      "rows": [
+        {"a": "Monday", "b": "Upper Body Push + Pull (lift)"},
+        {"a": "Tuesday", "b": "Lower Body + Core (lift)"},
+        {"a": "Wednesday", "b": "Yoga Flow + walk/ride (active recovery)"},
+        {"a": "Thursday", "b": "Upper Body Hypertrophy (lift)"},
+        {"a": "Friday", "b": "Lower Body + Core Strength (lift)"},
+        {"a": "Saturday", "b": "Mountain Bike Ride"},
+        {"a": "Sunday", "b": "Recovery (true rest)"}
+      ]
+    },
+    {
+      "type": "text",
+      "heading": "Health Context",
+      "body": "This plan was shaped around lab results showing borderline-low HDL, slightly elevated LDL, and a prediabetic A1c. Exercise, weight loss, and a Mediterranean-style approach (olive oil, omega-3s, legumes, limited refined carbs/saturated fat) target all three markers directly alongside any prescribed medication."
+    },
+    {
+      "type": "timeline",
+      "heading": "What To Expect",
+      "items": [
+        {"when": "Weeks 1–2", "what": "Energy and habits stabilize. Scale moves fastest here — partly water weight."},
+        {"when": "Months 1–2", "what": "Face, arms and upper body show change first. Clothes fit differently."},
+        {"when": "Months 2–3", "what": "Waist measurement starts dropping measurably. Strength climbs steadily."},
+        {"when": "Months 3–5", "what": "Belly fat visibly reduces. Muscle definition becomes noticeable."},
+        {"when": "Months 5–8", "what": "Stubborn areas (lower belly, chin) are last to change. Composition shift is dramatic by this point."}
+      ]
+    }
+  ]
+}

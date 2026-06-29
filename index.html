@@ -5218,6 +5218,12 @@ html body div.app{max-width:480px}
       <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
 
       <div class="card">
+        <div class="card-title">🔁 Top Foods</div>
+        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px" id="topfoods-sub">Your most-logged foods</div>
+        <div id="topfoods-bars"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">📅 This Week</div>
         <div id="week-summary"></div>
       </div>
@@ -5768,6 +5774,13 @@ html body div.app{max-width:480px}
         <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
       </div>
       <div class="card" style="margin-top:10px">
+        <div class="card-title">📋 Plan Source</div>
+        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
+        <div class="rlbl" style="margin-top:0">Plan JSON URL (optional)</div>
+        <input type="text" id="ft-plan-url" placeholder="leave blank for plan.json" style="font-size:11px;margin-bottom:4px" />
+        <button class="bs bfull" onclick="planReload()" style="margin-top:6px">↻ Reload Plan</button>
+      </div>
+      <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" />
@@ -6260,6 +6273,7 @@ function renderDash(){
   renderWeekSummary();
   renderTrends();
   renderTrackSummary();
+  renderTopFoods();
 }
 function renderRadials(items){
   var SIZE=72;
@@ -6754,6 +6768,34 @@ function renderTrackSummary(){
     '<div class="hsum-stat"><div class="hsum-val" style="color:#5eead4">'+walkMi.toFixed(1)+'</div><div class="hsum-lbl">Walk mi (7d)</div></div>'+
     '<div class="hsum-stat"><div class="hsum-val" style="color:#a78bfa">'+(rideMi+walkMi).toFixed(1)+'</div><div class="hsum-lbl">Total mi (7d)</div></div>';
 }
+function renderTopFoods(){
+  var el=document.getElementById("topfoods-bars"); if(!el) return;
+  var counts={}; // normalized name -> {name, count, cal}
+  Object.keys(appData).forEach(function(k){
+    var fs=(appData[k]&&appData[k].foods)||[];
+    fs.forEach(function(f){
+      if(!f.name) return;
+      var key=f.name.toLowerCase().trim();
+      if(!counts[key]) counts[key]={name:f.name,count:0,cal:f.cal||0};
+      counts[key].count++;
+    });
+  });
+  var list=Object.keys(counts).map(function(k){return counts[k];}).sort(function(a,b){return b.count-a.count;}).slice(0,5);
+  var sub=document.getElementById("topfoods-sub");
+  if(!list.length){
+    if(sub) sub.textContent="Your most-logged foods";
+    el.innerHTML='<div style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace;text-align:center;padding:10px 0">Log a few foods and this fills in automatically.</div>';
+    return;
+  }
+  if(sub) sub.textContent="Across "+Object.keys(appData).length+" logged day"+(Object.keys(appData).length===1?"":"s");
+  var max=list[0].count;
+  var colors=["#5eead4","#a78bfa","#fbbf24","#fb923c","#4ade80"];
+  el.innerHTML=list.map(function(f,i){
+    return '<div class="mrow"><div class="mlrow"><span>'+escH(f.name)+'</span><span>'+f.count+'x \u00b7 '+f.cal+' kcal</span></div>'+
+      '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.max((f.count/max)*100,4)+'%;background:'+colors[i]+'"></div></div></div>';
+  }).join("");
+}
+
 // keep wake lock alive if iOS drops it on tab refocus
 document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible" && trk.active && !trk.paused) trkReqWake(); });
 
@@ -6771,6 +6813,7 @@ function saveHealthSettings(){
   var nm=g("ft-name-input").trim(); store.set("ft_name",nm); USER_NAME=nm;
   var hn=document.getElementById("hname"); if(hn) hn.textContent=(nm?nm:"Athlete")+" 💪";
   var url=g("ft-sheets-url").trim(); store.set("ft_sheets_url",url); SHEETS_URL=url;
+  var planUrl=g("ft-plan-url").trim(); store.set("ft_plan_url",planUrl); PLAN_URL=planUrl;
   var uk=g("ft-usda-key").trim(); store.set("ft_usda_key",uk); USDA_KEY=uk||"DEMO_KEY";
   var pin=g("ft-pin-input").trim(); if(/^\d{4}$/.test(pin)){ store.set("ft_pin",pin); APP_PIN=pin; } else { store.set("ft_pin",""); APP_PIN=""; }
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
@@ -6802,6 +6845,7 @@ function initHealthSettings(){
   var setv=function(id,val){var e=document.getElementById(id); if(e) e.value=val;};
   setv("ft-name-input", store.get("ft_name")||"");
   setv("ft-sheets-url", store.get("ft_sheets_url")||"");
+  setv("ft-plan-url", store.get("ft_plan_url")||"");
   setv("ft-usda-key", store.get("ft_usda_key")||"");
   setv("ft-pin-input", store.get("ft_pin")||"");
   setv("ft-start-weight", store.get("ft_start_weight")||"");
@@ -8400,81 +8444,47 @@ function miClose(){
 }
 
 // ── MY PLAN ───────────────────────────────────────────────────────────
-// PLAN_CONFIG is a self-contained JSON-style object describing the user's
-// recomposition/training/nutrition plan. To reuse this feature for a
-// different plan, replace this object's contents — the renderer below
-// just walks the `sections` array and draws each section by its `type`.
-// Supported section types: "stats", "text", "list", "rows", "timeline".
+// The plan is loaded from an external JSON file at runtime, not hardcoded
+// here. Default source is plan.json sitting next to this index.html file
+// (works automatically on GitHub Pages with zero setup). To use a
+// different plan, set a custom URL in Settings > Plan Source, or replace
+// plan.json itself. The file just needs a `sections` array; each section
+// has a `type` of "stats", "text", "list", "rows", or "timeline" — see
+// plan.json for the exact shape of each type.
+var PLAN_URL = store.get('ft_plan_url') || "";
+var PLAN_LOADED = false;
+// Minimal fallback shown only if plan.json can't be fetched at all
+// (e.g. first load while offline, or the file is missing/misnamed).
 var PLAN_CONFIG = {
-  title: "Body Recomposition Plan",
-  subtitle: "Mild deficit \u2014 muscle building priority",
-  updated: "2026",
+  title: "My Plan",
+  subtitle: "",
   sections: [
-    {
-      type: "stats",
-      heading: "Daily Targets",
-      stats: [
-        {label:"Rest day (Sun)", value:"~2,050 cal"},
-        {label:"Active recovery (Wed)", value:"~2,200 cal"},
-        {label:"Lift days (Mon/Tue/Thu/Fri)", value:"~2,250 cal"},
-        {label:"Ride day (Sat)", value:"~2,350 cal"},
-        {label:"Protein target", value:"170g+ daily"},
-        {label:"Approach", value:"Mediterranean-style"}
-      ]
-    },
-    {
-      type: "text",
-      heading: "The Goal",
-      body: "Shift from an aggressive cut to a mild deficit that still supports building muscle, not just losing weight. Calories above the old 1,800\u20132,000 flat target give recovery and growth room to work, while staying low enough to keep fat loss moving \u2014 just slower than a hard cut."
-    },
-    {
-      type: "text",
-      heading: "Why Protein Is The Anchor",
-      body: "Hitting ~170g of protein per day matters more than hitting an exact calorie number. Calories function as a range; protein is the non-negotiable target. This is what lets muscle be preserved (and built) even while in a deficit \u2014 the body pulls energy from fat stores first when training + protein both signal \u201ckeep this tissue.\u201d"
-    },
-    {
-      type: "list",
-      heading: "Key Principles",
-      items: [
-        "Mild deficit, not a steep one \u2014 real muscle growth needs maintenance or near-maintenance fuel, not a 1,800 cal floor.",
-        "Calories vary by day type (rest / active recovery / lift / ride) \u2014 fuel matches the work being done that day.",
-        "Protein stays flat and high regardless of day type.",
-        "Progressive overload (band/weight, reps, RIR) is the main driver of muscle growth \u2014 logged every session.",
-        "Olive oil, nuts, legumes and avocado cover the same heart-health goals fish normally would, for days fish isn't on the menu.",
-        "Consistency beats perfection \u2014 a good week is 5 of 7 days on plan, not 7 of 7."
-      ]
-    },
-    {
-      type: "rows",
-      heading: "Weekly Structure",
-      rows: [
-        {a:"Monday", b:"Upper Body Push + Pull (lift)"},
-        {a:"Tuesday", b:"Lower Body + Core (lift)"},
-        {a:"Wednesday", b:"Yoga Flow + walk/ride (active recovery)"},
-        {a:"Thursday", b:"Upper Body Hypertrophy (lift)"},
-        {a:"Friday", b:"Lower Body + Core Strength (lift)"},
-        {a:"Saturday", b:"Mountain Bike Ride"},
-        {a:"Sunday", b:"Recovery (true rest)"}
-      ]
-    },
-    {
-      type: "text",
-      heading: "Health Context",
-      body: "This plan was shaped around lab results showing borderline-low HDL, slightly elevated LDL, and a prediabetic A1c. Exercise, weight loss, and a Mediterranean-style approach (olive oil, omega-3s, legumes, limited refined carbs/saturated fat) target all three markers directly alongside any prescribed medication."
-    },
-    {
-      type: "timeline",
-      heading: "What To Expect",
-      items: [
-        {when:"Weeks 1\u20132", what:"Energy and habits stabilize. Scale moves fastest here \u2014 partly water weight."},
-        {when:"Months 1\u20132", what:"Face, arms and upper body show change first. Clothes fit differently."},
-        {when:"Months 2\u20133", what:"Waist measurement starts dropping measurably. Strength climbs steadily."},
-        {when:"Months 3\u20135", what:"Belly fat visibly reduces. Muscle definition becomes noticeable."},
-        {when:"Months 5\u20138", what:"Stubborn areas (lower belly, chin) are last to change. Composition shift is dramatic by this point."}
-      ]
-    }
+    {type:"text", heading:"Plan not loaded", body:"Couldn't load plan.json. Check that the file exists next to index.html, or set a custom Plan JSON URL in Settings, then tap Reload Plan."}
   ]
 };
+function planSourceUrl(){
+  return (PLAN_URL && PLAN_URL.trim()) ? PLAN_URL.trim() : "plan.json";
+}
+function planLoad(cb){
+  fetch(planSourceUrl(), {cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(data){
+      if(data && Array.isArray(data.sections)){ PLAN_CONFIG = data; PLAN_LOADED = true; }
+      if(cb) cb(true);
+    })
+    .catch(function(err){
+      console.warn("Plan load failed:", err);
+      if(cb) cb(false);
+    });
+}
+function planReload(){
+  PLAN_URL = (document.getElementById("ft-plan-url")||{}).value || PLAN_URL;
+  toast("Reloading plan\u2026");
+  planLoad(function(ok){
+    toast(ok ? "Plan reloaded" : "Couldn't load plan \u2014 check the URL/file");
+    if(document.getElementById("plan-overlay").style.display==="flex") planRender();
+  });
+}
 function planRenderSection(s){
   var h='<div class="card" style="margin-bottom:10px"><div class="card-title" style="margin-bottom:8px">'+escH(s.heading)+'</div>';
   if(s.type==="stats"){
@@ -8505,7 +8515,9 @@ function planRender(){
 function planOpen(){
   document.getElementById("plan-overlay").style.display="flex";
   document.getElementById("plan-overlay").scrollTop=0;
-  planRender();
+  if(PLAN_LOADED){ planRender(); return; }
+  document.getElementById("plan-content").innerHTML = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">Loading plan\u2026</div>';
+  planLoad(function(){ planRender(); });
 }
 function planClose(){
   document.getElementById("plan-overlay").style.display="none";
@@ -8611,8 +8623,11 @@ function dsRenderItem(rawItem,idx){
   var h='<div class="'+cls+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
   h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+item.name+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+item.cue+'</div>';
-  h+='<div class="ds-mtags"><span>'+item.target+'</span><span>'+item.equip+'</span></div></div>';
-  h+='<div style="text-align:right"><div class="ds-mrx">'+item.rx+'</div><div class="ds-chev">\u25BC</div></div></div>';
+  var _target=item.target||'';
+  var _equip=item.equip||'';
+  var _rx=item.rx||'';
+  h+='<div class="ds-mtags">'+(_target?'<span>'+_target+'</span>':'')+(_equip?'<span>'+_equip+'</span>':'')+'</div></div>';
+  h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div></div>';
   h+='<div class="ds-mbody">';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
