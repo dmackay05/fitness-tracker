@@ -5264,6 +5264,7 @@ html body div.app{max-width:480px}
         </div>
         <div class="ld-pane" data-ldpane="qa">
           <div class="ld-pane-hdr"><span class="ld-ic">⚡</span>Quick Add</div>
+          <button class="bo bfull" onclick="miOpen()" style="margin-bottom:10px;border-color:#4ade8055;color:#4ade80">🍽 Browse Meal Ideas</button>
           <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
           <div id="qa-fav-wrap" style="display:none">
             <div class="rlbl" style="margin-top:0">★ Favorites</div>
@@ -5816,6 +5817,26 @@ html body div.app{max-width:480px}
       <input type="text" id="ds-custom-search" placeholder="Search exercises..." oninput="dsCustomRenderLibrary()" style="margin-bottom:10px"/>
       <div id="ds-custom-library" style="max-height:420px;overflow-y:auto"></div>
     </div>
+
+  </div>
+</div>
+
+<!-- MEAL IDEAS OVERLAY -->
+<div id="mi-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
+  <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
+    <button class="bs" onclick="miClose()">✕ Close</button>
+    <div style="font-size:15px;font-weight:800;color:#f0f0f0">🍽 Meal Ideas</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:18px;max-width:520px;margin:0 auto;width:100%">
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">Filter</div>
+      <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Tap to toggle. Combine filters to narrow down.</div>
+      <div id="mi-filters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <div style="margin-top:14px" id="mi-list"></div>
 
   </div>
 </div>
@@ -8246,6 +8267,113 @@ function dsCustomClose(){
   dsCustomCommit();
   document.getElementById("ds-custom-overlay").style.display="none";
   dsRender();
+}
+
+// ── MEAL IDEAS ────────────────────────────────────────────────────────
+var MEAL_IDEAS = [
+  {id:"m1",  meal:"lunch",  name:"Build-a-Bowl (your everyday lunch)", protein:"~40g", tags:["fish-free","quick","family"],
+    desc:"Greens or grain base + 6oz batch-cooked chicken + olive oil &amp; avocado + whatever veg is in the fridge. Same formula every day — only the veg changes."},
+  {id:"m1b", meal:"lunch",  name:"Tuna &amp; white bean salad", protein:"~36g", tags:["fish-free","quick","solo"],
+    desc:"Canned tuna, white beans, olive oil, lemon, red onion, over greens. A second lunch option for when chicken feels repetitive — counts toward your omega-3s too."},
+  {id:"m1c", meal:"lunch",  name:"Tuna avocado lettuce wraps", protein:"~32g", tags:["fish-free","quick","solo"],
+    desc:"Canned tuna mixed with mashed avocado instead of mayo, scooped into large lettuce leaves with diced tomato and cucumber. Light, no cooking required."},
+  {id:"m1d", meal:"lunch",  name:"Mediterranean tuna pasta salad", protein:"~34g", tags:["fish-free","family"],
+    desc:"Whole wheat pasta, canned tuna, cherry tomatoes, cucumber, olives, feta, olive oil and lemon dressing. Served cold — easy to make ahead for a few lunches at once and mild enough for the family."},
+  {id:"m1e", meal:"lunch",  name:"Tuna-stuffed bell peppers", protein:"~32g", tags:["fish-free","produce","solo"],
+    desc:"Canned tuna mixed with quinoa or rice, olive oil, herbs, stuffed into halved bell peppers and baked until the pepper softens. Built-in extra vegetable serving."},
+  {id:"m2",  meal:"dinner", name:"Lemon-herb chicken, white beans &amp; spinach", protein:"~42g", tags:["fish-free","family"],
+    desc:"Grilled or pan-seared chicken breast, white beans and tomatoes simmered in olive oil, spinach wilted in at the end. Lemon and herbs to finish."},
+  {id:"m3",  meal:"dinner", name:"Turkey taco bowls", protein:"~42g", tags:["fish-free","solo","kid-friendly"],
+    desc:"Ground turkey, black beans, rice, salsa, avocado. Good solo dinner — swap in ground beef instead if turkey isn't landing with the family."},
+  {id:"m4",  meal:"dinner", name:"Chicken stir-fry, peppers &amp; brown rice", protein:"~40g", tags:["fish-free","family","quick"],
+    desc:"Chicken, peppers, snap peas, brown rice, cooked in olive oil. Fast weeknight option, easily doubled for the family."},
+  {id:"m5",  meal:"dinner", name:"Lean beef &amp; vegetable stew with chickpeas", protein:"~40g", tags:["fish-free","family"],
+    desc:"90%+ lean ground beef or stew meat, root vegetables, chickpeas. One pot, makes great leftovers."},
+  {id:"m6",  meal:"dinner", name:"Sheet pan chicken thighs, olives &amp; roasted veg", protein:"~40g", tags:["fish-free","family","quick"],
+    desc:"Chicken thighs, olives, tomatoes, and whatever roasting veg you have, all on one tray in olive oil. Minimal cleanup."},
+  {id:"m7",  meal:"dinner", name:"Turkey chili with beans", protein:"~40g", tags:["fish-free","solo","quick"],
+    desc:"Ground turkey, mixed beans, peppers, a dollop of Greek yogurt on top instead of sour cream. Good freezer-backup solo meal — try ground beef if making it for the whole family."},
+  {id:"m8",  meal:"dinner", name:"Pork tenderloin, sweet potato &amp; broccoli", protein:"~36g", tags:["fish-free","family"],
+    desc:"Roasted pork tenderloin, roasted sweet potatoes, steamed broccoli. Simple, mild flavors that work for the whole table."},
+  {id:"m9",  meal:"dinner", name:"Lentil &amp; chicken soup", protein:"~36g", tags:["fish-free","family","quick"],
+    desc:"Chicken, lentils, vegetables, whole grain bread on the side. Good cold-weather rotation option, easy to stretch for leftovers."},
+  {id:"m10", meal:"dinner", name:"Baked salmon, quinoa &amp; asparagus", protein:"~44g", tags:["fish","solo"],
+    desc:"For when you're up for fish on your own plate: salmon, quinoa, roasted asparagus, lemon-olive oil drizzle. Not a family favorite — make a fish-free side dish for everyone else, or save this one for a night you're eating solo."},
+  {id:"m11", meal:"dinner", name:"Shrimp &amp; white bean skillet", protein:"~38g", tags:["fish","solo","quick"],
+    desc:"Shrimp cooks fast and tastes milder than most fish — garlic, tomatoes, white beans, crusty bread. Good low-commitment omega-3 dinner, but treat it as a solo or just-the-two-of-you option rather than a family meal."},
+  {id:"m12", meal:"dinner", name:"Seared tuna steak, white beans &amp; greens", protein:"~40g", tags:["fish","solo","quick"],
+    desc:"Fresh tuna steak (not canned) seared a few minutes per side, white beans and greens on the side in olive oil. Milder and meatier than salmon if you're more tolerant of tuna than other fish — worth testing as a solo dinner."},
+  {id:"m13", meal:"snack",  name:"Greek yogurt &amp; berry bowl", protein:"~18g", tags:["fish-free","quick","produce","family"],
+    desc:"Greek yogurt, mixed berries, a drizzle of honey, walnuts on top. Doubles as breakfast or an afternoon snack — easy to scale for the whole family."},
+  {id:"m14", meal:"snack",  name:"Cottage cheese &amp; pineapple", protein:"~25g", tags:["fish-free","quick","produce","solo"],
+    desc:"Cottage cheese with fresh or canned (in juice, not syrup) pineapple chunks. Sweet enough to feel like a treat, still protein-forward."},
+  {id:"m15", meal:"snack",  name:"Hummus &amp; veggie plate", protein:"~8g", tags:["fish-free","quick","produce","family"],
+    desc:"Hummus with carrots, bell peppers, cucumber, cherry tomatoes for dipping. Good side dish at dinner or a standalone snack — easy to put out for everyone at once."},
+  {id:"m16", meal:"snack",  name:"Apple slices with almond butter", protein:"~7g", tags:["fish-free","quick","produce","kid-friendly"],
+    desc:"Sliced apple with a tablespoon of almond butter. Simple, kid-friendly, and an easy way to work fruit in without much effort."},
+  {id:"m17", meal:"snack",  name:"Roasted vegetable medley (side dish)", protein:"~4g", tags:["fish-free","produce","family"],
+    desc:"Broccoli, bell peppers, zucchini, or whatever's in the fridge, tossed in olive oil and roasted. A standing side to pair with any of the dinner options above when you want more vegetables on the plate."},
+  {id:"m18", meal:"snack",  name:"Mixed citrus &amp; walnut snack", protein:"~5g", tags:["fish-free","quick","produce","solo"],
+    desc:"An orange or grapefruit with a small handful of walnuts. Good mid-afternoon option that leans into fruit and the omega-3s walnuts provide as a fish-free alternative."},
+];
+
+function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
+function miToggleFav(id){
+  var f=miFavs(); var i=f.indexOf(id);
+  if(i>=0) f.splice(i,1); else f.push(id);
+  store.set("mi_favs", JSON.stringify(f));
+  miRender();
+}
+var MI_FILTERS=["fish-free","fish","quick","family","solo","kid-friendly","produce"];
+var MI_ACTIVE_FILTERS=[];
+function miToggleFilter(tag){
+  var i=MI_ACTIVE_FILTERS.indexOf(tag);
+  if(i>=0) MI_ACTIVE_FILTERS.splice(i,1); else MI_ACTIVE_FILTERS.push(tag);
+  miRender();
+}
+function miRenderFilters(){
+  document.getElementById("mi-filters").innerHTML = MI_FILTERS.map(function(t){
+    var on=MI_ACTIVE_FILTERS.indexOf(t)>=0;
+    return '<span class="tag" style="cursor:pointer;background:'+(on?"#4ade8022":"#88888816")+';color:'+(on?"#4ade80":"#aaa")+';border:1px solid '+(on?"#4ade8055":"#88888830")+'" onclick="miToggleFilter(\''+t+'\')">'+t+(on?" ✓":"")+'</span>';
+  }).join(" ");
+}
+function miRender(){
+  miRenderFilters();
+  var favs=miFavs();
+  var list=MEAL_IDEAS.filter(function(m){
+    if(!MI_ACTIVE_FILTERS.length) return true;
+    return MI_ACTIVE_FILTERS.every(function(t){ return m.tags.indexOf(t)>=0; });
+  });
+  var lunches=list.filter(function(m){return m.meal==="lunch";});
+  var snacks=list.filter(function(m){return m.meal==="snack";});
+  var dinners=list.filter(function(m){return m.meal==="dinner";});
+  function card(m){
+    var on=favs.indexOf(m.id)>=0;
+    return '<div class="card" style="margin-bottom:10px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
+        '<div class="card-title" style="margin-bottom:4px">'+m.name+'</div>'+
+        '<button onclick="miToggleFav(\''+m.id+'\')" style="font-size:18px;line-height:1;background:transparent;border:none;color:'+(on?"#fbbf24":"#555")+';cursor:pointer;flex-shrink:0">'+(on?"★":"☆")+'</button>'+
+      '</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:6px">'+m.desc+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+        '<span class="tag" style="background:#5eead416;color:#5eead4;border:1px solid #5eead430">'+m.protein+' protein</span>'+
+        m.tags.map(function(t){return '<span class="tag" style="background:#88888816;color:#999;border:1px solid #88888830">'+t+'</span>';}).join("")+
+      '</div></div>';
+  }
+  var html="";
+  if(lunches.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:4px 0 8px">Lunch</div>'+lunches.map(card).join("");
+  if(snacks.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Snacks &amp; Sides</div>'+snacks.map(card).join("");
+  if(dinners.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Dinner</div>'+dinners.map(card).join("");
+  if(!list.length) html = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">No meals match those filters — try removing one.</div>';
+  document.getElementById("mi-list").innerHTML = html;
+}
+function miOpen(){
+  document.getElementById("mi-overlay").style.display="flex";
+  document.getElementById("mi-overlay").scrollTop=0;
+  miRender();
+}
+function miClose(){
+  document.getElementById("mi-overlay").style.display="none";
 }
 var DS_CUSTOM_PICK_ORIGINAL=null;
 function dsCustomCommit(){
