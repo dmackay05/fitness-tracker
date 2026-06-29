@@ -132,6 +132,40 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
   #panel-dash.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
   #panel-dash.active .card{margin-bottom:0;min-width:0;overflow:hidden}
   #panel-dash.active #dash-averages{grid-column:1 / -1}
+
+  /* Today tab: move cards flow into 2 columns; section headers and an expanded card span full width */
+  #ds-session{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #ds-session .ds-seclabel{grid-column:1 / -1;margin-top:14px}
+  #ds-session .ds-move{margin-bottom:0}
+  #ds-session .ds-move.ds-open{grid-column:1 / -1}
+
+  /* Yoga tab: pose cards flow into 2 columns within each difficulty section; presets too */
+  #yg-panel-poses .diff-poses{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  #yg-panel-poses .diff-poses .pose-card{margin-bottom:0}
+  #yg-panel-poses .diff-poses .pose-card.pose-open{grid-column:1 / -1}
+  #panel-yoga .presets-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  #panel-yoga .presets-grid .preset-card{margin-bottom:0}
+  #panel-yoga .presets-grid .preset-card.preset-open{grid-column:1 / -1}
+
+  /* Log tab: cards flow into 2 columns; section headers span full width */
+  #panel-log.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #panel-log.active .card{margin-bottom:0;min-width:0;overflow:hidden}
+  #panel-log.active .te-section-hdr{grid-column:1 / -1;margin-top:14px}
+  #panel-log.active .refresh-bar,
+  #panel-log.active .past-banner{grid-column:1 / -1}
+
+  /* Reference tab: exercise/mobility cards flow into 2 columns within each day; everything else
+     (headers, alerts, circuits, notes, the dynamically-injected add-exercise button, etc.) stays
+     full width by default — only explicitly opt cards into the 2-column flow, since this content
+     has several untagged divs that would otherwise get stranded at half width.
+     Note: visible day panels get inline style="display:block" from showMode(), not a CSS class,
+     so !important is required here to win over the inline style. */
+  #panel-guide #tg-app .day-panel:not(.week-collapsed){display:grid !important;grid-template-columns:1fr 1fr;gap:12px;align-items:start;max-width:920px}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > *{grid-column:1 / -1}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .exercise-card,
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card{grid-column:auto;margin-bottom:0}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .exercise-card.open,
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card.open{grid-column:1 / -1}
 }
 .card{background:#13131f;border:1px solid #1e1e35;border-radius:16px;padding:18px;margin-bottom:14px}
 .card-title{font-size:9px;color:#5eead4;letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:14px;font-weight:700}
