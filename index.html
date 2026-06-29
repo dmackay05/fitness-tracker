@@ -5268,12 +5268,12 @@ html body div.app{max-width:480px}
           <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
           <div id="qa-fav-wrap" style="display:none">
             <div class="rlbl" style="margin-top:0">★ Favorites</div>
-            <select id="qa-fav-select" style="margin-bottom:10px" onchange="if(this.value!==''){addFav(+this.value);this.value='';}"><option value="">★ Favorites — pick one to add…</option></select>
-            <div id="qa-fav-manage" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+            <select id="qa-fav-select" style="margin-bottom:6px" onchange="qaFavSelectChange(this)"><option value="">★ Favorites — pick one to add…</option></select>
+            <div style="text-align:right;margin-bottom:10px"><span onclick="qaManageFavs()" style="font-size:10px;color:#666;font-family:'DM Mono',monospace;cursor:pointer;text-decoration:underline">manage favorites</span></div>
           </div>
           <div id="qa-recent-wrap" style="display:none">
             <div class="rlbl" style="margin-top:0">Recent</div>
-            <div id="qa-recent" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+            <select id="qa-recent-select" style="margin-bottom:10px" onchange="if(this.value!==''){addRecentIdx(+this.value);this.value='';}"><option value="">🕘 Recent — pick one to add…</option></select>
           </div>
           <div class="rlbl" style="margin-top:0">🍱 Saved meals</div>
           <div id="qa-meals" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
@@ -7165,16 +7165,28 @@ function renderQuickAdd(){
   var fav=loadFav();
   if(fav.length){ favWrap.style.display="block";
     var favSel=document.getElementById("qa-fav-select");
-    if(favSel) favSel.innerHTML='<option value="">\u2605 Favorites \u2014 pick one to add\u2026</option>'+fav.map(function(f,i){return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal</option>';}).join("");
-    var favMgr=document.getElementById("qa-fav-manage");
-    if(favMgr) favMgr.innerHTML=fav.map(function(f,i){return _chip(escH(f.name)+" \u00b7 remove","void(0)","delFav("+i+")");}).join(""); }
+    if(favSel) favSel.innerHTML='<option value="">\u2605 Favorites \u2014 pick one to add\u2026</option>'+fav.map(function(f,i){return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal</option>';}).join(""); }
   else favWrap.style.display="none";
   _recentCache=recentFoods();
-  if(_recentCache.length){ recWrap.style.display="block"; document.getElementById("qa-recent").innerHTML=_recentCache.map(function(f,i){return _chip(escH(f.name)+" \u00b7 "+f.cal,"addRecentIdx("+i+")");}).join(""); }
+  if(_recentCache.length){ recWrap.style.display="block";
+    var recSel=document.getElementById("qa-recent-select");
+    if(recSel) recSel.innerHTML='<option value="">\ud83d\udd58 Recent \u2014 pick one to add\u2026</option>'+_recentCache.map(function(f,i){return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal</option>';}).join(""); }
   else recWrap.style.display="none";
   var meals=loadMeals();
   document.getElementById("qa-meals").innerHTML = meals.length? meals.map(function(m,i){ var cal=m.foods.reduce(function(a,x){return a+(+x.cal||0);},0); return _chip("\ud83c\udf71 "+escH(m.name)+" \u00b7 "+cal,"addMeal("+i+")","delMeal("+i+")"); }).join("")
     : '<span style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace">No saved meals yet \u2014 log foods, name them below, and Save.</span>';
+}
+function qaFavSelectChange(sel){
+  if(sel.value!==""){ addFav(+sel.value); sel.value=""; }
+}
+function qaManageFavs(){
+  var fav=loadFav();
+  if(!fav.length){ toast("No favorites yet"); return; }
+  var names=fav.map(function(f,i){return (i+1)+". "+f.name;}).join("\n");
+  var pick=prompt("Remove which favorite? Enter a number:\n\n"+names);
+  if(pick===null) return;
+  var idx=parseInt(pick)-1;
+  if(idx>=0 && idx<fav.length){ delFav(idx); toast("Removed "+fav[idx].name); }
 }
 function toast(msg){
   var t=document.getElementById("ft-toast");
