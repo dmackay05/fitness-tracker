@@ -11402,5 +11402,223 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 })();
 </script>
 
+<!-- Quick Timer: floating button, reachable from any tab -->
+<style>
+#qt-fab{position:fixed;bottom:22px;right:max(18px,calc(50vw - 240px + 18px));width:56px;height:56px;border-radius:50%;background:#5eead4;border:none;box-shadow:0 4px 16px #00000055,0 0 0 1px #5eead444;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;z-index:500;color:#0d0d1a;font-size:22px;line-height:1;gap:1px;}
+#qt-fab-time{font-size:9px;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:.02em;}
+#qt-fab.qt-active{background:#cfe84f;animation:qtPulse 1.5s ease-in-out infinite;}
+@keyframes qtPulse{0%,100%{box-shadow:0 4px 16px #00000055,0 0 0 1px #cfe84f44}50%{box-shadow:0 4px 20px #00000055,0 0 0 6px #cfe84f22}}
+.qt-modal{display:none;position:fixed;inset:0;background:#000000a0;z-index:600;align-items:center;justify-content:center;padding:20px;}
+.qt-modal.open{display:flex;}
+.qt-card{background:#15151f;border:1px solid #ffffff14;border-radius:20px;padding:26px 22px;width:100%;max-width:340px;position:relative;text-align:center;}
+.qt-close{position:absolute;top:14px;right:14px;background:transparent;border:none;color:#888;font-size:16px;cursor:pointer;padding:4px;}
+.qt-title{font-size:15px;font-weight:700;color:#f1f3e8;margin-bottom:18px;}
+.qt-wheels{display:flex;justify-content:center;gap:18px;margin-bottom:18px;}
+.qt-wheel-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.qt-wheel{height:150px;width:74px;overflow-y:scroll;scroll-snap-type:y mandatory;border-radius:12px;background:#ffffff06;border:1px solid #ffffff0d;-webkit-overflow-scrolling:touch;position:relative;}
+.qt-wheel::-webkit-scrollbar{display:none;}
+.qt-wheel-item{height:50px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'DM Mono',monospace;font-size:20px;color:#888;font-weight:600;}
+.qt-wheel-item.qt-center{color:#5eead4;font-size:24px;}
+.qt-wheel-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#666;}
+.qt-presets{display:flex;gap:7px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;}
+.qt-presets button{padding:8px 14px;border-radius:9px;border:1px solid #ffffff14;background:#ffffff08;color:#ccc;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;}
+.qt-start-btn{width:100%;padding:14px;border-radius:12px;border:none;background:#5eead4;color:#0d0d1a;font-weight:700;font-size:15px;cursor:pointer;}
+.qt-ring-wrap{position:relative;width:180px;height:180px;margin:0 auto 22px;}
+.qt-running-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#f1f3e8;font-variant-numeric:tabular-nums;font-family:'DM Mono',monospace;}
+.qt-running-btns{display:flex;gap:8px;margin-bottom:14px;}
+.qt-sbtn{flex:1;padding:12px 0;border-radius:11px;border:1px solid #ffffff14;background:#ffffff08;color:#ccc;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;}
+.qt-sbtn.primary{background:#5eead4;color:#0d0d1a;border-color:#5eead4;font-weight:700;}
+.qt-reset-btn{width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff14;background:transparent;color:#888;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;}
+.qt-done-icon{font-size:48px;margin-bottom:8px;}
+</style>
+<button id="qt-fab" onclick="qtOpen()" title="Timer">
+  <span id="qt-fab-icon">⏱</span>
+  <span id="qt-fab-time"></span>
+</button>
+
+<div id="qt-modal" class="qt-modal">
+  <div class="qt-card">
+    <button class="qt-close" onclick="qtCloseSetup()">✕</button>
+
+    <div id="qt-setup">
+      <div class="qt-title">Quick Timer</div>
+      <div class="qt-wheels">
+        <div class="qt-wheel-col">
+          <div class="qt-wheel" id="qt-wheel-min"></div>
+          <div class="qt-wheel-lbl">min</div>
+        </div>
+        <div class="qt-wheel-col">
+          <div class="qt-wheel" id="qt-wheel-sec"></div>
+          <div class="qt-wheel-lbl">sec</div>
+        </div>
+      </div>
+      <div class="qt-presets">
+        <button onclick="qtSetPreset(1,0)">1:00</button>
+        <button onclick="qtSetPreset(3,0)">3:00</button>
+        <button onclick="qtSetPreset(5,0)">5:00</button>
+        <button onclick="qtSetPreset(10,0)">10:00</button>
+      </div>
+      <button class="qt-start-btn" onclick="qtStart()">Start</button>
+    </div>
+
+    <div id="qt-running" style="display:none">
+      <div class="qt-title" id="qt-running-lbl">Timer</div>
+      <div class="qt-ring-wrap">
+        <svg width="180" height="180" viewBox="0 0 180 180">
+          <circle cx="90" cy="90" r="78" fill="none" stroke="#ffffff0d" stroke-width="9"/>
+          <circle cx="90" cy="90" r="78" fill="none" stroke="#5eead4" stroke-width="9" stroke-linecap="round" id="qt-arc" stroke-dasharray="490.1" stroke-dashoffset="0" transform="rotate(-90 90 90)"/>
+        </svg>
+        <div class="qt-running-num" id="qt-running-num">0:00</div>
+      </div>
+      <div class="qt-running-btns">
+        <button class="qt-sbtn" onclick="qtAdjust(-30)">-30s</button>
+        <button class="qt-sbtn primary" id="qt-pause-btn" onclick="qtTogglePause()">Pause</button>
+        <button class="qt-sbtn" onclick="qtAdjust(30)">+30s</button>
+      </div>
+      <button class="qt-reset-btn" onclick="qtReset()">Reset</button>
+    </div>
+
+    <div id="qt-done" style="display:none">
+      <div class="qt-done-icon">⏰</div>
+      <div class="qt-title">Time's up</div>
+      <button class="qt-start-btn" onclick="qtCloseDone()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Quick Timer: standalone countdown, reachable from any tab ──────────────
+var QT_CIRC = 2*Math.PI*78;
+var qtTotalSecs = 60, qtRemaining = 60, qtPaused = false, qtInterval = null;
+var qtMinVal = 1, qtSecVal = 0;
+
+function qtBuildWheel(id, max, current, cb) {
+  var el = document.getElementById(id);
+  var html = '';
+  for (var i = 0; i <= max; i++) html += '<div class="qt-wheel-item" data-val="'+i+'">'+(i<10?'0'+i:i)+'</div>';
+  el.innerHTML = html;
+  el.onscroll = function(){
+    clearTimeout(el._qtSnapTimer);
+    el._qtSnapTimer = setTimeout(function(){ qtReadWheel(el, cb); }, 120);
+  };
+  // scroll to current value after layout settles
+  setTimeout(function(){ el.scrollTop = current*50; qtReadWheel(el, cb, true); }, 0);
+}
+function qtReadWheel(el, cb, skipHighlightOnly) {
+  var idx = Math.round(el.scrollTop/50);
+  idx = Math.max(0, Math.min(el.children.length-1, idx));
+  if (el.scrollTop !== idx*50) el.scrollTo({top:idx*50, behavior:'smooth'});
+  Array.from(el.children).forEach(function(c,i){ c.classList.toggle('qt-center', i===idx); });
+  cb(idx);
+}
+function qtOpen() {
+  document.getElementById('qt-modal').classList.add('open');
+  var hasActiveTimer = !!qtInterval || qtPaused || (qtRemaining>0 && qtRemaining<qtTotalSecs);
+  if (hasActiveTimer) {
+    qtShowRunningView();
+  } else {
+    document.getElementById('qt-setup').style.display='block';
+    document.getElementById('qt-running').style.display='none';
+    document.getElementById('qt-done').style.display='none';
+    qtBuildWheel('qt-wheel-min', 60, qtMinVal, function(v){ qtMinVal=v; });
+    qtBuildWheel('qt-wheel-sec', 59, qtSecVal, function(v){ qtSecVal=v; });
+  }
+}
+function qtCloseSetup() {
+  document.getElementById('qt-modal').classList.remove('open');
+}
+function qtSetPreset(m,s) {
+  qtMinVal=m; qtSecVal=s;
+  document.getElementById('qt-wheel-min').scrollTo({top:m*50, behavior:'smooth'});
+  document.getElementById('qt-wheel-sec').scrollTo({top:s*50, behavior:'smooth'});
+}
+function qtStart() {
+  qtTotalSecs = Math.max(1, qtMinVal*60 + qtSecVal);
+  qtRemaining = qtTotalSecs;
+  qtPaused = false;
+  qtShowRunningView();
+  qtTick();
+  clearInterval(qtInterval);
+  qtInterval = setInterval(qtTick, 1000);
+}
+function qtShowRunningView() {
+  document.getElementById('qt-setup').style.display='none';
+  document.getElementById('qt-done').style.display='none';
+  document.getElementById('qt-running').style.display='block';
+  qtRenderRunning();
+}
+function qtTick() {
+  if (qtPaused) return;
+  qtRemaining--;
+  qtRenderRunning();
+  qtUpdateFab();
+  if (qtRemaining<=0) { qtFinish(); }
+}
+function qtRenderRunning() {
+  var m=Math.floor(Math.max(0,qtRemaining)/60), s=Math.max(0,qtRemaining)%60;
+  var numEl=document.getElementById('qt-running-num'); if(numEl) numEl.textContent=m+':'+(s<10?'0':'')+s;
+  var arc=document.getElementById('qt-arc'); if(arc) arc.style.strokeDashoffset = QT_CIRC*(1-(Math.max(0,qtRemaining)/qtTotalSecs));
+  var lbl=document.getElementById('qt-running-lbl'); if(lbl) lbl.textContent = qtPaused?'Paused':'Running';
+  var pb=document.getElementById('qt-pause-btn'); if(pb) pb.textContent = qtPaused?'Resume':'Pause';
+}
+function qtUpdateFab() {
+  var fab=document.getElementById('qt-fab'); var fabTime=document.getElementById('qt-fab-time'); var fabIcon=document.getElementById('qt-fab-icon');
+  if (qtInterval && !qtPaused && qtRemaining>0) {
+    var m=Math.floor(qtRemaining/60), s=qtRemaining%60;
+    fabTime.textContent = m+':'+(s<10?'0':'')+s;
+    fabIcon.textContent='';
+    fab.classList.add('qt-active');
+  } else {
+    fabTime.textContent='';
+    fabIcon.textContent='⏱';
+    fab.classList.remove('qt-active');
+  }
+}
+function qtTogglePause() {
+  qtPaused = !qtPaused;
+  qtRenderRunning();
+  qtUpdateFab();
+}
+function qtAdjust(delta) {
+  qtRemaining = Math.max(1, qtRemaining+delta);
+  if (qtRemaining>qtTotalSecs) qtTotalSecs=qtRemaining;
+  qtRenderRunning();
+  qtUpdateFab();
+}
+function qtReset() {
+  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=qtTotalSecs;
+  document.getElementById('qt-running').style.display='none';
+  document.getElementById('qt-done').style.display='none';
+  document.getElementById('qt-setup').style.display='block';
+  qtBuildWheel('qt-wheel-min', 60, qtMinVal, function(v){ qtMinVal=v; });
+  qtBuildWheel('qt-wheel-sec', 59, qtSecVal, function(v){ qtSecVal=v; });
+  qtUpdateFab();
+}
+function qtFinish() {
+  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=0;
+  qtUpdateFab();
+  qtChime();
+  document.getElementById('qt-running').style.display='none';
+  document.getElementById('qt-done').style.display='block';
+  document.getElementById('qt-modal').classList.add('open');
+  if (navigator.vibrate) { try{ navigator.vibrate([200,100,200,100,200]); }catch(e){} }
+}
+function qtCloseDone() {
+  document.getElementById('qt-modal').classList.remove('open');
+  document.getElementById('qt-done').style.display='none';
+  qtRemaining = qtTotalSecs;
+}
+function qtChime() {
+  try {
+    var fn = (typeof yogaBeep === 'function') ? yogaBeep : null;
+    if (fn) {
+      fn(880, 0.18, 0.5);
+      setTimeout(function(){ fn(880, 0.18, 0.5); }, 280);
+      setTimeout(function(){ fn(1100, 0.3, 0.55); }, 560);
+    }
+  } catch(e) {}
+}
+</script>
+
 </body>
 </html>
