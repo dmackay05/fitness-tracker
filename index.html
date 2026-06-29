@@ -1471,6 +1471,11 @@ html body div.app{max-width:480px}
 #panel-log .ld-tab .ld-lbl{display:none;}
 #panel-log .ld-tab.on{background:#5eead41a;border-color:#5eead4;}
 #panel-log .ld-pane-hdr{font-size:13px;font-weight:700;color:#e6fffb;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+#panel-log .fh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:#ffffff05;border:1px solid #ffffff0d;margin-bottom:7px;}
+#panel-log .fh-info{flex:1;min-width:0;}
+#panel-log .fh-name{font-size:13px;color:#f0f0f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#panel-log .fh-meta{font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:2px;}
+#panel-log .fh-add{flex-shrink:0;padding:7px 13px;border-radius:8px;border:1px solid #5eead444;background:#5eead416;color:#5eead4;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 #panel-log .ld-pane-hdr .ld-ic{font-size:15px;}
 #panel-log .ld-pane{display:none;}
 #panel-log .ld-pane.on{display:block;}
@@ -5254,6 +5259,7 @@ html body div.app{max-width:480px}
           <button class="ld-tab" data-ldtab="qa" onclick="ldSwitch('food','qa')"><span class="ld-ic">⚡</span><span class="ld-lbl">Quick</span></button>
           <button class="ld-tab" data-ldtab="preset" onclick="ldSwitch('food','preset')"><span class="ld-ic">📋</span><span class="ld-lbl">Preset</span></button>
           <button class="ld-tab" data-ldtab="usda" onclick="ldSwitch('food','usda')"><span class="ld-ic">🔍</span><span class="ld-lbl">Search</span></button>
+          <button class="ld-tab" data-ldtab="history" onclick="ldSwitch('food','history')"><span class="ld-ic">🕘</span><span class="ld-lbl">History</span></button>
           <button class="ld-tab" data-ldtab="custom" onclick="ldSwitch('food','custom')"><span class="ld-ic">✏️</span><span class="ld-lbl">Custom</span></button>
         </div>
         <div class="ld-pane" data-ldpane="qa">
@@ -5296,6 +5302,13 @@ html body div.app{max-width:480px}
           </div>
           <div id="usda-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
           <div id="usda-results"></div>
+        </div>
+        <div class="ld-pane" data-ldpane="history">
+          <div class="ld-pane-hdr"><span class="ld-ic">🕘</span>Food History</div>
+          <div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5">Search everything you've ever logged — not just Favorites or the last few Recent items.</div>
+          <input type="text" id="fh-q" placeholder="e.g. salmon, greek yogurt…" style="margin-bottom:10px" oninput="fhSearch(this.value)"/>
+          <div id="fh-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:4px"></div>
+          <div id="fh-results"></div>
         </div>
         <div class="ld-pane" data-ldpane="custom">
           <div class="ld-pane-hdr"><span class="ld-ic">✏️</span>Custom</div>
@@ -7024,6 +7037,55 @@ function recentFoods(){
     for(var j=fs.length-1;j>=0;j--){ var fo=fs[j], k=_foodKey(fo); if(!fo.name||seen[k]||favKeys.indexOf(k)>=0) continue; seen[k]=1; out.push(_foodCopy(fo)); if(out.length>=10) break; }
   }
   return out;
+}
+// ── Food History Search: searches every logged day, not just the last 10 ──
+var _fhDebounce=null;
+var _fhCache={};
+function fhSearch(q){
+  clearTimeout(_fhDebounce);
+  _fhDebounce=setTimeout(function(){ fhRunSearch(q); }, 180);
+}
+function fhRunSearch(q){
+  q=(q||"").trim().toLowerCase();
+  var statusEl=document.getElementById("fh-status"), resEl=document.getElementById("fh-results");
+  if(!statusEl||!resEl) return;
+  _fhCache={};
+  if(q.length<2){ statusEl.textContent=""; resEl.innerHTML=""; return; }
+
+  var keys=Object.keys(appData).sort().reverse();
+  var grouped={}; // key -> {food, count, lastDate}
+  for(var i=0;i<keys.length;i++){
+    var dk=keys[i], fs=(appData[dk]&&appData[dk].foods)||[];
+    for(var j=0;j<fs.length;j++){
+      var fo=fs[j];
+      if(!fo.name || fo.name.toLowerCase().indexOf(q)===-1) continue;
+      var k=_foodKey(fo);
+      if(!grouped[k]){ grouped[k]={food:_foodCopy(fo), count:0, lastDate:dk}; }
+      grouped[k].count++;
+      if(dk>grouped[k].lastDate) grouped[k].lastDate=dk;
+    }
+  }
+  var results=Object.keys(grouped).map(function(k){ return grouped[k]; });
+  results.sort(function(a,b){ return a.lastDate<b.lastDate?1:-1; }); // most recently eaten first
+
+  if(!results.length){ statusEl.textContent="No matches in your food history"; resEl.innerHTML=""; return; }
+  statusEl.textContent=results.length+" match"+(results.length===1?"":"es");
+  resEl.innerHTML=results.slice(0,40).map(function(r,i){
+    var f=r.food;
+    var when = r.lastDate===todayKey() ? "today" : (r.lastDate===localDateKey(new Date(Date.now()-86400000)) ? "yesterday" : "last "+prettyDate(r.lastDate));
+    var countLbl = r.count>1 ? r.count+"\u00d7 logged \u00b7 " : "";
+    _fhCache[i]=f;
+    return '<div class="fh-row">'+
+      '<div class="fh-info"><div class="fh-name">'+escH(f.name)+'</div>'+
+      '<div class="fh-meta">'+f.cal+' cal \u00b7 '+f.protein+'g P \u00b7 '+countLbl+'eaten '+when+'</div></div>'+
+      '<button class="fh-add" onclick="fhAdd('+i+')">+ Log</button>'+
+      '</div>';
+  }).join("");
+}
+function fhAdd(i){
+  var f=_fhCache[i]; if(!f) return;
+  addFoodObj(f);
+  toast("Added "+f.name);
 }
 function saveMealFromToday(){
   var el=document.getElementById("qa-meal-name"), name=(el.value||"").trim();
