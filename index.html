@@ -1524,6 +1524,7 @@ html body div.app{max-width:480px}
     <div class="meta-pill"><strong>170g+</strong> protein target</div>
     <div class="meta-pill"><strong>2,050–2,350</strong> cal/day</div>
   </div>
+  <button onclick="planOpen()" style="margin-top:14px;width:100%;padding:11px;border-radius:8px;background:#cfe84f18;border:1px solid #cfe84f44;color:#cfe84f;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">📋 View Full Plan — goals, targets &amp; why</button>
 </header>
 
 
@@ -5841,6 +5842,16 @@ html body div.app{max-width:480px}
   </div>
 </div>
 
+<!-- MY PLAN OVERLAY -->
+<div id="plan-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
+  <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
+    <button class="bs" onclick="planClose()">✕ Close</button>
+    <div style="font-size:15px;font-weight:800;color:#f0f0f0">📋 My Plan</div>
+    <div style="width:60px"></div>
+  </div>
+  <div style="padding:18px;max-width:520px;margin:0 auto;width:100%" id="plan-content"></div>
+</div>
+
 <script>
 var EXERCISES = [
   {name:"Mountain Bike Ride (60 min)",calories:550,type:"cardio"},
@@ -8386,6 +8397,118 @@ function miOpen(){
 }
 function miClose(){
   document.getElementById("mi-overlay").style.display="none";
+}
+
+// ── MY PLAN ───────────────────────────────────────────────────────────
+// PLAN_CONFIG is a self-contained JSON-style object describing the user's
+// recomposition/training/nutrition plan. To reuse this feature for a
+// different plan, replace this object's contents — the renderer below
+// just walks the `sections` array and draws each section by its `type`.
+// Supported section types: "stats", "text", "list", "rows", "timeline".
+var PLAN_CONFIG = {
+  title: "Body Recomposition Plan",
+  subtitle: "Mild deficit \u2014 muscle building priority",
+  updated: "2026",
+  sections: [
+    {
+      type: "stats",
+      heading: "Daily Targets",
+      stats: [
+        {label:"Rest day (Sun)", value:"~2,050 cal"},
+        {label:"Active recovery (Wed)", value:"~2,200 cal"},
+        {label:"Lift days (Mon/Tue/Thu/Fri)", value:"~2,250 cal"},
+        {label:"Ride day (Sat)", value:"~2,350 cal"},
+        {label:"Protein target", value:"170g+ daily"},
+        {label:"Approach", value:"Mediterranean-style"}
+      ]
+    },
+    {
+      type: "text",
+      heading: "The Goal",
+      body: "Shift from an aggressive cut to a mild deficit that still supports building muscle, not just losing weight. Calories above the old 1,800\u20132,000 flat target give recovery and growth room to work, while staying low enough to keep fat loss moving \u2014 just slower than a hard cut."
+    },
+    {
+      type: "text",
+      heading: "Why Protein Is The Anchor",
+      body: "Hitting ~170g of protein per day matters more than hitting an exact calorie number. Calories function as a range; protein is the non-negotiable target. This is what lets muscle be preserved (and built) even while in a deficit \u2014 the body pulls energy from fat stores first when training + protein both signal \u201ckeep this tissue.\u201d"
+    },
+    {
+      type: "list",
+      heading: "Key Principles",
+      items: [
+        "Mild deficit, not a steep one \u2014 real muscle growth needs maintenance or near-maintenance fuel, not a 1,800 cal floor.",
+        "Calories vary by day type (rest / active recovery / lift / ride) \u2014 fuel matches the work being done that day.",
+        "Protein stays flat and high regardless of day type.",
+        "Progressive overload (band/weight, reps, RIR) is the main driver of muscle growth \u2014 logged every session.",
+        "Olive oil, nuts, legumes and avocado cover the same heart-health goals fish normally would, for days fish isn't on the menu.",
+        "Consistency beats perfection \u2014 a good week is 5 of 7 days on plan, not 7 of 7."
+      ]
+    },
+    {
+      type: "rows",
+      heading: "Weekly Structure",
+      rows: [
+        {a:"Monday", b:"Upper Body Push + Pull (lift)"},
+        {a:"Tuesday", b:"Lower Body + Core (lift)"},
+        {a:"Wednesday", b:"Yoga Flow + walk/ride (active recovery)"},
+        {a:"Thursday", b:"Upper Body Hypertrophy (lift)"},
+        {a:"Friday", b:"Lower Body + Core Strength (lift)"},
+        {a:"Saturday", b:"Mountain Bike Ride"},
+        {a:"Sunday", b:"Recovery (true rest)"}
+      ]
+    },
+    {
+      type: "text",
+      heading: "Health Context",
+      body: "This plan was shaped around lab results showing borderline-low HDL, slightly elevated LDL, and a prediabetic A1c. Exercise, weight loss, and a Mediterranean-style approach (olive oil, omega-3s, legumes, limited refined carbs/saturated fat) target all three markers directly alongside any prescribed medication."
+    },
+    {
+      type: "timeline",
+      heading: "What To Expect",
+      items: [
+        {when:"Weeks 1\u20132", what:"Energy and habits stabilize. Scale moves fastest here \u2014 partly water weight."},
+        {when:"Months 1\u20132", what:"Face, arms and upper body show change first. Clothes fit differently."},
+        {when:"Months 2\u20133", what:"Waist measurement starts dropping measurably. Strength climbs steadily."},
+        {when:"Months 3\u20135", what:"Belly fat visibly reduces. Muscle definition becomes noticeable."},
+        {when:"Months 5\u20138", what:"Stubborn areas (lower belly, chin) are last to change. Composition shift is dramatic by this point."}
+      ]
+    }
+  ]
+};
+function planRenderSection(s){
+  var h='<div class="card" style="margin-bottom:10px"><div class="card-title" style="margin-bottom:8px">'+escH(s.heading)+'</div>';
+  if(s.type==="stats"){
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+s.stats.map(function(st){
+      return '<div style="background:#ffffff08;border-radius:8px;padding:8px 10px"><div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+escH(st.label)+'</div><div style="font-size:14px;font-weight:700;color:#cfe84f">'+escH(st.value)+'</div></div>';
+    }).join("")+'</div>';
+  } else if(s.type==="text"){
+    h+='<div style="font-size:12px;color:#9a9d8c;line-height:1.6">'+escH(s.body)+'</div>';
+  } else if(s.type==="list"){
+    h+='<ul style="margin:0;padding-left:18px;font-size:12px;color:#9a9d8c;line-height:1.7">'+s.items.map(function(it){return '<li style="margin-bottom:6px">'+escH(it)+'</li>';}).join("")+'</ul>';
+  } else if(s.type==="rows"){
+    h+=s.rows.map(function(r){
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #ffffff0d"><span style="font-size:11px;color:#888;flex-shrink:0">'+escH(r.a)+'</span><span style="font-size:12px;color:#ddd;text-align:right">'+escH(r.b)+'</span></div>';
+    }).join("");
+  } else if(s.type==="timeline"){
+    h+=s.items.map(function(it){
+      return '<div style="margin-bottom:10px"><div style="font-size:10px;color:#cfe84f;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">'+escH(it.when)+'</div><div style="font-size:12px;color:#9a9d8c;line-height:1.5">'+escH(it.what)+'</div></div>';
+    }).join("");
+  }
+  h+='</div>';
+  return h;
+}
+function planRender(){
+  var html='<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.08em">'+escH(PLAN_CONFIG.subtitle||"")+'</div><div style="font-size:19px;font-weight:800;color:#f0f0f0;margin-top:4px">'+escH(PLAN_CONFIG.title||"My Plan")+'</div></div>';
+  html += (PLAN_CONFIG.sections||[]).map(planRenderSection).join("");
+  document.getElementById("plan-content").innerHTML = html;
+}
+function planOpen(){
+  document.getElementById("plan-overlay").style.display="flex";
+  document.getElementById("plan-overlay").scrollTop=0;
+  planRender();
+}
+function planClose(){
+  document.getElementById("plan-overlay").style.display="none";
 }
 var DS_CUSTOM_PICK_ORIGINAL=null;
 function dsCustomCommit(){
