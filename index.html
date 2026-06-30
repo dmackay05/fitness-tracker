@@ -5231,7 +5231,7 @@ html body div.app{max-width:480px}
         </div>
         <div class="cal-meta"><span id="eaten-lbl">🍽 0 eaten</span><span id="burned-lbl">🔥 0 burned</span><span id="rem-lbl" style="color:#5eead4">— left</span></div>
         <div class="pbar-wrap"><div class="pbar" id="cal-bar" style="width:0%"></div></div>
-        <div class="bar-lbls"><span>net</span><span id="dash-cal-goal">Goal: --</span></div>
+        <div class="bar-lbls"><span>eaten</span><span id="dash-cal-goal">Goal: --</span></div>
       </div>
 
       <div class="card">
@@ -6253,17 +6253,17 @@ function statAverages(){
 
 function renderDash(){
   GOALS.cal = calGoalForKey(activeDate);
-  var t=getTotals(), burned=getBurned(), net=t.cal-burned, netRem=GOALS.cal-net;
-  var netEl=document.getElementById("net-cal"); netEl.textContent=net;
-  netEl.style.color = net>GOALS.cal?"#ff6b6b":"#5eead4";
+  var t=getTotals(), burned=getBurned(), net=t.cal-burned, netRem=GOALS.cal-t.cal;
+  var netEl=document.getElementById("net-cal"); netEl.textContent=t.cal;
+  netEl.style.color = t.cal>GOALS.cal?"#ff6b6b":"#5eead4";
   document.getElementById("eaten-lbl").textContent="🍽 "+t.cal+" eaten";
   document.getElementById("burned-lbl").textContent="🔥 "+burned+" burned";
   var rem=document.getElementById("rem-lbl");
   rem.textContent = netRem>0?netRem+" left":Math.abs(netRem)+" over";
   rem.style.color = netRem>0?"#5eead4":"#ff6b6b";
   var bar=document.getElementById("cal-bar");
-  bar.style.width=Math.min((net/GOALS.cal)*100,100)+"%";
-  bar.style.background = net>GOALS.cal?"#ff6b6b":"linear-gradient(90deg,#5eead4,#a78bfa)";
+  bar.style.width=Math.min((t.cal/GOALS.cal)*100,100)+"%";
+  bar.style.background = t.cal>GOALS.cal?"#ff6b6b":"linear-gradient(90deg,#5eead4,#a78bfa)";
   document.getElementById("cal-title").textContent = isToday()?"Today's Calories":prettyDate(activeDate)+" Calories";
 
   renderRadials([
