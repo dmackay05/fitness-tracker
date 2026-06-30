@@ -2197,7 +2197,7 @@ html body div.app{max-width:480px}
     </div>
   
   <div class="card-body">
-    <div class="mirror-cue">Sit back into the chair behind you — chest proud, knees out</div>
+    <div class="mirror-cue">Sit back and down — chest proud, knees tracking out over toes</div>
       <div class="var-tabs">
         <button class="var-tab active" onclick="switchVar(this, 'squat-band')">🪢 Band</button>
         <button class="var-tab" onclick="switchVar(this, 'squat-db')">🏋️ Goblet Squat</button>
@@ -2205,7 +2205,7 @@ html body div.app{max-width:480px}
       </div>
       <div class="var-panel active" id="squat-band">
         <div class="section-label">Setup</div>
-        <div class="setup-box">Stand on the band center, feet shoulder-width apart. Hold handles at shoulder height or loop the band so it sits across the back of your neck and shoulders.</div>
+        <div class="setup-box">Loop the Clench mini loop band just above your knees. Feet shoulder-width, no load needed. The band creates outward resistance — your job is to push your knees out against it throughout the whole movement.</div>
         <div class="section-label">Form Cues</div>
         <ul class="cues-list">
           <li>Push hips back and down like sitting into a chair behind you.</li>
@@ -7790,6 +7790,7 @@ var DS_DEMOS={
     '<polyline points="100,86 116,104 114,130" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,86 116,104 114,130; 100,112 126,116 114,130; 100,86 116,104 114,130')+'</polyline>'+
     '<line x1="60" y1="132" x2="140" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
     '</svg>';},
+  goblet:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+'<g><animateTransform attributeName="transform" type="translate" values="0,0;0,26;0,0" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+'<circle cx="100" cy="36" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+'<line x1="100" y1="46" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+'<rect x="82" y="52" width="36" height="18" rx="4" fill="#5eead433" stroke="#5eead4" stroke-width="3"/>'+'<line x1="82" y1="61" x2="70" y2="61" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="118" y1="61" x2="130" y2="61" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'</g>'+'<polyline points="100,80 84,100 86,128" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,80 84,100 86,128; 100,108 72,114 86,128; 100,80 84,100 86,128')+'</polyline>'+'<polyline points="100,80 116,100 114,128" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,80 116,100 114,128; 100,108 128,114 114,128; 100,80 116,100 114,128')+'</polyline>'+'<line x1="58" y1="130" x2="142" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+'</svg>';},
   hinge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
     '<line x1="100" y1="92" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
     '<g transform="rotate(0 100 92)"><animateTransform attributeName="transform" type="rotate" values="0 100 92; -62 100 92; 0 100 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
@@ -8057,11 +8058,186 @@ var DS_DEMOS={
     '<line x1="70" y1="110" x2="58" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
     '<polyline points="104,112 112,92 96,86" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2,'points','104,112 112,92 96,86; 104,112 130,98 152,96; 104,112 112,92 96,86')+'</polyline>'+
     '<polyline points="104,112 130,98 152,96" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2,'points','104,112 130,98 152,96; 104,112 112,92 96,86; 104,112 130,98 152,96')+'</polyline>'+
+    '</svg>';},
+  splitsquat:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="118" y1="118" x2="160" y2="100" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="82" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="82" y1="50" x2="82" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="82" y1="58" x2="64" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="82" y1="58" x2="100" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<polyline points="82,80 66,98 64,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','82,80 66,98 64,124; 82,104 56,108 64,124; 82,80 66,98 64,124')+'</polyline>'+
+    '<polyline points="82,80 100,94 118,100" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','82,80 100,94 118,100; 82,80 110,88 118,100; 82,80 100,94 118,100')+'</polyline>'+
+    '</g>'+
+    '<line x1="44" y1="126" x2="100" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  facepull:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="52" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="100,60 130,70 138,46" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','100,60 130,70 138,46; 100,60 124,52 112,40; 100,60 130,70 138,46')+'</polyline>'+
+    '<polyline points="100,60 70,70 62,46" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','100,60 70,70 62,46; 100,60 76,52 88,40; 100,60 70,70 62,46')+'</polyline>'+
+    '<line x1="86" y1="100" x2="80" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="114" y1="100" x2="120" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="64" y1="130" x2="136" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  wallpushup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="150" y1="20" x2="150" y2="132" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<g>'+dsS(2.2,'transform','translate(0,0); translate(14,0); translate(0,0)')+
+    '<circle cx="60" cy="68" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="68" y1="74" x2="128" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="80" x2="146" y2="56" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="128" y1="86" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="128" y1="86" x2="156" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="80" y1="130" x2="170" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  standcatcow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="140" y1="70" x2="172" y2="70" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="140" y1="70" x2="140" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<path d="M60 100 Q100 90 140 70" fill="none" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round">'+
+    '<animate attributeName="d" values="M60 100 Q100 90 140 70; M60 96 Q100 118 140 70; M60 100 Q100 90 140 70" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
+    '<circle cx="52" cy="98" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="62" y1="104" x2="62" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="62" y1="104" x2="58" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="40" y1="130" x2="80" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  slrdl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<g transform="rotate(0 70 92)"><animateTransform attributeName="transform" type="rotate" values="0 70 92; -55 70 92; 0 70 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="70" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="70" y1="50" x2="70" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="60" x2="40" y2="56" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="70" y1="60" x2="100" y2="56" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="70" y1="92" x2="66" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g transform="rotate(0 70 92)"><animateTransform attributeName="transform" type="rotate" values="0 70 92; 32 70 92; 0 70 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="92" x2="116" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="44" y1="130" x2="92" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  stand:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4">'+dsS(2.4,'cy','40;36;40')+'</circle>'+
+    '<line x1="100" y1="50" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'y1','50;46;50')+'</line>'+
+    '<line x1="100" y1="62" x2="76" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.4,'y1','62;58;62')+'</line>'+
+    '<line x1="100" y1="62" x2="124" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.4,'y1','62;58;62')+'</line>'+
+    '<line x1="100" y1="104" x2="86" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="114" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="62" y1="134" x2="138" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  standsqueeze:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="48" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="58" x2="80" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="58" x2="120" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<ellipse cx="100" cy="98" rx="20" ry="9" fill="none" stroke="#4ec98a" stroke-width="3">'+dsS(1.2,'rx','20;14;20')+'</ellipse>'+
+    '<line x1="92" y1="106" x2="88" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="108" y1="106" x2="112" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="64" y1="134" x2="136" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  figure4:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="92" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 92 60; -10 92 60; 0 92 60" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="92" y1="48" x2="92" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="58" x2="118" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="92" y1="58" x2="70" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="92" y1="92" x2="92" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M92 92 Q70 96 60 84 Q56 80 70 78" fill="none" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="60" y1="134" x2="124" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  hipcircle:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="48" x2="96" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="96" y1="92" x2="92" y2="130" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 96 92; 360 96 92" dur="2.6s" repeatCount="indefinite"/>'+
+    '<line x1="96" y1="92" x2="96" y2="124" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="64" y1="132" x2="128" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  chestopen:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="20" x2="60" y2="132" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 80; -28 100 80; 0 100 80" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="54" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="62" x2="64" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="62" x2="124" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="90" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="112" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="70" y1="134" x2="140" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  lowlunge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="118" y1="100" x2="150" y2="100" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,8;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="90" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="52" x2="92" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="68" x2="118" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="92" y1="86" x2="74" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="74" y1="100" x2="68" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="86" x2="122" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="122" y1="92" x2="148" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="50" y1="130" x2="160" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  shouldercar:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="50" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="86" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="114" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="58" x2="86" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 58; 360 100 58" dur="2.8s" repeatCount="indefinite"/>'+
+    '<line x1="100" y1="58" x2="100" y2="20" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '<line x1="70" y1="134" x2="130" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '</svg>';},
+  deadhang:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="86" y1="14" x2="100" y2="32" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="114" y1="14" x2="100" y2="32" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g>'+dsS(2.4,'transform','translate(0,0); translate(0,6); translate(0,0)')+
+    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="56" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="92" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="108" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  scappull:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="86" y1="14" x2="100" y2="36" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="114" y1="14" x2="100" y2="36" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g>'+dsS(1.6,'transform','translate(0,0); translate(0,10); translate(0,0)')+
+    '<circle cx="100" cy="48" r="9" fill="none" stroke="#4ec98a" stroke-width="4"/>'+
+    '<line x1="100" y1="58" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="92" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="104" x2="108" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  pullneg:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="86" y1="14" x2="100" y2="22" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="114" y1="14" x2="100" y2="22" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g>'+dsS(3,'transform','translate(0,0); translate(0,68); translate(0,0)')+
+    '<circle cx="100" cy="22" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="32" x2="100" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="70" x2="92" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="70" x2="108" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  pullband:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="86" y1="14" x2="100" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="114" y1="14" x2="100" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g>'+dsS(2,'transform','translate(0,0); translate(0,40); translate(0,0)')+
+    '<circle cx="100" cy="30" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="40" x2="100" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="78" x2="92" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="78" x2="108" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M92 106 Q88 124 100 134 Q112 124 108 106" fill="none" stroke="#4ec98a" stroke-width="3.5"/>'+
+    '</g>'+
     '</svg>';}
 };
 
 var DS_DEMOMAP={"mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "curl", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "thu-russian": "russiantwist", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
-var DS_DEMOCAP={"pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down"};
+var DS_DEMOCAP={"pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar"};
 var DS_VARIANT_SETUPS={
   "mon-pushup::1": "On the floor or a bench, DB in each hand at chest level, elbows bent; press up until arms are straight, lower with control until elbows hit about 90 degrees.",
   "mon-pushup::2": "Anchor the tube high on a door, face away, handles at chest height; press both handles forward until arms are straight, squeeze, return slow.",
@@ -8075,7 +8251,7 @@ var DS_VARIANT_SETUPS={
   "mon-curl::1": "Stand feet hip-width. 10 lb dumbbells at sides, palms facing forward.",
   "thu-hammer::1": "Stand tall. 10 lb dumbbells at sides, palms facing each other — neutral grip like holding hammers throughout."
 };
-var DS_SETUPS={"warmup-board": "Stand centered on the board, feet shoulder-width. Rock front-to-back 30s, side-to-side 30s, then slow circles 60s. Knees soft — don't lock them. Eyes forward, not down.", "warmup-rope-9": "Easy, light bounce — this is circulation and ankle prep, not conditioning work. Stop a few seconds early if the wrists or shoulders start to feel it.", "warmup-rope-7": "Easy, light bounce to get the heart rate up before the legs load. Land soft, stay relaxed in the shoulders.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "walkride": "After the session: a brisk 30-min walk, then an easy 20-min spin. Compression sleeve on the ride.", "tue-squat": "Stand on the tube, handles at the shoulders; sit back and down, knees tracking out over the toes.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
+var DS_SETUPS={"warmup-board": "Stand centered on the board, feet shoulder-width. Rock front-to-back 30s, side-to-side 30s, then slow circles 60s. Knees soft — don't lock them. Eyes forward, not down.", "warmup-rope-9": "Easy, light bounce — this is circulation and ankle prep, not conditioning work. Stop a few seconds early if the wrists or shoulders start to feel it.", "warmup-rope-7": "Easy, light bounce to get the heart rate up before the legs load. Land soft, stay relaxed in the shoulders.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "walkride": "After the session: a brisk 30-min walk, then an easy 20-min spin. Compression sleeve on the ride.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
 
 /* ============================ ROUTINES (every day) ============================ */
 var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'10 min · every day',
@@ -8118,23 +8294,23 @@ var DS_YIN={key:'yin',title:'Evening Yin',accent:'var(--purple)',meta:'30 min ·
 var DS_DESK={key:'desk',title:'Desk Mobility',accent:'var(--blue)',meta:'office days · standing desk',
   blurb:'Snack-sized resets between meetings. Stack 3–5 across the day rather than doing them all at once. Skip any elbow-loaded wrist stretch if it\'s flaring — go straight to the band rows instead.',
   moves:[
-    {id:'desk-posture',name:'Standing Posture Reset',rx:'30s · hourly',cal:3,demo:null,log:'done',target:'Posture',equip:'None',
+    {id:'desk-posture',name:'Standing Posture Reset',rx:'30s · hourly',cal:3,demo:'stand',log:'done',target:'Posture',equip:'None',
       setup:'Feet rooted, tuck the tailbone slightly, roll shoulders back and down, lengthen through the crown of the head. Reset before the next call.'},
-    {id:'desk-glutebridge',name:'Standing Glute Squeeze',rx:'10 reps',cal:5,demo:null,log:'done',target:'Glutes',equip:'None',
+    {id:'desk-glutebridge',name:'Standing Glute Squeeze',rx:'10 reps',cal:5,demo:'standsqueeze',log:'done',target:'Glutes',equip:'None',
       setup:'Standing, squeeze both glutes hard for 5 sec, release. 10 reps. Direct activation for the SI joint pattern — no setup needed.'},
-    {id:'desk-figure4',name:'Standing Figure-4 Hip Opener',rx:'30s/side',cal:5,demo:null,log:'done',target:'Hips · Piriformis',equip:'Desk for balance',
+    {id:'desk-figure4',name:'Standing Figure-4 Hip Opener',rx:'30s/side',cal:5,demo:'figure4',log:'done',target:'Hips · Piriformis',equip:'Desk for balance',
       setup:'Cross one ankle over the opposite knee, hold the desk for balance, hinge forward slightly until you feel the outer hip open. 30 sec per side.'},
-    {id:'desk-hipcircles',name:'Standing Hip Circles (CARs)',rx:'8/direction',cal:5,demo:null,log:'done',target:'Hip Joint',equip:'None',
+    {id:'desk-hipcircles',name:'Standing Hip Circles (CARs)',rx:'8/direction',cal:5,demo:'hipcircle',log:'done',target:'Hip Joint',equip:'None',
       setup:'Hands on hips, trace the biggest slow circle each hip can make, 8 per direction per side. Ribs stay down — nothing else moves.'},
-    {id:'desk-deskcatcow',name:'Standing Cat-Cow (hands on desk)',rx:'10 reps',cal:5,demo:'catcow',log:'done',target:'Spine',equip:'Desk edge',
+    {id:'desk-deskcatcow',name:'Standing Cat-Cow (hands on desk)',rx:'10 reps',cal:5,demo:'standcatcow',log:'done',target:'Spine',equip:'Desk edge',
       setup:'Hands on the desk edge, hips back. Round and arch the spine slowly with the breath, 10 reps. Same pattern as the floor version, just standing.'},
-    {id:'desk-chestopen',name:'Doorway / Desk Chest Opener',rx:'30s/side',cal:3,demo:null,log:'done',target:'Chest · Posture',equip:'Door frame or wall',
+    {id:'desk-chestopen',name:'Doorway / Desk Chest Opener',rx:'30s/side',cal:3,demo:'chestopen',log:'done',target:'Chest · Posture',equip:'Door frame or wall',
       setup:'Forearm on the door frame or wall at shoulder height, rotate your body away from it. 30 sec per side. Direct counter to hunched screen posture.'},
-    {id:'desk-lowlunge',name:'Standing Low Lunge (hands on desk)',rx:'30s/side',cal:5,demo:null,log:'done',target:'Hip Flexors',equip:'Desk for balance',
+    {id:'desk-lowlunge',name:'Standing Low Lunge (hands on desk)',rx:'30s/side',cal:5,demo:'lowlunge',log:'done',target:'Hip Flexors',equip:'Desk for balance',
       setup:'Step one foot back into a long stance, hands on the desk, sink the hips gently forward. 30 sec per side — counters hours of hip flexion from sitting/cycling.'},
-    {id:'desk-wallpushup',name:'Wall or Desk-Edge Push-ups',rx:'12 reps',cal:8,demo:'pushup',log:'setsreps',sets:1,target:'Chest · Triceps',equip:'Wall or sturdy desk edge',
+    {id:'desk-wallpushup',name:'Wall or Desk-Edge Push-ups',rx:'12 reps',cal:8,demo:'wallpushup',log:'setsreps',sets:1,target:'Chest · Triceps',equip:'Wall or sturdy desk edge',
       setup:'Hands on the wall or desk edge, walk feet back to set the angle, lower chest toward your hands and push back. Keep wrists neutral — skip this one entirely if the elbow is flaring and do band rows instead.'},
-    {id:'desk-calfraise',name:'Standing Calf Raises',rx:'15 reps',cal:5,demo:null,log:'done',target:'Calves',equip:'None',
+    {id:'desk-calfraise',name:'Standing Calf Raises',rx:'15 reps',cal:5,demo:'calf',log:'done',target:'Calves',equip:'None',
       setup:'Rise onto the toes, 2-sec hold at the top, slow descent. 15 reps. Easy blood-flow break between calls.'}
   ]};
 
@@ -8204,7 +8380,7 @@ var DS_FINISHER={key:'finisher',title:'Core Finisher',accent:'#fbbf24',meta:'10 
       setup:'High anchor, perpendicular stance. Pull the handle diagonally high-to-low across your body, rotating through the torso, not the arms. 8 reps per side.'},
     {id:'fin-birddog',name:'Bird Dog',rx:'8/side · min 4',cal:12,demo:null,log:'setsreps',sets:1,target:'Core · Glutes',equip:'Bodyweight',
       setup:'On hands and knees, extend opposite arm and leg straight out until level with your torso. Hold a beat, return with control. 8 reps per side — flat back the whole time, no rocking.'},
-    {id:'fin-planktap',name:'Plank Shoulder Taps',rx:'16 taps · min 5',cal:15,demo:'hollow',log:'setsreps',sets:1,target:'Core · Anti-Rotation',equip:'Bodyweight (10 lb DB optional)',
+    {id:'fin-planktap',name:'Plank Shoulder Taps',rx:'16 taps · min 5',cal:15,demo:'plank',log:'setsreps',sets:1,target:'Core · Anti-Rotation',equip:'Bodyweight (10 lb DB optional)',
       setup:'High plank, feet a little wider than usual. Tap the opposite shoulder with each hand, 16 taps total. Hips stay still — that’s the whole point. Hold a 10 lb DB in the tapping hand only if it stays dead still otherwise.'},
     {id:'fin-pallof2',name:'Banded Pallof Press — Pulses',rx:'8/side · min 6',cal:15,demo:null,log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
       setup:'Same setup as min 1. Press out and hold at full extension, then add 3 small pulses against the band before returning. 8 reps per side.'},
@@ -8214,7 +8390,7 @@ var DS_FINISHER={key:'finisher',title:'Core Finisher',accent:'#fbbf24',meta:'10 
       setup:'Quarter-squat stance, mini loop above the knees. Step sideways for the full minute, switching direction every 4 steps. Bonus glute activation for the SI joint pattern.'},
     {id:'fin-deadbug2',name:'Dead Bug — bodyweight, slow',rx:'8/side · min 9',cal:12,demo:null,log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'Bodyweight',
       setup:'Same pattern as min 2, no weight, slower tempo — 3 sec out, 3 sec back. Low back stays glued to the floor.'},
-    {id:'fin-plankhold',name:'Plank Hold — max tension',rx:'to :60 · min 10',cal:18,demo:'hollow',log:'time',secs:60,target:'Full Core',equip:'Bodyweight',
+    {id:'fin-plankhold',name:'Plank Hold — max tension',rx:'to :60 · min 10',cal:18,demo:'plank',log:'time',secs:60,target:'Full Core',equip:'Bodyweight',
       setup:'Forearm plank, full minute, no movement. Squeeze everything — glutes, core, quads — as if bracing for a punch. Last round, empty the tank.'}
   ]};
 
@@ -8247,10 +8423,10 @@ var DS_SESSIONS={
 
   tue:{title:'Lower Body + Core',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_BOARD,DS_WARMUP_ROPE7,
-      {id:'tue-squat',name:'Banded Squat',slot:'Squat',target:'Quads · Glutes',equip:'Tube 40–50 → 70–90 lb',rx:'4×12–15',cal:40,cue:'Sit back into the chair behind you — chest proud, knees out',demo:'squat',log:'setsreps',sets:4,
-        variants:[{name:'Goblet Squat',equip:'10 lb dumbbell',rx:'4×15–20',cue:'Hold the DB at your chest — sit back, elbows brush inside the knees',demo:'squat'}]},
+      {id:'tue-squat',name:'Banded Squat',slot:'Squat',target:'Quads · Glutes',equip:'Clench mini loop above knees',rx:'4×12–15',cal:40,cue:'Mini loop above the knees — sit back and down, knees push out against the band',demo:'squat',log:'setsreps',sets:4,
+        variants:[{name:'Goblet Squat',equip:'10 lb dumbbell',rx:'4×15–20',cue:'Hold the DB at your chest — sit back, elbows brush inside the knees',demo:'goblet'}]},
       {id:'tue-rdl',name:'Romanian Deadlift',slot:'Hinge',target:'Hamstrings',equip:'Tube 40–50 → 90+ lb',rx:'3–4×10–12',cal:35,cue:'Push hips back to the wall — handles glued to your legs',demo:'hinge',log:'setsreps',sets:4,
-        variants:[{name:'Single-Leg DB RDL',equip:'10 lb dumbbell (opposite hand)',rx:'3×10–12/leg',cue:'Hinge forward, DB toward the floor as the free leg extends behind you — hips stay square',demo:'hinge'}]},
+        variants:[{name:'Single-Leg DB RDL',equip:'10 lb dumbbell (opposite hand)',rx:'3×10–12/leg',cue:'Hinge forward, DB toward the floor as the free leg extends behind you — hips stay square',demo:'slrdl'}]},
       {id:'tue-lat',name:'Banded Lateral Walk',slot:'Abductors',target:'Hip Abductors',equip:'Mini loop above knees',rx:'3×12/side',cal:25,cue:"Stay in the quarter squat — don't stand up between steps",demo:null,log:'setsreps',sets:3},
       {id:'tue-bridge',name:'Banded Glute Bridge',slot:'Glutes',target:'Glutes',equip:'Tube 30–40 → 50+ lb',rx:'3×15–20',cal:30,cue:'Drive through heels, squeeze hard at the top — hold 2 sec',demo:'bridge',log:'setsreps',sets:3},
       {id:'tue-pallof',name:'Banded Pallof Press',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',demo:null,log:'setsreps',sets:3},
@@ -8272,7 +8448,7 @@ var DS_SESSIONS={
       {id:'thu-chest',name:'Chest — Pull-Apart / Fly',slot:'Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest',demo:'fly',log:'setsreps',sets:3,
         variants:[{name:'Banded Push-up',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
                   {name:'Floor DB Press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'}]},
-      {id:'thu-facepull',name:'Rear Delts / Face Pull',slot:'Rear Delts',target:'Rear Delts · Traps',equip:'Tube 10–20 → 30 lb',rx:'3–4×15–20',cal:30,cue:'Pull to your temples, elbows high — thumbs point behind you at the finish',demo:'fly',log:'setsreps',sets:4},
+      {id:'thu-facepull',name:'Rear Delts / Face Pull',slot:'Rear Delts',target:'Rear Delts · Traps',equip:'Tube 10–20 → 30 lb',rx:'3–4×15–20',cal:30,cue:'Pull to your temples, elbows high — thumbs point behind you at the finish',demo:'facepull',log:'setsreps',sets:4},
       {id:'thu-lat',name:'Lats / Pulldown',slot:'Vertical Pull',target:'Lats · Back',equip:'Tube 20–30 → 50 lb',rx:'3–4×10–12',cal:35,cue:'Drive elbows into your back pockets — chest up, slight lean back',demo:'pulldown',log:'setsreps',sets:4,
         variants:[{name:'Wide Row (free)',equip:'Tube 20–30 lb',rx:'3×12',cue:'Pull wide to the ribs, squeeze the mid-back',demo:'row'}]},
       {id:'thu-lateral',name:'Lateral Raise',slot:'Side Delts',target:'Side Delts',equip:'Tube 10 → 20 lb',rx:'3×12–15',cal:25,cue:'Lead with elbows, not hands — pour water from a pitcher',demo:null,log:'setsreps',sets:3},
@@ -8287,7 +8463,7 @@ var DS_SESSIONS={
 
   fri:{title:'Lower Body + Core Strength',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_BOARD,DS_WARMUP_ROPE7,
-      {id:'fri-bulg',name:'Banded Bulgarian Split Squat',slot:'Unilateral Squat',target:'Quads · Balance',equip:'Tube 20–30 → 40–50 lb',rx:'3×10/leg',cal:40,cue:'Front heel drives through the floor — torso stays tall',demo:'squat',log:'setsreps',sets:3},
+      {id:'fri-bulg',name:'Banded Bulgarian Split Squat',slot:'Unilateral Squat',target:'Quads · Balance',equip:'Tube 20–30 → 40–50 lb',rx:'3×10/leg',cal:40,cue:'Front heel drives through the floor — torso stays tall',demo:'splitsquat',log:'setsreps',sets:3},
       {id:'fri-sumo',name:'Banded Sumo Squat',slot:'Squat',target:'Inner Thigh · Glutes',equip:'Tube 40–50 lb stacked',rx:'3×12–15',cal:35,cue:'Wide stance, toes out, knees push out — sit straight down',demo:'squat',log:'setsreps',sets:3},
       {id:'fri-nordic',name:'Stability Ball Leg Curl',slot:'Knee Flexion',target:'Hamstrings',equip:'Stability ball',rx:'3×10–12',cal:30,cue:'Hips stay up the whole set — curl the ball in, roll out over a slow 3-count',demo:'ballcurl',log:'setsreps',sets:3},
       {id:'fri-calf',name:'Single-Leg Calf Raise',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',demo:null,log:'setsreps',sets:3},
@@ -8333,7 +8509,7 @@ function dsRenderDayPicker(){
     }
   }
 }
-var DS_MOBILITY={"key": "mobility", "title": "Joint Mobility", "accent": "#a78bfa", "meta": "CARs + PAILs/RAILs · daily", "blurb": "Controlled circles to own each joint, then PAILs/RAILs to build strength at end range. Keep contractions to ~60–70%, symmetric and braced — back off anything sharp, especially around the SI joint.", "moves": [{"id": "mob-hip", "name": "Hips — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 20, "demo": null, "log": "done", "target": "Hip joint", "equip": "Floor / wall", "setup": "CARs first: on all fours or standing tall, lift one knee and trace the biggest slow circle the hip can make — 2–3 each direction, ribs down, nothing else moving. Then run the PAILs/RAILs below in a deep hip end range (90/90 fold or pigeon)."}, {"id": "mob-9090", "name": "Seated 90/90 Hip Transitions", "rx": "8 transitions/side", "cal": 15, "demo": "ninetytransition", "log": "setsreps", "sets": 1, "target": "Hip Rotation", "equip": "Floor", "setup": "Sit with the front leg bent 90 at the hip and knee, shin angled away (external rotation), back leg bent 90 behind you, shin angled back (internal rotation). Stay tall through the spine — don’t lean back to cheat range. Lift the hips slightly and rotate the whole base to switch sides, swapping which hip is in and which is out. 8 slow transitions per side. Keep it controlled and pain-free — this is rotational range, not a deep static hold, so back off anything sharp near the SI joint."}, {"id": "mob-shoulder", "name": "Shoulders — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": null, "log": "done", "target": "Shoulder joint", "equip": "Wall / doorway", "setup": "CARs first: stand tall, one arm draws the largest slow circle it can — reach overhead, rotate, sweep behind — ribs down, 2–3 each way. Then run PAILs/RAILs at an end-range reach (overhead, or a doorway chest opener)."}, {"id": "mob-spine", "name": "Spine — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "catcow", "log": "done", "target": "Full spine", "equip": "Floor", "setup": "CARs first: slow segmental cat-cow moving one vertebra at a time, then gentle rotations and side-bends through the whole spine. Then run PAILs/RAILs gently — low intensity here, this is near your SI joint."}]};
+var DS_MOBILITY={"key": "mobility", "title": "Joint Mobility", "accent": "#a78bfa", "meta": "CARs + PAILs/RAILs · daily", "blurb": "Controlled circles to own each joint, then PAILs/RAILs to build strength at end range. Keep contractions to ~60–70%, symmetric and braced — back off anything sharp, especially around the SI joint.", "moves": [{"id": "mob-hip", "name": "Hips — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 20, "demo": "hipcircle", "log": "done", "target": "Hip joint", "equip": "Floor / wall", "setup": "CARs first: on all fours or standing tall, lift one knee and trace the biggest slow circle the hip can make — 2–3 each direction, ribs down, nothing else moving. Then run the PAILs/RAILs below in a deep hip end range (90/90 fold or pigeon)."}, {"id": "mob-9090", "name": "Seated 90/90 Hip Transitions", "rx": "8 transitions/side", "cal": 15, "demo": "ninetytransition", "log": "setsreps", "sets": 1, "target": "Hip Rotation", "equip": "Floor", "setup": "Sit with the front leg bent 90 at the hip and knee, shin angled away (external rotation), back leg bent 90 behind you, shin angled back (internal rotation). Stay tall through the spine — don’t lean back to cheat range. Lift the hips slightly and rotate the whole base to switch sides, swapping which hip is in and which is out. 8 slow transitions per side. Keep it controlled and pain-free — this is rotational range, not a deep static hold, so back off anything sharp near the SI joint."}, {"id": "mob-shoulder", "name": "Shoulders — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "shouldercar", "log": "done", "target": "Shoulder joint", "equip": "Wall / doorway", "setup": "CARs first: stand tall, one arm draws the largest slow circle it can — reach overhead, rotate, sweep behind — ribs down, 2–3 each way. Then run PAILs/RAILs at an end-range reach (overhead, or a doorway chest opener)."}, {"id": "mob-spine", "name": "Spine — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "catcow", "log": "done", "target": "Full spine", "equip": "Floor", "setup": "CARs first: slow segmental cat-cow moving one vertebra at a time, then gentle rotations and side-bends through the whole spine. Then run PAILs/RAILs gently — low intensity here, this is near your SI joint."}]};
 var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end range — weight even, hips square, breathe.", "pail": "Press the front shin and outer hip down into the floor — contract the glute and outer hip you feel stretching. Ramp to ~60–70% over 10s and hold.", "rail": "Switch the effort: gently draw the front knee down and fold a touch deeper using your hip — pull yourself into more range."}, "y-dragon": {"settle": "Sink the hips low and forward to your end range, back knee grounded, torso tall.", "pail": "Drag the back knee forward into the floor isometrically (it won't move) — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and press the hips further forward into extension — pull yourself deeper."}, "y-cat": {"settle": "Round forward over the legs to your end range, let the spine drape, breathe.", "pail": "Press the backs of the legs and heels down into the floor — contract the hamstrings that are stretching. Ramp to ~60–70%.", "rail": "Switch: engage the quads and hip flexors to actively fold yourself deeper over the legs."}, "m-9090": {"settle": "Half-kneel, hips square, shift forward to your honest end range.", "pail": "Drag the back knee forward into the floor isometrically — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and push the hips further forward into extension."}, "p-9090": {"settle": "Half-kneel, hips square, shift forward to your honest end range.", "pail": "Drag the back knee forward into the floor isometrically — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and push the hips further forward into extension."}, "mob-hip": {"settle": "Settle into a deep hip end range — a 90/90 front-leg fold or a pigeon. Breathe to your honest limit.", "pail": "Press the stretching hip down and into the floor — contract the tissue at length, ramp to ~60–70%.", "rail": "Switch: use the opposite hip muscles to pull yourself deeper into the range."}, "mob-shoulder": {"settle": "Take the shoulder to an end-range reach — overhead, or a doorway chest opener. Find your honest limit.", "pail": "Press the arm into the wall or doorway — contract the front-of-shoulder that's stretching, ramp to ~60–70%.", "rail": "Switch: use the back-of-shoulder muscles to pull the arm further into range."}, "mob-spine": {"settle": "Take the spine to a gentle end range of rotation or flexion — easy, never forced.", "pail": "Lightly contract into the stretch — ~50–60% only, keep it gentle near the SI joint.", "rail": "Switch: gently use the opposing muscles to ease a touch deeper. Stop at anything sharp.", "settleSecs": 60}};
 
 
@@ -8342,10 +8518,10 @@ var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end ran
 
 DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Eccentric Wrist Rehab",rx:"3\u00d715",cal:12,demo:null,log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Slow on the lower \u2014 this is the rehab that actually works",setup:"Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3\u20134 seconds using only the working side. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer's elbow."});
 var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"toward your first rep \u00b7 alternating days",blurb:"Your road to the first unassisted pull-up. Log each drill so the numbers climb \u2014 that climb is the progress. Take the hardest drill close to failure; ease off if the elbow flares.",moves:[
- {id:"pu-hang",name:"Dead Hang \u2014 log seconds",rx:"3 \u00d7 max hold",cal:10,demo:null,log:"setsreps",sets:3,target:"Grip \u00b7 Shoulders \u00b7 Lats",equip:"Monkey bars",cue:"Shoulders active, pulled down away from your ears \u2014 don't just dangle",setup:"Hang from the bar, full grip, arms straight, shoulder blades pulled down and back. Put the seconds you held into the Reps box and beat last time."},
- {id:"pu-scap",name:"Scapular Pulls",rx:"3\u00d78",cal:10,demo:null,log:"setsreps",sets:3,target:"Lower Traps \u00b7 Lats",equip:"Monkey bars",cue:"Arms stay straight \u2014 the shoulder blades do all the work",setup:"Hang with straight arms. Without bending the elbows, pull the shoulder blades down to lift your chest a couple inches, then lower with control. This is the very start of the pull."},
- {id:"pu-neg",name:"Negatives \u2014 log slow seconds",rx:"3\u00d73",cal:15,demo:null,log:"setsreps",sets:3,target:"Full pulling chain",equip:"Monkey bars",cue:"Fight gravity the whole way \u2014 slower is the whole point",setup:"Jump or step to the top with your chin over the bar, then lower as slowly as you can. Log the seconds the slow part lasted in Reps \u2014 longer negatives over the weeks means you're nearly strong enough to pull up."},
- {id:"pu-band",name:"Band-Assisted Pull-ups",rx:"3\u00d75",cal:15,demo:null,log:"setsreps",sets:3,target:"Full pulling chain",equip:"Tube band over the bar",cue:"Elbows drive down and back, chest toward the bar",setup:"Loop a band over the bar, foot or knee in it. Do full pull-ups, logging reps and which band in the weight box. The progression: same reps on a lighter band over time, until you need none."}
+ {id:"pu-hang",name:"Dead Hang \u2014 log seconds",rx:"3 \u00d7 max hold",cal:10,demo:"deadhang",log:"setsreps",sets:3,target:"Grip \u00b7 Shoulders \u00b7 Lats",equip:"Monkey bars",cue:"Shoulders active, pulled down away from your ears \u2014 don't just dangle",setup:"Hang from the bar, full grip, arms straight, shoulder blades pulled down and back. Put the seconds you held into the Reps box and beat last time."},
+ {id:"pu-scap",name:"Scapular Pulls",rx:"3\u00d78",cal:10,demo:"scappull",log:"setsreps",sets:3,target:"Lower Traps \u00b7 Lats",equip:"Monkey bars",cue:"Arms stay straight \u2014 the shoulder blades do all the work",setup:"Hang with straight arms. Without bending the elbows, pull the shoulder blades down to lift your chest a couple inches, then lower with control. This is the very start of the pull."},
+ {id:"pu-neg",name:"Negatives \u2014 log slow seconds",rx:"3\u00d73",cal:15,demo:"pullneg",log:"setsreps",sets:3,target:"Full pulling chain",equip:"Monkey bars",cue:"Fight gravity the whole way \u2014 slower is the whole point",setup:"Jump or step to the top with your chin over the bar, then lower as slowly as you can. Log the seconds the slow part lasted in Reps \u2014 longer negatives over the weeks means you're nearly strong enough to pull up."},
+ {id:"pu-band",name:"Band-Assisted Pull-ups",rx:"3\u00d75",cal:15,demo:"pullband",log:"setsreps",sets:3,target:"Full pulling chain",equip:"Tube band over the bar",cue:"Elbows drive down and back, chest toward the bar",setup:"Loop a band over the bar, foot or knee in it. Do full pull-ups, logging reps and which band in the weight box. The progression: same reps on a lighter band over time, until you need none."}
 ]};
 function dsSetRir(id,v){ var st=dsItemState(id); st._rir=(st._rir===v?null:v); dsSaveUI(); dsRender(); }
 function dsBlockWeek(){ try{ var s=store.get("ds_start"); if(!s){ s=todayKey(); store.set("ds_start",s); } var a=new Date(s+"T12:00:00"), b=new Date(activeDate+"T12:00:00"); var w=Math.floor((b-a)/(7*86400000)); return w<0?0:w; }catch(e){ return 0; } }
