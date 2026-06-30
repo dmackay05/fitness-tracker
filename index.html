@@ -8130,6 +8130,61 @@ var DS_DESK={key:'desk',title:'Desk Mobility',accent:'var(--blue)',meta:'office 
       setup:'Rise onto the toes, 2-sec hold at the top, slow descent. 15 reps. Easy blood-flow break between calls.'}
   ]};
 
+/* ── Day-specific HIIT Finishers ─────────────────────────────────────────── */
+var DS_HIIT_MON={key:'hiit-mon',title:'HIIT Finisher \u2014 Upper',accent:'#fb923c',meta:'6 min \xb7 30s on / 30s off \xb7 2 rounds',
+  blurb:'Back-to-back upper body intervals. Push to 80\u201390% effort on each work block. No overhead loading, no ballistic elbow movement \u2014 elbow-safe by design.',
+  moves:[
+    {id:'hiit-mon-row',name:'Bent-Over Row \u2014 intervals',rx:'30s hard / 30s rest',cal:20,demo:'row',log:'time',secs:30,sets:1,target:'Back \xb7 Biceps',equip:'Tube 30\u201350 lb',
+      setup:'Same form as your main sets \u2014 drive elbows to your back pockets. 30 seconds as hard as you can maintain good form, then rest 30 seconds. Repeat the full circuit twice.'},
+    {id:'hiit-mon-pullapart',name:'Band Pull-Apart \u2014 intervals',rx:'30s hard / 30s rest',cal:15,demo:'fly',log:'time',secs:30,sets:1,target:'Rear Delts',equip:'Tube 10\u201320 lb',
+      setup:'Arms straight, pull the band to your chest and squeeze. Continuous reps for 30 seconds \u2014 fast but controlled. Rest 30 seconds.'},
+    {id:'hiit-mon-fly',name:'Banded Chest Fly \u2014 intervals',rx:'30s hard / 30s rest',cal:15,demo:'fly',log:'time',secs:30,sets:1,target:'Chest',equip:'Tube 10\u201320 lb \xb7 mid anchor',
+      setup:'Mid anchor, face away from the door. Hug motion for 30 seconds at tempo. Rest 30 seconds.'},
+    {id:'hiit-mon-curl',name:'Bicep Curl \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:null,log:'time',secs:30,sets:1,target:'Biceps',equip:'Tube 10\u201320 lb',
+      setup:'Upper arms pinned, continuous curls for 30 seconds. Rest 30 seconds. Repeat all 4 exercises for round 2.'}
+  ]};
+
+var DS_HIIT_TUE={key:'hiit-tue',title:'HIIT Finisher \u2014 Lower EMOM',accent:'#4ade80',meta:'8 min EMOM \xb7 2 rounds of 4 exercises',
+  blurb:'Lower body and core EMOM. Each minute: hit the target reps, rest the remainder of the minute. Big muscle groups, high demand \u2014 this is where the EPOC happens.',
+  moves:[
+    {id:'hiit-tue-squat',name:'Banded Squat \u2014 EMOM',rx:'12 reps \xb7 min 1 & 5',cal:22,demo:'squat',log:'setsreps',sets:1,target:'Quads \xb7 Glutes',equip:'Tube 40\u201350 lb',
+      setup:'12 reps at the top of min 1. Rest the remainder of the minute. Repeat at min 5. Push the pace \u2014 these should feel hard.'},
+    {id:'hiit-tue-bridge',name:'Banded Glute Bridge \u2014 EMOM',rx:'15 explosive \xb7 min 2 & 6',cal:18,demo:'bridge',log:'setsreps',sets:1,target:'Glutes',equip:'Tube 30\u201340 lb',
+      setup:'15 reps, drive through heels explosively, squeeze hard at the top. Rest remainder of the minute. Repeat at min 6.'},
+    {id:'hiit-tue-pallof-l',name:'Pallof Press \u2014 Left \xb7 EMOM',rx:'10 reps \xb7 min 3 & 7',cal:12,demo:null,log:'setsreps',sets:1,target:'Core Anti-Rotation',equip:'Tube 10\u201320 lb \xb7 mid anchor',
+      setup:'Left side to anchor. 10 presses, hold 2 sec each at full extension. Rest the remainder. Repeat at min 7.'},
+    {id:'hiit-tue-pallof-r',name:'Pallof Press \u2014 Right \xb7 EMOM',rx:'10 reps \xb7 min 4 & 8',cal:12,demo:null,log:'setsreps',sets:1,target:'Core Anti-Rotation',equip:'Tube 10\u201320 lb \xb7 mid anchor',
+      setup:'Right side to anchor. 10 presses. Rest the remainder. That completes round 1 \u2014 start round 2 at min 5.'}
+  ]};
+
+var DS_HIIT_THU={key:'hiit-thu',title:'HIIT Finisher \u2014 Upper Pull',accent:'#a78bfa',meta:'6 min \xb7 30s on / 30s off \xb7 2 rounds',
+  blurb:'Upper back and shoulder emphasis. Rear delts, lats, side delts, arms \u2014 the pulling muscles that drive posture and shoulder health. Keep elbows safe, intensity high.',
+  moves:[
+    {id:'hiit-thu-pulldown',name:'Banded Lat Pulldown \u2014 intervals',rx:'30s hard / 30s rest',cal:20,demo:null,log:'time',secs:30,sets:1,target:'Lats',equip:'Tube 20\u201340 lb \xb7 high anchor',
+      setup:'Kneeling, high anchor. Drive elbows down into your back pockets \u2014 continuous reps for 30 seconds. Rest 30 seconds.'},
+    {id:'hiit-thu-facepull',name:'Banded Face Pull \u2014 intervals',rx:'30s hard / 30s rest',cal:15,demo:null,log:'time',secs:30,sets:1,target:'Rear Delts \xb7 Rotator Cuff',equip:'Tube 10\u201320 lb \xb7 high anchor',
+      setup:'Pull to temples, thumbs back \u2014 30 seconds continuous. Elbows stay high. Rest 30 seconds.'},
+    {id:'hiit-thu-lateral',name:'Banded Lateral Raise \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:null,log:'time',secs:30,sets:1,target:'Side Delts',equip:'Tube 10 lb',
+      setup:'Lead with the elbows, stop at shoulder height \u2014 30 seconds. Lighter band here; this is a small muscle. Rest 30 seconds.'},
+    {id:'hiit-thu-hammer',name:'Hammer Curl \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:null,log:'time',secs:30,sets:1,target:'Biceps \xb7 Brachialis',equip:'Tube 10\u201320 lb',
+      setup:'Neutral grip (palms face each other) \u2014 30 seconds continuous curls. Upper arms pinned. Rest 30 seconds. Repeat all 4 for round 2.'}
+  ]};
+
+var DS_HIIT_FRI={key:'hiit-fri',title:'HIIT Finisher \u2014 Lower EMOM',accent:'#38bdf8',meta:'8 min EMOM \xb7 2 rounds of 4 exercises',
+  blurb:'Hamstring, hip, and core EMOM. Eccentric-friendly movements \u2014 RDL, lateral walk, dead bug. High demand on the posterior chain without SI joint torque.',
+  moves:[
+    {id:'hiit-fri-rdl',name:'Romanian Deadlift \u2014 EMOM',rx:'12 reps \xb7 min 1 & 5',cal:22,demo:'hinge',log:'setsreps',sets:1,target:'Hamstrings \xb7 Glutes',equip:'Tube 40\u201350 lb',
+      setup:'12 reps, hips back to the wall, handles glued to legs. Rest remainder. Repeat at min 5.'},
+    {id:'hiit-fri-latwalk',name:'Banded Lateral Walk \u2014 EMOM',rx:'continuous \xb7 min 2 & 6',cal:18,demo:null,log:'time',secs:45,sets:1,target:'Hip Abductors \xb7 Glutes',equip:'Mini loop above knees',
+      setup:'Quarter-squat, step sideways for 45 seconds switching direction every 4 steps. Rest the remainder of the minute. Repeat at min 6.'},
+    {id:'hiit-fri-deadbug',name:'Dead Bug \u2014 EMOM',rx:'8/side \xb7 min 3 & 7',cal:12,demo:'deadbug',log:'setsreps',sets:1,target:'Core \xb7 Anti-Extension',equip:'Bodyweight',
+      setup:'Slow tempo \u2014 3 sec extend, 3 sec return. Low back pinned the entire time. 8 reps per side. Rest the remainder. Repeat at min 7.'},
+    {id:'hiit-fri-bridge',name:'Banded Glute Bridge \u2014 EMOM',rx:'15 explosive \xb7 min 4 & 8',cal:18,demo:'bridge',log:'setsreps',sets:1,target:'Glutes \xb7 Hamstrings',equip:'Tube 30\u201340 lb',
+      setup:'Drive through heels, full squeeze at the top \u2014 15 reps. Rest remainder. That ends round 1 \u2014 start round 2 at min 5.'}
+  ]};
+
+var DS_HIIT_MAP={mon:DS_HIIT_MON,tue:DS_HIIT_TUE,thu:DS_HIIT_THU,fri:DS_HIIT_FRI};
+
 var DS_FINISHER={key:'finisher',title:'Core Finisher',accent:'#fbbf24',meta:'10 min EMOM · after lift days',
   blurb:'Anti-rotation / anti-extension core, no ballistic wrist or elbow loading. 10 rounds, 1 min each, alternate down the list. Drop the DB on any move if the elbow is flaring that day — bodyweight only, no exceptions.',
   moves:[
@@ -8320,7 +8375,7 @@ function dsStartTimer(id,secs){
   },1000);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk])items=items.concat(DS_FINISHER.moves); items=items.concat(dsCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
 
 // ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
@@ -8328,7 +8383,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_FINISHER.moves);
+  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_FINISHER.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -8769,8 +8824,8 @@ function dsRender(){
   if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
   if(DS_FINISHER_DAYS[sk]){
     var _finOn=!!DS_FINISHER_ON[sk];
-    html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?'#fbbf24':'#ffffff1a')+';background:'+(_finOn?'#fbbf2418':'transparent')+';color:'+(_finOn?'#fbbf24':'#888')+';">'+(_finOn?'\u2715 Core Finisher ON \u2014 10 min EMOM  (tap to hide)':'+ Add Core Finisher \u2014 10 min EMOM after this session')+'</button></div>';
-    if(_finOn)html+=dsRenderSection(DS_FINISHER.title,DS_FINISHER.meta,DS_FINISHER.accent,DS_FINISHER.moves,DS_FINISHER.blurb);
+    html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
+    if(_finOn){var _hiit=DS_HIIT_MAP[sk]||DS_FINISHER;html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
   }
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
   html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
