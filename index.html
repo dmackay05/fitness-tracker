@@ -1388,7 +1388,7 @@ html body div.app{max-width:480px}
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -7465,6 +7465,14 @@ fetchSheet(function(rows,ok){
   if(_bn) setTimeout(function(){ _bn.style.display="none"; },2200);
 });
 
+// ── PERIODIC BACKGROUND SYNC (every 3 minutes) ──────────────────────────
+setInterval(function(){
+  if(!SHEETS_URL) return;
+  fetchSheet(function(rows,ok){
+    if(ok&&rows){ mergeRows(rows); renderAll(); }
+  });
+}, 3 * 60 * 1000);
+
 // ══════════════════════════════════════════════════════════════════════
 // USDA FOOD SEARCH (FoodData Central) — ported from food_nutrition_info.py
 // Searches USDA, scales per-100g nutrients to a logged weight, and pushes
@@ -11903,7 +11911,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 
 <!-- Quick Timer: floating button, reachable from any tab -->
 <style>
-#qt-fab{position:fixed;bottom:22px;right:max(18px,calc(50vw - 240px + 18px));width:56px;height:56px;border-radius:50%;background:#5eead4;border:none;box-shadow:0 4px 16px #00000055,0 0 0 1px #5eead444;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;z-index:500;color:#0d0d1a;font-size:22px;line-height:1;gap:1px;}
+#qt-fab{display:none !important;}
 #qt-fab-time{font-size:9px;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:.02em;}
 #qt-fab.qt-active{background:#cfe84f;animation:qtPulse 1.5s ease-in-out infinite;}
 @keyframes qtPulse{0%,100%{box-shadow:0 4px 16px #00000055,0 0 0 1px #cfe84f44}50%{box-shadow:0 4px 20px #00000055,0 0 0 6px #cfe84f22}}
@@ -12061,16 +12069,16 @@ function qtRenderRunning() {
   var pb=document.getElementById('qt-pause-btn'); if(pb) pb.textContent = qtPaused?'Resume':'Pause';
 }
 function qtUpdateFab() {
-  var fab=document.getElementById('qt-fab'); var fabTime=document.getElementById('qt-fab-time'); var fabIcon=document.getElementById('qt-fab-icon');
+  var fab=document.getElementById('qt-fab'); var fabTime=document.getElementById('qt-fab-time'); var fabIcon=document.getElementById('qt-fab-icon'); var fabInline=document.getElementById('qt-fab-inline');
   if (qtInterval && !qtPaused && qtRemaining>0) {
     var m=Math.floor(qtRemaining/60), s=qtRemaining%60;
     fabTime.textContent = m+':'+(s<10?'0':'')+s;
     fabIcon.textContent='';
-    fab.classList.add('qt-active');
+    fab.classList.add('qt-active'); if(fabInline){fabInline.style.color='#cfe84f';}
   } else {
     fabTime.textContent='';
     fabIcon.textContent='⏱';
-    fab.classList.remove('qt-active');
+    fab.classList.remove('qt-active'); if(fabInline){fabInline.style.color='#5eead4';}
   }
 }
 function qtTogglePause() {
