@@ -1497,10 +1497,7 @@ html body div.app{max-width:480px}
 
 /* ═══════ block boundary ═══════ */
 
-#qt-fab{display:none !important;}
 #qt-fab-time{font-size:9px;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:.02em;}
-#qt-fab.qt-active{background:#cfe84f;animation:qtPulse 1.5s ease-in-out infinite;}
-@keyframes qtPulse{0%,100%{box-shadow:0 4px 16px #00000055,0 0 0 1px #cfe84f44}50%{box-shadow:0 4px 20px #00000055,0 0 0 6px #cfe84f22}}
 .qt-modal{display:none;position:fixed;inset:0;background:#000000a0;z-index:600;align-items:center;justify-content:center;padding:20px;}
 .qt-modal.open{display:flex;}
 .qt-card{background:#15151f;border:1px solid #ffffff14;border-radius:20px;padding:26px 22px;width:100%;max-width:340px;position:relative;text-align:center;}

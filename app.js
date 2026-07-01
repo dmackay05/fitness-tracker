@@ -448,7 +448,6 @@ function shiftDay(delta){
   activeDate=nk; wellnessRatings={sleepQ:0,energy:0,mood:0,medClarity:0}; renderAll(); bgRefresh();
 }
 function goToToday(){ activeDate=todayKey(); DS_DAY_OVERRIDE=null; wellnessRatings={sleepQ:0,energy:0,mood:0,medClarity:0}; renderAll(); bgRefresh(); }
-function jumpToDate(k){ activeDate=k; DS_DAY_OVERRIDE=null; wellnessRatings={sleepQ:0,energy:0,mood:0,medClarity:0}; renderAll(); bgRefresh(); }
 function doRefresh(which){
   fetchOverloadCache();
   _lastSheetPull=Date.now();
@@ -594,7 +593,6 @@ function loadCeFav(idx){
   document.getElementById("ce-load").value=f.load||"";
   showLastHint(f.name,"ce-last-hint");
 }
-function delCeFav(idx){ var favs=loadCeFavs(); favs.splice(+idx,1); saveCeFavs(favs); renderCeFavSelect(); }
 var LD_DEFAULTS={food:"qa",ex:"dropdown",track:"water"};
 function ldSwitch(group,tab){
   store.set("ld_tab_"+group, tab);
@@ -2508,30 +2506,6 @@ var DS_HIIT_FRI={key:'hiit-fri',title:'HIIT Finisher \u2014 Lower EMOM',accent:'
 
 var DS_HIIT_MAP={mon:DS_HIIT_MON,tue:DS_HIIT_TUE,thu:DS_HIIT_THU,fri:DS_HIIT_FRI};
 
-var DS_FINISHER={key:'finisher',title:'Core Finisher',accent:'#fbbf24',meta:'10 min EMOM · after lift days',
-  blurb:'Anti-rotation / anti-extension core, no ballistic wrist or elbow loading. 10 rounds, 1 min each, alternate down the list. Drop the DB on any move if the elbow is flaring that day — bodyweight only, no exceptions.',
-  moves:[
-    {id:'fin-pallof1',name:'Banded Pallof Press',rx:'8/side · min 1',cal:15,demo:'pallof',log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
-      setup:'Anchor at chest height, stand perpendicular to the door. Press straight out, resist the rotation pulling you toward the anchor. 8 reps each side, then move on at the top of the next minute.'},
-    {id:'fin-deadbug-db',name:'Dead Bug — DB Overhead',rx:'8/side · min 2',cal:15,demo:'deadbug',log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'10 lb dumbbell, one hand',
-      setup:'Lie on your back, knees at 90°. Hold the 10 lb DB in one hand straight overhead, arm locked. Extend opposite arm and opposite leg out slowly, low back pinned to the floor. 8 reps per side. Drop the DB and go bodyweight if the elbow is off that day.'},
-    {id:'fin-woodchop',name:'Banded Woodchop',rx:'8/side · min 3',cal:15,demo:'woodchop',log:'setsreps',sets:1,target:'Obliques · Rotation',equip:'Tube band · high anchor',
-      setup:'High anchor, perpendicular stance. Pull the handle diagonally high-to-low across your body, rotating through the torso, not the arms. 8 reps per side.'},
-    {id:'fin-birddog',name:'Bird Dog',rx:'8/side · min 4',cal:12,demo:'birddog',log:'setsreps',sets:1,target:'Core · Glutes',equip:'Bodyweight',
-      setup:'On hands and knees, extend opposite arm and leg straight out until level with your torso. Hold a beat, return with control. 8 reps per side — flat back the whole time, no rocking.'},
-    {id:'fin-planktap',name:'Plank Shoulder Taps',rx:'16 taps · min 5',cal:15,demo:'plank',log:'setsreps',sets:1,target:'Core · Anti-Rotation',equip:'Bodyweight (10 lb DB optional)',
-      setup:'High plank, feet a little wider than usual. Tap the opposite shoulder with each hand, 16 taps total. Hips stay still — that’s the whole point. Hold a 10 lb DB in the tapping hand only if it stays dead still otherwise.'},
-    {id:'fin-pallof2',name:'Banded Pallof Press — Pulses',rx:'8/side · min 6',cal:15,demo:'pallof',log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
-      setup:'Same setup as min 1. Press out and hold at full extension, then add 3 small pulses against the band before returning. 8 reps per side.'},
-    {id:'fin-sideplank',name:'Side Plank — Reach Through',rx:'8/side · min 7',cal:15,demo:'sideplank',log:'setsreps',sets:1,target:'Obliques · Lateral Chain',equip:'Bodyweight',
-      setup:'Side plank on forearm, hips lifted and stacked. Reach the top arm under your body and through, then back up to vertical. 8 reps per side, then switch sides at the top of the minute.'},
-    {id:'fin-latwalk',name:'Banded Lateral Walk',rx:'continuous · min 8',cal:18,demo:'latwalk',log:'time',secs:60,target:'Hip Abductors · Glutes',equip:'Mini loop, above knees',
-      setup:'Quarter-squat stance, mini loop above the knees. Step sideways for the full minute, switching direction every 4 steps. Bonus glute activation for the SI joint pattern.'},
-    {id:'fin-deadbug2',name:'Dead Bug — bodyweight, slow',rx:'8/side · min 9',cal:12,demo:'deadbug',log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'Bodyweight',
-      setup:'Same pattern as min 2, no weight, slower tempo — 3 sec out, 3 sec back. Low back stays glued to the floor.'},
-    {id:'fin-plankhold',name:'Plank Hold — max tension',rx:'to :60 · min 10',cal:18,demo:'plank',log:'time',secs:60,target:'Full Core',equip:'Bodyweight',
-      setup:'Forearm plank, full minute, no movement. Squeeze everything — glutes, core, quads — as if bracing for a punch. Last round, empty the tank.'}
-  ]};
 
 /* ============================ DS_SESSIONS (Mon–Sun) ============================ */
 function dsCore(id,name,rx,cal,cue,demo){return {id:id,name:name,slot:'Core',target:'Core',equip:'Bodyweight',rx:rx,cal:cal,cue:cue,demo:demo||null,log:'setsreps',sets:3};}
@@ -2706,7 +2680,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_FINISHER.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
+  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -3038,7 +3012,9 @@ function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:item.cal,cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants}; }
 
 function dsComplete(id){ var item=dsRawItem(id);
-  if(item && item.log==='setsreps'){ var st=dsItemState(id); return st.sets.length>=(item.sets||3); }
+  if(item && item.log==='setsreps'){ var target=item.sets||3; var st=dsItemState(id);
+    if(st.sets.length>=target) return true;
+    var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id && (e.sets==null || e.sets>=target);}); }
   var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
 function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
@@ -3157,7 +3133,7 @@ function dsRender(){
   if(DS_FINISHER_DAYS[sk]){
     var _finOn=!!DS_FINISHER_ON[sk];
     html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
-    if(_finOn){var _hiit=DS_HIIT_MAP[sk]||DS_FINISHER;html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
+    if(_finOn&&DS_HIIT_MAP[sk]){var _hiit=DS_HIIT_MAP[sk];html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
   }
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
   html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
@@ -6237,16 +6213,17 @@ function qtRenderRunning() {
   var pb=document.getElementById('qt-pause-btn'); if(pb) pb.textContent = qtPaused?'Resume':'Pause';
 }
 function qtUpdateFab() {
-  var fab=document.getElementById('qt-fab'); var fabTime=document.getElementById('qt-fab-time'); var fabIcon=document.getElementById('qt-fab-icon'); var fabInline=document.getElementById('qt-fab-inline');
+  var fabTime=document.getElementById('qt-fab-time'); var fabIcon=document.getElementById('qt-fab-icon'); var fabInline=document.getElementById('qt-fab-inline');
+  if(!fabTime||!fabIcon) return;
   if (qtInterval && !qtPaused && qtRemaining>0) {
     var m=Math.floor(qtRemaining/60), s=qtRemaining%60;
     fabTime.textContent = m+':'+(s<10?'0':'')+s;
     fabIcon.textContent='';
-    fab.classList.add('qt-active'); if(fabInline){fabInline.style.color='#cfe84f';}
+    if(fabInline){fabInline.style.color='#cfe84f';}
   } else {
     fabTime.textContent='';
     fabIcon.textContent='⏱';
-    fab.classList.remove('qt-active'); if(fabInline){fabInline.style.color='#5eead4';}
+    if(fabInline){fabInline.style.color='#5eead4';}
   }
 }
 function qtTogglePause() {
