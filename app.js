@@ -2337,11 +2337,46 @@ var DS_DEMOS={
     '<line x1="100" y1="78" x2="108" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
     '<path d="M92 106 Q88 124 100 134 Q112 124 108 106" fill="none" stroke="#4ec98a" stroke-width="3.5"/>'+
     '</g>'+
+    '</svg>';},
+  tgu:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="130" x2="170" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 70 120; -40 70 120; -70 70 120; -40 70 120; 0 70 120" keyTimes="0;0.3;0.5;0.7;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="120" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="112" y1="116" x2="70" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="104" y1="116" x2="112" y2="76" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/>'+
+    '<rect x="104" y="64" width="16" height="12" rx="2" fill="#4ec98a33" stroke="#4ec98a" stroke-width="2.5"/>'+
+    '</g>'+
+    '<line x1="70" y1="120" x2="46" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</svg>';},
+  birddog:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="126" x2="170" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="66" cy="70" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="74" y1="74" x2="128" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="86" y1="76" x2="84" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="122" y1="78" x2="126" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="74" y1="74" x2="36" y2="66" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'y2','66;60;66')+'</line>'+
+    '<line x1="128" y1="78" x2="166" y2="70" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'y2','70;64;70')+'</line>'+
+    '</svg>';},
+  sideplank:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="60" cy="72" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="68" y1="78" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="74" y1="82" x2="72" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="150" y1="112" x2="166" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="76" y1="82" x2="82" y2="40" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.6,'x2','82;62;82')+dsS(2.6,'y2','40;96;40')+'</line>'+
+    '</svg>';},
+  wristecc:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="96" x2="130" y2="96" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="96" x2="140" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 140 70; -45 140 70; 0 140 70" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="140" y1="70" x2="156" y2="58" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
+    '<rect x="150" y="42" width="12" height="20" rx="2" fill="#4ec98a33" stroke="#4ec98a" stroke-width="2.5"/>'+
+    '</g>'+
     '</svg>';}
 };
 
 var DS_DEMOMAP={"mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "curl", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "thu-russian": "russiantwist", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
-var DS_DEMOCAP={"pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar"};
+var DS_DEMOCAP={"pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar", "tgu": "weight locked overhead the whole way — roll to elbow, to hand, to standing", "birddog": "opposite arm and leg extend — flat back, no rocking", "sideplank": "hips stacked and lifted — reach the top arm under, then back to vertical", "wristecc": "forearm supported — lower the weight slowly, use the other hand to lift it back"};
 var DS_VARIANT_SETUPS={
   "mon-pushup::1": "On the floor or a bench, DB in each hand at chest level, elbows bent; press up until arms are straight, lower with control until elbows hit about 90 degrees.",
   "mon-pushup::2": "Anchor the tube high on a door, face away, handles at chest height; press both handles forward until arms are straight, squeeze, return slow.",
@@ -2428,7 +2463,7 @@ var DS_HIIT_MON={key:'hiit-mon',title:'HIIT Finisher \u2014 Upper',accent:'#fb92
       setup:'Arms straight, pull the band to your chest and squeeze. Continuous reps for 30 seconds \u2014 fast but controlled. Rest 30 seconds.'},
     {id:'hiit-mon-fly',name:'Banded Chest Fly \u2014 intervals',rx:'30s hard / 30s rest',cal:15,demo:'fly',log:'time',secs:30,sets:1,target:'Chest',equip:'Tube 10\u201320 lb \xb7 mid anchor',
       setup:'Mid anchor, face away from the door. Hug motion for 30 seconds at tempo. Rest 30 seconds.'},
-    {id:'hiit-mon-curl',name:'Bicep Curl \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:null,log:'time',secs:30,sets:1,target:'Biceps',equip:'Tube 10\u201320 lb',
+    {id:'hiit-mon-curl',name:'Bicep Curl \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:'curl',log:'time',secs:30,sets:1,target:'Biceps',equip:'Tube 10\u201320 lb',
       setup:'Upper arms pinned, continuous curls for 30 seconds. Rest 30 seconds. Repeat all 4 exercises for round 2.'}
   ]};
 
@@ -2439,22 +2474,22 @@ var DS_HIIT_TUE={key:'hiit-tue',title:'HIIT Finisher \u2014 Lower EMOM',accent:'
       setup:'12 reps at the top of min 1. Rest the remainder of the minute. Repeat at min 5. Push the pace \u2014 these should feel hard.'},
     {id:'hiit-tue-bridge',name:'Banded Glute Bridge \u2014 EMOM',rx:'15 explosive \xb7 min 2 & 6',cal:18,demo:'bridge',log:'setsreps',sets:1,target:'Glutes',equip:'Tube 30\u201340 lb',
       setup:'15 reps, drive through heels explosively, squeeze hard at the top. Rest remainder of the minute. Repeat at min 6.'},
-    {id:'hiit-tue-pallof-l',name:'Pallof Press \u2014 Left \xb7 EMOM',rx:'10 reps \xb7 min 3 & 7',cal:12,demo:null,log:'setsreps',sets:1,target:'Core Anti-Rotation',equip:'Tube 10\u201320 lb \xb7 mid anchor',
+    {id:'hiit-tue-pallof-l',name:'Pallof Press \u2014 Left \xb7 EMOM',rx:'10 reps \xb7 min 3 & 7',cal:12,demo:'pallof',log:'setsreps',sets:1,target:'Core Anti-Rotation',equip:'Tube 10\u201320 lb \xb7 mid anchor',
       setup:'Left side to anchor. 10 presses, hold 2 sec each at full extension. Rest the remainder. Repeat at min 7.'},
-    {id:'hiit-tue-pallof-r',name:'Pallof Press \u2014 Right \xb7 EMOM',rx:'10 reps \xb7 min 4 & 8',cal:12,demo:null,log:'setsreps',sets:1,target:'Core Anti-Rotation',equip:'Tube 10\u201320 lb \xb7 mid anchor',
+    {id:'hiit-tue-pallof-r',name:'Pallof Press \u2014 Right \xb7 EMOM',rx:'10 reps \xb7 min 4 & 8',cal:12,demo:'pallof',log:'setsreps',sets:1,target:'Core Anti-Rotation',equip:'Tube 10\u201320 lb \xb7 mid anchor',
       setup:'Right side to anchor. 10 presses. Rest the remainder. That completes round 1 \u2014 start round 2 at min 5.'}
   ]};
 
 var DS_HIIT_THU={key:'hiit-thu',title:'HIIT Finisher \u2014 Upper Pull',accent:'#a78bfa',meta:'6 min \xb7 30s on / 30s off \xb7 2 rounds',
   blurb:'Upper back and shoulder emphasis. Rear delts, lats, side delts, arms \u2014 the pulling muscles that drive posture and shoulder health. Keep elbows safe, intensity high.',
   moves:[
-    {id:'hiit-thu-pulldown',name:'Banded Lat Pulldown \u2014 intervals',rx:'30s hard / 30s rest',cal:20,demo:null,log:'time',secs:30,sets:1,target:'Lats',equip:'Tube 20\u201340 lb \xb7 high anchor',
+    {id:'hiit-thu-pulldown',name:'Banded Lat Pulldown \u2014 intervals',rx:'30s hard / 30s rest',cal:20,demo:'pulldown',log:'time',secs:30,sets:1,target:'Lats',equip:'Tube 20\u201340 lb \xb7 high anchor',
       setup:'Kneeling, high anchor. Drive elbows down into your back pockets \u2014 continuous reps for 30 seconds. Rest 30 seconds.'},
-    {id:'hiit-thu-facepull',name:'Banded Face Pull \u2014 intervals',rx:'30s hard / 30s rest',cal:15,demo:null,log:'time',secs:30,sets:1,target:'Rear Delts \xb7 Rotator Cuff',equip:'Tube 10\u201320 lb \xb7 high anchor',
+    {id:'hiit-thu-facepull',name:'Banded Face Pull \u2014 intervals',rx:'30s hard / 30s rest',cal:15,demo:'facepull',log:'time',secs:30,sets:1,target:'Rear Delts \xb7 Rotator Cuff',equip:'Tube 10\u201320 lb \xb7 high anchor',
       setup:'Pull to temples, thumbs back \u2014 30 seconds continuous. Elbows stay high. Rest 30 seconds.'},
-    {id:'hiit-thu-lateral',name:'Banded Lateral Raise \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:null,log:'time',secs:30,sets:1,target:'Side Delts',equip:'Tube 10 lb',
+    {id:'hiit-thu-lateral',name:'Banded Lateral Raise \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:'lateralraise',log:'time',secs:30,sets:1,target:'Side Delts',equip:'Tube 10 lb',
       setup:'Lead with the elbows, stop at shoulder height \u2014 30 seconds. Lighter band here; this is a small muscle. Rest 30 seconds.'},
-    {id:'hiit-thu-hammer',name:'Hammer Curl \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:null,log:'time',secs:30,sets:1,target:'Biceps \xb7 Brachialis',equip:'Tube 10\u201320 lb',
+    {id:'hiit-thu-hammer',name:'Hammer Curl \u2014 intervals',rx:'30s hard / 30s rest',cal:12,demo:'curl',log:'time',secs:30,sets:1,target:'Biceps \xb7 Brachialis',equip:'Tube 10\u201320 lb',
       setup:'Neutral grip (palms face each other) \u2014 30 seconds continuous curls. Upper arms pinned. Rest 30 seconds. Repeat all 4 for round 2.'}
   ]};
 
@@ -2463,7 +2498,7 @@ var DS_HIIT_FRI={key:'hiit-fri',title:'HIIT Finisher \u2014 Lower EMOM',accent:'
   moves:[
     {id:'hiit-fri-rdl',name:'Romanian Deadlift \u2014 EMOM',rx:'12 reps \xb7 min 1 & 5',cal:22,demo:'hinge',log:'setsreps',sets:1,target:'Hamstrings \xb7 Glutes',equip:'Tube 40\u201350 lb',
       setup:'12 reps, hips back to the wall, handles glued to legs. Rest remainder. Repeat at min 5.'},
-    {id:'hiit-fri-latwalk',name:'Banded Lateral Walk \u2014 EMOM',rx:'continuous \xb7 min 2 & 6',cal:18,demo:null,log:'time',secs:45,sets:1,target:'Hip Abductors \xb7 Glutes',equip:'Mini loop above knees',
+    {id:'hiit-fri-latwalk',name:'Banded Lateral Walk \u2014 EMOM',rx:'continuous \xb7 min 2 & 6',cal:18,demo:'latwalk',log:'time',secs:45,sets:1,target:'Hip Abductors \xb7 Glutes',equip:'Mini loop above knees',
       setup:'Quarter-squat, step sideways for 45 seconds switching direction every 4 steps. Rest the remainder of the minute. Repeat at min 6.'},
     {id:'hiit-fri-deadbug',name:'Dead Bug \u2014 EMOM',rx:'8/side \xb7 min 3 & 7',cal:12,demo:'deadbug',log:'setsreps',sets:1,target:'Core \xb7 Anti-Extension',equip:'Bodyweight',
       setup:'Slow tempo \u2014 3 sec extend, 3 sec return. Low back pinned the entire time. 8 reps per side. Rest the remainder. Repeat at min 7.'},
@@ -2476,23 +2511,23 @@ var DS_HIIT_MAP={mon:DS_HIIT_MON,tue:DS_HIIT_TUE,thu:DS_HIIT_THU,fri:DS_HIIT_FRI
 var DS_FINISHER={key:'finisher',title:'Core Finisher',accent:'#fbbf24',meta:'10 min EMOM · after lift days',
   blurb:'Anti-rotation / anti-extension core, no ballistic wrist or elbow loading. 10 rounds, 1 min each, alternate down the list. Drop the DB on any move if the elbow is flaring that day — bodyweight only, no exceptions.',
   moves:[
-    {id:'fin-pallof1',name:'Banded Pallof Press',rx:'8/side · min 1',cal:15,demo:null,log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
+    {id:'fin-pallof1',name:'Banded Pallof Press',rx:'8/side · min 1',cal:15,demo:'pallof',log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
       setup:'Anchor at chest height, stand perpendicular to the door. Press straight out, resist the rotation pulling you toward the anchor. 8 reps each side, then move on at the top of the next minute.'},
-    {id:'fin-deadbug-db',name:'Dead Bug — DB Overhead',rx:'8/side · min 2',cal:15,demo:null,log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'10 lb dumbbell, one hand',
+    {id:'fin-deadbug-db',name:'Dead Bug — DB Overhead',rx:'8/side · min 2',cal:15,demo:'deadbug',log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'10 lb dumbbell, one hand',
       setup:'Lie on your back, knees at 90°. Hold the 10 lb DB in one hand straight overhead, arm locked. Extend opposite arm and opposite leg out slowly, low back pinned to the floor. 8 reps per side. Drop the DB and go bodyweight if the elbow is off that day.'},
-    {id:'fin-woodchop',name:'Banded Woodchop',rx:'8/side · min 3',cal:15,demo:null,log:'setsreps',sets:1,target:'Obliques · Rotation',equip:'Tube band · high anchor',
+    {id:'fin-woodchop',name:'Banded Woodchop',rx:'8/side · min 3',cal:15,demo:'woodchop',log:'setsreps',sets:1,target:'Obliques · Rotation',equip:'Tube band · high anchor',
       setup:'High anchor, perpendicular stance. Pull the handle diagonally high-to-low across your body, rotating through the torso, not the arms. 8 reps per side.'},
-    {id:'fin-birddog',name:'Bird Dog',rx:'8/side · min 4',cal:12,demo:null,log:'setsreps',sets:1,target:'Core · Glutes',equip:'Bodyweight',
+    {id:'fin-birddog',name:'Bird Dog',rx:'8/side · min 4',cal:12,demo:'birddog',log:'setsreps',sets:1,target:'Core · Glutes',equip:'Bodyweight',
       setup:'On hands and knees, extend opposite arm and leg straight out until level with your torso. Hold a beat, return with control. 8 reps per side — flat back the whole time, no rocking.'},
     {id:'fin-planktap',name:'Plank Shoulder Taps',rx:'16 taps · min 5',cal:15,demo:'plank',log:'setsreps',sets:1,target:'Core · Anti-Rotation',equip:'Bodyweight (10 lb DB optional)',
       setup:'High plank, feet a little wider than usual. Tap the opposite shoulder with each hand, 16 taps total. Hips stay still — that’s the whole point. Hold a 10 lb DB in the tapping hand only if it stays dead still otherwise.'},
-    {id:'fin-pallof2',name:'Banded Pallof Press — Pulses',rx:'8/side · min 6',cal:15,demo:null,log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
+    {id:'fin-pallof2',name:'Banded Pallof Press — Pulses',rx:'8/side · min 6',cal:15,demo:'pallof',log:'setsreps',sets:1,target:'Anti-Rotation',equip:'Tube band · mid anchor',
       setup:'Same setup as min 1. Press out and hold at full extension, then add 3 small pulses against the band before returning. 8 reps per side.'},
-    {id:'fin-sideplank',name:'Side Plank — Reach Through',rx:'8/side · min 7',cal:15,demo:null,log:'setsreps',sets:1,target:'Obliques · Lateral Chain',equip:'Bodyweight',
+    {id:'fin-sideplank',name:'Side Plank — Reach Through',rx:'8/side · min 7',cal:15,demo:'sideplank',log:'setsreps',sets:1,target:'Obliques · Lateral Chain',equip:'Bodyweight',
       setup:'Side plank on forearm, hips lifted and stacked. Reach the top arm under your body and through, then back up to vertical. 8 reps per side, then switch sides at the top of the minute.'},
-    {id:'fin-latwalk',name:'Banded Lateral Walk',rx:'continuous · min 8',cal:18,demo:null,log:'time',secs:60,target:'Hip Abductors · Glutes',equip:'Mini loop, above knees',
+    {id:'fin-latwalk',name:'Banded Lateral Walk',rx:'continuous · min 8',cal:18,demo:'latwalk',log:'time',secs:60,target:'Hip Abductors · Glutes',equip:'Mini loop, above knees',
       setup:'Quarter-squat stance, mini loop above the knees. Step sideways for the full minute, switching direction every 4 steps. Bonus glute activation for the SI joint pattern.'},
-    {id:'fin-deadbug2',name:'Dead Bug — bodyweight, slow',rx:'8/side · min 9',cal:12,demo:null,log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'Bodyweight',
+    {id:'fin-deadbug2',name:'Dead Bug — bodyweight, slow',rx:'8/side · min 9',cal:12,demo:'deadbug',log:'setsreps',sets:1,target:'Core · Anti-Extension',equip:'Bodyweight',
       setup:'Same pattern as min 2, no weight, slower tempo — 3 sec out, 3 sec back. Low back stays glued to the floor.'},
     {id:'fin-plankhold',name:'Plank Hold — max tension',rx:'to :60 · min 10',cal:18,demo:'plank',log:'time',secs:60,target:'Full Core',equip:'Bodyweight',
       setup:'Forearm plank, full minute, no movement. Squeeze everything — glutes, core, quads — as if bracing for a punch. Last round, empty the tank.'}
@@ -2543,7 +2578,7 @@ var DS_SESSIONS={
       {id:'wed-hollow',name:'Hollow Hold — breath focus',slot:'Core',target:'Full Core',equip:'Bodyweight',rx:'2×30s',cal:20,cue:'Exhale everything out, ribs down — hold the compression',demo:'hollow',log:'time',secs:30},
       {id:'wed-bike',name:'Slow Bicycle Crunch',slot:'Core',target:'Obliques',equip:'Bodyweight',rx:'2×8/side',cal:18,cue:'Rotate from the ribcage — 2 full seconds each way',demo:null,log:'setsreps',sets:2},
       {id:'wed-legraise',name:'Leg Raise — slow descent',slot:'Core',target:'Lower Abs',equip:'Bodyweight',rx:'2×8',cal:18,cue:'3 seconds down — low back stays flat the whole time',demo:null,log:'setsreps',sets:2},
-      {id:'wed-tgu',name:'Turkish Get-Up',slot:'Full Body',target:'Core · Shoulder Stability',equip:'8 lb kettlebell',rx:'2×3/side',cal:30,cue:'Eye stays on the weight the whole time — slow, one step at a time',demo:null,log:'setsreps',sets:2},
+      {id:'wed-tgu',name:'Turkish Get-Up',slot:'Full Body',target:'Core · Shoulder Stability',equip:'8 lb kettlebell',rx:'2×3/side',cal:30,cue:'Eye stays on the weight the whole time — slow, one step at a time',demo:'tgu',log:'setsreps',sets:2},
       {id:'wed-slam',name:'Ball Slam',slot:'Power',target:'Full Body',equip:'10 lb slam ball',rx:'3×10',cal:35,cue:'Full reach overhead first — drive the ball through the floor',demo:null,log:'setsreps',sets:3},
       {id:'wed-rotslam',name:'Rotational Slam',slot:'Power',target:'Obliques',equip:'10 lb slam ball',rx:'3×8/side',cal:30,cue:'Hips lead the rotation — arms just guide it',demo:null,log:'setsreps',sets:3}]},
 
@@ -2620,7 +2655,7 @@ var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end ran
 
 /* ===================== DAILY SESSION — render + logging (integrated) ===================== */
 
-DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Eccentric Wrist Rehab",rx:"3\u00d715",cal:12,demo:null,log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Slow on the lower \u2014 this is the rehab that actually works",setup:"Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3\u20134 seconds using only the working side. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer's elbow."});
+DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Eccentric Wrist Rehab",rx:"3\u00d715",cal:12,demo:"wristecc",log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Slow on the lower \u2014 this is the rehab that actually works",setup:"Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3\u20134 seconds using only the working side. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer's elbow."});
 var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"toward your first rep \u00b7 alternating days",blurb:"Your road to the first unassisted pull-up. Log each drill so the numbers climb \u2014 that climb is the progress. Take the hardest drill close to failure; ease off if the elbow flares.",moves:[
  {id:"pu-hang",name:"Dead Hang \u2014 log seconds",rx:"3 \u00d7 max hold",cal:10,demo:"deadhang",log:"setsreps",sets:3,target:"Grip \u00b7 Shoulders \u00b7 Lats",equip:"Monkey bars",cue:"Shoulders active, pulled down away from your ears \u2014 don't just dangle",setup:"Hang from the bar, full grip, arms straight, shoulder blades pulled down and back. Put the seconds you held into the Reps box and beat last time."},
  {id:"pu-scap",name:"Scapular Pulls",rx:"3\u00d78",cal:10,demo:"scappull",log:"setsreps",sets:3,target:"Lower Traps \u00b7 Lats",equip:"Monkey bars",cue:"Arms stay straight \u2014 the shoulder blades do all the work",setup:"Hang with straight arms. Without bending the elbows, pull the shoulder blades down to lift your chest a couple inches, then lower with control. This is the very start of the pull."},
