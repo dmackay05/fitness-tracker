@@ -5917,6 +5917,8 @@ var EXERCISES = [
   {name:"Step-Ups (3 sets)",calories:40,type:"strength"},
   {name:"Stability Ball Leg Curl (3 sets)",calories:30,type:"strength"},
   {name:"Squat to Press (3 sets)",calories:50,type:"strength"},
+  {name:"Goblet Squat (3-4 sets)",calories:40,type:"strength"},
+  {name:"Overhead Press (3 sets)",calories:35,type:"strength"},
   {name:"Core Finisher - Hollow / Bicycle / Leg Raise",calories:35,type:"strength"},
   {name:"Russian Twists (3 sets)",calories:25,type:"strength"},
   {name:"Dead Hangs + Playground",calories:90,type:"mobility"},
@@ -6446,7 +6448,7 @@ function populateExDropdown(){
     showLastHint(e?e.name:"","ex-last-hint"); };
 }
 function addDropdownEx(){
-  var dd=document.getElementById("ex-dropdown"); if(dd.value==="") return;
+  var dd=document.getElementById("ex-dropdown"); if(dd.value===""){ toast("Pick an exercise from the list first"); return; }
   var e=EXERCISES[dd.value], day=getDay();
   var ex={name:e.name,calories:e.calories,type:e.type,id:Date.now().toString()};
   _attachExDetail(ex,"ex-sets","ex-reps","ex-load");
@@ -8902,7 +8904,16 @@ function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[
 function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:item.cal,cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants}; }
 
-function dsComplete(id){ var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
+function dsComplete(id){ var item=dsRawItem(id);
+  if(item && item.log==='setsreps'){ var st=dsItemState(id); return st.sets.length>=(item.sets||3); }
+  var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
+function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
+  day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
+  if(!st.sets||!st.sets.length){ saveDay(day); return; }
+  var target=item.sets||3; var frac=Math.min(st.sets.length/target,1);
+  var ex={name:item.name,calories:Math.round((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length};
+  var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; if(l.rir!=null)ex.rir=l.rir;
+  day.exercises.push(ex); saveDay(day); }
 function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:item.cal),type:"session",id:sid};
@@ -9041,10 +9052,10 @@ function dsLogSet(id,target){
   if(st.sets.length>=target)return;
   var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
   st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null)});
-  var nowDone=false;
-  if(st.sets.length>=target){ dsLogComplete(dsViewOf(dsRawItem(id))); nowDone=true; }
+  var nowDone=st.sets.length>=target;
+  dsSyncPartialLog(dsViewOf(dsRawItem(id)));
   if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
-  dsSaveUI(); dsRender(); if(nowDone)renderAll();
+  dsSaveUI(); dsRender(); renderAll();
 }
 function dsMarkDone(id){ if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
 function dsBumpMin(id,delta,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var cur=st.mins||raw.defMin||30; cur=Math.max(5,cur+delta); st.mins=cur; dsSaveUI();
