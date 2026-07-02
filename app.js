@@ -6277,9 +6277,9 @@ function qtStart() {
   qtRemaining = qtTotalSecs;
   qtPaused = false;
   qtShowRunningView();
-  qtTick();
   clearInterval(qtInterval);
   qtInterval = setInterval(qtTick, 1000);
+  try{ qtTick(); }catch(e){}
 }
 function qtShowRunningView() {
   document.getElementById('qt-setup').style.display='none';
