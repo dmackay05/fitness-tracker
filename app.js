@@ -939,6 +939,12 @@ function renderTopFoods(){
 
 // keep wake lock alive if iOS drops it on tab refocus
 document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible" && trk.active && !trk.paused) trkReqWake(); });
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible" && qtInterval && !qtPaused && qtEndTs!=null){
+    try{ qtTick(); }catch(e){}
+    qtReqWake();
+  }
+});
 
 // ── LOG render (everything entry-side) ──────────────────────────────────
 function renderLog(){
@@ -6272,6 +6278,9 @@ function qtSetPreset(m,s) {
   document.getElementById('qt-wheel-min').scrollTo({top:m*50, behavior:'smooth'});
   document.getElementById('qt-wheel-sec').scrollTo({top:s*50, behavior:'smooth'});
 }
+var qtWakeLock = null;
+function qtReqWake(){ try{ if("wakeLock" in navigator) navigator.wakeLock.request("screen").then(function(w){qtWakeLock=w;}).catch(function(){}); }catch(e){} }
+function qtRelWake(){ try{ if(qtWakeLock){ qtWakeLock.release(); qtWakeLock=null; } }catch(e){} }
 function qtStart() {
   qtTotalSecs = Math.max(1, qtMinVal*60 + qtSecVal);
   qtRemaining = qtTotalSecs;
@@ -6280,6 +6289,7 @@ function qtStart() {
   qtShowRunningView();
   clearInterval(qtInterval);
   qtInterval = setInterval(qtTick, 250);
+  qtReqWake();
   try{ qtTick(); }catch(e){}
 }
 function qtShowRunningView() {
@@ -6330,7 +6340,7 @@ function qtAdjust(delta) {
   qtUpdateFab();
 }
 function qtReset() {
-  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=qtTotalSecs; qtEndTs=null;
+  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=qtTotalSecs; qtEndTs=null; qtRelWake();
   document.getElementById('qt-running').style.display='none';
   document.getElementById('qt-done').style.display='none';
   document.getElementById('qt-setup').style.display='block';
@@ -6339,7 +6349,7 @@ function qtReset() {
   qtUpdateFab();
 }
 function qtFinish() {
-  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=0; qtEndTs=null;
+  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=0; qtEndTs=null; qtRelWake();
   qtUpdateFab();
   qtChime();
   document.getElementById('qt-running').style.display='none';
