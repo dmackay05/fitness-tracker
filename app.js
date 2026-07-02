@@ -5916,8 +5916,8 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     var panels=document.querySelectorAll('.day-panel'), ti=weekdayIdx();
     panels.forEach(function(p,i){
       p.classList.remove('week-collapsed','week-open');
-      if(mode==='progress'){ p.style.display=(i===10)?'block':'none'; }
-      else if(mode==='week'){ if(i===10){p.style.display='none';} else {p.style.display='block';p.classList.add('week-collapsed');} }
+      if(mode==='progress'){ p.style.display=(p.id==='day-10')?'block':'none'; }
+      else if(mode==='week'){ if(p.id==='day-10'){p.style.display='none';} else {p.style.display='block';p.classList.add('week-collapsed');} }
       else { p.style.display=(i===ti)?'block':'none'; }
     });
     var tabs=document.querySelectorAll('.mode-nav .day-tab'), order={today:0,week:1,progress:2};
