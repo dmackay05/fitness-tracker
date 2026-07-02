@@ -6229,7 +6229,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 
 // ── Quick Timer: standalone countdown, reachable from any tab ──────────────
 var QT_CIRC = 2*Math.PI*78;
-var qtTotalSecs = 60, qtRemaining = 60, qtPaused = false, qtInterval = null;
+var qtTotalSecs = 60, qtRemaining = 60, qtPaused = false, qtInterval = null, qtEndTs = null;
 var qtMinVal = 1, qtSecVal = 0;
 
 function qtBuildWheel(id, max, current, cb) {
@@ -6276,9 +6276,10 @@ function qtStart() {
   qtTotalSecs = Math.max(1, qtMinVal*60 + qtSecVal);
   qtRemaining = qtTotalSecs;
   qtPaused = false;
+  qtEndTs = Date.now() + qtTotalSecs*1000;
   qtShowRunningView();
   clearInterval(qtInterval);
-  qtInterval = setInterval(qtTick, 1000);
+  qtInterval = setInterval(qtTick, 250);
   try{ qtTick(); }catch(e){}
 }
 function qtShowRunningView() {
@@ -6288,8 +6289,8 @@ function qtShowRunningView() {
   qtRenderRunning();
 }
 function qtTick() {
-  if (qtPaused) return;
-  qtRemaining--;
+  if (qtPaused || qtEndTs==null) return;
+  qtRemaining = Math.max(0, Math.ceil((qtEndTs - Date.now())/1000));
   qtRenderRunning();
   qtUpdateFab();
   if (qtRemaining<=0) { qtFinish(); }
@@ -6317,17 +6318,19 @@ function qtUpdateFab() {
 }
 function qtTogglePause() {
   qtPaused = !qtPaused;
+  if (!qtPaused) { qtEndTs = Date.now() + qtRemaining*1000; }
   qtRenderRunning();
   qtUpdateFab();
 }
 function qtAdjust(delta) {
   qtRemaining = Math.max(1, qtRemaining+delta);
   if (qtRemaining>qtTotalSecs) qtTotalSecs=qtRemaining;
+  qtEndTs = Date.now() + qtRemaining*1000;
   qtRenderRunning();
   qtUpdateFab();
 }
 function qtReset() {
-  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=qtTotalSecs;
+  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=qtTotalSecs; qtEndTs=null;
   document.getElementById('qt-running').style.display='none';
   document.getElementById('qt-done').style.display='none';
   document.getElementById('qt-setup').style.display='block';
@@ -6336,7 +6339,7 @@ function qtReset() {
   qtUpdateFab();
 }
 function qtFinish() {
-  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=0;
+  clearInterval(qtInterval); qtInterval=null; qtPaused=false; qtRemaining=0; qtEndTs=null;
   qtUpdateFab();
   qtChime();
   document.getElementById('qt-running').style.display='none';
