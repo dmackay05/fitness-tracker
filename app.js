@@ -677,6 +677,40 @@ function closeWtModal(){ document.getElementById("wt-modal").style.display="none
 function logWeightModal(){ var v=parseFloat(document.getElementById("wt-modal-in").value); if(!v) return;
   var d=getDay(); d.weight=v; saveDay(d); document.getElementById("wt-modal-in").value=""; closeWtModal(); renderAll(); }
 
+// ── LOG: BODY COMP (body fat / muscle / water / bone from smart scale) ──
+function logBodyComp(){
+  var d=getDay(); d.bodyComp=d.bodyComp||{};
+  var fields={bodyFat:"bc-bodyfat",muscle:"bc-muscle",water:"bc-water",bone:"bc-bone"};
+  var any=false;
+  Object.keys(fields).forEach(function(k){
+    var v=document.getElementById(fields[k]).value;
+    if(v!==""){ d.bodyComp[k]=parseFloat(v); any=true; }
+  });
+  if(!any) return;
+  saveDay(d);
+  var m=document.getElementById("bc-msg"); m.textContent="✓ Body comp saved"; setTimeout(function(){m.textContent="";},2500);
+  renderBodyComp();
+}
+function renderBodyComp(){
+  var bc=getDay().bodyComp||{};
+  document.getElementById("bc-bodyfat").value=(bc.bodyFat!==undefined)?bc.bodyFat:"";
+  document.getElementById("bc-muscle").value=(bc.muscle!==undefined)?bc.muscle:"";
+  document.getElementById("bc-water").value=(bc.water!==undefined)?bc.water:"";
+  document.getElementById("bc-bone").value=(bc.bone!==undefined)?bc.bone:"";
+  var keys=Object.keys(appData).filter(function(k){return appData[k].bodyComp&&Object.keys(appData[k].bodyComp).length;}).sort().slice(-8).reverse();
+  var el=document.getElementById("bc-history");
+  if(!el) return;
+  el.innerHTML = (!keys.length)?'':'<div class="row-sub" style="margin-bottom:6px">Recent body comp</div>'+keys.map(function(k){
+    var b=appData[k].bodyComp, w=appData[k].weight;
+    var parts=[];
+    if(w) parts.push(w+" lb");
+    if(b.bodyFat!==undefined) parts.push(b.bodyFat+"% BF");
+    if(b.muscle!==undefined) parts.push(b.muscle+" lb muscle");
+    if(b.water!==undefined) parts.push(b.water+"% water");
+    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+parts.join(" · ")+'</div></div>';
+  }).join("");
+}
+
 // ── LOG: WELLNESS ───────────────────────────────────────────────────────
 function setMedType(el){ medType=el.dataset.type;
   document.querySelectorAll(".med-type-btn").forEach(function(b){b.classList.toggle("sel",b===el);}); }
@@ -956,7 +990,7 @@ document.addEventListener("visibilitychange",function(){
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderSupps(); renderRides();
+  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderSupps(); renderRides();
   document.getElementById("wt-input").value="";
 }
 
