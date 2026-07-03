@@ -141,7 +141,8 @@ var TREND_METRICS=[
   {key:"protein", label:"Protein",  unit:"g",   dir:"higher",  color:"#fbbf24", goal:function(){return GOALS.protein||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.protein||0);},0):null;}},
   {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
   {key:"burned",  label:"Burned",   unit:"kcal",dir:"higher",  color:"#fb923c", goal:function(){return GOALS.burned||0;}, get:function(d){return (d.exercises&&d.exercises.length)?d.exercises.reduce(function(a,x){return a+(+x.calories||0);},0):null;}},
-  {key:"water",   label:"Water",    unit:"oz",  dir:"higher",  color:"#38bdf8", goal:function(){return WATER_GOAL||0;}, get:function(d){return (d.waterOz>0)?d.waterOz:null;}}
+  {key:"water",   label:"Water",    unit:"oz",  dir:"higher",  color:"#38bdf8", goal:function(){return WATER_GOAL||0;}, get:function(d){return (d.waterOz>0)?d.waterOz:null;}},
+  {key:"traintime", label:"Time Trained", unit:"min", dir:"neutral", color:"#cfe84f", get:function(d){return (d.exercises&&d.exercises.length)?Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60):null;}}
 ];
 
 // EXERCISES, PRESET_FOODS, SUPPS injected just above this block (data.js)
@@ -3105,6 +3106,18 @@ function dsCustomRenderLibrary(){
       '<div style="flex-shrink:0;font-size:18px;color:'+(picked?"#5eead4":"#555")+'">'+(picked?"✓":"+")+'</div></div>';
   }).join("");
 }
+function dsComputeActualSecs(item, st){
+  if(item.log==="time"){ return (st.sets?st.sets.length:1) * (item.secs||30); }
+  if(item.log==="setsreps" && st.sets && st.sets.length){
+    var repsPerSet = parseInt(st.sets[st.sets.length-1].reps,10) || 8;
+    if(st.sets.length>=2 && st.sets[0].ts && st.sets[st.sets.length-1].ts){
+      var elapsed = (st.sets[st.sets.length-1].ts - st.sets[0].ts)/1000;
+      return Math.round(elapsed + repsPerSet*DS_SEC_PER_REP);
+    }
+    return Math.round(st.sets.length*repsPerSet*DS_SEC_PER_REP + Math.max(0,st.sets.length-1)*DS_REST_SECS);
+  }
+  return null;
+}
 function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
 function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:item.cal,cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants}; }
@@ -3120,12 +3133,15 @@ function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsIte
   var target=item.sets||3; var frac=Math.min(st.sets.length/target,1);
   var ex={name:item.name,calories:Math.round((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length};
   var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; if(l.rir!=null)ex.rir=l.rir;
+  var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   day.exercises.push(ex); saveDay(day); }
 function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:item.cal),type:"session",id:sid};
   if(st.sets&&st.sets.length){ ex.sets=st.sets.length; var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; if(l.rir!=null)ex.rir=l.rir; }
   else if(st.mins){ ex.reps=st.mins+" min"; }
+  var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
+  else if(item.log==="cardio" && st.mins){ ex.actualSecs=st.mins*60; }
   day.exercises.push(ex); saveDay(day);
 }
 function dsUnlog(id){ var day=getDay(), sid="sess_"+id; day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
@@ -3200,6 +3216,7 @@ var DS_REST_SECS = 60;
 var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
 
 function dsEstimateSeconds(ex){
+  if(ex.actualSecs!=null) return ex.actualSecs;
   var rawId = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
   var item = rawId ? dsRawItem(rawId) : null;
   var minMatch = ex.reps && String(ex.reps).match(/(\d+(?:\.\d+)?)\s*min/i);
@@ -3294,7 +3311,7 @@ function dsLogSet(id,target){
   if(dsComplete(id)){ dsUnlog(id); st.sets=[]; dsSaveUI(); dsRender(); renderAll(); return; }
   if(st.sets.length>=target)return;
   var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
-  st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null)});
+  st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()});
   var nowDone=st.sets.length>=target;
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
   if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
