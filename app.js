@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v7 — 2026-07-03";
+var APP_BUILD = "v8 — 2026-07-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2747,31 +2747,42 @@ function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catch(e){} }
 function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[activeDate]; }
 function dsItemState(id){ var d=dsDayState(); if(!d[id])d[id]={sets:[]}; if(!d[id].sets)d[id].sets=[]; return d[id]; }
-var ds_timers={}; // {id: {interval, left}} — interval is null while paused, left persists across pause/resume
-function dsStartTimer(id,secs){
-  var btn=document.getElementById('ds-t-'+id); if(!btn)return;
+var ds_timers={}; // {id: {interval, left, done}} — interval is null while paused, left persists across pause/resume, done survives re-renders until marked/restarted
+function dsTimerLabel(id,secs){
   var t=ds_timers[id];
+  if(!t) return {cls:'', txt:'\u23F1 Start '+dsMMSS(secs)};
+  if(t.done) return {cls:'', txt:'\u2713 done \u2014 mark it'};
+  if(t.interval) return {cls:'ds-run', txt:'\u23F8 '+dsMMSS(t.left)};
+  return {cls:'', txt:'\u25B6 Resume '+dsMMSS(t.left)};
+}
+function dsTimerPaint(id,secs){
+  var btn=document.getElementById('ds-t-'+id); if(!btn)return;
+  var s=dsTimerLabel(id,secs);
+  btn.classList.toggle('ds-run', s.cls==='ds-run');
+  btn.textContent=s.txt;
+}
+function dsStartTimer(id,secs){
+  var t=ds_timers[id];
+  if(t && t.done){ delete ds_timers[id]; t=null; } // restart after a completed hold
   if(t && t.interval){
     // Currently running → pause, keep remaining time
     clearInterval(t.interval); t.interval=null;
-    btn.classList.remove('ds-run');
-    btn.textContent='\u25B6 Resume '+dsMMSS(t.left);
+    dsTimerPaint(id,secs);
     return;
   }
-  if(!t){ t=ds_timers[id]={interval:null,left:secs}; }
+  if(!t){ t=ds_timers[id]={interval:null,left:secs,done:false}; }
   // Currently paused or fresh → start/resume counting down from t.left
-  btn.classList.add('ds-run');
-  btn.textContent='\u23F8 '+dsMMSS(t.left);
   t.interval=setInterval(function(){
     t.left--;
     if(t.left<=0){
-      clearInterval(t.interval); delete ds_timers[id];
-      btn.classList.remove('ds-run'); btn.textContent='\u2713 done \u2014 mark it';
+      clearInterval(t.interval); t.interval=null; t.done=true;
+      dsTimerPaint(id,secs);
       dsToast('Hold complete');
       return;
     }
-    btn.textContent='\u23F8 '+dsMMSS(t.left);
+    dsTimerPaint(id,secs);
   },1000);
+  dsTimerPaint(id,secs);
 }
 
 function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
@@ -3198,7 +3209,8 @@ function dsRenderItem(rawItem,idx){
     h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsLogSet(\''+item.id+'\','+target+')">'+(done?'\u2713 Logged \u2014 tap to clear':'Log set ('+st.sets.length+'/'+target+')')+'</button>';
   } else if(item.log==='time'){
-    h+='<div class="ds-timerwrap"><button class="ds-tbtn" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">\u23F1 Start '+dsMMSS(item.secs)+'</button></div>';
+    var _ts=dsTimerLabel(item.id,item.secs);
+    h+='<div class="ds-timerwrap"><button class="ds-tbtn '+_ts.cls+'" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">'+_ts.txt+'</button></div>';
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   } else if(item.log==='cardio'){
     var mins=st.mins||item.defMin;
@@ -3331,7 +3343,7 @@ function dsLogSet(id,target){
   if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
   dsSaveUI(); dsRender(); renderAll();
 }
-function dsMarkDone(id){ if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
+function dsMarkDone(id){ if(ds_timers[id]){ if(ds_timers[id].interval)clearInterval(ds_timers[id].interval); delete ds_timers[id]; } if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
 function dsBumpMin(id,delta,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var cur=st.mins||raw.defMin||30; cur=Math.max(5,cur+delta); st.mins=cur; dsSaveUI();
   var m=document.getElementById('ds-min-'+id); if(m)m.textContent=cur;
   var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+Math.round(cur*perMin)+' kcal'; }
