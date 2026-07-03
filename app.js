@@ -1135,7 +1135,7 @@ document.querySelectorAll(".rbtn[data-field]").forEach(function(btn){
 
 populateFoodDropdown();
 populateExDropdown();
-renderAll();
+setTimeout(renderAll, 0);
 if(typeof ldInit==="function"){ try{ldInit();}catch(e){} }
 
 // ── CUSTOMIZATION RENDERS (config-driven) ───────────────────────────────
@@ -1578,7 +1578,7 @@ fetchOverloadCache();
 _lastSheetPull=Date.now();
 fetchSheet(function(rows,ok){
   if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets";_bn.style.color="#4ade80";} }
-  else if(_bn){ _bn.textContent="Offline — using local data"; _bn.style.color="#f87171"; }
+  else { renderAll(); if(_bn){ _bn.textContent="Offline — using local data"; _bn.style.color="#f87171"; } }
   if(_bn) setTimeout(function(){ _bn.style.display="none"; },2200);
 });
 
