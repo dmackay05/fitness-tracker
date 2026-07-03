@@ -88,6 +88,8 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
+var APP_BUILD = "v7 — 2026-07-03";
+try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
 var START_WEIGHT = parseFloat(store.get('ft_start_weight')) || 200;
@@ -1573,13 +1575,14 @@ initHealthSettings();
 
 // Sheet is source of truth: pull + merge on open, then re-render
 var _bn=document.getElementById("sync-banner");
+if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Open \u2699 Settings and re-enter your Apps Script URL."; _bn.style.color="#fbbf24"; _bn.style.display="block"; }
 if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
 fetchOverloadCache();
 _lastSheetPull=Date.now();
 fetchSheet(function(rows,ok){
-  if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets";_bn.style.color="#4ade80";} }
-  else { renderAll(); if(_bn){ _bn.textContent="Offline — using local data"; _bn.style.color="#f87171"; } }
-  if(_bn) setTimeout(function(){ _bn.style.display="none"; },2200);
+  if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets \u00b7 "+APP_BUILD;_bn.style.color="#4ade80";} }
+  else { renderAll(); if(_bn && SHEETS_URL){ _bn.textContent="Offline — using local data \u00b7 "+APP_BUILD; _bn.style.color="#f87171"; } }
+  if(_bn && SHEETS_URL) setTimeout(function(){ _bn.style.display="none"; },2200);
 });
 
 // ── PERIODIC BACKGROUND SYNC (every 3 minutes) ──────────────────────────
