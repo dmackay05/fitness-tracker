@@ -1366,10 +1366,14 @@ html body div.app{max-width:480px}
 #panel-today .ds-unit{font-size:12px;color:#9a9d8c;font-weight:400;}
 #panel-today .ds-progress{height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:7px;}
 #panel-today .ds-progress>i{display:block;height:100%;background:#cfe84f;width:0;transition:width .3s;}
-#panel-today .ds-seclabel{display:flex;align-items:center;gap:9px;margin:20px 0 11px;}
+#panel-today .ds-seclabel{display:flex;align-items:center;gap:9px;margin:20px 0 11px;cursor:pointer;user-select:none;padding:4px 2px;border-radius:8px;transition:background .15s;}
+#panel-today .ds-seclabel:hover{background:rgba(255,255,255,.04);}
 #panel-today .ds-seclabel .ds-t{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
 #panel-today .ds-seclabel .ds-ln{flex:1;height:1px;background:rgba(255,255,255,.08);}
-#panel-today .ds-seclabel .ds-meta{font-size:11px;color:#9a9d8c;}
+#panel-today .ds-seclabel .ds-meta{font-size:11px;color:#9a9d8c;white-space:nowrap;}
+#panel-today .ds-seclabel .ds-secchev{font-size:10px;color:#666;transition:transform .15s;flex-shrink:0;}
+#panel-today .ds-seclabel.ds-collapsed{margin-bottom:20px;}
+#panel-today .ds-seclabel.ds-collapsed .ds-meta{color:#6b6e5f;}
 #panel-today .ds-move{background:#1d1f15;border:1px solid rgba(255,255,255,.08);border-radius:15px;margin-bottom:10px;overflow:hidden;}
 #panel-today .ds-move.ds-done{opacity:.55;}
 #panel-today .ds-mhead{display:flex;align-items:flex-start;gap:11px;padding:13px;cursor:pointer;}

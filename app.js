@@ -3206,10 +3206,23 @@ function dsRenderItem(rawItem,idx){
   }
   h+='</div></div>'; return h;
 }
+var DS_COLLAPSE={}; try{ DS_COLLAPSE=JSON.parse(store.get("ds_collapse")||"{}"); }catch(e){ DS_COLLAPSE={}; }
+function dsSaveCollapse(){ try{ store.set("ds_collapse", JSON.stringify(DS_COLLAPSE)); }catch(e){} }
+function dsSecKey(label){ return String(label).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''); }
+function dsToggleSection(key,evt){ if(evt)evt.stopPropagation(); DS_COLLAPSE[key]=!DS_COLLAPSE[key]; dsSaveCollapse(); dsRender(); }
 function dsRenderSection(label,meta,accent,items,blurb){
-  var h='<div class="ds-seclabel"><div class="ds-t" style="color:'+accent+'">'+label+'</div><div class="ds-ln"></div><div class="ds-meta">'+meta+'</div></div>';
-  if(blurb)h+='<div class="ds-setup" style="margin:-2px 0 12px">'+blurb+'</div>';
-  items.forEach(function(it,i){h+=dsRenderItem(it,i+1);});
+  var key=dsSecKey(label);
+  var collapsed=!!DS_COLLAPSE[key];
+  var doneCount=0; items.forEach(function(it){ var v=dsViewOf(it); if(dsComplete(v.id))doneCount++; });
+  var countLbl=items.length?(doneCount+'/'+items.length+' done'):'';
+  var h='<div class="ds-seclabel'+(collapsed?' ds-collapsed':'')+'" onclick="dsToggleSection(\''+key+'\',event)">';
+  h+='<div class="ds-t" style="color:'+accent+'">'+label+'</div><div class="ds-ln"></div>';
+  h+='<div class="ds-meta">'+(collapsed?countLbl:meta)+'</div>';
+  h+='<div class="ds-secchev">'+(collapsed?'\u25B6':'\u25BC')+'</div></div>';
+  if(!collapsed){
+    if(blurb)h+='<div class="ds-setup" style="margin:-2px 0 12px">'+blurb+'</div>';
+    items.forEach(function(it,i){h+=dsRenderItem(it,i+1);});
+  }
   return h;
 }
 var DS_REST_SECS = 60;
@@ -3275,9 +3288,7 @@ function dsRender(){
   var html=_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
   var _customMoves=dsCustomMoves(sk);
   if(_customMoves.length){
-    html+='<div class="ds-seclabel"><div class="ds-t" style="color:#fbbf24">Custom Set</div><div class="ds-ln"></div><div class="ds-meta">'+_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' · '+DS_DAYLABEL[sk]+'</div></div>';
-    html+='<div class="ds-setup" style="margin:-2px 0 12px">Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span></div>';
-    _customMoves.forEach(function(it,i){html+=dsRenderItem(it,i+1);});
+    html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
   }
   html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
   if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
