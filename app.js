@@ -367,6 +367,9 @@ function renderDash(){
   netEl.style.color = t.cal>GOALS.cal?"#ff6b6b":"#5eead4";
   document.getElementById("eaten-lbl").textContent="🍽 "+t.cal+" eaten";
   document.getElementById("burned-lbl").textContent="🔥 "+burned+" burned";
+  var timeSecs=dsDailyTrainingSeconds(activeDate);
+  var timeLbl=document.getElementById("time-lbl");
+  if(timeLbl) timeLbl.textContent="🕐 "+dsFormatTrainingTime(timeSecs)+" trained";
   var rem=document.getElementById("rem-lbl");
   rem.textContent = netRem>0?netRem+" left":Math.abs(netRem)+" over";
   rem.style.color = netRem>0?"#5eead4":"#ff6b6b";
@@ -3194,6 +3197,42 @@ function dsRenderSection(label,meta,accent,items,blurb){
   return h;
 }
 var DS_REST_SECS = 60;
+var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
+
+function dsEstimateSeconds(ex){
+  var rawId = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
+  var item = rawId ? dsRawItem(rawId) : null;
+  var minMatch = ex.reps && String(ex.reps).match(/(\d+(?:\.\d+)?)\s*min/i);
+
+  if(item && item.log==="time"){
+    var sets = ex.sets || 1;
+    return sets * (item.secs || 30);
+  }
+  if(minMatch){
+    return Math.round(parseFloat(minMatch[1]) * 60);
+  }
+  if(item && item.log==="setsreps" && ex.sets){
+    var repsPerSet = parseInt(ex.reps, 10) || 8;
+    return ex.sets * repsPerSet * DS_SEC_PER_REP + Math.max(0, ex.sets-1) * DS_REST_SECS;
+  }
+  if(ex.sets){ // custom/dropdown-logged, no matching item definition
+    var reps2 = parseInt(ex.reps, 10) || 10;
+    return ex.sets * reps2 * DS_SEC_PER_REP + Math.max(0, ex.sets-1) * DS_REST_SECS;
+  }
+  return 90; // flat fallback for anything unparseable (e.g. simple dropdown log with no set/rep detail)
+}
+
+function dsDailyTrainingSeconds(key){
+  var day = getDay(key);
+  return (day.exercises||[]).reduce(function(sum, ex){ return sum + dsEstimateSeconds(ex); }, 0);
+}
+
+function dsFormatTrainingTime(totalSecs){
+  var mins = Math.round(totalSecs/60);
+  if(mins < 60) return mins + " min";
+  var h = Math.floor(mins/60), m = mins % 60;
+  return h + "h " + m + "m";
+}
 var DS_TIME_CRUNCH = (function(){ try{ return store.get("ds_tc")==="1"; }catch(e){ return false; } })();
 var DS_TC_KEEP_SLOTS = {"Warm-up":1,"Horizontal Push":1,"Vertical Push":1,"Horizontal Pull":1,"Vertical Pull":1,"Squat":1,"Hinge":1};
 var DS_TC_KEEP_IDS = {"tue-bridge":1,"tue-lat":1};  // glute activation kept on crunch days (SI-joint priority)
