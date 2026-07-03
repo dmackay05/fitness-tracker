@@ -144,7 +144,11 @@ var TREND_METRICS=[
   {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
   {key:"burned",  label:"Burned",   unit:"kcal",dir:"higher",  color:"#fb923c", goal:function(){return GOALS.burned||0;}, get:function(d){return (d.exercises&&d.exercises.length)?d.exercises.reduce(function(a,x){return a+(+x.calories||0);},0):null;}},
   {key:"water",   label:"Water",    unit:"oz",  dir:"higher",  color:"#38bdf8", goal:function(){return WATER_GOAL||0;}, get:function(d){return (d.waterOz>0)?d.waterOz:null;}},
-  {key:"traintime", label:"Time Trained", unit:"min", dir:"neutral", color:"#cfe84f", get:function(d){return (d.exercises&&d.exercises.length)?Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60):null;}}
+  {key:"traintime", label:"Time Trained", unit:"min", dir:"neutral", color:"#cfe84f", get:function(d){return (d.exercises&&d.exercises.length)?Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60):null;}},
+  {key:"bodyfat", label:"Body Fat",  unit:"%",  dir:"lower",  color:"#f472b6", get:function(d){return (d.bodyComp&&d.bodyComp.bodyFat!=null)?d.bodyComp.bodyFat:null;}},
+  {key:"muscle",  label:"Muscle",    unit:"lbs",dir:"higher", color:"#facc15", get:function(d){return (d.bodyComp&&d.bodyComp.muscle!=null)?d.bodyComp.muscle:null;}},
+  {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
+  {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}}
 ];
 
 // EXERCISES, PRESET_FOODS, SUPPS injected just above this block (data.js)
@@ -688,8 +692,9 @@ function logBodyComp(){
   });
   if(!any) return;
   saveDay(d);
+  Object.keys(fields).forEach(function(k){ document.getElementById(fields[k]).value=""; });
   var m=document.getElementById("bc-msg"); m.textContent="✓ Body comp saved"; setTimeout(function(){m.textContent="";},2500);
-  renderBodyComp();
+  renderBodyCompHistory();
 }
 function renderBodyComp(){
   var bc=getDay().bodyComp||{};
@@ -697,6 +702,9 @@ function renderBodyComp(){
   document.getElementById("bc-muscle").value=(bc.muscle!==undefined)?bc.muscle:"";
   document.getElementById("bc-water").value=(bc.water!==undefined)?bc.water:"";
   document.getElementById("bc-bone").value=(bc.bone!==undefined)?bc.bone:"";
+  renderBodyCompHistory();
+}
+function renderBodyCompHistory(){
   var keys=Object.keys(appData).filter(function(k){return appData[k].bodyComp&&Object.keys(appData[k].bodyComp).length;}).sort().slice(-8).reverse();
   var el=document.getElementById("bc-history");
   if(!el) return;
