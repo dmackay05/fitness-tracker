@@ -148,7 +148,12 @@ var TREND_METRICS=[
   {key:"bodyfat", label:"Body Fat",  unit:"%",  dir:"lower",  color:"#f472b6", get:function(d){return (d.bodyComp&&d.bodyComp.bodyFat!=null)?d.bodyComp.bodyFat:null;}},
   {key:"muscle",  label:"Muscle",    unit:"lbs",dir:"higher", color:"#facc15", get:function(d){return (d.bodyComp&&d.bodyComp.muscle!=null)?d.bodyComp.muscle:null;}},
   {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
-  {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}}
+  {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}},
+  {key:"squathold", label:"Squat Hold", unit:"sec", dir:"higher", color:"#fb7185", get:function(d){
+    var e=d.exercises&&d.exercises.filter(function(x){return x.id==="sess_mob-squathold";})[0];
+    if(!e||e.reps==null) return null;
+    var v=parseInt(e.reps,10); return isNaN(v)?null:v;
+  }}
 ];
 
 // EXERCISES, PRESET_FOODS, SUPPS injected just above this block (data.js)
@@ -2774,6 +2779,7 @@ var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end ran
 /* ===================== DAILY SESSION — render + logging (integrated) ===================== */
 
 DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Eccentric Wrist Rehab",rx:"3\u00d715",cal:12,demo:"wristecc",log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Slow on the lower \u2014 this is the rehab that actually works",setup:"Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3\u20134 seconds using only the working side. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer's elbow."});
+DS_MOBILITY.moves.push({id:"mob-squathold",name:"Deep Squat Hold \u2014 log seconds",rx:"1 \u00d7 max hold, daily",cal:15,demo:"squat",log:"setsreps",sets:1,target:"Quads \u00b7 Ankles \u00b7 Hip mobility \u00b7 Endurance",equip:"Bodyweight",cue:"Breathe steadily throughout \u2014 don't brace or hold your breath. Put the seconds you held into the Reps box and beat last time.",setup:"Feet about shoulder-width, heels flat, sink into the deepest comfortable squat \u2014 hips below knees if mobility allows. Rest elbows inside the knees or arms forward for balance. Time how long you hold before standing up or losing form, then log that number of seconds in the Reps box. Progress slowly \u2014 add 15\u201330 seconds every few sessions rather than chasing big jumps. Building from ~5 minutes toward a 30-minute hold is a months-long endurance goal; consistency daily matters more than any single session."});
 var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"toward your first rep \u00b7 alternating days",blurb:"Your road to the first unassisted pull-up. Log each drill so the numbers climb \u2014 that climb is the progress. Take the hardest drill close to failure; ease off if the elbow flares.",moves:[
  {id:"pu-hang",name:"Dead Hang \u2014 log seconds",rx:"3 \u00d7 max hold",cal:10,demo:"deadhang",log:"setsreps",sets:3,target:"Grip \u00b7 Shoulders \u00b7 Lats",equip:"Monkey bars",cue:"Shoulders active, pulled down away from your ears \u2014 don't just dangle",setup:"Hang from the bar, full grip, arms straight, shoulder blades pulled down and back. Put the seconds you held into the Reps box and beat last time."},
  {id:"pu-scap",name:"Scapular Pulls",rx:"3\u00d78",cal:10,demo:"scappull",log:"setsreps",sets:3,target:"Lower Traps \u00b7 Lats",equip:"Monkey bars",cue:"Arms stay straight \u2014 the shoulder blades do all the work",setup:"Hang with straight arms. Without bending the elbows, pull the shoulder blades down to lift your chest a couple inches, then lower with control. This is the very start of the pull."},
