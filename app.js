@@ -1910,6 +1910,72 @@ function tgYogaToggle(){
 var DS_FIG='#9a9d8c', DS_BAND='#4ec98a', DS_ARR='#f5b14c';
 function dsS(dur,attr,vals){return '<animate attributeName="'+attr+'" values="'+vals+'" keyTimes="0;0.5;1" dur="'+dur+'s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>';}
 var DS_DEMOS={
+  backwalk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="126" x2="170" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;-10,0;0,0" keyTimes="0;0.5;1" dur="2.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="62" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="70" x2="84" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.2,'x2','84;116;84')+'</line>'+
+    '<line x1="100" y1="96" x2="80" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','80;120;80')+'</line>'+
+    '<line x1="100" y1="96" x2="120" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','120;80;120')+'</line>'+
+    '</g></svg>';},
+  tibraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<rect x="60" y="118" width="80" height="10" rx="2" fill="#5F5E5A"/>'+
+    '<line x1="70" y1="118" x2="70" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="130" y1="118" x2="130" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="49" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="70,90 70,72 90,66" fill="none" stroke="#4ec98a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','70,90 70,72 90,66; 70,90 70,72 60,80; 70,90 70,72 90,66')+'</polyline>'+
+    '<polyline points="130,90 130,72 110,66" fill="none" stroke="#4ec98a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','130,90 130,72 110,66; 130,90 130,72 140,80; 130,90 130,72 110,66')+'</polyline>'+
+    '</svg>';},
+  kneeraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="112" x2="170" y2="112" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="60" cy="102" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="68" y1="106" x2="110" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="106" x2="150" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="110" y1="106" x2="120" y2="70" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','120;96;120')+dsS(2.4,'y2','70;80;70')+'</line>'+
+    '<line x1="120" y1="70" x2="120" y2="100" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.4,'x1','120;96;120')+dsS(2.4,'y1','70;80;70')+dsS(2.4,'x2','120;100;120')+dsS(2.4,'y2','100;106;100')+'</line>'+
+    '</svg>';},
+  dip:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="70" y1="40" x2="70" y2="120" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="130" y1="40" x2="130" y2="120" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="60" y1="50" x2="80" y2="50" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="120" y1="50" x2="140" y2="50" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="55" x2="100" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="70" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="130" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="86" x2="90" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="86" x2="110" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '</g></svg>';},
+  extrot:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="122" x2="160" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="70" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="70" y1="70" x2="70" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="110" x2="60" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="110" x2="82" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="80" x2="98" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="98" y1="90" x2="110" y2="72" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.2,'x2','110;96;110')+dsS(2.2,'y2','72;104;72')+'</line>'+
+    '</svg>';},
+  trap3:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="126" x2="160" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="18 90 55;18 90 55" dur="0.1s"/></g>'+
+    '<line x1="90" y1="55" x2="105" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="104" x2="94" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="104" x2="118" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="98" y1="70" x2="130" y2="98" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','130;100;130')+dsS(2.4,'y2','98;80;98')+'</line>'+
+    '</svg>';},
+  nordic:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="126" x2="90" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="55" cy="118" r="8" fill="none" stroke="#5F5E5A" stroke-width="4"/>'+
+    '<line x1="90" y1="126" x2="90" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 96;-46 90 96;0 90 96" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="96" x2="90" y2="56" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="66" x2="120" y2="70" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
   pulldown:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
     '<line x1="172" y1="16" x2="172" y2="122" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
     '<line x1="156" y1="30" x2="172" y2="30" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
@@ -2500,7 +2566,7 @@ var DS_DEMOS={
 };
 
 var DS_DEMOMAP={"mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "curl", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "thu-russian": "russiantwist", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
-var DS_DEMOCAP={"pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar", "tgu": "weight locked overhead the whole way — roll to elbow, to hand, to standing", "birddog": "opposite arm and leg extend — flat back, no rocking", "sideplank": "hips stacked and lifted — reach the top arm under, then back to vertical", "wristecc": "forearm supported — lower the weight slowly, use the other hand to lift it back", "hipthrust": "shoulders on the couch — hips sink low, then drive up to a flat tabletop", "ballrow": "chest on the ball — row the handle up, lower back stays out of it", "seated": "sit tall, eyes soft — breathe low into the belly", "downdog": "hips to the sky, long spine — pedal the heels", "fold": "hinge and hang heavy — soft knees, let the head go", "cobra": "press the chest forward and up — hips stay grounded", "savasana": "flat on your back, everything releases — just breathe"};
+var DS_DEMOCAP={"backwalk": "short steps backward, land on the ball of the foot", "tibraise": "heels elevated, weight back, lift the toes", "kneeraise": "lying flat, drive one knee to the chest, slow return", "dip": "comfortable depth only — nowhere near shoulder-below-elbow", "extrot": "elbow pinned to the side — only the forearm rotates", "trap3": "arm at a 30° angle from the body — raise along that line", "nordic": "ankles locked, lower slowly, catch yourself early", "pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar", "tgu": "weight locked overhead the whole way — roll to elbow, to hand, to standing", "birddog": "opposite arm and leg extend — flat back, no rocking", "sideplank": "hips stacked and lifted — reach the top arm under, then back to vertical", "wristecc": "forearm supported — lower the weight slowly, use the other hand to lift it back", "hipthrust": "shoulders on the couch — hips sink low, then drive up to a flat tabletop", "ballrow": "chest on the ball — row the handle up, lower back stays out of it", "seated": "sit tall, eyes soft — breathe low into the belly", "downdog": "hips to the sky, long spine — pedal the heels", "fold": "hinge and hang heavy — soft knees, let the head go", "cobra": "press the chest forward and up — hips stay grounded", "savasana": "flat on your back, everything releases — just breathe"};
 var DS_VARIANT_SETUPS={
   "mon-pushup::1": "On the floor or a bench, DB in each hand at chest level, elbows bent; press up until arms are straight, lower with control until elbows hit about 90 degrees.",
   "mon-pushup::2": "Anchor the tube high on a door, face away, handles at chest height; press both handles forward until arms are straight, squeeze, return slow.",
@@ -2580,23 +2646,23 @@ var DS_DESK={key:'desk',title:'Desk Mobility',accent:'var(--blue)',meta:'office 
 var DS_ATG={key:"atg",title:"ATG Bulletproofing (adapted)",accent:"#f472b6",meta:"~20 min · optional add-on",
   blurb:"Adapted from Ben Patrick's Athletic Truth Group system (via Will Tennyson's video). Depth and eccentric intensity are capped for your SI joint and elbow. The three ⚠ moves (ATG split squat, full ROM squat, Nordic curl) are included but flagged — they're the highest SI-joint/eccentric demand in the original standard, so treat them as optional per session rather than a default.",
   moves:[
-    {id:"atg-backwalk",name:"Backward Walking",rx:"3–4 min",cal:20,demo:null,log:"time",secs:210,target:"VMO · Knee Health",equip:"Hallway / driveway / treadmill off",
+    {id:"atg-backwalk",name:"Backward Walking",rx:"3–4 min",cal:20,demo:"backwalk",log:"time",secs:210,target:"VMO · Knee Health",equip:"Hallway / driveway / treadmill off",
       setup:"Walk backward slowly for 3–4 minutes — hallway, driveway, or on a turned-off treadmill. Short steps, land on the ball of the foot. Pumps blood into the VMO without joint impact."},
-    {id:"atg-tibraise",name:"Elevated Tibialis Raise",rx:"3×15–20",cal:12,demo:null,log:"setsreps",sets:3,target:"Shin (Tibialis Anterior)",equip:"Book or plate edge",
+    {id:"atg-tibraise",name:"Elevated Tibialis Raise",rx:"3×15–20",cal:12,demo:"tibraise",log:"setsreps",sets:3,target:"Shin (Tibialis Anterior)",equip:"Book or plate edge",
       setup:"Heels on a book/plate edge, weight shifted back onto the heels. Lift the toes as high as possible, slow lower. No tib bar needed — bodyweight is plenty to start."},
-    {id:"atg-hipflexor",name:"Lying Knee Raise",rx:"3×10/side",cal:12,demo:null,log:"setsreps",sets:3,target:"Hip Flexors · Lower Abs",equip:"Bodyweight",
+    {id:"atg-hipflexor",name:"Lying Knee Raise",rx:"3×10/side",cal:12,demo:"kneeraise",log:"setsreps",sets:3,target:"Hip Flexors · Lower Abs",equip:"Bodyweight",
       setup:"Home sub for the cable reverse squat. Lying on your back, one leg extended, drive the opposite knee toward your chest and back down slowly. Keep it light and controlled — stop short of any pinch near the SI joint."},
-    {id:"atg-dip",name:"Playground Bar Dips",rx:"3×6–10",cal:25,demo:null,log:"setsreps",sets:3,target:"Chest · Triceps · Shoulders",equip:"Playground dip bars",
+    {id:"atg-dip",name:"Playground Bar Dips",rx:"3×6–10",cal:25,demo:"dip",log:"setsreps",sets:3,target:"Chest · Triceps · Shoulders",equip:"Playground dip bars",
       setup:"Comfortable depth only — do NOT chase the ATG standard of shoulder-below-elbow, that bottom range is the highest-risk spot for both the shoulder and the elbow. Slow 3–4 sec negatives while you're new to these. Stop immediately if you feel any pull on the inside (medial) elbow and sub Banded Push-ups that day instead."},
-    {id:"atg-extrot",name:"Shoulder External Rotation",rx:"3×12/side",cal:10,demo:null,log:"setsreps",sets:3,target:"Rotator Cuff",equip:"2 lb dumbbell",
+    {id:"atg-extrot",name:"Shoulder External Rotation",rx:"3×12/side",cal:10,demo:"extrot",log:"setsreps",sets:3,target:"Rotator Cuff",equip:"2 lb dumbbell",
       setup:"Elbow pinned to your side (or resting on your knee if seated), forearm starts across your stomach. Rotate the dumbbell outward and up, keeping the elbow glued in place. Slow and light — this is a small stabilizer, not a strength move."},
-    {id:"atg-trap3",name:"Trap 3 Raise",rx:"3×12–15",cal:10,demo:null,log:"setsreps",sets:3,target:"Lower Traps",equip:"2 lb dumbbell",
+    {id:"atg-trap3",name:"Trap 3 Raise",rx:"3×12–15",cal:10,demo:"trap3",log:"setsreps",sets:3,target:"Lower Traps",equip:"2 lb dumbbell",
       setup:"Hinge forward slightly, arm hanging straight down at about a 30° angle from your side (thumb-up line). Raise the arm straight out along that same angle, leading with the thumb. Light weight — this is a posture/structural exercise, not a lift."},
-    {id:"atg-splitsquat",name:"ATG Split Squat (optional — high SI-joint demand)",rx:"2×5/side, shallow",cal:20,demo:null,log:"setsreps",sets:2,target:"Quads · Ankle/Hip Mobility",equip:"Bodyweight",
+    {id:"atg-splitsquat",name:"ATG Split Squat (optional — high SI-joint demand)",rx:"2×5/side, shallow",cal:20,demo:"splitsquat",log:"setsreps",sets:2,target:"Quads · Ankle/Hip Mobility",equip:"Bodyweight",
       setup:"⚠ Your call — this is the deep split squat where the front hamstring covers the calf and the back leg stays straight. It loads the hip into a deep flexed/rotated position, which is exactly the pattern your SI joint protocol says to go easy on. If you do it: start shallow (nowhere near full ATG depth), 2 sets of 5 slow reps per side, and stop the moment you feel anything in the low back or SI joint rather than pushing through."},
-    {id:"atg-fullsquat",name:"Full ROM Bodyweight Squat (optional — high SI-joint demand)",rx:"2×8, shallow",cal:15,demo:null,log:"setsreps",sets:2,target:"Quads · Glutes · Hip Mobility",equip:"Bodyweight",
+    {id:"atg-fullsquat",name:"Full ROM Bodyweight Squat (optional — high SI-joint demand)",rx:"2×8, shallow",cal:15,demo:"squat",log:"setsreps",sets:2,target:"Quads · Glutes · Hip Mobility",equip:"Bodyweight",
       setup:"⚠ Your call — the \"ass-to-grass\" deep squat. You already train squat patterns with bands at a controlled depth; this pushes further into hip flexion than that. If you do it: no added weight, go only as deep as you can keep your low back neutral, and treat any pinching sensation as a hard stop, not something to breathe through."},
-    {id:"atg-nordic",name:"Nordic Hamstring Curl (optional — highest risk on this list)",rx:"2×3–5, assisted",cal:18,demo:null,log:"setsreps",sets:2,target:"Hamstrings (eccentric)",equip:"Partner/anchor for ankles + couch",
+    {id:"atg-nordic",name:"Nordic Hamstring Curl (optional — highest risk on this list)",rx:"2×3–5, assisted",cal:18,demo:"nordic",log:"setsreps",sets:2,target:"Hamstrings (eccentric)",equip:"Partner/anchor for ankles + couch",
       setup:"⚠ Your call — of everything in this routine, this is the one I'd actually push back on hardest. It's a maximal eccentric hamstring load with your torso hinging forward from a kneeling lock — real potential to pull the pelvis into exactly the position that's aggravated your SI joint before. If you do it: use your hands to catch yourself early (don't fight it all the way down), very few reps, and stop for the day at the first sign of anything in the low back or SI joint — not just the second or third rep."}
   ]};
 
