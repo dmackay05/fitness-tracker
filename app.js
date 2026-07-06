@@ -2577,6 +2577,29 @@ var DS_DESK={key:'desk',title:'Desk Mobility',accent:'var(--blue)',meta:'office 
       setup:'Rise onto the toes, 2-sec hold at the top, slow descent. 15 reps. Easy blood-flow break between calls.'}
   ]};
 
+var DS_ATG={key:"atg",title:"ATG Bulletproofing (adapted)",accent:"#f472b6",meta:"~20 min · optional add-on",
+  blurb:"Adapted from Ben Patrick's Athletic Truth Group system (via Will Tennyson's video). Depth and eccentric intensity are capped for your SI joint and elbow. The three ⚠ moves (ATG split squat, full ROM squat, Nordic curl) are included but flagged — they're the highest SI-joint/eccentric demand in the original standard, so treat them as optional per session rather than a default.",
+  moves:[
+    {id:"atg-backwalk",name:"Backward Walking",rx:"3–4 min",cal:20,demo:null,log:"time",secs:210,target:"VMO · Knee Health",equip:"Hallway / driveway / treadmill off",
+      setup:"Walk backward slowly for 3–4 minutes — hallway, driveway, or on a turned-off treadmill. Short steps, land on the ball of the foot. Pumps blood into the VMO without joint impact."},
+    {id:"atg-tibraise",name:"Elevated Tibialis Raise",rx:"3×15–20",cal:12,demo:null,log:"setsreps",sets:3,target:"Shin (Tibialis Anterior)",equip:"Book or plate edge",
+      setup:"Heels on a book/plate edge, weight shifted back onto the heels. Lift the toes as high as possible, slow lower. No tib bar needed — bodyweight is plenty to start."},
+    {id:"atg-hipflexor",name:"Lying Knee Raise",rx:"3×10/side",cal:12,demo:null,log:"setsreps",sets:3,target:"Hip Flexors · Lower Abs",equip:"Bodyweight",
+      setup:"Home sub for the cable reverse squat. Lying on your back, one leg extended, drive the opposite knee toward your chest and back down slowly. Keep it light and controlled — stop short of any pinch near the SI joint."},
+    {id:"atg-dip",name:"Playground Bar Dips",rx:"3×6–10",cal:25,demo:null,log:"setsreps",sets:3,target:"Chest · Triceps · Shoulders",equip:"Playground dip bars",
+      setup:"Comfortable depth only — do NOT chase the ATG standard of shoulder-below-elbow, that bottom range is the highest-risk spot for both the shoulder and the elbow. Slow 3–4 sec negatives while you're new to these. Stop immediately if you feel any pull on the inside (medial) elbow and sub Banded Push-ups that day instead."},
+    {id:"atg-extrot",name:"Shoulder External Rotation",rx:"3×12/side",cal:10,demo:null,log:"setsreps",sets:3,target:"Rotator Cuff",equip:"2 lb dumbbell",
+      setup:"Elbow pinned to your side (or resting on your knee if seated), forearm starts across your stomach. Rotate the dumbbell outward and up, keeping the elbow glued in place. Slow and light — this is a small stabilizer, not a strength move."},
+    {id:"atg-trap3",name:"Trap 3 Raise",rx:"3×12–15",cal:10,demo:null,log:"setsreps",sets:3,target:"Lower Traps",equip:"2 lb dumbbell",
+      setup:"Hinge forward slightly, arm hanging straight down at about a 30° angle from your side (thumb-up line). Raise the arm straight out along that same angle, leading with the thumb. Light weight — this is a posture/structural exercise, not a lift."},
+    {id:"atg-splitsquat",name:"ATG Split Squat (optional — high SI-joint demand)",rx:"2×5/side, shallow",cal:20,demo:null,log:"setsreps",sets:2,target:"Quads · Ankle/Hip Mobility",equip:"Bodyweight",
+      setup:"⚠ Your call — this is the deep split squat where the front hamstring covers the calf and the back leg stays straight. It loads the hip into a deep flexed/rotated position, which is exactly the pattern your SI joint protocol says to go easy on. If you do it: start shallow (nowhere near full ATG depth), 2 sets of 5 slow reps per side, and stop the moment you feel anything in the low back or SI joint rather than pushing through."},
+    {id:"atg-fullsquat",name:"Full ROM Bodyweight Squat (optional — high SI-joint demand)",rx:"2×8, shallow",cal:15,demo:null,log:"setsreps",sets:2,target:"Quads · Glutes · Hip Mobility",equip:"Bodyweight",
+      setup:"⚠ Your call — the \"ass-to-grass\" deep squat. You already train squat patterns with bands at a controlled depth; this pushes further into hip flexion than that. If you do it: no added weight, go only as deep as you can keep your low back neutral, and treat any pinching sensation as a hard stop, not something to breathe through."},
+    {id:"atg-nordic",name:"Nordic Hamstring Curl (optional — highest risk on this list)",rx:"2×3–5, assisted",cal:18,demo:null,log:"setsreps",sets:2,target:"Hamstrings (eccentric)",equip:"Partner/anchor for ankles + couch",
+      setup:"⚠ Your call — of everything in this routine, this is the one I'd actually push back on hardest. It's a maximal eccentric hamstring load with your torso hinging forward from a kneeling lock — real potential to pull the pelvis into exactly the position that's aggravated your SI joint before. If you do it: use your hands to catch yourself early (don't fight it all the way down), very few reps, and stop for the day at the first sign of anything in the low back or SI joint — not just the second or third rep."}
+  ]};
+
 /* ── Day-specific HIIT Finishers ─────────────────────────────────────────── */
 var DS_HIIT_MON={key:'hiit-mon',title:'HIIT Finisher \u2014 Upper',accent:'#fb923c',meta:'6 min \xb7 30s on / 30s off \xb7 2 rounds',
   blurb:'Back-to-back upper body intervals. Push to 80\u201390% effort on each work block. No overhead loading, no ballistic elbow movement \u2014 elbow-safe by design.',
@@ -2838,7 +2861,7 @@ function dsStartTimer(id,secs){
   dsTimerPaint(id,secs);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
 
 // ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
@@ -2846,7 +2869,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
+  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_ATG.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -3339,6 +3362,8 @@ function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("d
 var DS_FINISHER_DAYS={mon:1,tue:1,thu:1,fri:1};
 var DS_FINISHER_ON={}; try{ DS_FINISHER_ON=JSON.parse(store.get("ds_fin_on")||"{}"); }catch(e){ DS_FINISHER_ON={}; }
 function dsToggleFinisher(){ var sk=dsSessionKey(activeDate); DS_FINISHER_ON[sk]=!DS_FINISHER_ON[sk]; try{ store.set("ds_fin_on", JSON.stringify(DS_FINISHER_ON)); }catch(e){} dsRender(); }
+var DS_ATG_ON={}; try{ DS_ATG_ON=JSON.parse(store.get("ds_atg_on")||"{}"); }catch(e){ DS_ATG_ON={}; }
+function dsToggleATG(){ var sk=dsSessionKey(activeDate); DS_ATG_ON[sk]=!DS_ATG_ON[sk]; try{ store.set("ds_atg_on", JSON.stringify(DS_ATG_ON)); }catch(e){} dsRender(); }
 function dsEstMin(moves){ var t=0; moves.forEach(function(m){ if(m.log==="setsreps"){ t+=(m.sets||3)*2; } else if(m.log==="time"){ t+=Math.ceil((m.secs||30)/60)*(m.sets||1)+1; } else if(m.log==="cardio"){ t+=(m.defMin||20); } else { t+=2; } }); return t; }
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
@@ -3369,6 +3394,9 @@ function dsRender(){
   html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
   html+=dsRenderSection('Joint Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
   html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
+  var _atgOn=!!DS_ATG_ON[sk];
+  html+='<div style="margin:14px 0 0;"><button onclick="dsToggleATG()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_atgOn?DS_ATG.accent:'#ffffff1a')+';background:'+(_atgOn?DS_ATG.accent+'18':'transparent')+';color:'+(_atgOn?DS_ATG.accent:'#888')+';">'+(_atgOn?'\u26A1 '+DS_ATG.title+' ON \u2014 '+DS_ATG.meta+' (tap to hide)':'\u26A1 + '+DS_ATG.title+' \u2014 '+DS_ATG.meta)+'</button></div>';
+  if(_atgOn)html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }
