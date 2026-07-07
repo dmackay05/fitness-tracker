@@ -193,6 +193,11 @@ function getLatestWeight(){
   var keys = Object.keys(appData).filter(function(k){return appData[k]&&appData[k].weight;}).sort();
   return keys.length ? appData[keys[keys.length-1]].weight : START_WEIGHT;
 }
+// All baked-in calorie estimates were calibrated at 240 lbs (plan starting weight).
+// calAdj() rescales them to the latest logged body weight so burn estimates track fat loss.
+var CAL_REF_WEIGHT = 240;
+function calScale(){ var w = parseFloat(getLatestWeight()); return (w > 0) ? (w / CAL_REF_WEIGHT) : 1; }
+function calAdj(c){ return Math.round((+c || 0) * calScale()); }
 function getWeekKeys(){ var a=[]; for(var i=6;i>=0;i--){var d=new Date();d.setDate(d.getDate()-i);a.push(localDateKey(d));} return a; }
 function isToday(){ return activeDate===todayKey(); }
 
@@ -560,18 +565,18 @@ function populateExDropdown(){
   var html='<option value="">— Select exercise —</option>';
   Object.keys(groups).forEach(function(g){
     html+='<optgroup label="'+groups[g]+'">';
-    EXERCISES.forEach(function(e,i){ if(e.type===g) html+='<option value="'+i+'">'+e.name+' · '+e.calories+' kcal</option>'; });
+    EXERCISES.forEach(function(e,i){ if(e.type===g) html+='<option value="'+i+'">'+e.name+' · '+calAdj(e.calories)+' kcal</option>'; });
     html+='</optgroup>';
   });
   dd.innerHTML=html;
   dd.onchange=function(){ var e=EXERCISES[dd.value];
-    document.getElementById("ex-dropdown-preview").textContent=e?("🔥 "+e.calories+" kcal"):"";
+    document.getElementById("ex-dropdown-preview").textContent=e?("🔥 "+calAdj(e.calories)+" kcal"):"";
     showLastHint(e?e.name:"","ex-last-hint"); };
 }
 function addDropdownEx(){
   var dd=document.getElementById("ex-dropdown"); if(dd.value===""){ toast("Pick an exercise from the list first"); return; }
   var e=EXERCISES[dd.value], day=getDay();
-  var ex={name:e.name,calories:e.calories,type:e.type,id:Date.now().toString()};
+  var ex={name:e.name,calories:calAdj(e.calories),type:e.type,id:Date.now().toString()};
   _attachExDetail(ex,"ex-sets","ex-reps","ex-load");
   day.exercises.push(ex);
   saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; document.getElementById("ex-last-hint").textContent=""; _clearExDetail("ex-sets","ex-reps","ex-load"); renderAll();
@@ -811,7 +816,7 @@ function saveRide(){
   var d=getDay(); d.rides=d.rides||[];
   d.rides.push({miles:miles,duration:dur,effort:rideEffort,daughter:rideDaughter,notes:document.getElementById("ride-notes").value.trim()});
   // auto-log calories as an exercise entry if duration given and not already
-  if(dur){ var cals=Math.round(dur*9.2); d.exercises.push({name:"Mountain Bike Ride ("+dur+" min)",calories:cals,type:"cardio",id:Date.now().toString()}); }
+  if(dur){ var cals=calAdj(dur*9.2); d.exercises.push({name:"Mountain Bike Ride ("+dur+" min)",calories:cals,type:"cardio",id:Date.now().toString()}); }
   saveDay(d);
   document.getElementById("ride-miles").value=""; document.getElementById("ride-dur").value=""; document.getElementById("ride-notes").value="";
   rideEffort=""; rideDaughter=false;
@@ -938,9 +943,9 @@ function trkCommit(miles,dur,source){
   if(trk.activity==="ride"){
     day.rides=day.rides||[];
     day.rides.push({miles:miles,duration:dur,effort:"",daughter:false,notes:source});
-    if(dur) day.exercises.push({name:"Mountain Bike Ride ("+dur+" min)",calories:Math.round(dur*9.2),type:"cardio",id:Date.now().toString()});
+    if(dur) day.exercises.push({name:"Mountain Bike Ride ("+dur+" min)",calories:calAdj(dur*9.2),type:"cardio",id:Date.now().toString()});
   } else {
-    var cals = dur ? Math.round(dur*6.5) : Math.round(miles*100);
+    var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
     day.exercises.push({name:"Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:cals,type:"cardio",id:Date.now().toString()});
   }
   saveDay(day); renderAll();
@@ -1873,14 +1878,14 @@ function tgYogaToggle(){
   var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
   if(on){
     if(!day.exercises.some(function(e){return e.id===exId;})){
-      day.exercises.push({name:TG_YOGA_NAME,calories:TG_YOGA_CAL,type:"yoga",id:exId});
+      day.exercises.push({name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId});
     }
   } else {
     day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
   }
   saveDay(day,tk); renderAll(); tgYogaRefresh();
   try { ygRenderStatsBar(); } catch(e) {}
-  toast(on?("\u2713 Yoga logged \u2014 "+TG_YOGA_CAL+" cal"):"Yoga unmarked");
+  toast(on?("\u2713 Yoga logged \u2014 "+calAdj(TG_YOGA_CAL)+" cal"):"Yoga unmarked");
 }
 
 
@@ -2853,6 +2858,29 @@ var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end ran
 
 DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Eccentric Wrist Rehab",rx:"3\u00d715",cal:12,demo:"wristecc",log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Slow on the lower \u2014 this is the rehab that actually works",setup:"Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3\u20134 seconds using only the working side. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer's elbow."});
 DS_MOBILITY.moves.push({id:"mob-squathold",name:"Deep Squat Hold \u2014 log seconds",rx:"1 \u00d7 max hold, daily",cal:15,demo:"squat",log:"setsreps",sets:1,target:"Quads \u00b7 Ankles \u00b7 Hip mobility \u00b7 Endurance",equip:"Bodyweight",cue:"Breathe steadily throughout \u2014 don't brace or hold your breath. Put the seconds you held into the Reps box and beat last time.",setup:"Feet about shoulder-width, heels flat, sink into the deepest comfortable squat \u2014 hips below knees if mobility allows. Rest elbows inside the knees or arms forward for balance. Time how long you hold before standing up or losing form, then log that number of seconds in the Reps box. Progress slowly \u2014 add 15\u201330 seconds every few sessions rather than chasing big jumps. Building from ~5 minutes toward a 30-minute hold is a months-long endurance goal; consistency daily matters more than any single session."});
+DS_MOBILITY.moves.push({id:"mob-clam",name:"Clamshells (mini band)",rx:"3\u00d715/side",cal:12,demo:"clam",log:"setsreps",sets:3,target:"Glute Med \u00b7 Hip Stability (SI support)",equip:"Mini loop band (light/medium)",cue:"Feet stay glued together \u2014 open the top knee without rolling the hips back",setup:"Lie on your side, knees bent about 45\u00b0, mini band just above the knees, head resting on your arm. Keeping feet together, raise the top knee against the band as far as you can without the pelvis rolling backward, pause 1 second, lower slowly. 3\u00d715 per side. This builds the glute med stability that protects your SI joint \u2014 if the hip flexor or low back takes over, drop to a lighter band and shrink the range."});
+DS_MOBILITY.moves.push({id:"mob-wallwalk",name:"Banded Wall Walks (wall slides)",rx:"3\u00d78 trips",cal:12,demo:"wallwalk",log:"setsreps",sets:3,target:"Serratus \u00b7 Rotator Cuff \u00b7 Lower Traps",equip:"Mini loop band around wrists",cue:"Press outward into the band the whole way up \u2014 reach tall at the top",setup:"Mini band around your wrists (light to start), palms on the wall at shoulder height, hands shoulder-width so the band is taut. Walk the hands up the wall step by step while pressing outward against the band, reaching as high as you can without the ribs flaring, then walk back down with control. 3\u00d78 slow trips. Elbow-friendly (no grip load) and it feeds directly into your pull-up progression \u2014 stop shy of any shoulder pinch."});
+DS_DEMOCAP.clam="side-lying, band above the knees \u2014 open the top knee, feet stay together";
+DS_DEMOCAP.wallwalk="band around the wrists \u2014 press out as the hands walk up the wall";
+DS_DEMOS.clam=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="20" y1="128" x2="180" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<circle cx="38" cy="110" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="47" y1="113" x2="102" y2="117" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<polyline points="102,117 138,121 122,127" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'+
+  '<polyline points="102,115 138,119 122,125" fill="none" stroke="#4ec98a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','102,115 138,119 122,125; 102,115 128,90 122,125; 102,115 138,119 122,125')+'</polyline>'+
+  '<line x1="138" y1="120" x2="138" y2="118" stroke="#f472b6" stroke-width="3" stroke-linecap="round">'+dsS(2.2,'x2','138;128;138')+dsS(2.2,'y2','118;91;118')+'</line>'+
+  '</svg>';};
+DS_DEMOS.wallwalk=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="30" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<line x1="150" y1="20" x2="150" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<circle cx="74" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="79" y1="54" x2="90" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="90" y1="96" x2="80" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="90" y1="96" x2="102" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="81" y1="60" x2="147" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.2,'y2','70;38;70')+'</line>'+
+  '<line x1="83" y1="64" x2="147" y2="84" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.2,'y2','84;52;84')+'</line>'+
+  '<line x1="147" y1="70" x2="147" y2="84" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.2,'y1','70;38;70')+dsS(2.2,'y2','84;52;84')+'</line>'+
+  '</svg>';};
 var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"toward your first rep \u00b7 alternating days",blurb:"Your road to the first unassisted pull-up. Log each drill so the numbers climb \u2014 that climb is the progress. Take the hardest drill close to failure; ease off if the elbow flares.",moves:[
  {id:"pu-hang",name:"Dead Hang \u2014 log seconds",rx:"3 \u00d7 max hold",cal:10,demo:"deadhang",log:"setsreps",sets:3,target:"Grip \u00b7 Shoulders \u00b7 Lats",equip:"Monkey bars",cue:"Shoulders active, pulled down away from your ears \u2014 don't just dangle",setup:"Hang from the bar, full grip, arms straight, shoulder blades pulled down and back. Put the seconds you held into the Reps box and beat last time."},
  {id:"pu-scap",name:"Scapular Pulls",rx:"3\u00d78",cal:10,demo:"scappull",log:"setsreps",sets:3,target:"Lower Traps \u00b7 Lats",equip:"Monkey bars",cue:"Arms stay straight \u2014 the shoulder blades do all the work",setup:"Hang with straight arms. Without bending the elbows, pull the shoulder blades down to lift your chest a couple inches, then lower with control. This is the very start of the pull."},
@@ -3268,13 +3296,13 @@ function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsIte
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   if(!st.sets||!st.sets.length){ saveDay(day); return; }
   var target=item.sets||3; var frac=Math.min(st.sets.length/target,1);
-  var ex={name:item.name,calories:Math.round((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length};
+  var ex={name:item.name,calories:calAdj((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length};
   var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; if(l.rir!=null)ex.rir=l.rir;
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   day.exercises.push(ex); saveDay(day); }
 function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
-  var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:item.cal),type:"session",id:sid};
+  var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:calAdj(item.cal)),type:"session",id:sid};
   if(st.sets&&st.sets.length){ ex.sets=st.sets.length; var l=st.sets[st.sets.length-1]; ex.reps=String(l.reps); ex.load=l.load||""; if(l.rir!=null)ex.rir=l.rir; }
   else if(st.mins){ ex.reps=st.mins+" min"; }
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
@@ -3337,7 +3365,7 @@ function dsRenderItem(rawItem,idx){
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   } else if(item.log==='cardio'){
     var mins=st.mins||item.defMin;
-    h+='<div class="ds-logrow"><span class="ds-lbl">Min</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',-5,'+item.perMin+')">\u2212</button><span class="ds-stepval" id="ds-min-'+item.id+'">'+mins+'</span><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',5,'+item.perMin+')">+</button></div><span class="ds-calprev" id="ds-calprev-'+item.id+'">\u2248'+Math.round(mins*item.perMin)+' kcal</span></div>';
+    h+='<div class="ds-logrow"><span class="ds-lbl">Min</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',-5,'+item.perMin+')">\u2212</button><span class="ds-stepval" id="ds-min-'+item.id+'">'+mins+'</span><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',5,'+item.perMin+')">+</button></div><span class="ds-calprev" id="ds-calprev-'+item.id+'">\u2248'+calAdj(mins*item.perMin)+' kcal</span></div>';
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsLogCardio(\''+item.id+'\','+item.perMin+')">'+(done?'\u2713 Logged':'Log it')+'</button>';
   } else {
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
@@ -3416,10 +3444,10 @@ function dsFocusBlock(sk){
   function pick(list,ids){ return list.filter(function(m){return ids.indexOf(m.id)>=0;}); }
   var atgTrio=pick(DS_ATG.moves,["atg-tibraise","atg-extrot","atg-trap3"]);
   var map={
-    mon:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves,blurb:"Today's one accessory block. Pull-ups are your active goal and the biggest muscle-builder in the accessory pile — this plus the session is a complete day."},
+    mon:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])),blurb:"Today's one accessory block. Pull-ups are your active goal and the biggest muscle-builder in the accessory pile — this plus the session is a complete day."},
     tue:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Today's one accessory block: tibialis, rotator cuff, lower traps. Ten minutes of structural work — this plus the session is a complete day."},
-    wed:{title:"Focus: Squat Hold + Hips",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090"]),blurb:"Low-load day, so the focus is your squat hold progression and hip work. This plus your walk/yoga is a complete day."},
-    thu:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves,blurb:"Second pull-up day of the week. This plus the session is a complete day."},
+    wed:{title:"Focus: Squat Hold + Hips",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090","mob-clam"]),blurb:"Low-load day, so the focus is your squat hold progression and hip work. This plus your walk/yoga is a complete day."},
+    thu:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])),blurb:"Second pull-up day of the week. This plus the session is a complete day."},
     fri:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Second structural day: tibialis, rotator cuff, lower traps. This plus the session is a complete day."},
     sat:null,
     sun:{title:"Focus: Squat Hold",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold"]),blurb:"Rest day — just the squat hold to keep the streak alive. Nothing else required."}
@@ -3497,10 +3525,10 @@ function dsLogSet(id,target){
 function dsMarkDone(id){ if(ds_timers[id]){ if(ds_timers[id].interval)clearInterval(ds_timers[id].interval); delete ds_timers[id]; } if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
 function dsBumpMin(id,delta,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var cur=st.mins||raw.defMin||30; cur=Math.max(5,cur+delta); st.mins=cur; dsSaveUI();
   var m=document.getElementById('ds-min-'+id); if(m)m.textContent=cur;
-  var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+Math.round(cur*perMin)+' kcal'; }
+  var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+calAdj(cur*perMin)+' kcal'; }
 function dsLogCardio(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id);
   if(dsComplete(id)){ dsUnlog(id); st._cal=null; dsSaveUI(); dsRender(); renderAll(); return; }
-  var mins=st.mins||raw.defMin||30; st.mins=mins; st._cal=Math.round(mins*perMin);
+  var mins=st.mins||raw.defMin||30; st.mins=mins; st._cal=calAdj(mins*perMin);
   dsLogComplete(dsViewOf(raw)); dsSaveUI(); dsRender(); renderAll(); }
 function dsResetDay(){ if(!confirm("Clear this day's session log (sets, completions, calories)?"))return;
   DS_UI[activeDate]={}; var day=getDay(); day.exercises=day.exercises.filter(function(e){return !(e.id&&String(e.id).indexOf("sess_")===0);}); saveDay(day);
@@ -5112,7 +5140,7 @@ function ygShowDone() {
     var label="Yoga ("+totMins+" min)";
     var already=ftData[dk].exercises.some(function(x){return x.name===label;});
     if (!already) {
-      ftData[dk].exercises.push({name:label,calories:totCal,type:"yoga",id:Date.now().toString()});
+      ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString()});
       store.set("ft_data",JSON.stringify(ftData));
       if(typeof appData!=="undefined") appData=ftData;
       if(typeof renderAll==="function") renderAll();
@@ -5688,12 +5716,12 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     var urgent = remaining <= 60;
     display.style.color = urgent ? '#e05555' : '#86efac';
     document.getElementById('walk-bar').style.background = urgent ? '#e05555' : '#86efac';
-    var cals = Math.round(elapsed * WALK_CAL_PER_SEC);
+    var cals = calAdj(elapsed * WALK_CAL_PER_SEC);
     if (cals > 0) document.getElementById('walk-cal-display').textContent = '🔥 ~' + cals + ' calories burned';
     if (remaining <= 0) {
       clearInterval(walkIntervalId); walkRunning = false;
       display.textContent = 'DONE!'; display.style.color = '#86efac';
-      document.getElementById('walk-cal-display').textContent = '🎉 Great walk! ~' + Math.round(walkTotal * WALK_CAL_PER_SEC) + ' cal burned';
+      document.getElementById('walk-cal-display').textContent = '🎉 Great walk! ~' + calAdj(walkTotal * WALK_CAL_PER_SEC) + ' cal burned';
       document.getElementById('walk-start-btn').textContent = 'START WALK';
       document.getElementById('walk-start-btn').style.opacity = '1';
       beepDone();
