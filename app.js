@@ -342,7 +342,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderCheckin(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -1115,47 +1115,6 @@ function showTodayRow(r){
 function clearLocalData(){
   if(!confirm("Clear all locally stored data on this device? Your Google Sheet backup is NOT affected.")) return;
   store.remove("ft_data"); appData={}; renderAll();
-}
-
-// ── WEEKLY CHECK-IN ─────────────────────────────────────────────────────
-var CI_QUESTIONS=[
-  {id:"workouts",q:"How many resistance sessions did you hit this week?"},
-  {id:"rides",q:"Did you get your Saturday ride in?"},
-  {id:"protein",q:"How consistent was your protein (170g+)?"},
-  {id:"sleep",q:"How was your sleep overall?"},
-  {id:"energy",q:"Energy / recovery this week?"}
-];
-var ciAnswers={};
-function renderCheckin(){
-  var saved={};
-  try{ saved=JSON.parse(store.get("ci_"+ciWeekKey())||"{}"); }catch(e){}
-  ciAnswers=saved.answers||{};
-  document.getElementById("ci-form").innerHTML=CI_QUESTIONS.map(function(q){
-    return '<div style="margin-bottom:14px"><div class="row-name" style="margin-bottom:8px">'+q.q+'</div>'+
-      '<div class="rating-row">'+[1,2,3,4,5].map(function(v){
-        return '<button class="rbtn'+(ciAnswers[q.id]===v?" sel":"")+'" onclick="setCIAnswer(\''+q.id+'\','+v+',this)">'+v+'</button>';
-      }).join("")+'</div></div>';
-  }).join("")+'<button class="bp bfull" onclick="saveCheckin()">Save Check-In</button>';
-  renderCIHistory();
-}
-function setCIAnswer(id,v,el){ ciAnswers[id]=v;
-  el.parentNode.querySelectorAll(".rbtn").forEach(function(b){b.classList.remove("sel");}); el.classList.add("sel"); }
-function ciWeekKey(){ var d=new Date(); var day=d.getDay(); d.setDate(d.getDate()-day); return "wk_"+localDateKey(d); }
-function saveCheckin(){
-  store.set("ci_"+ciWeekKey(), JSON.stringify({date:todayKey(),answers:ciAnswers}));
-  var m=document.getElementById("ci-msg"); m.textContent="✓ Check-in saved for this week"; setTimeout(function(){m.textContent="";},2500);
-  renderCIHistory();
-}
-function renderCIHistory(){
-  var keys=Object.keys(localStorage).filter(function(k){return k.indexOf("ci_wk_")===0;}).sort().reverse().slice(0,6);
-  var el=document.getElementById("ci-history");
-  if(!keys.length){ el.innerHTML=""; return; }
-  el.innerHTML='<div class="row-sub" style="margin:10px 0 6px">Recent check-ins</div>'+keys.map(function(k){
-    var o={}; try{o=JSON.parse(store.get(k));}catch(e){}
-    var avg=0,a=o.answers||{},vals=Object.keys(a).map(function(x){return a[x];});
-    if(vals.length) avg=(vals.reduce(function(s,v){return s+v;},0)/vals.length).toFixed(1);
-    return '<div class="row"><div class="row-name" style="font-size:11px">Week of '+prettyDate(k.replace("ci_wk_",""))+'</div><div class="row-sub">avg '+avg+'/5</div></div>';
-  }).join("");
 }
 
 // ── PIN ─────────────────────────────────────────────────────────────────
@@ -2599,7 +2558,7 @@ var DS_VARIANT_SETUPS={
   "mon-curl::1": "Stand feet hip-width. 10 lb dumbbells at sides, palms facing forward.",
   "thu-hammer::1": "Stand tall. 10 lb dumbbells at sides, palms facing each other — neutral grip like holding hammers throughout."
 };
-var DS_SETUPS={"warmup-board": "Stand centered on the board, feet shoulder-width. Rock front-to-back 30s, side-to-side 30s, then slow circles 60s. Knees soft — don't lock them. Eyes forward, not down.", "warmup-rope-9": "Easy, light bounce — this is circulation and ankle prep, not conditioning work. Stop a few seconds early if the wrists or shoulders start to feel it.", "warmup-rope-7": "Easy, light bounce to get the heart rate up before the legs load. Land soft, stay relaxed in the shoulders.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "walkride": "After the session: a brisk 30-min walk, then an easy 20-min spin. Compression sleeve on the ride.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
+var DS_SETUPS={"warmup-board": "Stand centered on the board, feet shoulder-width. Rock front-to-back 30s, side-to-side 30s, then slow circles 60s. Knees soft — don't lock them. Eyes forward, not down.", "warmup-rope-9": "Easy, light bounce — this is circulation and ankle prep, not conditioning work. Stop a few seconds early if the wrists or shoulders start to feel it.", "warmup-rope-7": "Easy, light bounce to get the heart rate up before the legs load. Land soft, stay relaxed in the shoulders.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "post-walk": "After the session: a brisk 30-min walk. Easy, unhurried pace.", "post-ride": "An easy 20-min spin, conversational pace. Compression sleeve on.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
 
 /* ============================ ROUTINES (every day) ============================ */
 var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'10 min · every day',
@@ -2747,7 +2706,8 @@ var DS_WARMUP_BOARD={id:'warmup-board',name:'Balance Board',slot:'Warm-up',targe
 var DS_WARMUP_ROPE9={id:'warmup-rope-9',name:'Jump Rope',slot:'Warm-up',target:'Cardio · Calves',equip:'Jump rope',rx:'3–4 min easy',cal:40,cue:'Easy pace, light bounce — this is a warm-up, not a workout',demo:null,log:'time',secs:210};
 var DS_WARMUP_ROPE7={id:'warmup-rope-7',name:'Jump Rope',slot:'Warm-up',target:'Cardio · Calves',equip:'Jump rope',rx:'5 min easy',cal:50,cue:'Easy pace, light bounce — get the heart rate up before squats and deadlifts load the legs',demo:null,log:'time',secs:300};
 var DS_WARMUP_KBHALO={id:'warmup-kbhalo',name:'KB Halo + Around-the-World',slot:'Warm-up',target:'Shoulders · Core',equip:'8 lb kettlebell',rx:'10/dir + 8/dir',cal:15,cue:'Halo: circle the KB close around your head, core braced. Around-the-World: pass hand to hand around your waist, reverse halfway.',demo:null,log:'setsreps',sets:1};
-var DS_WALKRIDE={id:'walkride',name:'Post-session Walk + Easy Ride',slot:'Cardio',target:'Close the calorie gap',equip:'Compression sleeve on the ride',rx:'~50 min',cal:290,cue:'Easy pace on both — this is volume, not intensity',demo:null,log:'done'};
+var DS_WALK30={id:'post-walk',name:'Post-session Walk',slot:'Cardio',target:'Close the calorie gap',equip:'None',rx:'~30 min brisk',cal:170,cue:'Brisk but easy — this is volume, not intensity',demo:null,log:'done'};
+var DS_RIDE20={id:'post-ride',name:'Easy Ride',slot:'Cardio',target:'Close the calorie gap',equip:'Compression sleeve on',rx:'~20 min easy spin',cal:120,cue:'Easy spin, conversational pace — recovery-grade effort',demo:null,log:'done'};
 
 var DS_SESSIONS={
   mon:{title:'Upper Body Push + Pull',sub:'Chest · Shoulders · Back · Arms',accent:'var(--accent)',
@@ -2774,7 +2734,7 @@ var DS_SESSIONS={
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2},
       dsCore('mon-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
-      DS_WALKRIDE]},
+      DS_WALK30,DS_RIDE20]},
 
   tue:{title:'Lower Body + Core',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_BOARD,DS_WARMUP_ROPE7,
@@ -2790,7 +2750,7 @@ var DS_SESSIONS={
       {id:'tue-pallof',name:'Banded Pallof Press',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',demo:null,log:'setsreps',sets:3},
       {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3},
       {id:'tue-step',name:'Step-Up',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",demo:null,log:'setsreps',sets:3},
-      DS_WALKRIDE]},
+      DS_WALK30,DS_RIDE20]},
 
   wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
     moves:[
@@ -2834,7 +2794,7 @@ var DS_SESSIONS={
       dsCore('thu-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
       dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing'),
-      DS_WALKRIDE]},
+      DS_WALK30,DS_RIDE20]},
 
   fri:{title:'Lower Body + Core Strength',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_BOARD,DS_WARMUP_ROPE7,
@@ -2846,7 +2806,7 @@ var DS_SESSIONS={
       {id:'fri-deadbug',name:'Dead Bug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',demo:null,log:'setsreps',sets:3},
       {id:'fri-sqpress',name:'Squat to Press',slot:'Power',target:'Full Body',equip:'10 lb DBs or slam ball',rx:'3×10',cal:35,cue:'Legs drive up first, then press — one fluid motion',demo:'press',log:'setsreps',sets:3},
       {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40},
-      DS_WALKRIDE]},
+      DS_WALK30,DS_RIDE20]},
 
   sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost',accent:'var(--blue)',
     moves:[
