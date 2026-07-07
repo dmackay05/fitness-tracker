@@ -1396,6 +1396,23 @@ function fhAdd(i){
   addFoodObj(f);
   toast("Added "+f.name);
 }
+/* ── Protein staples: one-tap logging for the standardized day ──────────── */
+var FT_STAPLES=[
+  {emoji:"\ud83e\udd5a",name:"3 boiled eggs",cal:210,protein:18,carbs:1,fat:15},
+  {emoji:"\ud83e\udd64",name:"Protein shake (whey + whole milk)",cal:330,protein:38,carbs:20,fat:11},
+  {emoji:"\ud83e\udd63",name:"Oikos Triple Zero",cal:90,protein:15,carbs:6,fat:0},
+  {emoji:"\ud83e\uddc0",name:"Cottage cheese (1 cup)",cal:180,protein:24,carbs:8,fat:5},
+  {emoji:"\ud83d\udc14",name:"Chicken breast (6 oz cooked)",cal:280,protein:52,carbs:0,fat:6},
+  {emoji:"\ud83d\udc1f",name:"Canned tuna (1 can, drained)",cal:120,protein:26,carbs:0,fat:1},
+  {emoji:"\ud83e\udd69",name:"Ground beef 90% (6 oz cooked)",cal:310,protein:44,carbs:0,fat:15},
+  {emoji:"\ud83c\udf5a",name:"Dinner sides (estimate)",cal:400,protein:8,carbs:50,fat:15}
+];
+function addStaple(i){ var f=FT_STAPLES[i]; if(f){ addFoodObj({name:f.name,cal:f.cal,protein:f.protein,carbs:f.carbs,fat:f.fat}); } }
+function addUsualDay(){
+  var day=getDay();
+  [0,1,2,3].forEach(function(i){ var f=FT_STAPLES[i]; var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*10000)+i; day.foods.push(o); });
+  saveDay(day); renderAll(); toast("Usual day logged \u2014 95g protein banked. Just add lunch + dinner protein.");
+}
 function saveMealFromToday(){
   var el=document.getElementById("qa-meal-name"), name=(el.value||"").trim();
   var foods=getDay().foods; if(!foods.length){ toast("Log some food first"); return; }
@@ -1414,6 +1431,8 @@ function _chip(label,onclick,delClick){
   return '<span class="tag" style="cursor:pointer;background:#5eead416;color:#cfeee9;border:1px solid #5eead430;padding:6px 10px" onclick="'+onclick+'">'+label+x+'</span>';
 }
 function renderQuickAdd(){
+  var stWrap=document.getElementById("qa-staples");
+  if(stWrap)stWrap.innerHTML=FT_STAPLES.map(function(f,i){return _chip(f.emoji+" "+escH(f.name)+" \u00b7 "+f.protein+"g P","addStaple("+i+")");}).join("");
   if(typeof renderCeFavSelect==="function") renderCeFavSelect();
   var favWrap=document.getElementById("qa-fav-wrap"); if(!favWrap) return;
   var recWrap=document.getElementById("qa-recent-wrap");
@@ -2928,6 +2947,8 @@ function dsStartTimer(id,secs){
 }
 
 function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
+/* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
+function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
 
 // ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
@@ -3430,6 +3451,23 @@ var DS_FINISHER_ON={}; try{ DS_FINISHER_ON=JSON.parse(store.get("ds_fin_on")||"{
 function dsToggleFinisher(){ var sk=dsSessionKey(activeDate); DS_FINISHER_ON[sk]=!DS_FINISHER_ON[sk]; try{ store.set("ds_fin_on", JSON.stringify(DS_FINISHER_ON)); }catch(e){} dsRender(); }
 var DS_ATG_ON={}; try{ DS_ATG_ON=JSON.parse(store.get("ds_atg_on")||"{}"); }catch(e){ DS_ATG_ON={}; }
 function dsToggleATG(){ var sk=dsSessionKey(activeDate); DS_ATG_ON[sk]=!DS_ATG_ON[sk]; try{ store.set("ds_atg_on", JSON.stringify(DS_ATG_ON)); }catch(e){} dsRender(); }
+/* ── Focus rotation (Tier 2): one small accessory block per day ─────────── */
+function dsFocusBlock(sk){
+  function pick(list,ids){ return list.filter(function(m){return ids.indexOf(m.id)>=0;}); }
+  var atgTrio=pick(DS_ATG.moves,["atg-tibraise","atg-extrot","atg-trap3"]);
+  var map={
+    mon:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves,blurb:"Today's one accessory block. Pull-ups are your active goal and the biggest muscle-builder in the accessory pile — this plus the session is a complete day."},
+    tue:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Today's one accessory block: tibialis, rotator cuff, lower traps. Ten minutes of structural work — this plus the session is a complete day."},
+    wed:{title:"Focus: Squat Hold + Hips",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090"]),blurb:"Low-load day, so the focus is your squat hold progression and hip work. This plus your walk/yoga is a complete day."},
+    thu:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves,blurb:"Second pull-up day of the week. This plus the session is a complete day."},
+    fri:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Second structural day: tibialis, rotator cuff, lower traps. This plus the session is a complete day."},
+    sat:null,
+    sun:{title:"Focus: Squat Hold",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold"]),blurb:"Rest day — just the squat hold to keep the streak alive. Nothing else required."}
+  };
+  return map[sk]||null;
+}
+var DS_MORE_OPEN=false;
+function dsToggleMore(){ DS_MORE_OPEN=!DS_MORE_OPEN; dsRender(); }
 function dsEstMin(moves){ var t=0; moves.forEach(function(m){ if(m.log==="setsreps"){ t+=(m.sets||3)*2; } else if(m.log==="time"){ t+=Math.ceil((m.secs||30)/60)*(m.sets||1)+1; } else if(m.log==="cardio"){ t+=(m.defMin||20); } else { t+=2; } }); return t; }
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
@@ -3449,26 +3487,32 @@ function dsRender(){
   if(_customMoves.length){
     html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
   }
-  html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
-  if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
-  if(DS_FINISHER_DAYS[sk]){
-    var _finOn=!!DS_FINISHER_ON[sk];
-    html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
-    if(_finOn&&DS_HIIT_MAP[sk]){var _hiit=DS_HIIT_MAP[sk];html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
+  var _focus=dsFocusBlock(sk);
+  if(_focus)html+=dsRenderSection(_focus.title,'',_focus.accent,_focus.moves,_focus.blurb);
+  html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, yin, mobility, HIIT, full ATG\u2026)')+'</button></div>';
+  if(DS_MORE_OPEN){
+    html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
+    if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
+    if(DS_FINISHER_DAYS[sk]){
+      var _finOn=!!DS_FINISHER_ON[sk];
+      html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
+      if(_finOn&&DS_HIIT_MAP[sk]){var _hiit=DS_HIIT_MAP[sk];html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
+    }
+    html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
+    html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
+    html+=dsRenderSection('Joint Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
+    html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
+    var _atgOn=!!DS_ATG_ON[sk];
+    html+='<div style="margin:14px 0 0;"><button onclick="dsToggleATG()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_atgOn?DS_ATG.accent:'#ffffff1a')+';background:'+(_atgOn?DS_ATG.accent+'18':'transparent')+';color:'+(_atgOn?DS_ATG.accent:'#888')+';">'+(_atgOn?'\u26A1 '+DS_ATG.title+' ON \u2014 '+DS_ATG.meta+' (tap to hide)':'\u26A1 + '+DS_ATG.title+' \u2014 '+DS_ATG.meta)+'</button></div>';
+    if(_atgOn)html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
   }
-  html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
-  html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
-  html+=dsRenderSection('Joint Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
-  html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
-  var _atgOn=!!DS_ATG_ON[sk];
-  html+='<div style="margin:14px 0 0;"><button onclick="dsToggleATG()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_atgOn?DS_ATG.accent:'#ffffff1a')+';background:'+(_atgOn?DS_ATG.accent+'18':'transparent')+';color:'+(_atgOn?DS_ATG.accent:'#888')+';">'+(_atgOn?'\u26A1 '+DS_ATG.title+' ON \u2014 '+DS_ATG.meta+' (tap to hide)':'\u26A1 + '+DS_ATG.title+' \u2014 '+DS_ATG.meta)+'</button></div>';
-  if(_atgOn)html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }
 function dsUpdateStats(){
-  var items=dsAllItems(), total=items.length, done=0, burned=0, d=getDay();
-  items.forEach(function(it){ var e=d.exercises.filter(function(x){return x.id==="sess_"+it.id;})[0]; if(e){done++;burned+=(+e.calories||0);} });
+  var vis=dsVisibleItems(), all=dsAllItems(), total=vis.length, done=0, burned=0, d=getDay();
+  vis.forEach(function(it){ var e=d.exercises.filter(function(x){return x.id==="sess_"+it.id;})[0]; if(e)done++; });
+  all.forEach(function(it){ var e=d.exercises.filter(function(x){return x.id==="sess_"+it.id;})[0]; if(e)burned+=(+e.calories||0); });
   var dn=document.getElementById('ds-done'); if(dn)dn.textContent=done+' / '+total;
   var bu=document.getElementById('ds-burned'); if(bu)bu.textContent=burned;
   var bar=document.getElementById('ds-bar'); if(bar)bar.style.width=(total?Math.round(done/total*100):0)+'%';
