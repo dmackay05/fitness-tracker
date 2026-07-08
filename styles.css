@@ -754,6 +754,20 @@ html body div.app{max-width:480px}
 @media (min-width:701px){ html body div.app{max-width:700px} }
 @media (min-width:1024px){ html body div.app{max-width:920px} }
 @media (min-width:1400px){ html body div.app{max-width:1100px} }
+@media (min-width:1700px){ html body div.app{max-width:1500px} }
+@media (min-width:2100px){ html body div.app{max-width:96vw} }
+
+/* Ultra-wide layouts — flow dashboard/log/today/reference cards into 3 columns instead of
+   just stretching the existing 2-column grid, so extra desktop width shows more content
+   rather than more empty gap. */
+@media (min-width:1700px){
+  #panel-dash.active{grid-template-columns:1fr 1fr 1fr}
+  #ds-session{grid-template-columns:1fr 1fr 1fr}
+  #panel-log.active{grid-template-columns:1fr 1fr 1fr}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed){grid-template-columns:1fr 1fr 1fr;max-width:none}
+  #yg-panel-poses .diff-poses{grid-template-columns:1fr 1fr 1fr}
+  #panel-yoga .presets-grid{grid-template-columns:1fr 1fr 1fr}
+}
 
 /* ═══════ block boundary ═══════ */
 
