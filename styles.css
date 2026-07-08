@@ -118,21 +118,25 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
   #panel-dash.active .card{break-inside:avoid;margin:0 0 14px}
   #panel-dash.active #dash-averages{column-span:all}
 
-  /* Today tab: move cards flow masonry-style into 2 columns; section headers and an expanded card span full width */
+  /* Today tab: move cards flow masonry-style into 2 columns; section headers and an expanded card span full width.
+     Capped at 2 columns (not 3+) because some sections here only ever have 2 items — going wider
+     than the smallest realistic section size is what leaves a reserved-but-empty column/track. */
   #ds-session{column-count:2;column-gap:12px}
   #ds-session .ds-seclabel{column-span:all;margin-top:14px}
   #ds-session .ds-move{break-inside:avoid;margin-bottom:12px}
   #ds-session .ds-move.ds-open{column-span:all}
 
   /* Yoga tab: pose cards flow masonry-style into 2 columns within each difficulty section; presets too */
-  #yg-panel-poses .diff-poses{column-count:2;column-gap:12px}
+  #yg-panel-poses .diff-poses{display:block;column-count:2;column-gap:12px}
   #yg-panel-poses .diff-poses .pose-card{break-inside:avoid;margin-bottom:12px}
   #yg-panel-poses .diff-poses .pose-card.pose-open{column-span:all}
-  #panel-yoga .presets-grid{column-count:2;column-gap:12px}
+  #panel-yoga .presets-grid{display:block;column-count:2;column-gap:12px}
   #panel-yoga .presets-grid .preset-card{break-inside:avoid;margin-bottom:12px}
   #panel-yoga .presets-grid .preset-card.preset-open{column-span:all}
 
-  /* Log tab: cards flow masonry-style into 2 columns; section headers span full width */
+  /* Log tab: cards flow masonry-style into 2 columns; section headers span full width.
+     Every section here (Quick Add + Food Log, Log Exercise + Workouts) has exactly 2 cards,
+     so 2 columns always fills completely — no empty reserved column. */
   #panel-log.active{column-count:2;column-gap:14px}
   #panel-log.active .card{break-inside:avoid;margin:0 0 14px}
   #panel-log.active .te-section-hdr{column-span:all;margin-top:14px}
@@ -144,23 +148,28 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
      button, etc.) stays full width by default — only explicitly opt cards into the 2-column
      flow, since this content has several untagged divs that would otherwise get stranded at
      half width. Multi-column layout applies regardless of the inline display:block set by
-     showMode(), so no !important override is needed here. */
+     showMode(), so no !important override is needed here.
+     Some days wrap a sub-section (bonus work, yoga blocks, ab circuit, finisher, etc.) in its
+     own plain <div> one level deeper than day-panel's direct children — :has() finds any such
+     wrapper, at any depth, and turns it into its own mini column-flow container too, so those
+     nested cards don't get stranded at full width inside an otherwise-full-width wrapper. */
   #panel-guide #tg-app .day-panel:not(.week-collapsed){column-count:2;column-gap:12px;max-width:none}
   #panel-guide #tg-app .day-panel:not(.week-collapsed) > *{column-span:all}
   #panel-guide #tg-app .day-panel:not(.week-collapsed) > .exercise-card,
   #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card{column-span:none;break-inside:avoid;margin-bottom:12px}
   #panel-guide #tg-app .day-panel:not(.week-collapsed) > .exercise-card.open,
   #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card.open{column-span:all}
+
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card),
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card){column-count:2;column-gap:12px}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card) > *,
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card) > *{column-span:all}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card) > .exercise-card,
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card) > .mob-card{column-span:none;break-inside:avoid;margin-bottom:12px}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card.open),
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card.open){column-span:all}
 }
-/* Ultra-wide: 3 columns instead of 2, same masonry approach */
-@media (min-width:1700px){
-  #panel-dash.active{column-count:3}
-  #ds-session{column-count:3}
-  #panel-log.active{column-count:3}
-  #panel-guide #tg-app .day-panel:not(.week-collapsed){column-count:3}
-  #yg-panel-poses .diff-poses{column-count:3}
-  #panel-yoga .presets-grid{column-count:3}
-}
+
 .card{background:#13131f;border:1px solid #1e1e35;border-radius:16px;padding:18px;margin-bottom:14px}
 .card-title{font-size:9px;color:#5eead4;letter-spacing:2px;text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:14px;font-weight:700}
 .big-num{font-size:42px;font-weight:900;letter-spacing:-2px;line-height:1}
@@ -763,8 +772,7 @@ html body div.app{max-width:480px}
 @media (min-width:701px){ html body div.app{max-width:700px} }
 @media (min-width:1024px){ html body div.app{max-width:920px} }
 @media (min-width:1400px){ html body div.app{max-width:1100px} }
-@media (min-width:1700px){ html body div.app{max-width:1500px} }
-@media (min-width:2100px){ html body div.app{max-width:96vw} }
+@media (min-width:1700px){ html body div.app{max-width:1220px} }
 
 
 /* ═══════ block boundary ═══════ */
