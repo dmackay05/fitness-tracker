@@ -769,6 +769,7 @@ html body div.app{max-width:480px}
 @media (min-width:1024px){ html body div.app{max-width:920px} }
 @media (min-width:1400px){ html body div.app{max-width:1100px} }
 @media (min-width:1700px){ html body div.app{max-width:1220px} }
+@media (min-width:2000px){ html body div.app{max-width:90vw} }
 
 
 /* ═══════ block boundary ═══════ */
