@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
@@ -4187,8 +4187,8 @@
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('log')"><span id="refresh-icon-log">↻</span> Refresh</button></div>
       <div class="past-banner" id="banner-log" style="display:none"><span>&#9888; Editing <strong id="banner-log-lbl"></strong></span><button class="today-btn" onclick="goToToday()">Go to Today</button></div>
 
-      <div class="te-section-hdr">🍽 Food</div>
       <div class="card" style="padding-bottom:14px">
+        <div class="card-title" style="margin-bottom:10px">🍽 Food</div>
         <div class="ld-tabs" id="ld-food-tabs">
           <button class="ld-tab" data-ldtab="qa" onclick="ldSwitch('food','qa')"><span class="ld-ic">⚡</span><span class="ld-lbl">Quick</span></button>
           <button class="ld-tab" data-ldtab="preset" onclick="ldSwitch('food','preset')"><span class="ld-ic">📋</span><span class="ld-lbl">Preset</span></button>
@@ -4258,8 +4258,8 @@
       </div>
       <div class="card"><div class="card-title" id="log-title">Today's Food Log</div><div id="food-log"><div class="empty">Nothing logged yet</div></div></div>
 
-      <div class="te-section-hdr">💪 Exercise</div>
       <div class="card" style="padding-bottom:14px">
+        <div class="card-title" style="margin-bottom:10px">💪 Exercise</div>
         <div class="ld-tabs" id="ld-ex-tabs">
           <button class="ld-tab" data-ldtab="dropdown" onclick="ldSwitch('ex','dropdown')"><span class="ld-ic">💪</span><span class="ld-lbl">Log</span></button>
           <button class="ld-tab" data-ldtab="custom" onclick="ldSwitch('ex','custom')"><span class="ld-ic">✏️</span><span class="ld-lbl">Custom</span></button>
@@ -4296,8 +4296,8 @@
         <div id="ex-log"><div class="empty">No workouts logged yet</div></div>
       </div>
 
-      <div class="te-section-hdr">📝 Daily Tracking</div>
       <div class="card" style="padding-bottom:14px">
+        <div class="card-title" style="margin-bottom:10px">📝 Daily Tracking</div>
         <div class="ld-tabs" id="ld-track-tabs">
           <button class="ld-tab" data-ldtab="water" onclick="ldSwitch('track','water')"><span class="ld-ic">💧</span><span class="ld-lbl">Water</span></button>
           <button class="ld-tab" data-ldtab="weight" onclick="ldSwitch('track','weight')"><span class="ld-ic">⚖️</span><span class="ld-lbl">Weight</span></button>
@@ -4386,8 +4386,8 @@
         </div>
       </div>
 
-      <div class="te-section-hdr">📍 Distance Tracker</div>
       <div class="card">
+        <div class="card-title" style="margin-bottom:10px">📍 Distance Tracker</div>
         <div style="display:flex;gap:8px;margin-bottom:14px">
           <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
           <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
@@ -4418,9 +4418,8 @@
         </div>
       </div>
 
-      <div class="te-section-hdr">🚵 Rides</div>
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin-bottom:0">Ride Log</div><button class="bp" onclick="toggleRideForm()">+ Log Ride</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin-bottom:0">🚵 Rides</div><button class="bp" onclick="toggleRideForm()">+ Log Ride</button></div>
         <div id="ride-form" style="display:none;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:12px;margin-bottom:12px">
           <div class="g2"><div><div class="rlbl" style="margin:0 0 4px">Miles</div><input type="number" id="ride-miles" placeholder="e.g. 8.5" step="0.1" style="margin-bottom:0"/></div><div><div class="rlbl" style="margin:0 0 4px">Duration (min)</div><input type="number" id="ride-dur" placeholder="e.g. 45" style="margin-bottom:0"/></div></div>
           <div class="rlbl">Effort</div><div style="display:flex;gap:6px"><div class="eff-btn" onclick="setEffort('easy',this)">Easy</div><div class="eff-btn" onclick="setEffort('moderate',this)">Moderate</div><div class="eff-btn" onclick="setEffort('hard',this)">Hard</div><div class="eff-btn" onclick="setEffort('max',this)">Max</div></div>

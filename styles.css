@@ -138,7 +138,6 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
      toggle to trigger the overlap bug. */
   #panel-log.active{column-count:2;column-gap:14px}
   #panel-log.active .card{break-inside:avoid;margin:0 0 14px}
-  #panel-log.active .te-section-hdr{column-span:all;margin-top:14px}
   #panel-log.active .refresh-bar,
   #panel-log.active .past-banner{column-span:all}
 
