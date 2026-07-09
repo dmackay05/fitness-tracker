@@ -2927,6 +2927,7 @@ function dsStartTimer(id,secs){
       clearInterval(t.interval); t.interval=null; t.done=true;
       dsTimerPaint(id,secs);
       dsToast('Hold complete');
+      if(typeof beepDone==='function') beepDone();
       return;
     }
     dsTimerPaint(id,secs);
