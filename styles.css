@@ -118,56 +118,52 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
   #panel-dash.active .card{break-inside:avoid;margin:0 0 14px}
   #panel-dash.active #dash-averages{column-span:all}
 
-  /* Today tab: move cards flow masonry-style into 2 columns; section headers and an expanded card span full width.
-     Capped at 2 columns (not 3+) because some sections here only ever have 2 items — going wider
-     than the smallest realistic section size is what leaves a reserved-but-empty column/track. */
-  #ds-session{column-count:2;column-gap:12px}
-  #ds-session .ds-seclabel{column-span:all;margin-top:14px}
-  #ds-session .ds-move{break-inside:avoid;margin-bottom:12px}
-  #ds-session .ds-move.ds-open{column-span:all}
+  /* Today tab: move cards flow into a 2-column grid. Grid (not multi-column) on purpose here —
+     these cards expand/collapse in place, and toggling a card's column-span dynamically inside
+     a multi-column layout is a known Safari/iPad bug that causes cards to visually overlap.
+     Grid handles a growing card cleanly: only that row gets taller, nothing overlaps, and the
+     card stays its normal column width instead of jumping to full width when opened (smaller
+     expanded cards, per feedback). */
+  #ds-session{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #ds-session .ds-seclabel{grid-column:1/-1;margin-top:14px}
 
-  /* Yoga tab: pose cards flow masonry-style into 2 columns within each difficulty section; presets too */
-  #yg-panel-poses .diff-poses{display:block;column-count:2;column-gap:12px}
-  #yg-panel-poses .diff-poses .pose-card{break-inside:avoid;margin-bottom:12px}
-  #yg-panel-poses .diff-poses .pose-card.pose-open{column-span:all}
-  #panel-yoga .presets-grid{display:block;column-count:2;column-gap:12px}
-  #panel-yoga .presets-grid .preset-card{break-inside:avoid;margin-bottom:12px}
-  #panel-yoga .presets-grid .preset-card.preset-open{column-span:all}
+  /* Yoga tab: pose cards flow into a 2-column grid within each difficulty section; presets too.
+     Same reasoning as Today — grid instead of columns so expand/collapse can't overlap, and the
+     opened card just grows taller in place rather than jumping to full width. */
+  #yg-panel-poses .diff-poses{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #panel-yoga .presets-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
 
-  /* Log tab: cards flow masonry-style into 2 columns; section headers span full width.
-     Every section here (Quick Add + Food Log, Log Exercise + Workouts) has exactly 2 cards,
-     so 2 columns always fills completely — no empty reserved column. */
+  /* Log tab: cards flow into 2 columns; section headers span full width. Multi-column is fine
+     here — nothing in this tab expands/collapses in place, so there's no dynamic column-span
+     toggle to trigger the overlap bug. */
   #panel-log.active{column-count:2;column-gap:14px}
   #panel-log.active .card{break-inside:avoid;margin:0 0 14px}
   #panel-log.active .te-section-hdr{column-span:all;margin-top:14px}
   #panel-log.active .refresh-bar,
   #panel-log.active .past-banner{column-span:all}
 
-  /* Reference tab: exercise/mobility cards flow masonry-style into 2 columns within each day;
-     everything else (headers, alerts, circuits, notes, the dynamically-injected add-exercise
-     button, etc.) stays full width by default — only explicitly opt cards into the 2-column
-     flow, since this content has several untagged divs that would otherwise get stranded at
-     half width. Multi-column layout applies regardless of the inline display:block set by
-     showMode(), so no !important override is needed here.
+  /* Reference tab: exercise/mobility cards flow into a 2-column grid within each day; everything
+     else (headers, alerts, circuits, notes, the dynamically-injected add-exercise button, etc.)
+     stays full width by default — only explicitly opt cards into the grid flow, since this
+     content has several untagged divs that would otherwise get stranded at half width. Grid
+     (not multi-column) for the same overlap-avoidance reason as Today — these cards expand in
+     place too, and an opened card here also stays at its normal column width rather than
+     spanning full width.
      Some days wrap a sub-section (bonus work, yoga blocks, ab circuit, finisher, etc.) in its
      own plain <div> one level deeper than day-panel's direct children — :has() finds any such
-     wrapper, at any depth, and turns it into its own mini column-flow container too, so those
-     nested cards don't get stranded at full width inside an otherwise-full-width wrapper. */
-  #panel-guide #tg-app .day-panel:not(.week-collapsed){column-count:2;column-gap:12px;max-width:none}
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) > *{column-span:all}
+     wrapper, at any depth, and turns it into its own mini grid too, so those nested cards don't
+     get stranded at full width inside an otherwise-full-width wrapper. */
+  #panel-guide #tg-app .day-panel:not(.week-collapsed){display:grid !important;grid-template-columns:1fr 1fr;gap:12px;align-items:start;max-width:none}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > *{grid-column:1/-1}
   #panel-guide #tg-app .day-panel:not(.week-collapsed) > .exercise-card,
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card{column-span:none;break-inside:avoid;margin-bottom:12px}
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .exercise-card.open,
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card.open{column-span:all}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) > .mob-card{grid-column:auto;margin-bottom:0}
 
   #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card),
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card){column-count:2;column-gap:12px}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card){display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
   #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card) > *,
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card) > *{column-span:all}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card) > *{grid-column:1/-1}
   #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card) > .exercise-card,
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card) > .mob-card{column-span:none;break-inside:avoid;margin-bottom:12px}
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .exercise-card.open),
-  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card.open){column-span:all}
+  #panel-guide #tg-app .day-panel:not(.week-collapsed) div:has(> .mob-card) > .mob-card{grid-column:auto;margin-bottom:0}
 }
 
 .card{background:#13131f;border:1px solid #1e1e35;border-radius:16px;padding:18px;margin-bottom:14px}
