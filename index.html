@@ -4418,18 +4418,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="card-title" style="margin-bottom:0">🚵 Rides</div><button class="bp" onclick="toggleRideForm()">+ Log Ride</button></div>
-        <div id="ride-form" style="display:none;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div class="g2"><div><div class="rlbl" style="margin:0 0 4px">Miles</div><input type="number" id="ride-miles" placeholder="e.g. 8.5" step="0.1" style="margin-bottom:0"/></div><div><div class="rlbl" style="margin:0 0 4px">Duration (min)</div><input type="number" id="ride-dur" placeholder="e.g. 45" style="margin-bottom:0"/></div></div>
-          <div class="rlbl">Effort</div><div style="display:flex;gap:6px"><div class="eff-btn" onclick="setEffort('easy',this)">Easy</div><div class="eff-btn" onclick="setEffort('moderate',this)">Moderate</div><div class="eff-btn" onclick="setEffort('hard',this)">Hard</div><div class="eff-btn" onclick="setEffort('max',this)">Max</div></div>
-          <div class="rlbl">Daughter Joined?</div><div style="display:flex;gap:8px"><div class="eff-btn" id="d-yes" onclick="setDaughter(true)">Yes 👧</div><div class="eff-btn" id="d-no" onclick="setDaughter(false)">Solo 🚵</div></div>
-          <input type="text" id="ride-notes" placeholder="Notes (hills, route, how it felt...)" style="margin-top:10px"/>
-          <div style="display:flex;gap:8px;margin-top:4px"><button class="bs" style="flex:1" onclick="toggleRideForm()">Cancel</button><button class="bp" style="flex:1" onclick="saveRide()">Save Ride</button></div>
-        </div>
-        <div id="rides-list"></div>
-      </div>
-
     </div>
 
     <!-- ════════ YOGA ════════ -->
@@ -4881,6 +4869,6 @@
 
 
 
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

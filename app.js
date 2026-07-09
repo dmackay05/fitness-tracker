@@ -171,7 +171,6 @@ try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; 
 var activeDate = todayKey();
 var wellnessRatings = {sleepQ:0, energy:0, mood:0, medClarity:0};
 var medType = "";
-var rideEffort = "", rideDaughter = false;
 
 function getDay(key){
   key = key || activeDate;
@@ -804,36 +803,6 @@ function renderSupps(){
   }).join("");
 }
 
-// ── LOG: RIDES ──────────────────────────────────────────────────────────
-function toggleRideForm(){ var f=document.getElementById("ride-form"); f.style.display=f.style.display==="none"?"block":"none"; }
-function setEffort(e,el){ rideEffort=e; document.querySelectorAll("#ride-form .eff-btn").forEach(function(b){ if(b.id!=="d-yes"&&b.id!=="d-no") b.classList.toggle("sel",b===el); }); }
-function setDaughter(v){ rideDaughter=v;
-  document.getElementById("d-yes").classList.toggle("sel",v); document.getElementById("d-no").classList.toggle("sel",!v); }
-function saveRide(){
-  var miles=parseFloat(document.getElementById("ride-miles").value)||0;
-  var dur=parseInt(document.getElementById("ride-dur").value)||0;
-  if(!miles && !dur) return;
-  var d=getDay(); d.rides=d.rides||[];
-  d.rides.push({miles:miles,duration:dur,effort:rideEffort,daughter:rideDaughter,notes:document.getElementById("ride-notes").value.trim()});
-  // auto-log calories as an exercise entry if duration given and not already
-  if(dur){ var cals=calAdj(dur*9.2); d.exercises.push({name:"Mountain Bike Ride ("+dur+" min)",calories:cals,type:"cardio",id:Date.now().toString()}); }
-  saveDay(d);
-  document.getElementById("ride-miles").value=""; document.getElementById("ride-dur").value=""; document.getElementById("ride-notes").value="";
-  rideEffort=""; rideDaughter=false;
-  document.querySelectorAll("#ride-form .eff-btn").forEach(function(b){b.classList.remove("sel");});
-  toggleRideForm(); renderRides(); renderAll();
-}
-function renderRides(){
-  var rides=[];
-  Object.keys(appData).forEach(function(k){ (appData[k].rides||[]).forEach(function(r){ rides.push(Object.assign({date:k},r)); }); });
-  rides.sort(function(a,b){return b.date.localeCompare(a.date);});
-  var totMiles=rides.reduce(function(a,r){return a+(+r.miles||0);},0);
-  var totMin=rides.reduce(function(a,r){return a+(+r.duration||0);},0);
-  document.getElementById("rides-list").innerHTML=(!rides.length)?'<div class="empty">No rides logged yet</div>':
-    rides.map(function(r){return '<div class="row"><div><div class="row-name">'+prettyDate(r.date)+(r.daughter?" 👧":"")+'</div>'+
-      '<div class="row-sub">'+(r.miles?r.miles+" mi · ":"")+(r.duration?r.duration+" min · ":"")+(r.effort||"")+(r.notes?" · "+r.notes:"")+'</div></div></div>';}).join("");
-}
-
 // ── LOG: DISTANCE TRACKER (GPS + manual) ────────────────────────────────
 var trk = {active:false, paused:false, activity:"ride", watchId:null,
            startTs:0, elapsedMs:0, lastPt:null, distM:0, wakeLock:null, ticker:null};
@@ -1008,7 +977,7 @@ document.addEventListener("visibilitychange",function(){
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderSupps(); renderRides();
+  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderSupps();
   document.getElementById("wt-input").value="";
 }
 
