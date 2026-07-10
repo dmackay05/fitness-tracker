@@ -3302,20 +3302,33 @@ var DS_SEARCH='';
 function dsSetSearch(v){ DS_SEARCH=v||''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=DS_SEARCH?'block':'none'; dsRender(); }
 function dsClearSearch(){ DS_SEARCH=''; var inp=document.getElementById('ds-search'); if(inp)inp.value=''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display='none'; dsRender(); }
 function dsEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-function dsHi(text,q){ if(!q||!text)return text; try{ var re=new RegExp('('+dsEsc(q)+')','ig'); return String(text).replace(re,'<mark class="ds-hit">$1</mark>'); }catch(e){ return text; } }
+function dsSearchPattern(q){ return dsEsc(q).replace(/[\s-]+/g,'[-\\s]+'); }
+function dsHi(text,q){ if(!q||!text)return text; try{ var re=new RegExp('('+dsSearchPattern(q)+')','ig'); return String(text).replace(re,'<mark class="ds-hit">$1</mark>'); }catch(e){ return text; } }
 function dsItemMatchesSearch(rawItem,q){
   if(!q)return true;
-  var item=dsViewOf(rawItem); q=q.toLowerCase();
+  var item=dsViewOf(rawItem);
+  var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ return false; }
   var fields=[item.name,item.target,item.slot,item.equip,item.cue];
-  for(var i=0;i<fields.length;i++){ if(fields[i]&&String(fields[i]).toLowerCase().indexOf(q)>=0)return true; }
+  for(var i=0;i<fields.length;i++){ if(fields[i]&&re.test(String(fields[i])))return true; }
   if(rawItem.variants&&rawItem.variants.length){
     for(var j=0;j<rawItem.variants.length;j++){
       var v=rawItem.variants[j];
-      if((v.name&&v.name.toLowerCase().indexOf(q)>=0)||(v.cue&&v.cue.toLowerCase().indexOf(q)>=0))return true;
+      if((v.name&&re.test(v.name))||(v.cue&&re.test(v.cue)))return true;
     }
   }
   return false;
 }
+function dsSearchOtherDays(q,skipSk){
+  var hits=[];
+  DS_ORDER.forEach(function(sk){
+    if(sk===skipSk)return;
+    var SS=DS_SESSIONS[sk]; if(!SS)return;
+    var found=SS.moves.some(function(it){return dsItemMatchesSearch(it,q);});
+    if(found)hits.push(sk);
+  });
+  return hits;
+}
+
 function dsRenderItem(rawItem,idx){
   var item=dsViewOf(rawItem); var st=dsItemState(item.id); var done=dsComplete(item.id);
   var _q=(DS_SEARCH||'').trim();
@@ -3494,14 +3507,22 @@ function dsRender(){
     if(_atgOn||_q)html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
   }
   var _note=document.getElementById('ds-search-note');
+  var _hasHit=_q&&html.indexOf('ds-hit')>=0;
   if(_note){
-    if(_q){
-      var _hasHit=html.indexOf('ds-hit')>=0;
+    if(_q&&_hasHit){
       _note.style.display='block';
-      _note.textContent=_hasHit?'Searching all of today\u2019s tiers for \u201c'+_q+'\u201d \u2014 tap \u2715 to go back to your normal view.':'No exercises on '+DS_DAYLABEL[sk]+' match \u201c'+_q+'\u201d. Try a shorter word (e.g. \u201ccurl\u201d, \u201cband\u201d, \u201cglute\u201d).';
+      _note.textContent='Searching all of today\u2019s tiers for \u201c'+_q+'\u201d \u2014 tap \u2715 to go back to your normal view.';
+    } else if(_q&&!_hasHit){
+      var _otherHits=dsSearchOtherDays(_q,sk);
+      _note.style.display='block';
+      if(_otherHits.length){
+        _note.innerHTML='Nothing on '+DS_DAYLABEL[sk]+' matches \u201c'+_q+'\u201d, but it\u2019s on: '+_otherHits.map(function(d){return '<span class="ds-search-jump" onclick="dsPickDay(\''+d+'\')">'+DS_DAYLABEL[d]+'</span>';}).join(' ');
+      } else {
+        _note.textContent='No exercises this week match \u201c'+_q+'\u201d. Try a shorter word (e.g. \u201ccurl\u201d, \u201cband\u201d, \u201cglute\u201d).';
+      }
     } else { _note.style.display='none'; }
   }
-  if(_q&&html.indexOf('ds-hit')<0){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d on '+DS_DAYLABEL[sk]+'.</div>'; }
+  if(_q&&!_hasHit){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d on '+DS_DAYLABEL[sk]+'.</div>'; }
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }

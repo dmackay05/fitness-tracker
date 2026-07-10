@@ -1373,6 +1373,8 @@ html body div.app{max-width:480px}
 #panel-today .ds-search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:#888;font-size:14px;cursor:pointer;}
 #panel-today .ds-search-clear:hover{color:#f1f3e8;}
 #panel-today .ds-search-note{font-size:11px;color:#888;font-family:'DM Mono',monospace;margin:2px 2px 10px;}
+#panel-today .ds-search-jump{display:inline-block;padding:2px 8px;margin:0 3px 3px 0;border-radius:8px;border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-weight:700;}
+#panel-today .ds-search-jump:hover{background:var(--accent);color:#111;}
 #panel-today mark.ds-hit{background:transparent;color:var(--accent);font-weight:700;}
 #panel-today .ds-nomatch{padding:24px 8px;text-align:center;color:#888;font-size:13px;}
 #panel-today .ds-daypick::-webkit-scrollbar{display:none;}
