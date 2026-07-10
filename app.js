@@ -3299,6 +3299,13 @@ function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart
 function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var h='';for(var i=0;i<target;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
 
 var DS_SEARCH='';
+var DS_SEARCH_HITS=0;
+function dsMainFieldsMatch(item,q){
+  var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ return false; }
+  var fields=[item.name,item.target,item.slot,item.equip,item.cue];
+  for(var i=0;i<fields.length;i++){ if(fields[i]&&re.test(String(fields[i])))return true; }
+  return false;
+}
 function dsSetSearch(v){ DS_SEARCH=v||''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=DS_SEARCH?'block':'none'; dsRender(); }
 function dsClearSearch(){ DS_SEARCH=''; var inp=document.getElementById('ds-search'); if(inp)inp.value=''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display='none'; dsRender(); }
 function dsEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
@@ -3350,12 +3357,14 @@ function dsRenderItem(rawItem,idx){
   if(setupTxt)h+='<div class="ds-setup">'+setupTxt+'</div>';
   if(typeof DS_PR!=="undefined"&&DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
-    h+='<div class="ds-swap" onclick="dsToggleSwap(\''+item.id+'\')">\u21C4 Swap this exercise</div>';
-    if(st._swapOpen){
+    var _matchedOnlyViaVariant=_q&&!dsMainFieldsMatch(item,_q);
+    var _forceOpen=st._swapOpen||_matchedOnlyViaVariant;
+    h+='<div class="ds-swap" onclick="dsToggleSwap(\''+item.id+'\')">\u21C4 Swap this exercise'+(_matchedOnlyViaVariant?' <span style="color:var(--accent)">\u2014 match below \u2193</span>':'')+'</div>';
+    if(_forceOpen){
       var sel=DS_SWAPS[item.id]||0;
       h+='<div class="ds-variants"><div class="ds-vh">Same slot: '+rawItem.slot+'</div>';
-      h+='<div class="ds-vopt '+(sel===0?'ds-sel':'')+'" onclick="dsPickVariant(\''+item.id+'\',0)"><div class="ds-vn">'+rawItem.name+'</div><div class="ds-vc">'+rawItem.cue+'</div></div>';
-      rawItem.variants.forEach(function(v,i){h+='<div class="ds-vopt '+(sel===i+1?'ds-sel':'')+'" onclick="dsPickVariant(\''+item.id+'\','+(i+1)+')"><div class="ds-vn">'+v.name+'</div><div class="ds-vc">'+(v.cue||'')+'</div></div>';});
+      h+='<div class="ds-vopt '+(sel===0?'ds-sel':'')+'" onclick="dsPickVariant(\''+item.id+'\',0)"><div class="ds-vn">'+dsHi(rawItem.name,_q)+'</div><div class="ds-vc">'+dsHi(rawItem.cue,_q)+'</div></div>';
+      rawItem.variants.forEach(function(v,i){h+='<div class="ds-vopt '+(sel===i+1?'ds-sel':'')+'" onclick="dsPickVariant(\''+item.id+'\','+(i+1)+')"><div class="ds-vn">'+dsHi(v.name,_q)+'</div><div class="ds-vc">'+dsHi(v.cue||'',_q)+'</div></div>';});
       h+='</div>';
     }
   }
@@ -3387,6 +3396,7 @@ function dsRenderSection(label,meta,accent,items,blurb){
   if(q){
     items=items.filter(function(it){return dsItemMatchesSearch(it,q);});
     if(!items.length)return '';
+    DS_SEARCH_HITS+=items.length;
   }
   var key=dsSecKey(label);
   var collapsed=q?false:!!DS_COLLAPSE[key];
@@ -3477,6 +3487,7 @@ function dsRender(){
   var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
   var dl=document.getElementById('ds-deload'); if(dl){var wk=dsBlockWeek()%6; if(wk===5){dl.textContent='Deload week \u2014 cut volume ~40%, keep it easy';dl.className='ds-deload warn';}else{dl.textContent='Training block \u00b7 week '+(wk+1)+' of 6';dl.className='ds-deload';}}
   var _q=(DS_SEARCH||'').trim();
+  DS_SEARCH_HITS=0;
   var _allMoves=SS.moves;
   var _moves=(_q||DS_TIME_CRUNCH)?(_q?_allMoves:_allMoves.filter(dsTcKeep)):_allMoves;
   if(!_moves.length)_moves=_allMoves;  // no compounds to isolate (e.g. core/yoga day) -> show full
@@ -3507,7 +3518,7 @@ function dsRender(){
     if(_atgOn||_q)html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
   }
   var _note=document.getElementById('ds-search-note');
-  var _hasHit=_q&&html.indexOf('ds-hit')>=0;
+  var _hasHit=_q&&DS_SEARCH_HITS>0;
   if(_note){
     if(_q&&_hasHit){
       _note.style.display='block';
