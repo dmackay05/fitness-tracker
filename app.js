@@ -2683,6 +2683,23 @@ var DS_WARMUP_KBHALO={id:'warmup-kbhalo',name:'KB Halo + Around-the-World',slot:
 var DS_WALK30={id:'post-walk',name:'Post-session Walk',slot:'Cardio',target:'Close the calorie gap',equip:'None',rx:'~30 min brisk',cal:170,cue:'Brisk but easy — this is volume, not intensity',demo:null,log:'done'};
 var DS_RIDE20={id:'post-ride',name:'Easy Ride',slot:'Cardio',target:'Close the calorie gap',equip:'Compression sleeve on',rx:'~20 min easy spin',cal:120,cue:'Easy spin, conversational pace — recovery-grade effort',demo:null,log:'done'};
 
+/* ── Saturday heat alternative: indoor full-body circuit (arms/legs/core/mobility) ── */
+var DS_SATHEAT_MOVES=[
+  DS_WARMUP_HIPFLOW7,
+  {id:'sathot-squat',name:'Banded Squat',slot:'Squat',target:'Quads · Glutes',equip:'Tube 40–50 lb',rx:'3×12–15',cal:40,cue:'Sit back and down, drive through the whole foot — knees track over the toes',demo:'squat',log:'setsreps',sets:3},
+  {id:'sathot-row',name:'Bent-Over Row',slot:'Back · Biceps',target:'Back · Biceps',equip:'Tube 30–40 lb',rx:'3×10–12',cal:35,cue:'Flat back, hinge forward — elbows drive to your back pockets',demo:'row',log:'setsreps',sets:3},
+  {id:'sathot-bridge',name:'Glute Bridge',slot:'Glutes',target:'Glutes · SI-Joint Friendly',equip:'Tube 30–40 lb across hips',rx:'3×15–20',cal:30,cue:'Floor-based and controlled — easy on the SI joint. Squeeze glutes hard at the top',demo:null,log:'setsreps',sets:3},
+  {id:'sathot-lateral',name:'Lateral Raise',slot:'Side Delts',target:'Side Delts',equip:'Tube 10 lb',rx:'3×12–15',cal:25,cue:'Lead with elbows, not hands — pour water from a pitcher',demo:null,log:'setsreps',sets:3},
+  {id:'sathot-latwalk',name:'Lateral Band Walk',slot:'Hips',target:'Hip Abductors',equip:'Mini loop band',rx:'3×12/side',cal:25,cue:'Stay low in the quarter-squat, keep tension on the band the whole way',demo:'latwalk',log:'setsreps',sets:3},
+  {id:'sathot-hammer',name:'Hammer Curl',slot:'Biceps',target:'Biceps · Forearms',equip:'Tube 10–20 lb',rx:'3×12–15',cal:25,cue:'Neutral grip, thumbs up — easier on the medial elbow than a straight-bar curl',demo:null,log:'setsreps',sets:3},
+  {id:'sathot-deadbug',name:'Dead Bug',slot:'Core',target:'Core · SI Joint',equip:'Bodyweight',rx:'3×10/side',cal:20,cue:'Low back glued to the floor — gentle, floor-supported anti-extension work',demo:null,log:'setsreps',sets:3},
+  {id:'sathot-squathold',name:'Deep Squat Hold',slot:'Mobility',target:'Hips · Ankles',equip:'Bodyweight',rx:'Build toward 30 min',cal:15,cue:'Sink into the bottom of a squat, chest up — hold as long as feels good today',demo:null,log:'time',secs:60}
+];
+var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
+var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
+function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsRender(); }
+function dsSessOf(sk){ if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate])return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
+
 var DS_SESSIONS={
   mon:{title:'Upper Body Push + Pull',sub:'Chest · Shoulders · Back · Arms',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_KBHALO,
@@ -2908,9 +2925,9 @@ function dsStartTimer(id,secs){
   dsTimerPaint(id,secs);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
 /* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
-function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=DS_SESSIONS[sk].moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
+function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
 
 // ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
@@ -3481,7 +3498,7 @@ function dsEstMin(moves){ var t=0; moves.forEach(function(m){ if(m.log==="setsre
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
   dsRenderDayPicker();
-  var sk=dsSessionKey(activeDate); var SS=DS_SESSIONS[sk];
+  var sk=dsSessionKey(activeDate); var SS=dsSessOf(sk);
   var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=(activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk];
   var tt=document.getElementById('ds-title'); if(tt)tt.textContent=SS.title;
   var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
@@ -3493,7 +3510,12 @@ function dsRender(){
   if(!_moves.length)_moves=_allMoves;  // no compounds to isolate (e.g. core/yoga day) -> show full
   var _estFull=dsEstMin(_allMoves), _estNow=dsEstMin(_moves), _tcOn=DS_TIME_CRUNCH;
   var _tcBtn=_q?'':'<div style="margin:0 0 14px;"><button onclick="dsToggleTimeCrunch()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_tcOn?'#e8c98a':'#ffffff1a')+';background:'+(_tcOn?'#e8c98a18':'transparent')+';color:'+(_tcOn?'#e8c98a':'#888')+';">'+(_tcOn?'\u26A1 Time Crunch ON \u2014 compounds only \u00b7 ~'+_estNow+' min  (tap for full)':'\u26A1 Time Crunch \u2014 full session ~'+_estFull+' min  (tap to trim)')+'</button></div>';
-  var html=_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
+  var _satHeatBtn='';
+  if(sk==='sat'){
+    var _hot=!!DS_SAT_HEAT_ON[activeDate];
+    _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
+  }
+  var html=_satHeatBtn+_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
   var _customMoves=dsCustomMoves(sk);
   if(_customMoves.length){
     html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
