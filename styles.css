@@ -1555,3 +1555,20 @@ html body div.app{max-width:480px}
 .ds-stepinput{width:46px;height:30px;padding:0;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:8px;appearance:textfield;-moz-appearance:textfield;}
 .ds-stepinput:focus{outline:none;border-color:#5eead4;}
 .ds-stepinput::-webkit-outer-spin-button,.ds-stepinput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+/* v18: weekly fractional volume panel */
+.ds-mvwrap{margin:18px 0 6px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.02);}
+.ds-mvsum{cursor:pointer;font-weight:700;font-size:14px;color:#f1f3e8;list-style:none;}
+.ds-mvsum::-webkit-details-marker{display:none;}
+.ds-mvhint{font-weight:400;font-size:11px;color:#8b8e80;margin-left:8px;}
+.ds-mvnote{font-size:11.5px;color:#8b8e80;margin:8px 0 10px;line-height:1.45;}
+.ds-mvrow{display:flex;align-items:center;gap:8px;margin:5px 0;}
+.ds-mvname{width:82px;font-size:11.5px;color:#c9ccbc;flex:none;}
+.ds-mvbar{flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,.06);position:relative;overflow:hidden;}
+.ds-mvband{position:absolute;top:0;bottom:0;background:rgba(94,234,212,.14);border-left:1px solid rgba(94,234,212,.5);border-right:1px solid rgba(94,234,212,.35);}
+.ds-mvfill{position:absolute;top:0;bottom:0;left:0;border-radius:5px;}
+.ds-mv-low{background:#6b6e60;}
+.ds-mv-mid{background:#5eead4;opacity:.75;}
+.ds-mv-good{background:#4ec98a;}
+.ds-mv-high{background:#f0a05a;}
+.ds-mvval{width:34px;text-align:right;font-size:12px;font-weight:700;color:#f1f3e8;flex:none;font-variant-numeric:tabular-nums;}

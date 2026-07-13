@@ -3683,6 +3683,119 @@ function dsRenderSearchAll(q){
   DS_SEARCH_HITS=totalHits;
   return html;
 }
+
+/* ===== Fractional Volume (Menno Henselmans model): direct=1.0, indirect=0.5 ===== */
+var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Quads','Glutes','Hamstrings','Calves','Core'];
+var DS_MV={
+  'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
+  'mon-ohp':{'Shoulders':1,'Triceps':.5},
+  'mon-pullapart':{'Rear Delts':1,'Back':.5},
+  'mon-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
+  'mon-curl':{'Biceps':1},
+  'mon-tri':{'Triceps':1},
+  'mon-hollow':{'Core':1},
+  'tue-squat':{'Quads':1,'Glutes':.5},
+  'tue-rdl':{'Hamstrings':1,'Glutes':.5},
+  'tue-lat':{'Glutes':1},
+  'tue-bridge':{'Glutes':1,'Hamstrings':.5},
+  'tue-ballcurl':{'Hamstrings':1,'Glutes':.5},
+  'tue-pallof':{'Core':1},
+  'tue-jump':{'Quads':1,'Glutes':.5,'Calves':.5},
+  'tue-step':{'Quads':1,'Glutes':.5},
+  'thu-chest':{'Chest':1},
+  'thu-facepull':{'Rear Delts':1,'Back':.5},
+  'thu-lat':{'Back':1,'Biceps':.5},
+  'thu-lateral':{'Shoulders':1},
+  'thu-hammer':{'Biceps':1},
+  'thu-inclinecurl':{'Biceps':1},
+  'thu-tri':{'Triceps':1},
+  'thu-hollow':{'Core':1},
+  'fri-bulg':{'Quads':1,'Glutes':.5},
+  'fri-sumo':{'Glutes':1,'Quads':.5},
+  'fri-nordic':{'Hamstrings':1,'Glutes':.5},
+  'fri-calf':{'Calves':1},
+  'fri-obliques':{'Core':1},
+  'fri-deadbug':{'Core':1},
+  'fri-sqpress':{'Quads':1,'Glutes':.5,'Shoulders':.5,'Triceps':.5},
+  'fri-plank':{'Core':1},
+  'sathot-squat':{'Quads':1,'Glutes':.5},
+  'sathot-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
+  'sathot-bridge':{'Glutes':1,'Hamstrings':.5},
+  'sathot-lateral':{'Shoulders':1},
+  'sathot-latwalk':{'Glutes':1},
+  'sathot-hammer':{'Biceps':1},
+  'sathot-deadbug':{'Core':1},
+  'hiit-mon-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
+  'hiit-mon-pullapart':{'Rear Delts':1,'Back':.5},
+  'hiit-mon-fly':{'Chest':1},
+  'hiit-mon-curl':{'Biceps':1},
+  'hiit-tue-squat':{'Quads':1,'Glutes':.5},
+  'hiit-tue-bridge':{'Glutes':1,'Hamstrings':.5},
+  'hiit-tue-pallof-l':{'Core':1},
+  'hiit-tue-pallof-r':{'Core':1},
+  'hiit-thu-pulldown':{'Back':1,'Biceps':.5},
+  'hiit-thu-facepull':{'Rear Delts':1,'Back':.5},
+  'hiit-thu-lateral':{'Shoulders':1},
+  'hiit-thu-hammer':{'Biceps':1},
+  'hiit-fri-rdl':{'Hamstrings':1,'Glutes':.5},
+  'hiit-fri-latwalk':{'Glutes':1},
+  'hiit-fri-deadbug':{'Core':1},
+  'hiit-fri-bridge':{'Glutes':1,'Hamstrings':.5},
+  'pu-scap':{'Back':.5},
+  'pu-neg':{'Back':1,'Biceps':.5},
+  'pu-band':{'Back':1,'Biceps':.5},
+  'atg-dip':{'Triceps':1,'Chest':.5},
+  'atg-splitsquat':{'Quads':1,'Glutes':.5},
+  'atg-fullsquat':{'Quads':1,'Glutes':.5},
+  'atg-nordic':{'Hamstrings':1},
+  'mob-clam':{'Glutes':.5},
+  'wed-tgu':{'Core':.5,'Shoulders':.5},
+  'wed-slam':{'Core':.5},
+  'wed-rotslam':{'Core':1},
+  'wed-bike':{'Core':1},
+  'wed-legraise':{'Core':1},
+  'wed-hollow':{'Core':1},
+  'desk-wallpushup':{'Chest':.5,'Triceps':.5},
+  'desk-calfraise':{'Calves':.5}
+};
+function dsMVWeek(){
+  var out={}; DS_MV_ORDER.forEach(function(m){out[m]=0;});
+  var now=new Date();
+  for(var d=0;d<7;d++){
+    var dt=new Date(now); dt.setDate(now.getDate()-d);
+    var key=localDateKey(dt);
+    var ui=DS_UI[key]||{};
+    var sessDone={};
+    try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){ if(e.id&&String(e.id).indexOf('sess_')===0) sessDone[String(e.id).slice(5)]=true; }); } }catch(e){}
+    Object.keys(DS_MV).forEach(function(id){
+      var st=ui[id];
+      var n=(st&&st.sets)?st.sets.length:0;
+      if(!n && sessDone[id]){ var raw=null; try{raw=dsRawItem(id);}catch(e){} n=(raw&&raw.sets)||( raw&&raw.log==='time'?3:1); }
+      if(!n)return;
+      var map=DS_MV[id];
+      Object.keys(map).forEach(function(mu){ out[mu]+=n*map[mu]; });
+    });
+  }
+  return out;
+}
+function dsMVPanel(){
+  var v=dsMVWeek();
+  var any=DS_MV_ORDER.some(function(m){return v[m]>0;});
+  var MAX=16, LO=10, HI=12;
+  var rows=DS_MV_ORDER.map(function(m){
+    var val=Math.round(v[m]*10)/10;
+    var pct=Math.min(val/MAX,1)*100;
+    var cls=val>=LO?(val>HI+3?'ds-mv-high':'ds-mv-good'):(val>=6?'ds-mv-mid':'ds-mv-low');
+    return '<div class="ds-mvrow"><span class="ds-mvname">'+m+'</span>'+
+      '<div class="ds-mvbar"><div class="ds-mvband" style="left:'+(LO/MAX*100)+'%;width:'+((HI-LO)/MAX*100)+'%"></div>'+
+      '<div class="ds-mvfill '+cls+'" style="width:'+pct+'%"></div></div>'+
+      '<span class="ds-mvval">'+(val%1===0?val.toFixed(0):val.toFixed(1))+'</span></div>';
+  }).join('');
+  return '<details class="ds-mvwrap"><summary class="ds-mvsum">Weekly Volume \u2014 fractional sets <span class="ds-mvhint">last 7 days \u00b7 target band 10\u201312</span></summary>'+
+    '<div class="ds-mvnote">Direct work = 1 set \u00b7 assisting muscle on a compound = \u00bd set (Henselmans). '+(any?'Green band = the 10\u201312 growth sweet spot. Under 6 for a muscle you care about? Add 2\u20133 direct sets before adding anything else.':'Log some sets and this fills in.')+'</div>'+
+    rows+'</details>';
+}
+
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
   dsRenderDayPicker();
@@ -3744,6 +3857,7 @@ function dsRender(){
     } else { _note.style.display='none'; }
   }
   if(_q&&!_hasHit){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d across any day.</div>'; }
+  if(!_q)html+=dsMVPanel();
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }
