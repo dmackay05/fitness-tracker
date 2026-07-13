@@ -1551,3 +1551,7 @@ html body div.app{max-width:480px}
 .qt-sbtn.primary{background:#5eead4;color:#0d0d1a;border-color:#5eead4;font-weight:700;}
 .qt-reset-btn{width:100%;padding:10px;border-radius:10px;border:1px solid #ffffff14;background:transparent;color:#888;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;}
 .qt-done-icon{font-size:48px;margin-bottom:8px;}
+/* v17: editable stepper inputs */
+.ds-stepinput{width:46px;height:30px;padding:0;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:8px;appearance:textfield;-moz-appearance:textfield;}
+.ds-stepinput:focus{outline:none;border-color:#5eead4;}
+.ds-stepinput::-webkit-outer-spin-button,.ds-stepinput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
