@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v9 — 2026-07-14";
+var APP_BUILD = "v10 — 2026-07-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -387,18 +387,28 @@ function mergeDay(key,remote){
   var local=appData[key];
   if(!local){ appData[key]=remote; return; }
   // Local kept if it has equal/more food detail; remote fills missing scalars.
-  if((remote.foods||[]).length > (local.foods||[]).length){ appData[key]=remote; return; }
+  if((remote.foods||[]).length > (local.foods||[]).length){
+    if(local.exTombs) remote.exTombs=local.exTombs;
+    remote.exercises=dsMergeExercises([],remote.exercises,remote.exTombs);
+    appData[key]=remote; return; }
   if(!local.weight && remote.weight) local.weight=remote.weight;
   if(!local.waterOz && remote.waterOz) local.waterOz=remote.waterOz;
   ["wellness","supplements","measurements"].forEach(function(grp){
     if(remote[grp]){ local[grp]=local[grp]||{};
       Object.keys(remote[grp]).forEach(function(k){ if(!local[grp][k] && remote[grp][k]) local[grp][k]=remote[grp][k]; }); }
   });
-  local.exercises=dsMergeExercises(local.exercises,remote.exercises);
+  local.exercises=dsMergeExercises(local.exercises,remote.exercises,local.exTombs);
   appData[key]=local;
 }
-function dsMergeExercises(localEx,remoteEx){
+function dsMergeExercises(localEx,remoteEx,tombs){
   localEx=localEx||[]; remoteEx=remoteEx||[];
+  if(tombs){
+    var cutoff=Date.now()-30*24*3600*1000;
+    remoteEx=remoteEx.filter(function(e){
+      var t=tombs["n_"+String((e&&e.name)||"").toLowerCase().trim()];
+      return !(t && t>cutoff);
+    });
+  }
   if(!remoteEx.length)return localEx;
   if(!localEx.length)return remoteEx;
   // Session-logged exercises (sess_*) and sheet round-trips (sheet_*) describe the
@@ -682,7 +692,7 @@ function addDropdownEx(){
   var e=EXERCISES[dd.value], day=getDay();
   var ex={name:e.name,calories:calAdj(e.calories),type:e.type,id:Date.now().toString()};
   _attachExDetail(ex,"ex-sets","ex-reps","ex-load");
-  day.exercises.push(ex);
+  dsAddEx(day,ex);
   saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; document.getElementById("ex-last-hint").textContent=""; _clearExDetail("ex-sets","ex-reps","ex-load"); renderAll();
 }
 function addCustomEx(){
@@ -690,7 +700,7 @@ function addCustomEx(){
   if(!n) return;
   var day=getDay(); var ex={name:n,calories:c,type:"custom",id:Date.now().toString()};
   _attachExDetail(ex,"ce-sets","ce-reps","ce-load");
-  day.exercises.push(ex);
+  dsAddEx(day,ex);
   saveDay(day); document.getElementById("ce-name").value=""; document.getElementById("ce-cal").value=""; document.getElementById("ce-last-hint").textContent=""; _clearExDetail("ce-sets","ce-reps","ce-load"); renderAll();
 }
 function loadCeFavs(){ try{ var a=JSON.parse(store.get("ce_fav_ex")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
@@ -742,7 +752,21 @@ function ldInit(){
     ldSwitch(group, valid?saved:LD_DEFAULTS[group]);
   });
 }
-function removeEx(id){ var day=getDay(); day.exercises=day.exercises.filter(function(e){return e.id!=id;}); saveDay(day); renderAll(); }
+function attrId(id){ return String(id).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function dsTombKey(nameOrEx){ var nm=(typeof nameOrEx==="string")?nameOrEx:String((nameOrEx&&nameOrEx.name)||""); return "n_"+nm.toLowerCase().trim(); }
+function dsSetTomb(day,e){ if(!e)return; day.exTombs=day.exTombs||{}; day.exTombs[dsTombKey(e)]=Date.now(); }
+function dsClearTomb(day,e){ if(day.exTombs){ delete day.exTombs[dsTombKey(e)]; } }
+function dsAddEx(day,ex){ dsClearTomb(day,ex); day.exercises.push(ex); }
+function removeEx(id){ var day=getDay();
+  var gone=day.exercises.filter(function(e){return e.id==id;})[0];
+  if(gone) dsSetTomb(day,gone);
+  day.exercises=day.exercises.filter(function(e){return e.id!=id;});
+  // If this was a session exercise, clear the workout card's local set state too,
+  // so Weekly Volume and the card's done-dots don't resurrect it.
+  if(String(id).indexOf("sess_")===0){
+    try{ var xid=String(id).slice(5), d=dsDayState(); if(d[xid]){ delete d[xid]; dsSaveUI(); } }catch(e){}
+  }
+  saveDay(day); renderAll(); }
 var editingExId=null;
 function editEx(id){
   var e=getDay().exercises.filter(function(x){return x.id==id;})[0]; if(!e) return;
@@ -766,8 +790,8 @@ function renderExLog(){
   document.getElementById("burned-lbl2").textContent="🔥 "+getBurned()+" kcal";
   el.innerHTML=(!day.exercises.length)?'<div class="empty">No workouts logged yet</div>':
     day.exercises.map(function(e){var det=exDetailStr(e);return '<details class="log-row"><summary class="log-row-sum"><span class="log-row-name">'+e.name+'</span><span class="log-row-sub">🔥 '+e.calories+' kcal'+(det?' · '+det:'')+'</span></summary>'+
-      '<div class="log-row-actions"><button class="bs" onclick="editEx(\''+e.id+'\')">Edit</button>'+
-      '<button class="bd" onclick="removeEx(\''+e.id+'\')">Remove</button></div></details>';}).join("");
+      '<div class="log-row-actions"><button class="bs" onclick="editEx(\''+attrId(e.id)+'\')">Edit</button>'+
+      '<button class="bd" onclick="removeEx(\''+attrId(e.id)+'\')">Remove</button></div></details>';}).join("");
 }
 
 // ── LOG: WATER ──────────────────────────────────────────────────────────
@@ -1014,10 +1038,10 @@ function trkCommit(miles,dur,source){
   if(trk.activity==="ride"){
     day.rides=day.rides||[];
     day.rides.push({miles:miles,duration:dur,effort:"",daughter:false,notes:source});
-    if(dur) day.exercises.push({name:"Mountain Bike Ride ("+dur+" min)",calories:calAdj(dur*9.2),type:"cardio",id:Date.now().toString()});
+    if(dur) dsAddEx(day,{name:"Mountain Bike Ride ("+dur+" min)",calories:calAdj(dur*9.2),type:"cardio",id:Date.now().toString()});
   } else {
     var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
-    day.exercises.push({name:"Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:cals,type:"cardio",id:Date.now().toString()});
+    dsAddEx(day,{name:"Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:cals,type:"cardio",id:Date.now().toString()});
   }
   saveDay(day); renderAll();
 }
@@ -1951,7 +1975,7 @@ function tgYogaToggle(){
   var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
   if(on){
     if(!day.exercises.some(function(e){return e.id===exId;})){
-      day.exercises.push({name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId});
+      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId});
     }
   } else {
     day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
@@ -3158,9 +3182,11 @@ function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catc
 function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[activeDate]; }
 function dsSyncedExercise(id){
   var day=getDay(), sid="sess_"+id;
+  var nm=null; try{ var raw=dsRawItem(id); nm=raw&&raw.name?String(raw.name).toLowerCase().trim():null; }catch(e){}
+  // Respect deletion tombstones — a deleted exercise must not re-seed from stale sheet data.
+  if(nm && day.exTombs){ var t=day.exTombs["n_"+nm]; if(t && t>Date.now()-30*24*3600*1000) return null; }
   for(var i=day.exercises.length-1;i>=0;i--){ if(day.exercises[i].id===sid) return day.exercises[i]; }
   // Sheet round-trip entries carry sheet_n_<name> ids — match those by exercise name.
-  var nm=null; try{ var raw=dsRawItem(id); nm=raw&&raw.name?String(raw.name).toLowerCase().trim():null; }catch(e){}
   if(nm){ for(var j=day.exercises.length-1;j>=0;j--){ var e=day.exercises[j];
     if(String(e.id||"").indexOf("sheet_")===0 && String(e.name||"").toLowerCase().trim()===nm) return e; } }
   return null;
@@ -3603,7 +3629,7 @@ function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsIte
   var ex={name:item.name,calories:calAdj((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length};
   dsEncodeSets(ex,st.sets);
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
-  day.exercises.push(ex); saveDay(day); }
+  dsAddEx(day,ex); saveDay(day); }
 function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:calAdj(item.cal)),type:"session",id:sid};
@@ -3611,9 +3637,12 @@ function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemSt
   else if(st.mins){ ex.reps=st.mins+" min"; }
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   else if(item.log==="cardio" && st.mins){ ex.actualSecs=st.mins*60; }
-  day.exercises.push(ex); saveDay(day);
+  dsAddEx(day,ex); saveDay(day);
 }
-function dsUnlog(id){ var day=getDay(), sid="sess_"+id; day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
+function dsUnlog(id){ var day=getDay(), sid="sess_"+id;
+  var gone=day.exercises.filter(function(e){return e.id===sid;})[0];
+  if(gone) dsSetTomb(day,gone);
+  day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
 
 function dsLastTime(id){ var sid="sess_"+id; var local=null;
   var keys=Object.keys(appData).filter(function(k){return k<activeDate&&appData[k]&&appData[k].exercises&&appData[k].exercises.some(function(e){return e.id===sid;});}).sort();
