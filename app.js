@@ -391,7 +391,28 @@ function statAverages(){
   return {n:n, avgCal:avgCal, avgProt:avgProt, lost:lost};
 }
 
+/* ===== Weigh-in day reminder ===== */
+var WEIGHIN_DAY = parseInt(store.get('ft_weighin_day')); if(isNaN(WEIGHIN_DAY)) WEIGHIN_DAY = 1;
+var WEIGHIN_DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function setWeighinDay(v){ WEIGHIN_DAY = parseInt(v); store.set('ft_weighin_day', WEIGHIN_DAY); renderDash(); }
+function jumpToWeighIn(){
+  switchTab('log');
+  setTimeout(function(){
+    var tab=document.querySelector('.ld-tab[data-ldtab="weight"]'); if(tab) tab.click();
+    var inp=document.getElementById('wt-input'); if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth',block:'center'}); }
+  }, 60);
+}
+function renderWeighinBanner(){
+  var el=document.getElementById('weighin-banner'); if(!el) return;
+  var todayDow = keyToDate(todayKey()).getDay();
+  var isWeighInToday = (todayDow === WEIGHIN_DAY);
+  var loggedToday = !!(getDay(todayKey()).weight);
+  if(!isWeighInToday || loggedToday){ el.innerHTML=""; return; }
+  el.innerHTML = '<div class="weighin-nudge"><div class="weighin-nudge-text">\u2696\ufe0f <b>Weigh-in day</b> \u2014 same conditions as always: morning, after bathroom, before eating.</div><button class="weighin-nudge-btn" onclick="jumpToWeighIn()">Log Now</button></div>';
+}
+
 function renderDash(){
+  renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
   var t=getTotals(), burned=getBurned(), net=t.cal-burned, netRem=GOALS.cal-t.cal;
   var netEl=document.getElementById("net-cal"); netEl.textContent=t.cal;
@@ -1039,6 +1060,7 @@ function initHealthSettings(){
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal-rest", GOALS.calRest); setv("ft-cal-recovery", GOALS.calRecovery); setv("ft-cal-active", GOALS.calActive); setv("ft-cal-ride", GOALS.calRide); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
   setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL);
+  var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
   renderLabEditor();

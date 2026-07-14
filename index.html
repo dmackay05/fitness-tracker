@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=19">
+<link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
 
@@ -4154,6 +4154,8 @@
     <div class="panel active" id="panel-dash">
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('dash')"><span id="refresh-icon-dash">↻</span> Refresh</button></div>
 
+      <div id="weighin-banner"></div>
+
       <div class="dash-strip" id="dash-averages"></div>
 
       <div class="card">
@@ -4673,6 +4675,16 @@
           <div><div class="rlbl">Burn target</div><input type="number" id="ft-burned" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Water (oz)</div><input type="number" id="ft-water" style="margin-bottom:0"/></div>
         </div>
+        <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#666">(weight + body comp reminder)</span></div>
+        <select id="ft-weighin-day" style="margin-bottom:0" onchange="setWeighinDay(this.value)">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">Supplements</div>
@@ -4873,6 +4885,6 @@
 
 
 
-<script src="app.js?v=43"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>
