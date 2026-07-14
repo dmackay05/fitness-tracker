@@ -185,10 +185,12 @@ function processDailyData(ss, data) {
 
 
     var exStr = realExs.map(function(e) {
-      var base = e.name + " (" + (e.calories || 0) + " cal";
+      var nm = ((e.name||"")+"").replace(/,/g, " ").replace(/[|@]/g, "");
+      var base = nm + " (" + (e.calories || 0) + " cal";
       if (e.sets && e.reps) {
         var l = ((e.load||"")+"").replace(/[)\|,@]/g, "");
-        base += "|" + e.sets + "x" + e.reps + (l ? ("@"+l) : "");
+        var r = ((e.reps||"")+"").replace(/,/g, "/").replace(/[)\|@]/g, "");
+        base += "|" + e.sets + "x" + r + (l ? ("@"+l) : "");
       }
       return base + ")";
     }).join(", ");

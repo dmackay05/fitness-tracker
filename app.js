@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v8 — 2026-07-03";
+var APP_BUILD = "v9 — 2026-07-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -183,6 +183,7 @@ try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; 
         if(/^\d+[\)\/]*$/.test(nm)){ changed=true; return; }
         if(nm.indexOf("cal|")!==-1){ changed=true; return; }
         if(/\(\d+\s*cal/.test(nm) && !/\)\s*$/.test(nm)){ changed=true; return; }
+        if(e.reps!=null && String(e.reps).indexOf(",")!==-1){ e.reps=String(e.reps).replace(/,/g,"/"); changed=true; }
         var id=String((e&&e.id)||"");
         var key=(id.indexOf("sess_")===0||id.indexOf("sheet_")===0)?("n_"+nm.toLowerCase()):(id||("n_"+nm.toLowerCase()));
         if(byName[key]==null){ byName[key]=kept.length; kept.push(e); }
@@ -369,7 +370,7 @@ function rowToDay(row){
         return;
       }
       var ex={name:m[1].trim(),calories:parseInt(m[2]),type:"logged",id:"sheet_n_"+m[1].trim().toLowerCase()};
-      if(m[3]){ var dm=m[3].match(/^(\d+)x([^@]+)(?:@(.+))?$/); if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim(); ex.load=(dm[3]||"").trim(); } }
+      if(m[3]){ var dm=m[3].match(/^(\d+)x([^@]+)(?:@(.+))?$/); if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim().replace(/,/g,"/"); ex.load=(dm[3]||"").trim(); } }
       remote.exercises.push(ex);
     }
     var buf="";
