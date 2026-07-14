@@ -168,6 +168,36 @@ function prettyDate(k){ return keyToDate(k).toLocaleDateString("en-US",{weekday:
 // ── STATE ───────────────────────────────────────────────────────────────
 var appData = {};
 try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; }
+// ── One-time repair: purge corrupted/duplicated exercise entries created by the
+// old comma-split sheet parser (junk names like "20)" or unterminated "(… cal|…"),
+// and collapse duplicate session snapshots down to the max-sets version.
+(function dsRepairLog(){
+  try{
+    var changed=false;
+    Object.keys(appData).forEach(function(k){
+      var d=appData[k]; if(!d||!d.exercises||!d.exercises.length) return;
+      var kept=[], byName={};
+      d.exercises.forEach(function(e){
+        var nm=String((e&&e.name)||"").trim();
+        // Junk patterns from the split bug:
+        if(/^\d+[\)\/]*$/.test(nm)){ changed=true; return; }
+        if(nm.indexOf("cal|")!==-1){ changed=true; return; }
+        if(/\(\d+\s*cal/.test(nm) && !/\)\s*$/.test(nm)){ changed=true; return; }
+        var id=String((e&&e.id)||"");
+        var key=(id.indexOf("sess_")===0||id.indexOf("sheet_")===0)?("n_"+nm.toLowerCase()):(id||("n_"+nm.toLowerCase()));
+        if(byName[key]==null){ byName[key]=kept.length; kept.push(e); }
+        else{
+          var cur=kept[byName[key]];
+          var pick=((e.sets||0)>(cur.sets||0))?e:((e.sets||0)<(cur.sets||0)?cur:(String(cur.id||"").indexOf("sess_")===0?cur:e));
+          if(pick!==cur){ kept[byName[key]]=pick; }
+          changed=true;
+        }
+      });
+      if(kept.length!==d.exercises.length) d.exercises=kept;
+    });
+    if(changed){ store.set("ft_data",JSON.stringify(appData)); }
+  }catch(e){}
+})();
 var activeDate = todayKey();
 var wellnessRatings = {sleepQ:0, energy:0, mood:0, medClarity:0};
 var medType = "";
@@ -317,12 +347,39 @@ function rowToDay(row){
     var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?)?\)$/);
     if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:"sheet_"+f}; if(m[6]) _pf.fiber=parseFloat(m[6]); remote.foods.push(_pf); }
     else remote.foods.push({name:f,cal:0,protein:0,carbs:0,fat:0,id:"sheet_"+f}); });
-  if(row["Exercises"]) row["Exercises"].split(",").forEach(function(e){ e=e.trim(); if(!e) return;
-    var m=e.match(/^(.+)\((\d+)\s*cal(?:\|([^)]+))?\)$/);
-    if(m){ var ex={name:m[1].trim(),calories:parseInt(m[2]),type:"logged",id:"sheet_"+e};
+  if(row["Exercises"]){
+    // Split on commas, but re-join fragments until parentheses balance —
+    // commas inside "(...)" details must not split an exercise apart.
+    var EX_RE=/^(.+)\((\d+)\s*cal(?:\|([^)]+))?\)$/;
+    function emitEx(e,allowSalvage){
+      e=e.trim(); if(!e) return;
+      // Junk patterns from previously-corrupted rows (e.g. "20)", "(18 cal|2x20")
+      if(/^\d+[\)\/]*$/.test(e)) return;
+      var m=e.match(EX_RE);
+      var badName=m && m[1].indexOf("cal|")!==-1;
+      if(!m || badName){
+        if(e.indexOf("cal|")!==-1 && !/\)\s*$/.test(e)) return; // unterminated junk
+        if((badName || e.indexOf("cal|")!==-1) && allowSalvage && e.indexOf(",")!==-1){
+          // A junk prefix swallowed valid entries — evaluate fragments individually.
+          e.split(",").forEach(function(f){ emitEx(f,false); });
+          return;
+        }
+        if(e.indexOf("cal|")!==-1) return;
+        remote.exercises.push({name:e,calories:0,type:"logged",id:"sheet_n_"+e.toLowerCase()});
+        return;
+      }
+      var ex={name:m[1].trim(),calories:parseInt(m[2]),type:"logged",id:"sheet_n_"+m[1].trim().toLowerCase()};
       if(m[3]){ var dm=m[3].match(/^(\d+)x([^@]+)(?:@(.+))?$/); if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim(); ex.load=(dm[3]||"").trim(); } }
       remote.exercises.push(ex);
-    } else remote.exercises.push({name:e,calories:0,type:"logged",id:"sheet_"+e}); });
+    }
+    var buf="";
+    String(row["Exercises"]).split(",").forEach(function(frag){
+      buf=buf?buf+","+frag:frag;
+      var open=(buf.match(/\(/g)||[]).length, close=(buf.match(/\)/g)||[]).length;
+      if(open<=close){ emitEx(buf,true); buf=""; }
+    });
+    if(buf) emitEx(buf,true);
+  }
   return remote;
 }
 function mergeDay(key,remote){
@@ -343,16 +400,26 @@ function dsMergeExercises(localEx,remoteEx){
   localEx=localEx||[]; remoteEx=remoteEx||[];
   if(!remoteEx.length)return localEx;
   if(!localEx.length)return remoteEx;
-  var byId={};
-  localEx.forEach(function(e){ byId[e.id||('n_'+e.name)]={local:e}; });
-  remoteEx.forEach(function(e){ var k=e.id||('n_'+e.name); if(!byId[k])byId[k]={remote:e}; else byId[k].remote=e; });
-  var out=[];
-  Object.keys(byId).forEach(function(k){
-    var pair=byId[k];
-    if(pair.local&&pair.remote){ out.push(((pair.local.sets||0)>=(pair.remote.sets||0))?pair.local:pair.remote); }
-    else out.push(pair.local||pair.remote);
-  });
-  return out;
+  // Session-logged exercises (sess_*) and sheet round-trips (sheet_*) describe the
+  // same real-world exercise — key them by name so they merge instead of stacking.
+  function mkey(e){
+    var id=String(e.id||"");
+    if(id.indexOf("sess_")===0||id.indexOf("sheet_")===0) return "n_"+String(e.name||"").toLowerCase().trim();
+    return id||("n_"+String(e.name||"").toLowerCase().trim());
+  }
+  function better(a,b){
+    if(!a)return b; if(!b)return a;
+    var as=a.sets||0, bs=b.sets||0;
+    if(as!==bs) return as>bs?a:b;
+    // Equal sets: prefer the local sess_ entry (has richer detail + correct id).
+    if(String(a.id||"").indexOf("sess_")===0) return a;
+    if(String(b.id||"").indexOf("sess_")===0) return b;
+    return a;
+  }
+  var byId={}, order=[];
+  localEx.forEach(function(e){ var k=mkey(e); if(!byId[k])order.push(k); byId[k]=better(byId[k],e); });
+  remoteEx.forEach(function(e){ var k=mkey(e); if(!byId[k])order.push(k); byId[k]=better(byId[k],e); });
+  return order.map(function(k){return byId[k];});
 }
 function mergeRows(rows){
   if(!Array.isArray(rows)) return;
@@ -3091,6 +3158,10 @@ function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[
 function dsSyncedExercise(id){
   var day=getDay(), sid="sess_"+id;
   for(var i=day.exercises.length-1;i>=0;i--){ if(day.exercises[i].id===sid) return day.exercises[i]; }
+  // Sheet round-trip entries carry sheet_n_<name> ids — match those by exercise name.
+  var nm=null; try{ var raw=dsRawItem(id); nm=raw&&raw.name?String(raw.name).toLowerCase().trim():null; }catch(e){}
+  if(nm){ for(var j=day.exercises.length-1;j>=0;j--){ var e=day.exercises[j];
+    if(String(e.id||"").indexOf("sheet_")===0 && String(e.name||"").toLowerCase().trim()===nm) return e; } }
   return null;
 }
 function dsItemState(id){ var d=dsDayState();
@@ -3861,6 +3932,17 @@ var DS_MV={
   'desk-wallpushup':{'Chest':.5,'Triceps':.5},
   'desk-calfraise':{'Calves':.5}
 };
+var DS_MV_NAMEIDX=null;
+function dsMVNameIdx(){
+  if(DS_MV_NAMEIDX) return DS_MV_NAMEIDX;
+  DS_MV_NAMEIDX={};
+  Object.keys(DS_MV).forEach(function(id){
+    try{ var raw=dsRawItem(id); if(raw&&raw.name) DS_MV_NAMEIDX[String(raw.name).toLowerCase().trim()]=id;
+      if(raw&&raw.variants){ raw.variants.forEach(function(v){ if(v&&v.name) DS_MV_NAMEIDX[String(v.name).toLowerCase().trim()]=id; }); }
+    }catch(e){}
+  });
+  return DS_MV_NAMEIDX;
+}
 function dsMVWeek(){
   var out={}; DS_MV_ORDER.forEach(function(m){out[m]=0;});
   var now=new Date();
@@ -3870,7 +3952,10 @@ function dsMVWeek(){
     var ui=DS_UI[key]||{};
     var sessCount={};
     try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){
-      if(e.id&&String(e.id).indexOf('sess_')===0){ sessCount[String(e.id).slice(5)]=(e.sets!=null?e.sets:1); return; }
+      var eid=e.id?String(e.id):"";
+      if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid])sessCount[xid]=n1; return; }
+      if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
+        if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid])sessCount[mid]=n2; return; } }
       var qa=DS_MV_QUICKADD[e.name]; if(qa){ Object.keys(qa.muscles).forEach(function(mu){ out[mu]+=qa.sets*qa.muscles[mu]; }); }
     }); } }catch(e){}
     Object.keys(DS_MV).forEach(function(id){
