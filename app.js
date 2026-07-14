@@ -559,10 +559,10 @@ function renderFoodLog(){
   var day=getDay(), el=document.getElementById("food-log");
   document.getElementById("log-title").textContent=isToday()?"Today's Food Log":prettyDate(activeDate)+" Food";
   el.innerHTML = (!day.foods.length)?'<div class="empty">Nothing logged yet</div>':
-    day.foods.map(function(f){return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+f.name+'</div>'+
-      '<div class="row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+'</div></div>'+
-      '<div style="display:flex;gap:6px;flex-shrink:0;align-items:stretch"><button onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="font-size:20px;line-height:1;padding:4px 12px;border-radius:8px;background:'+(isFavObj(f)?"#fbbf2422":"transparent")+';border:1px solid '+(isFavObj(f)?"#fbbf24":"#3a3a58")+';color:'+(isFavObj(f)?"#fbbf24":"#6b6b80")+'">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
-      '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></div>';}).join("");
+    day.foods.map(function(f){return '<details class="log-row"><summary class="log-row-sum"><span class="log-row-name">'+f.name+'</span>'+
+      '<span class="log-row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+'</span></summary>'+
+      '<div class="log-row-actions"><button onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="font-size:20px;line-height:1;padding:4px 12px;border-radius:8px;background:'+(isFavObj(f)?"#fbbf2422":"transparent")+';border:1px solid '+(isFavObj(f)?"#fbbf24":"#3a3a58")+';color:'+(isFavObj(f)?"#fbbf24":"#6b6b80")+'">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
+      '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></details>';}).join("");
   var t=getTotals();
   document.getElementById("macro-bars").innerHTML=[
     {l:"Calories",v:t.cal,g:GOALS.cal,c:"#5eead4",u:""},{l:"Protein",v:Math.round(t.protein),g:GOALS.protein,c:"#a78bfa",u:"g"},
@@ -676,9 +676,9 @@ function renderExLog(){
   var day=getDay(), el=document.getElementById("ex-log");
   document.getElementById("burned-lbl2").textContent="🔥 "+getBurned()+" kcal";
   el.innerHTML=(!day.exercises.length)?'<div class="empty">No workouts logged yet</div>':
-    day.exercises.map(function(e){var det=exDetailStr(e);return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+e.name+'</div><div class="row-sub">🔥 '+e.calories+' kcal'+(det?' · '+det:'')+'</div></div>'+
-      '<div style="display:flex;gap:6px;flex-shrink:0"><button class="bs" onclick="editEx(\''+e.id+'\')">Edit</button>'+
-      '<button class="bd" onclick="removeEx(\''+e.id+'\')">Remove</button></div></div>';}).join("");
+    day.exercises.map(function(e){var det=exDetailStr(e);return '<details class="log-row"><summary class="log-row-sum"><span class="log-row-name">'+e.name+'</span><span class="log-row-sub">🔥 '+e.calories+' kcal'+(det?' · '+det:'')+'</span></summary>'+
+      '<div class="log-row-actions"><button class="bs" onclick="editEx(\''+e.id+'\')">Edit</button>'+
+      '<button class="bd" onclick="removeEx(\''+e.id+'\')">Remove</button></div></details>';}).join("");
 }
 
 // ── LOG: WATER ──────────────────────────────────────────────────────────
