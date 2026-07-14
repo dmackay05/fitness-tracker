@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v13 — 2026-07-14";
+var APP_BUILD = "v14 — 2026-07-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3985,6 +3985,11 @@ var DS_MV={
   'wed-rotslam':{'Core':1},
   'wed-bike':{'Core':1},
   'wed-legraise':{'Core':1},
+  'mon-legraise':{'Core':1},
+  'thu-legraise':{'Core':1},
+  'mon-bike':{'Core':1},
+  'thu-bike':{'Core':1},
+  'thu-russian':{'Core':1},
   'wed-hollow':{'Core':1},
   'desk-wallpushup':{'Chest':.5,'Triceps':.5},
   'desk-calfraise':{'Calves':.5}
