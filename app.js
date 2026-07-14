@@ -686,14 +686,11 @@ function addWater(oz){ var d=getDay(); d.waterOz=Math.min((d.waterOz||0)+oz,WATE
 function removeWater(oz){ var d=getDay(); d.waterOz=Math.max((d.waterOz||0)-oz,0); saveDay(d); renderWater(); renderDash(); }
 function addCustomWater(){ var i=document.getElementById("water-custom"); var oz=parseFloat(i.value); if(!oz||oz<=0) return; addWater(oz); i.value=""; }
 function renderWater(){
-  var oz=getDay().waterOz||0, totCups=Math.max(1,Math.ceil(WATER_GOAL/8)), cups=Math.min(Math.floor(oz/8),totCups);
-  document.getElementById("water-oz").textContent=oz;
-  document.getElementById("water-cups-lbl").textContent=cups+" of "+totCups+" cups";
-  document.getElementById("water-bar").style.width=Math.min((oz/WATER_GOAL)*100,100)+"%";
-  var html=""; for(var i=0;i<totCups;i++) html+='<div class="wcup '+(i<cups?"full":"empty")+'" onclick="addWater(8)">💧</div>';
-  document.getElementById("water-cups").innerHTML=html;
+  var oz=getDay().waterOz||0;
+  var inl=document.getElementById("water-inline"); if(inl) inl.textContent=oz+" oz logged";
   var hint=document.getElementById("water-hint"), rem=WATER_GOAL-oz;
-  if(oz===0){hint.textContent="Tap a cup or button to log water";hint.style.color="#38bdf877";}
+  if(!hint) return;
+  if(oz===0){hint.textContent="Tap a button to log water";hint.style.color="#38bdf877";}
   else if(oz>=WATER_GOAL){hint.textContent="✓ Daily water goal reached!";hint.style.color="#5eead4";}
   else{hint.textContent=rem+" oz ("+Math.ceil(rem/8)+" cups) to goal";hint.style.color="#38bdf877";}
 }
@@ -3472,10 +3469,10 @@ function dsEncodeSets(ex,sets){
   var reps=sets.map(function(x){return x.reps!=null?x.reps:'';});
   var loads=sets.map(function(x){return (x.load||'').trim();});
   var rirs=sets.map(function(x){return x.rir!=null?x.rir:'';});
-  ex.reps=reps.join(',');
+  ex.reps=reps.join('/');
   var uniqLoads=loads.filter(function(v,i){return loads.indexOf(v)===i;});
   ex.load=(uniqLoads.length<=1?(uniqLoads[0]||''):loads.join('|'));
-  if(rirs.some(function(v){return v!=='';})) ex.rir=rirs.join(',');
+  if(rirs.some(function(v){return v!=='';})) ex.rir=rirs.join('/');
 }
 function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});

@@ -86,6 +86,40 @@
     <div class="ds-stat"><div class="ds-k">Burned</div><div class="ds-v"><span id="ds-burned">0</span> <span class="ds-unit">kcal</span></div></div>
   </div>
   <div id="ds-session"></div>
+
+  <div class="ds-cardio-tracker">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:10px">📍 Distance Tracker</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
+          <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
+        </div>
+        <div style="text-align:center;margin:6px 0 10px">
+          <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px">
+            <div class="big-num" id="trk-dist" style="color:#fb923c;font-size:48px">0.00</div>
+            <div style="font-size:14px;color:#666;margin-bottom:10px;font-family:'DM Mono',monospace">mi</div>
+          </div>
+          <div style="display:flex;justify-content:center;gap:22px;margin-top:4px;font-family:'DM Mono',monospace;font-size:12px;color:#aaa">
+            <span>⏱ <span id="trk-time">0:00</span></span>
+            <span id="trk-pace">— /mi</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="bp" style="flex:1" id="trk-start" onclick="trkStart()">Start</button>
+          <button id="trk-pause" onclick="trkTogglePause()" style="flex:1;display:none;background:#fbbf24;color:#0d0d1a;font-size:15px;padding:11px 14px;border-radius:10px">Pause</button>
+          <button class="bw" style="flex:1;display:none" id="trk-finish" onclick="trkFinish()">Finish</button>
+        </div>
+        <div id="trk-status" style="font-size:10px;color:#666;font-family:'DM Mono',monospace;text-align:center;margin-top:10px;min-height:14px">GPS ready · keep the screen on while tracking</div>
+        <div style="border-top:1px solid #1e1e35;margin-top:14px;padding-top:12px">
+          <div class="rlbl" style="margin-top:0">Manual entry (no GPS)</div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="trk-m-miles" placeholder="miles" step="0.1" style="flex:1;margin-bottom:0"/>
+            <input type="number" id="trk-m-min" placeholder="minutes" style="flex:1;margin-bottom:0"/>
+            <button class="bp" onclick="trkSaveManual()">Save</button>
+          </div>
+        </div>
+  </div>
+
   <div class="ds-resetbar"><button onclick="dsResetDay()">Reset this day's session log</button></div>
   <div class="ds-foot">Every item you check writes its calories into your tracker and syncs to your Sheet. Tap a move to log reps &amp; weight; tap Swap to rotate an exercise.</div>
   <div id="ds-toast"></div>
@@ -4314,10 +4348,8 @@
         </div>
 
         <div class="ld-pane" data-ldpane="water">
-          <div class="ld-pane-hdr"><span class="ld-ic">💧</span>Water</div>
-          <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px"><div class="water-num" id="water-oz">0</div><div class="water-unit">oz</div><div style="font-size:11px;color:#38bdf866;font-family:'DM Mono',monospace;margin-bottom:6px" id="water-cups-lbl">0 of 8 cups</div></div>
-          <div class="water-bar-wrap"><div class="water-bar" id="water-bar" style="width:0%"></div></div>
-          <div class="water-cups" id="water-cups"></div>
+          <div class="ld-pane-hdr"><span class="ld-ic">💧</span>Water <span style="font-size:12px;color:#38bdf899;font-weight:400;margin-left:6px" id="water-inline">0 oz logged</span></div>
+          <div style="font-size:11px;color:#666;margin-bottom:12px">Full total &amp; goal progress live on the Dashboard — this is just for logging.</div>
           <div class="water-btns"><button class="bw" style="flex:1" onclick="addWater(8)">+ 8 oz</button><button class="bw" onclick="addWater(16)">+ 16 oz</button><button class="bw" onclick="addWater(32)">+ 32 oz</button><button class="bs" onclick="removeWater(8)" style="font-size:13px">&#8722;</button></div>
           <div style="display:flex;gap:8px;margin-top:10px"><input type="number" id="water-custom" placeholder="Enter oz..." style="flex:1;margin-bottom:0;background:#0d2235;border:1px solid #38bdf833;color:#38bdf8;border-radius:10px;padding:10px 14px;font-size:14px;outline:none;-webkit-appearance:none" onkeydown="if(event.key==='Enter')addCustomWater()"/><button class="bw" onclick="addCustomWater()">+ Add</button></div>
           <div class="water-hint" id="water-hint"></div>
@@ -4391,36 +4423,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title" style="margin-bottom:10px">📍 Distance Tracker</div>
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
-          <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
-        </div>
-        <div style="text-align:center;margin:6px 0 10px">
-          <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px">
-            <div class="big-num" id="trk-dist" style="color:#fb923c;font-size:48px">0.00</div>
-            <div style="font-size:14px;color:#666;margin-bottom:10px;font-family:'DM Mono',monospace">mi</div>
-          </div>
-          <div style="display:flex;justify-content:center;gap:22px;margin-top:4px;font-family:'DM Mono',monospace;font-size:12px;color:#aaa">
-            <span>⏱ <span id="trk-time">0:00</span></span>
-            <span id="trk-pace">— /mi</span>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="bp" style="flex:1" id="trk-start" onclick="trkStart()">Start</button>
-          <button id="trk-pause" onclick="trkTogglePause()" style="flex:1;display:none;background:#fbbf24;color:#0d0d1a;font-size:15px;padding:11px 14px;border-radius:10px">Pause</button>
-          <button class="bw" style="flex:1;display:none" id="trk-finish" onclick="trkFinish()">Finish</button>
-        </div>
-        <div id="trk-status" style="font-size:10px;color:#666;font-family:'DM Mono',monospace;text-align:center;margin-top:10px;min-height:14px">GPS ready · keep the screen on while tracking</div>
-        <div style="border-top:1px solid #1e1e35;margin-top:14px;padding-top:12px">
-          <div class="rlbl" style="margin-top:0">Manual entry (no GPS)</div>
-          <div style="display:flex;gap:8px">
-            <input type="number" id="trk-m-miles" placeholder="miles" step="0.1" style="flex:1;margin-bottom:0"/>
-            <input type="number" id="trk-m-min" placeholder="minutes" style="flex:1;margin-bottom:0"/>
-            <button class="bp" onclick="trkSaveManual()">Save</button>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -4440,12 +4442,10 @@
         </div>
         <div class="yoga-stats-bar" id="yoga-stats-bar"></div>
         <div class="yg-inner-tabbar">
-          <button class="yg-tab-btn active" data-ytab="poses">Poses</button>
-          <button class="yg-tab-btn" data-ytab="presets">Presets</button>
+          <button class="yg-tab-btn active" data-ytab="presets">Presets</button>
           <button class="yg-tab-btn" data-ytab="routine">My Routine</button>
-          <button class="yg-tab-btn" data-ytab="saved">Saved</button>
         </div>
-        <div class="yg-panel active" id="yg-panel-poses">
+        <div class="yg-panel" id="yg-panel-poses" style="display:none">
           <div class="search-area">
             <div class="search-wrap">
               <span class="s-icon">🔍</span>
@@ -4468,7 +4468,7 @@
           </div>
           <div id="poses-container"></div>
         </div>
-        <div class="yg-panel" id="yg-panel-presets">
+        <div class="yg-panel active" id="yg-panel-presets">
           <div style="padding:14px 16px 8px">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:300;margin-bottom:4px;color:#f0ede8">Preset Routines</div>
             <div style="font-size:10px;color:#888">Tap Load to fill your routine instantly. Calories calculated for your weight.</div>
@@ -4478,7 +4478,7 @@
         <div class="yg-panel" id="yg-panel-routine">
           <div id="r-empty" class="r-empty">
             <span class="r-empty-icon">🌱</span>
-            Go to <strong>Poses</strong> and tap <strong>+</strong><br>to build your routine.
+            Go to <strong>Presets</strong> and tap <strong>Load</strong><br>to build your routine.
           </div>
           <div id="r-content" style="display:none">
             <div class="r-header">
@@ -4507,7 +4507,7 @@
             </div>
           </div>
         </div>
-        <div class="yg-panel" id="yg-panel-saved">
+        <div class="yg-panel" id="yg-panel-saved" style="display:none">
           <div style="padding:14px 16px 8px">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:300;margin-bottom:4px;color:#f0ede8">Saved Routines</div>
             <div style="font-size:10px;color:#888">Your custom routines. Tap Load to restore any routine.</div>
@@ -4874,6 +4874,6 @@
 
 
 
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>
