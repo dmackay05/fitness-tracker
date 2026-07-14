@@ -3088,7 +3088,35 @@ var _swapPushTimer=null;
 function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catch(e){}
   clearTimeout(_swapPushTimer); _swapPushTimer=setTimeout(function(){ try{pushConfig();}catch(e){} },1200); }
 function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[activeDate]; }
-function dsItemState(id){ var d=dsDayState(); if(!d[id])d[id]={sets:[]}; if(!d[id].sets)d[id].sets=[]; return d[id]; }
+function dsSyncedExercise(id){
+  var day=getDay(), sid="sess_"+id;
+  for(var i=day.exercises.length-1;i>=0;i--){ if(day.exercises[i].id===sid) return day.exercises[i]; }
+  return null;
+}
+function dsItemState(id){ var d=dsDayState();
+  if(!d[id]){
+    d[id]={sets:[]};
+    // Seed from synced appData (Google Sheet) the first time this device sees this id today,
+    // so progress logged on another device shows up here instead of looking blank/incomplete.
+    var ex=dsSyncedExercise(id);
+    if(ex){
+      var n=ex.sets!=null?ex.sets:1;
+      var repsArr=ex.reps!=null?String(ex.reps).split('/'):[];
+      var loadsArr=ex.load!=null?String(ex.load).split('|'):[];
+      var rirsArr=ex.rir!=null?String(ex.rir).split('/'):[];
+      for(var k=0;k<n;k++){
+        d[id].sets.push({
+          reps:(repsArr[k]!=null&&repsArr[k]!=='')?repsArr[k]:(repsArr[0]||10),
+          load:(loadsArr.length>1?(loadsArr[k]||''):(loadsArr[0]||'')),
+          rir:(rirsArr[k]!=null&&rirsArr[k]!==''?rirsArr[k]:null),
+          ts:null
+        });
+      }
+    }
+  }
+  if(!d[id].sets)d[id].sets=[];
+  return d[id];
+}
 var ds_timers={}; // {id: {interval, left, done}} — interval is null while paused, left persists across pause/resume, done survives re-renders until marked/restarted
 function dsTimerLabel(id,secs){
   var t=ds_timers[id];
@@ -3840,15 +3868,18 @@ function dsMVWeek(){
     var dt=new Date(now); dt.setDate(now.getDate()-d);
     var key=localDateKey(dt);
     var ui=DS_UI[key]||{};
-    var sessDone={};
+    var sessCount={};
     try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){
-      if(e.id&&String(e.id).indexOf('sess_')===0){ sessDone[String(e.id).slice(5)]=true; return; }
+      if(e.id&&String(e.id).indexOf('sess_')===0){ sessCount[String(e.id).slice(5)]=(e.sets!=null?e.sets:1); return; }
       var qa=DS_MV_QUICKADD[e.name]; if(qa){ Object.keys(qa.muscles).forEach(function(mu){ out[mu]+=qa.sets*qa.muscles[mu]; }); }
     }); } }catch(e){}
     Object.keys(DS_MV).forEach(function(id){
       var st=ui[id];
-      var n=(st&&st.sets)?st.sets.length:0;
-      if(!n && sessDone[id]){ var raw=null; try{raw=dsRawItem(id);}catch(e){} n=(raw&&raw.sets)||( raw&&raw.log==='time'?3:1); }
+      var localN=(st&&st.sets)?st.sets.length:0;
+      var syncedN=sessCount[id]||0;
+      // Use synced (Google Sheet) data as the source of truth; local-only counts
+      // (e.g. sets logged this moment, not yet synced) can only ever raise it.
+      var n=Math.max(localN,syncedN);
       if(!n)return;
       var map=DS_MV[id];
       Object.keys(map).forEach(function(mu){ out[mu]+=n*map[mu]; });
