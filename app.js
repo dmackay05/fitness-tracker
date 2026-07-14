@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v12 — 2026-07-14";
+var APP_BUILD = "v13 — 2026-07-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -284,10 +284,14 @@ function pushToSheets(){
 
 // ── PROGRESSIVE OVERLOAD CLOUD CACHE (cross-device last-time history) ───
 var DS_CLOUD_LAST = {};
+var DS_CLOUD_VOL = {};   // {date: {exId: sets}} — clean per-day set counts from the Overload sheet
 function fetchOverloadCache(){
   if(!SHEETS_URL) return;
   function ingest(rows){
     if(!rows || !rows.length) return;
+    var weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-8);
+    var cutoff=localDateKey(weekAgo);
+    var volChanged=false;
     rows.forEach(function(r){
       var exId=r["Exercise ID"]||""; var date=r["Date"]||"";
       if(!exId||!date) return;
@@ -295,7 +299,16 @@ function fetchOverloadCache(){
       if(!prev || date>prev.date){
         DS_CLOUD_LAST[exId]={date:date, reps:r["Reps"]||"", load:r["Band / Weight"]||"", sets:r["Sets"]||"", rir:r["RIR"]||""};
       }
+      // Per-date volume history for the Weekly Volume card (survives cache wipes)
+      if(date>=cutoff){
+        var s=parseInt(r["Sets"],10)||0;
+        if(s>0){
+          if(!DS_CLOUD_VOL[date])DS_CLOUD_VOL[date]={};
+          if(!DS_CLOUD_VOL[date][exId]||s>DS_CLOUD_VOL[date][exId]){ DS_CLOUD_VOL[date][exId]=s; volChanged=true; }
+        }
+      }
     });
+    if(volChanged){ try{ renderAll(); }catch(e){} }
   }
   fetch(SHEETS_URL+"?overload=1&nocache="+Date.now())
     .then(function(r){return r.json();}).then(ingest).catch(function(){
@@ -4002,13 +4015,15 @@ function dsMVWeek(){
         if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid])sessCount[mid]=n2; return; } }
       var qa=DS_MV_QUICKADD[e.name]; if(qa){ Object.keys(qa.muscles).forEach(function(mu){ out[mu]+=qa.sets*qa.muscles[mu]; }); }
     }); } }catch(e){}
+    var cloudDay=DS_CLOUD_VOL[key]||{};
     Object.keys(DS_MV).forEach(function(id){
       var st=ui[id];
       var localN=(st&&st.sets)?st.sets.length:0;
       var syncedN=sessCount[id]||0;
-      // Use synced (Google Sheet) data as the source of truth; local-only counts
-      // (e.g. sets logged this moment, not yet synced) can only ever raise it.
-      var n=Math.max(localN,syncedN);
+      var cloudN=cloudDay[id]||0;
+      // Three sources, max wins: this-device sets, Daily-sheet sync, and the
+      // Overload sheet's per-date history (clean ids — survives cache wipes).
+      var n=Math.max(localN,syncedN,cloudN);
       if(!n)return;
       var map=DS_MV[id];
       Object.keys(map).forEach(function(mu){ out[mu]+=n*map[mu]; });
