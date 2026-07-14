@@ -761,7 +761,7 @@ button:active{opacity:0.7}
 .hfoods{font-size:11px;color:#bbb;line-height:1.5;margin-top:2px}
 .bk-status{font-size:11px;font-family:'DM Mono',monospace;margin-top:10px;min-height:16px}
 .bk-last{font-size:9px;color:#666;font-family:'DM Mono',monospace;margin-top:4px}
-#sync-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#888;font-size:11px;font-family:'DM Mono',monospace;text-align:center;padding:8px;border-bottom:1px solid #2a2a45;letter-spacing:1px}
+#sync-banner{position:fixed;top:0;left:0;right:0;z-index:9990;cursor:pointer;background:#1a1a2e;color:#888;font-size:11px;font-family:'DM Mono',monospace;text-align:center;padding:8px;border-bottom:1px solid #2a2a45;letter-spacing:1px}
 /* Responsive app width — high specificity + last in cascade so it always wins over the legacy .app{max-width:480px} rules elsewhere in this file.
    Uses a single continuous vw-based rule (not a ladder of fixed-pixel steps) above tablet width,
    so it scales properly at ANY window width — a stepped ladder of fixed px caps always leaves

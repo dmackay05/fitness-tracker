@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v11 — 2026-07-14";
+var APP_BUILD = "v12 — 2026-07-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1716,7 +1716,7 @@ initHealthSettings();
 
 // Sheet is source of truth: pull + merge on open, then re-render
 var _bn=document.getElementById("sync-banner");
-if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Open \u2699 Settings and re-enter your Apps Script URL."; _bn.style.color="#fbbf24"; _bn.style.display="block"; }
+if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Tap \u2699 Settings to enter your Apps Script URL. (Tap this banner to dismiss.)"; _bn.style.color="#fbbf24"; _bn.style.display="block"; _bn.onclick=function(){ _bn.style.display="none"; }; }
 if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
 fetchOverloadCache();
 _lastSheetPull=Date.now();
