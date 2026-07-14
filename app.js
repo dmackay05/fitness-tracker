@@ -88,7 +88,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v10 — 2026-07-14";
+var APP_BUILD = "v11 — 2026-07-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1166,6 +1166,20 @@ function initHealthSettings(){
 // ── BACKUP (push, then pull TODAY's row and show it) ────────────────────
 function doBackup(){
   var btn=document.getElementById("bk-btn"), status=document.getElementById("bk-status");
+  // If the URL field has a value that was never saved, adopt + persist it now.
+  if(!SHEETS_URL){
+    var inp=document.getElementById("ft-sheets-url");
+    var v=inp?(inp.value||"").trim():"";
+    if(v){ SHEETS_URL=v; store.set("ft_sheets_url",v); }
+  }
+  if(!SHEETS_URL){
+    status.innerHTML='<span style="color:#fbbf24">No Sheets URL configured. Paste your Apps Script URL above, then try again.</span>';
+    return;
+  }
+  if(SHEETS_URL.indexOf("docs.google.com/spreadsheets")!==-1){
+    status.innerHTML='<span style="color:#fbbf24">That looks like the spreadsheet link. You need the Apps Script <b>web app URL</b> (script.google.com/macros/s/&hellip;/exec) from Deploy \u2192 Manage deployments.</span>';
+    return;
+  }
   btn.disabled=true; btn.textContent="Backing up...";
   status.innerHTML='<span style="color:#5eead4">Sending to Google Sheets…</span>';
   clearTimeout(_syncTimer);

@@ -4718,7 +4718,7 @@
       <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
-        <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" />
+        <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
         <div class="rlbl">USDA API Key (free at fdc.nal.usda.gov — blank uses DEMO_KEY, 30 req/hr)</div>
         <input type="text" id="ft-usda-key" placeholder="DEMO_KEY" style="font-size:11px;margin-bottom:8px" />
         <div class="rlbl">PIN (optional, 4 digits)</div>
@@ -4885,6 +4885,6 @@
 
 
 
-<script src="app.js?v=48"></script>
+<script src="app.js?v=49"></script>
 </body>
 </html>
