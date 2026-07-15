@@ -131,6 +131,8 @@ function calGoalLabelForKey(dateKey){
   return "Active/lift day";
 }
 var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
+var STEP_CADENCE = parseInt(store.get('ft_cadence')) || 105; // steps/min, calibrate from your phone's health app
+var STEP_GOAL = parseInt(store.get('ft_step_goal')) || 10000;
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
 var TREND_METRICS=[
   {key:"weight",  label:"Weight",   unit:"lbs", dir:"lower",   color:"#a78bfa", goal:function(){return GOAL_WEIGHT||0;}, get:function(d){return (d.weight!=null&&d.weight!=="")?d.weight:null;}},
@@ -153,7 +155,8 @@ var TREND_METRICS=[
     var e=d.exercises&&d.exercises.filter(function(x){return x.id==="sess_mob-squathold";})[0];
     if(!e||e.reps==null) return null;
     var v=parseInt(e.reps,10); return isNaN(v)?null:v;
-  }}
+  }},
+  {key:"steps",   label:"Steps",     unit:"",    dir:"higher",  color:"#22c55e", goal:function(){return STEP_GOAL||10000;}, get:function(d){return (d.wellness&&d.wellness.steps>0)?d.wellness.steps:null;}}
 ];
 
 // EXERCISES, PRESET_FOODS, SUPPS injected just above this block (data.js)
@@ -907,7 +910,7 @@ function renderWellness(){
   var w=getDay().wellness||{};
   document.getElementById("sleep-hrs").value=w.sleepHours||"";
   document.getElementById("steps-in").value=w.steps||"";
-  var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/10000)*100,100)+"%";
+  var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/STEP_GOAL)*100,100)+"%";
   ["sleepQ","energy","mood"].forEach(function(f){
     var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
     document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
@@ -1061,6 +1064,12 @@ function trkCommit(miles,dur,source){
   } else {
     var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
     dsAddEx(day,{name:"Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:cals,type:"cardio",id:Date.now().toString()});
+    if(miles>0 || dur>0){
+      var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE) : Math.round(miles*STEP_CADENCE*20);
+      day.wellness=day.wellness||{};
+      day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
+      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
+    }
   }
   saveDay(day); renderAll();
 }
@@ -1141,6 +1150,8 @@ function saveHealthSettings(){
   ["protein","carbs","fat","fiber","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
   var w=parseInt(g("ft-water"))||0; if(w>0){ store.set("ft_water",w); WATER_GOAL=w; }
   var am=parseInt(g("ft-activity"))||0; if(am>0){ store.set("ft_activity_goal",am); ACTIVITY_GOAL=am; }
+  var sg=parseInt(g("ft-step-goal"))||0; if(sg>0){ store.set("ft_step_goal",sg); STEP_GOAL=sg; }
+  var cd=parseInt(g("ft-cadence"))||0; if(cd>0){ store.set("ft_cadence",cd); STEP_CADENCE=cd; }
   var supps=[]; document.querySelectorAll(".ft-sup-inp").forEach(function(el,i){ if(el.value.trim()) supps.push({id:"s"+i,name:el.value.trim(),desc:"",emoji:"💊"}); });
   SUPPS=supps; store.set("ft_supps",JSON.stringify(supps));
   var labs=[]; document.querySelectorAll("#ft-labs .ft-lab-row").forEach(function(r){
@@ -1171,7 +1182,7 @@ function initHealthSettings(){
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal-rest", GOALS.calRest); setv("ft-cal-recovery", GOALS.calRecovery); setv("ft-cal-active", GOALS.calActive); setv("ft-cal-ride", GOALS.calRide); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
-  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL);
+  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-step-goal", STEP_GOAL); setv("ft-cadence", STEP_CADENCE);
   var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
@@ -3671,11 +3682,25 @@ function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemSt
   else if(st.mins){ ex.reps=st.mins+" min"; }
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   else if(item.log==="cardio" && st.mins){ ex.actualSecs=st.mins*60; }
+  if(item.log==="cardio" && st.mins && (item.demo==="walk"||item.demo==="ruck")){
+    var estSteps=Math.round(st.mins*STEP_CADENCE);
+    ex.estSteps=estSteps;
+    day.wellness=day.wellness||{};
+    day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
+    var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
+  }
   dsAddEx(day,ex); saveDay(day);
 }
 function dsUnlog(id){ var day=getDay(), sid="sess_"+id;
   var gone=day.exercises.filter(function(e){return e.id===sid;})[0];
-  if(gone) dsSetTomb(day,gone);
+  if(gone){
+    dsSetTomb(day,gone);
+    if(gone.estSteps){
+      day.wellness=day.wellness||{};
+      day.wellness.steps=Math.max(0,(parseInt(day.wellness.steps,10)||0)-gone.estSteps);
+      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
+    }
+  }
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
 
 function dsLastTime(id){ var sid="sess_"+id; var local=null;

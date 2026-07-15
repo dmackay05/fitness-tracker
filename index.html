@@ -110,6 +110,7 @@
           <button class="bw" style="flex:1;display:none" id="trk-finish" onclick="trkFinish()">Finish</button>
         </div>
         <div id="trk-status" style="font-size:10px;color:#666;font-family:'DM Mono',monospace;text-align:center;margin-top:10px;min-height:14px">GPS ready · keep the screen on while tracking</div>
+        <div style="font-size:9px;color:#555;font-family:'DM Mono',monospace;text-align:center;margin-top:2px">Walks auto-add estimated steps to today's count (cadence-based, calibrate in Settings)</div>
         <div style="border-top:1px solid #1e1e35;margin-top:14px;padding-top:12px">
           <div class="rlbl" style="margin-top:0">Manual entry (no GPS)</div>
           <div style="display:flex;gap:8px">
@@ -4685,7 +4686,10 @@
           <div><div class="rlbl">Burn target</div><input type="number" id="ft-burned" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Water (oz)</div><input type="number" id="ft-water" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Activity (min/wk)</div><input type="number" id="ft-activity" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Step goal (daily)</div><input type="number" id="ft-step-goal" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Cadence (steps/min)</div><input type="number" id="ft-cadence" style="margin-bottom:0"/></div>
         </div>
+        <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:6px">Cadence default is 105 steps/min. Check your phone's Health app (iPhone) or Google Fit (Android) after a walk, divide steps by minutes, and enter your real number here for more accurate estimates.</div>
         <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#666">(weight + body comp reminder)</span></div>
         <select id="ft-weighin-day" style="margin-bottom:0" onchange="setWeighinDay(this.value)">
           <option value="0">Sunday</option>
@@ -4896,6 +4900,6 @@
 
 
 
-<script src="app.js?v=53"></script>
+<script src="app.js?v=55"></script>
 </body>
 </html>
