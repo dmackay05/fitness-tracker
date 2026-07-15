@@ -546,6 +546,12 @@ function renderDash(){
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
 
+  // Weekly Activity (rolling 7-day, all logged activity types)
+  var actMin=dsWeeklyActivityMinutes(activeDate);
+  var _am=document.getElementById("dash-activity-min"); if(_am) _am.textContent=actMin;
+  var _ag=document.getElementById("dash-activity-goal"); if(_ag) _ag.textContent="min · goal "+ACTIVITY_GOAL;
+  var _ab=document.getElementById("dash-activity-bar"); if(_ab) _ab.style.width=Math.min((actMin/ACTIVITY_GOAL)*100,100)+"%";
+
   // Weight
   var day=getDay();
   var lw=getLatestWeight(), lost=START_WEIGHT-lw;
@@ -1134,6 +1140,7 @@ function saveHealthSettings(){
   [["cal-rest","calRest"],["cal-recovery","calRecovery"],["cal-active","calActive"],["cal-ride","calRide"]].forEach(function(pair){ var v=parseInt(g("ft-"+pair[0]))||0; if(v>0){ store.set("ft_"+pair[0].replace("-","_"),v); GOALS[pair[1]]=v; } });
   ["protein","carbs","fat","fiber","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
   var w=parseInt(g("ft-water"))||0; if(w>0){ store.set("ft_water",w); WATER_GOAL=w; }
+  var am=parseInt(g("ft-activity"))||0; if(am>0){ store.set("ft_activity_goal",am); ACTIVITY_GOAL=am; }
   var supps=[]; document.querySelectorAll(".ft-sup-inp").forEach(function(el,i){ if(el.value.trim()) supps.push({id:"s"+i,name:el.value.trim(),desc:"",emoji:"💊"}); });
   SUPPS=supps; store.set("ft_supps",JSON.stringify(supps));
   var labs=[]; document.querySelectorAll("#ft-labs .ft-lab-row").forEach(function(r){
@@ -1164,7 +1171,7 @@ function initHealthSettings(){
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal-rest", GOALS.calRest); setv("ft-cal-recovery", GOALS.calRecovery); setv("ft-cal-active", GOALS.calActive); setv("ft-cal-ride", GOALS.calRide); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
-  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL);
+  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL);
   var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
@@ -3836,6 +3843,25 @@ function dsFormatTrainingTime(totalSecs){
   if(mins < 60) return mins + " min";
   var h = Math.floor(mins/60), m = mins % 60;
   return h + "h " + m + "m";
+}
+
+/* ── Weekly Activity Minutes (rolling 7-day, all logged activity types) ── */
+var ACTIVITY_GOAL = parseInt(store.get('ft_activity_goal')) || 300;
+function setActivityGoal(v){ ACTIVITY_GOAL = parseInt(v)||300; store.set('ft_activity_goal', ACTIVITY_GOAL); renderDash(); }
+function dsWeeklyActivityMinutes(endKey){
+  endKey = endKey || todayKey();
+  var totalMin = 0;
+  var cursor = new Date(keyToDate(endKey));
+  for(var i=0;i<7;i++){
+    var k = localDateKey(cursor);
+    // Lift sessions + yoga sessions logged as exercises
+    totalMin += dsDailyTrainingSeconds(k)/60;
+    // Bike rides logged separately
+    var d = appData[k];
+    if(d && d.rides){ d.rides.forEach(function(r){ totalMin += parseFloat(r.duration)||0; }); }
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return Math.round(totalMin);
 }
 var DS_TIME_CRUNCH = (function(){ try{ return store.get("ds_tc")==="1"; }catch(e){ return false; } })();
 var DS_TC_KEEP_SLOTS = {"Warm-up":1,"Horizontal Push":1,"Vertical Push":1,"Horizontal Pull":1,"Vertical Pull":1,"Squat":1,"Hinge":1};

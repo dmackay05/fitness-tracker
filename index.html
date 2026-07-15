@@ -4179,6 +4179,16 @@
       </div>
 
       <div class="card">
+        <div class="card-title" style="color:#fb923c">🏃 Weekly Activity</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
+          <div class="big-num" id="dash-activity-min" style="color:#fb923c;font-size:32px">0</div>
+          <div style="font-size:12px;color:#666;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-activity-goal">min · goal 300</div>
+        </div>
+        <div class="water-bar-wrap"><div class="water-bar" id="dash-activity-bar" style="width:0%;background:linear-gradient(90deg,#fb923c,#fbbf24)"></div></div>
+        <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:6px">Rolling 7 days · lift + bike + yoga</div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Macros</div>
         <div class="radials" id="radials"></div>
         <div class="hint-box" id="protein-hint" style="display:none"></div>
@@ -4674,6 +4684,7 @@
           <div><div class="rlbl">Fiber (g)</div><input type="number" id="ft-fiber" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Burn target</div><input type="number" id="ft-burned" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Water (oz)</div><input type="number" id="ft-water" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Activity (min/wk)</div><input type="number" id="ft-activity" style="margin-bottom:0"/></div>
         </div>
         <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#666">(weight + body comp reminder)</span></div>
         <select id="ft-weighin-day" style="margin-bottom:0" onchange="setWeighinDay(this.value)">
@@ -4885,6 +4896,6 @@
 
 
 
-<script src="app.js?v=52"></script>
+<script src="app.js?v=53"></script>
 </body>
 </html>
