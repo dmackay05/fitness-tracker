@@ -3641,7 +3641,7 @@ function dsComputeActualSecs(item, st){
   if(item.log==="setsreps" && st.sets && st.sets.length){
     var repsPerSet = parseInt(st.sets[st.sets.length-1].reps,10) || 8;
     if(st.sets.length>=2 && st.sets[0].ts && st.sets[st.sets.length-1].ts){
-      var MAX_GAP_SECS = 240; // cap any single inter-set gap at 4 min — protects against phone-locked/distraction gaps inflating "actual" time
+      var MAX_GAP_SECS = 120; // cap any single inter-set gap at 2 min — realistic rest interval, protects against distraction/interruption gaps inflating "actual" time
       var gapSum = 0;
       for(var i=1;i<st.sets.length;i++){
         var a=st.sets[i-1].ts, b=st.sets[i].ts;
@@ -3841,7 +3841,7 @@ var DS_REST_SECS = 60;
 var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
 
 function dsEstimateSeconds(ex){
-  if(ex.actualSecs!=null) return Math.min(ex.actualSecs, 1800); // cap: no single exercise realistically runs >30 min; guards against stale bad data from the pre-fix gap bug
+  if(ex.actualSecs!=null) return Math.min(ex.actualSecs, 900); // cap: no single exercise realistically runs >15 min; guards against stale bad data from the pre-fix gap bug
   var rawId = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
   var item = rawId ? dsRawItem(rawId) : null;
   var minMatch = ex.reps && String(ex.reps).match(/(\d+(?:\.\d+)?)\s*min/i);
