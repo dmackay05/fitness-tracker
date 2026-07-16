@@ -162,6 +162,11 @@ var TREND_METRICS=[
     if(!e||e.reps==null) return null;
     var v=parseInt(e.reps,10); return isNaN(v)?null:v;
   }},
+  {key:"meditation", label:"Meditation", unit:"min", dir:"higher", color:"#c084fc", get:function(d){
+    if(!d.meditation||!d.meditation.length) return null;
+    var s=d.meditation.reduce(function(a,x){return a+(+x.mins||0);},0);
+    return s>0?s:null;
+  }},
   {key:"steps",   label:"Steps",     unit:"",    dir:"higher",  color:"#22c55e", goal:function(){return STEP_GOAL||10000;}, get:function(d){return (d.wellness&&d.wellness.steps>0)?d.wellness.steps:null;}}
 ];
 
