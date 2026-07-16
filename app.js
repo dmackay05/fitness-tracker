@@ -157,6 +157,13 @@ var TREND_METRICS=[
   {key:"muscle",  label:"Muscle",    unit:"lbs",dir:"higher", color:"#facc15", get:function(d){return (d.bodyComp&&d.bodyComp.muscle!=null)?d.bodyComp.muscle:null;}},
   {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
   {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}},
+  {key:"restingHR", label:"Resting HR", unit:"bpm", dir:"lower", color:"#f87171", get:function(d){return (d.wellness&&d.wellness.restingHR!=null)?d.wellness.restingHR:null;}},
+  {key:"workoutHR", label:"Workout Avg HR", unit:"bpm", dir:"neutral", color:"#fb7185", get:function(d){
+    if(!d.exercises||!d.exercises.length) return null;
+    var vals=d.exercises.map(function(e){return e.avgHR;}).filter(function(v){return v!=null&&!isNaN(v);});
+    if(!vals.length) return null;
+    return Math.round(vals.reduce(function(a,v){return a+v;},0)/vals.length);
+  }},
   {key:"squathold", label:"Squat Hold", unit:"sec", dir:"higher", color:"#fb7185", get:function(d){
     var e=d.exercises&&d.exercises.filter(function(x){return x.id==="sess_mob-squathold";})[0];
     if(!e||e.reps==null) return null;
@@ -806,6 +813,8 @@ function editEx(id){
   editingExId=id;
   document.getElementById("ee-name").value=e.name||"";
   document.getElementById("ee-cal").value=(e.calories||0);
+  document.getElementById("ee-avghr").value=(e.avgHR!=null)?e.avgHR:"";
+  document.getElementById("ee-peakhr").value=(e.peakHR!=null)?e.peakHR:"";
   document.getElementById("ex-edit-modal").style.display="flex";
 }
 function closeExEdit(){ editingExId=null; document.getElementById("ex-edit-modal").style.display="none"; }
@@ -816,6 +825,9 @@ function saveExEdit(){
   var n=document.getElementById("ee-name").value.trim();
   e.name=n||e.name;
   e.calories=+document.getElementById("ee-cal").value||0;
+  var avgV=document.getElementById("ee-avghr").value, peakV=document.getElementById("ee-peakhr").value;
+  if(avgV!==""){ e.avgHR=parseInt(avgV,10); } else { delete e.avgHR; }
+  if(peakV!==""){ e.peakHR=parseInt(peakV,10); } else { delete e.peakHR; }
   saveDay(day); closeExEdit(); renderAll();
 }
 function renderExLog(){
@@ -894,11 +906,14 @@ function saveWellness(){
   var d=getDay(); d.wellness=d.wellness||{};
   d.wellness.sleepHours=parseFloat(document.getElementById("sleep-hrs").value)||0;
   d.wellness.steps=parseInt(document.getElementById("steps-in").value)||0;
+  var rhrVal=document.getElementById("rhr-in").value;
+  if(rhrVal!==""){ d.wellness.restingHR=parseInt(rhrVal,10); } else { delete d.wellness.restingHR; }
   if(wellnessRatings.sleepQ) d.wellness.sleepQ=wellnessRatings.sleepQ;
   if(wellnessRatings.energy) d.wellness.energy=wellnessRatings.energy;
   if(wellnessRatings.mood) d.wellness.mood=wellnessRatings.mood;
   saveDay(d);
   var m=document.getElementById("well-msg"); m.textContent="✓ Wellness saved"; setTimeout(function(){m.textContent="";},2500);
+  renderRhrHistory();
   renderDash();
 }
 function saveMeditation(){
@@ -921,11 +936,20 @@ function renderWellness(){
   var w=getDay().wellness||{};
   document.getElementById("sleep-hrs").value=w.sleepHours||"";
   document.getElementById("steps-in").value=w.steps||"";
+  document.getElementById("rhr-in").value=(w.restingHR!=null)?w.restingHR:"";
   var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/STEP_GOAL)*100,100)+"%";
   ["sleepQ","energy","mood"].forEach(function(f){
     var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
     document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
   });
+  renderRhrHistory();
+}
+function renderRhrHistory(){
+  var el=document.getElementById("rhr-history"); if(!el) return;
+  var keys=Object.keys(appData).filter(function(k){return appData[k].wellness&&appData[k].wellness.restingHR!=null;}).sort().slice(-5).reverse();
+  el.innerHTML = (!keys.length)?'':'<div class="row-sub" style="margin-bottom:6px">Recent resting HR</div>'+keys.map(function(k){
+    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+appData[k].wellness.restingHR+' bpm</div></div>';
+  }).join("");
 }
 
 // ── LOG: MEASUREMENTS ───────────────────────────────────────────────────
@@ -1638,7 +1662,7 @@ function _attachExDetail(ex,si,ri,li){
   if(s) ex.sets=s; if(r) ex.reps=r; if(l) ex.load=l;
 }
 function _clearExDetail(si,ri,li){ [si,ri,li].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; }); }
-function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load)) return ""; var sr=(e.sets||e.reps)?((e.sets||"?")+"\u00d7"+(e.reps||"?")):""; return (sr+(e.load?(" @ "+e.load):"")).trim(); }
+function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load&&!e.avgHR)) return ""; var sr=(e.sets||e.reps)?((e.sets||"?")+"\u00d7"+(e.reps||"?")):""; var hr=e.avgHR?("\u2764 "+e.avgHR+(e.peakHR?("/"+e.peakHR):"")+"bpm"):""; return [sr+(e.load?(" @ "+e.load):""),hr].filter(Boolean).join(" \u00b7 ").trim(); }
 function lastExercise(name){
   if(!name) return null; name=String(name).toLowerCase().trim();
   var keys=Object.keys(appData).filter(function(k){return k!==activeDate;}).sort().reverse();

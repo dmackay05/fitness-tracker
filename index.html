@@ -4393,6 +4393,8 @@
           <div class="rlbl">Mood</div><div class="rating-row" id="row-mood"><button class="rbtn" data-field="mood" data-val="1">😞</button><button class="rbtn" data-field="mood" data-val="2">😟</button><button class="rbtn" data-field="mood" data-val="3">😐</button><button class="rbtn" data-field="mood" data-val="4">🙂</button><button class="rbtn" data-field="mood" data-val="5">😁</button></div>
           <div class="rlbl">Steps Today</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="steps-in" class="winput" placeholder="e.g. 8500"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">steps</div></div>
           <div class="steps-bar-wrap"><div class="steps-bar" id="steps-bar" style="width:0%"></div></div>
+          <div class="rlbl">Resting Heart Rate</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="rhr-in" class="winput" placeholder="e.g. 62" min="30" max="150"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">bpm</div></div>
+          <div id="rhr-history" style="margin-top:6px"></div>
           <button class="bp bfull" style="margin-top:14px" onclick="saveWellness()">Save Wellness</button>
           <div id="well-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
         </div>
@@ -4647,6 +4649,10 @@
     <div class="card-title">Edit Exercise</div>
     <input type="text" id="ee-name" placeholder="Exercise name"/>
     <input type="number" id="ee-cal" placeholder="Calories burned"/>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <input type="number" id="ee-avghr" placeholder="Avg HR (bpm)" min="30" max="220" style="flex:1"/>
+      <input type="number" id="ee-peakhr" placeholder="Peak HR (bpm)" min="30" max="220" style="flex:1"/>
+    </div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="bs" style="flex:1" onclick="closeExEdit()">Cancel</button>
       <button class="bp" style="flex:1" onclick="saveExEdit()">Save</button>
@@ -4900,6 +4906,6 @@
 
 
 
-<script src="app.js?v=64"></script>
+<script src="app.js?v=66"></script>
 </body>
 </html>
