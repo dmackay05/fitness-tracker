@@ -3777,13 +3777,13 @@ function dsRenderItem(rawItem,idx){
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
   var h='<div class="'+cls+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
   h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+'</div>';
-  if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
   h+='<div class="ds-mtags">'+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+(_equip?'<span>'+dsHi(_equip,_q)+'</span>':'')+'</div></div>';
   h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div></div>';
   h+='<div class="ds-mbody">';
+  if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
   var varIdx=DS_SWAPS[item.id]||0;
