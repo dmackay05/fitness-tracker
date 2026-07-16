@@ -158,6 +158,8 @@ var TREND_METRICS=[
   {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
   {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}},
   {key:"restingHR", label:"Resting HR", unit:"bpm", dir:"lower", color:"#f87171", get:function(d){return (d.wellness&&d.wellness.restingHR!=null)?d.wellness.restingHR:null;}},
+  {key:"bpSys", label:"BP Systolic", unit:"mmHg", dir:"lower", color:"#ef4444", get:function(d){return (d.wellness&&d.wellness.bp&&d.wellness.bp.sys!=null)?d.wellness.bp.sys:null;}},
+  {key:"bpDia", label:"BP Diastolic", unit:"mmHg", dir:"lower", color:"#f97316", get:function(d){return (d.wellness&&d.wellness.bp&&d.wellness.bp.dia!=null)?d.wellness.bp.dia:null;}},
   {key:"workoutHR", label:"Workout Avg HR", unit:"bpm", dir:"neutral", color:"#fb7185", get:function(d){
     if(!d.exercises||!d.exercises.length) return null;
     var vals=d.exercises.map(function(e){return e.avgHR;}).filter(function(v){return v!=null&&!isNaN(v);});
@@ -908,12 +910,15 @@ function saveWellness(){
   d.wellness.steps=parseInt(document.getElementById("steps-in").value)||0;
   var rhrVal=document.getElementById("rhr-in").value;
   if(rhrVal!==""){ d.wellness.restingHR=parseInt(rhrVal,10); } else { delete d.wellness.restingHR; }
+  var bpSys=document.getElementById("bp-sys-in").value, bpDia=document.getElementById("bp-dia-in").value;
+  if(bpSys!==""&&bpDia!==""){ d.wellness.bp={sys:parseInt(bpSys,10),dia:parseInt(bpDia,10)}; } else { delete d.wellness.bp; }
   if(wellnessRatings.sleepQ) d.wellness.sleepQ=wellnessRatings.sleepQ;
   if(wellnessRatings.energy) d.wellness.energy=wellnessRatings.energy;
   if(wellnessRatings.mood) d.wellness.mood=wellnessRatings.mood;
   saveDay(d);
   var m=document.getElementById("well-msg"); m.textContent="✓ Wellness saved"; setTimeout(function(){m.textContent="";},2500);
   renderRhrHistory();
+  renderBpHistory();
   renderDash();
 }
 function saveMeditation(){
@@ -937,18 +942,51 @@ function renderWellness(){
   document.getElementById("sleep-hrs").value=w.sleepHours||"";
   document.getElementById("steps-in").value=w.steps||"";
   document.getElementById("rhr-in").value=(w.restingHR!=null)?w.restingHR:"";
+  document.getElementById("bp-sys-in").value=(w.bp&&w.bp.sys!=null)?w.bp.sys:"";
+  document.getElementById("bp-dia-in").value=(w.bp&&w.bp.dia!=null)?w.bp.dia:"";
   var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/STEP_GOAL)*100,100)+"%";
   ["sleepQ","energy","mood"].forEach(function(f){
     var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
     document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
   });
   renderRhrHistory();
+  renderBpHistory();
+}
+function liveBpCheck(){
+  var tag=document.getElementById("bp-live-tag"); if(!tag) return;
+  var sys=parseInt(document.getElementById("bp-sys-in").value,10), dia=parseInt(document.getElementById("bp-dia-in").value,10);
+  if(isNaN(sys)||isNaN(dia)){ tag.textContent=""; return; }
+  var c=bpCategory(sys,dia);
+  tag.textContent=c.label; tag.style.color=c.color;
+}
+function bpCategory(sys,dia){
+  if(sys>=180||dia>=120) return {label:"Crisis",color:"#f87171"};
+  if(sys>=140||dia>=90)  return {label:"High (Stage 2)",color:"#fb923c"};
+  if(sys>=130||dia>=80)  return {label:"High (Stage 1)",color:"#fbbf24"};
+  if(sys>=120&&dia<80)   return {label:"Elevated",color:"#facc15"};
+  if(sys<90||dia<60)     return {label:"Low",color:"#60a5fa"};
+  return {label:"Normal",color:"#4ade80"};
+}
+function renderBpHistory(){
+  var el=document.getElementById("bp-history"); if(!el) return;
+  var keys=Object.keys(appData).filter(function(k){return appData[k].wellness&&appData[k].wellness.bp&&appData[k].wellness.bp.sys!=null;}).sort().slice(-5).reverse();
+  el.innerHTML = (!keys.length)?'':'<div class="row-sub" style="margin-bottom:6px">Recent blood pressure</div>'+keys.map(function(k){
+    var bp=appData[k].wellness.bp, c=bpCategory(bp.sys,bp.dia);
+    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+bp.sys+'/'+bp.dia+' mmHg &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
+  }).join("");
+}
+function rhrCategory(bpm){
+  if(bpm<60)  return {label:"Athletic",color:"#4ade80"};
+  if(bpm<=100)return {label:"Normal",color:"#5eead4"};
+  if(bpm<=110)return {label:"Elevated",color:"#fbbf24"};
+  return {label:"High",color:"#f87171"};
 }
 function renderRhrHistory(){
   var el=document.getElementById("rhr-history"); if(!el) return;
   var keys=Object.keys(appData).filter(function(k){return appData[k].wellness&&appData[k].wellness.restingHR!=null;}).sort().slice(-5).reverse();
   el.innerHTML = (!keys.length)?'':'<div class="row-sub" style="margin-bottom:6px">Recent resting HR</div>'+keys.map(function(k){
-    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+appData[k].wellness.restingHR+' bpm</div></div>';
+    var v=appData[k].wellness.restingHR, c=rhrCategory(v);
+    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+v+' bpm &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
   }).join("");
 }
 
