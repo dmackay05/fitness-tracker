@@ -4393,7 +4393,7 @@
           <div class="rlbl">Mood</div><div class="rating-row" id="row-mood"><button class="rbtn" data-field="mood" data-val="1">😞</button><button class="rbtn" data-field="mood" data-val="2">😟</button><button class="rbtn" data-field="mood" data-val="3">😐</button><button class="rbtn" data-field="mood" data-val="4">🙂</button><button class="rbtn" data-field="mood" data-val="5">😁</button></div>
           <div class="rlbl">Steps Today</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="steps-in" class="winput" placeholder="e.g. 8500"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">steps</div></div>
           <div class="steps-bar-wrap"><div class="steps-bar" id="steps-bar" style="width:0%"></div></div>
-          <div class="rlbl">Resting Heart Rate</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="rhr-in" class="winput" placeholder="e.g. 62" min="30" max="150"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">bpm</div></div>
+          <div class="rlbl">Resting Heart Rate</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="rhr-in" class="winput" placeholder="e.g. 62" min="30" max="150"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">bpm</div><button class="bp" style="padding:8px 14px;white-space:nowrap" onclick="addRhrReading()">+ Add</button></div>
           <div id="rhr-history" style="margin-top:6px"></div>
           <div class="rlbl">Blood Pressure</div><div style="display:flex;gap:8px;align-items:center">
             <input type="number" id="bp-sys-in" class="winput" placeholder="120" min="60" max="250" style="max-width:70px" oninput="liveBpCheck()"/>
@@ -4401,6 +4401,7 @@
             <input type="number" id="bp-dia-in" class="winput" placeholder="80" min="40" max="150" style="max-width:70px" oninput="liveBpCheck()"/>
             <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">mmHg</div>
             <div id="bp-live-tag" style="font-size:11px;font-weight:600"></div>
+            <button class="bp" style="padding:8px 14px;white-space:nowrap;margin-left:auto" onclick="addBpReading()">+ Add</button>
           </div>
           <div id="bp-history" style="margin-top:6px"></div>
           <button class="bp bfull" style="margin-top:14px" onclick="saveWellness()">Save Wellness</button>
@@ -4914,6 +4915,6 @@
 
 
 
-<script src="app.js?v=69"></script>
+<script src="app.js?v=70"></script>
 </body>
 </html>

@@ -157,9 +157,9 @@ var TREND_METRICS=[
   {key:"muscle",  label:"Muscle",    unit:"lbs",dir:"higher", color:"#facc15", get:function(d){return (d.bodyComp&&d.bodyComp.muscle!=null)?d.bodyComp.muscle:null;}},
   {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
   {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}},
-  {key:"restingHR", label:"Resting HR", unit:"bpm", dir:"lower", color:"#f87171", get:function(d){return (d.wellness&&d.wellness.restingHR!=null)?d.wellness.restingHR:null;}},
-  {key:"bpSys", label:"BP Systolic", unit:"mmHg", dir:"lower", color:"#ef4444", get:function(d){return (d.wellness&&d.wellness.bp&&d.wellness.bp.sys!=null)?d.wellness.bp.sys:null;}},
-  {key:"bpDia", label:"BP Diastolic", unit:"mmHg", dir:"lower", color:"#f97316", get:function(d){return (d.wellness&&d.wellness.bp&&d.wellness.bp.dia!=null)?d.wellness.bp.dia:null;}},
+  {key:"restingHR", label:"Resting HR", unit:"bpm", dir:"lower", color:"#f87171", get:function(d){var r=_dayRhrReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.v;},0)/r.length);}},
+  {key:"bpSys", label:"BP Systolic", unit:"mmHg", dir:"lower", color:"#ef4444", get:function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.sys;},0)/r.length);}},
+  {key:"bpDia", label:"BP Diastolic", unit:"mmHg", dir:"lower", color:"#f97316", get:function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.dia;},0)/r.length);}},
   {key:"workoutHR", label:"Workout Avg HR", unit:"bpm", dir:"neutral", color:"#fb7185", get:function(d){
     if(!d.exercises||!d.exercises.length) return null;
     var vals=d.exercises.map(function(e){return e.avgHR;}).filter(function(v){return v!=null&&!isNaN(v);});
@@ -908,18 +908,57 @@ function saveWellness(){
   var d=getDay(); d.wellness=d.wellness||{};
   d.wellness.sleepHours=parseFloat(document.getElementById("sleep-hrs").value)||0;
   d.wellness.steps=parseInt(document.getElementById("steps-in").value)||0;
-  var rhrVal=document.getElementById("rhr-in").value;
-  if(rhrVal!==""){ d.wellness.restingHR=parseInt(rhrVal,10); } else { delete d.wellness.restingHR; }
-  var bpSys=document.getElementById("bp-sys-in").value, bpDia=document.getElementById("bp-dia-in").value;
-  if(bpSys!==""&&bpDia!==""){ d.wellness.bp={sys:parseInt(bpSys,10),dia:parseInt(bpDia,10)}; } else { delete d.wellness.bp; }
   if(wellnessRatings.sleepQ) d.wellness.sleepQ=wellnessRatings.sleepQ;
   if(wellnessRatings.energy) d.wellness.energy=wellnessRatings.energy;
   if(wellnessRatings.mood) d.wellness.mood=wellnessRatings.mood;
   saveDay(d);
   var m=document.getElementById("well-msg"); m.textContent="✓ Wellness saved"; setTimeout(function(){m.textContent="";},2500);
-  renderRhrHistory();
-  renderBpHistory();
   renderDash();
+}
+// ── Multiple RHR / BP readings per day ──────────────────────────────────
+function _nowTime(){ var d=new Date(); var h=d.getHours(),mi=d.getMinutes(); var ap=h>=12?"PM":"AM"; var h12=h%12; if(h12===0)h12=12; return h12+":"+(mi<10?"0":"")+mi+" "+ap; }
+function addRhrReading(){
+  var v=parseInt(document.getElementById("rhr-in").value,10); if(isNaN(v)) return;
+  var d=getDay(); d.wellness=d.wellness||{}; d.wellness.rhrLog=d.wellness.rhrLog||[];
+  d.wellness.rhrLog.push({t:_nowTime(),v:v});
+  delete d.wellness.restingHR; // migrate away from single-value field
+  saveDay(d);
+  document.getElementById("rhr-in").value="";
+  var m=document.getElementById("well-msg"); m.textContent="✓ Reading added"; setTimeout(function(){m.textContent="";},2000);
+  renderRhrHistory(); renderDash();
+}
+function delRhrReading(idx){
+  var d=getDay(); if(!d.wellness||!d.wellness.rhrLog) return;
+  d.wellness.rhrLog.splice(idx,1); saveDay(d); renderRhrHistory(); renderDash();
+}
+function addBpReading(){
+  var sys=parseInt(document.getElementById("bp-sys-in").value,10), dia=parseInt(document.getElementById("bp-dia-in").value,10);
+  if(isNaN(sys)||isNaN(dia)) return;
+  var d=getDay(); d.wellness=d.wellness||{}; d.wellness.bpLog=d.wellness.bpLog||[];
+  d.wellness.bpLog.push({t:_nowTime(),sys:sys,dia:dia});
+  delete d.wellness.bp; // migrate away from single-value field
+  saveDay(d);
+  document.getElementById("bp-sys-in").value=""; document.getElementById("bp-dia-in").value="";
+  var tag=document.getElementById("bp-live-tag"); if(tag) tag.textContent="";
+  var m=document.getElementById("well-msg"); m.textContent="✓ Reading added"; setTimeout(function(){m.textContent="";},2000);
+  renderBpHistory(); renderDash();
+}
+function delBpReading(idx){
+  var d=getDay(); if(!d.wellness||!d.wellness.bpLog) return;
+  d.wellness.bpLog.splice(idx,1); saveDay(d); renderBpHistory(); renderDash();
+}
+// Day-level readings, including legacy single-value entries for old logs
+function _dayRhrReadings(d){
+  if(!d||!d.wellness) return [];
+  if(d.wellness.rhrLog&&d.wellness.rhrLog.length) return d.wellness.rhrLog;
+  if(d.wellness.restingHR!=null) return [{t:"",v:d.wellness.restingHR}];
+  return [];
+}
+function _dayBpReadings(d){
+  if(!d||!d.wellness) return [];
+  if(d.wellness.bpLog&&d.wellness.bpLog.length) return d.wellness.bpLog;
+  if(d.wellness.bp&&d.wellness.bp.sys!=null) return [{t:"",sys:d.wellness.bp.sys,dia:d.wellness.bp.dia}];
+  return [];
 }
 function saveMeditation(){
   var mins=parseInt(document.getElementById("med-mins").value)||0; if(!mins) return;
@@ -941,9 +980,9 @@ function renderWellness(){
   var w=getDay().wellness||{};
   document.getElementById("sleep-hrs").value=w.sleepHours||"";
   document.getElementById("steps-in").value=w.steps||"";
-  document.getElementById("rhr-in").value=(w.restingHR!=null)?w.restingHR:"";
-  document.getElementById("bp-sys-in").value=(w.bp&&w.bp.sys!=null)?w.bp.sys:"";
-  document.getElementById("bp-dia-in").value=(w.bp&&w.bp.dia!=null)?w.bp.dia:"";
+  document.getElementById("rhr-in").value="";
+  document.getElementById("bp-sys-in").value="";
+  document.getElementById("bp-dia-in").value="";
   var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/STEP_GOAL)*100,100)+"%";
   ["sleepQ","energy","mood"].forEach(function(f){
     var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
@@ -969,11 +1008,20 @@ function bpCategory(sys,dia){
 }
 function renderBpHistory(){
   var el=document.getElementById("bp-history"); if(!el) return;
-  var keys=Object.keys(appData).filter(function(k){return appData[k].wellness&&appData[k].wellness.bp&&appData[k].wellness.bp.sys!=null;}).sort().slice(-5).reverse();
-  el.innerHTML = (!keys.length)?'':'<div class="row-sub" style="margin-bottom:6px">Recent blood pressure</div>'+keys.map(function(k){
-    var bp=appData[k].wellness.bp, c=bpCategory(bp.sys,bp.dia);
-    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+bp.sys+'/'+bp.dia+' mmHg &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
-  }).join("");
+  var todayReadings=_dayBpReadings(getDay());
+  var todayHtml=todayReadings.length?('<div class="row-sub" style="margin-bottom:6px">Today\'s readings</div>'+todayReadings.map(function(r,i){
+    var c=bpCategory(r.sys,r.dia);
+    return '<div class="row"><div class="row-name" style="font-size:11px">'+(r.t||"—")+'</div><div class="row-sub" style="display:flex;align-items:center;gap:6px">'+r.sys+'/'+r.dia+' mmHg &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span>'+(getDay().wellness.bpLog?' <span onclick="delBpReading('+i+')" style="cursor:pointer;color:#666;margin-left:4px">✕</span>':'')+'</div></div>';
+  }).join(""))+'<div style="height:8px"></div>':'';
+  var keys=Object.keys(appData).filter(function(k){return k!==activeDate && _dayBpReadings(appData[k]).length;}).sort().slice(-5).reverse();
+  var pastHtml=keys.length?('<div class="row-sub" style="margin-bottom:6px">Recent days</div>'+keys.map(function(k){
+    var readings=_dayBpReadings(appData[k]);
+    return readings.map(function(r){
+      var c=bpCategory(r.sys,r.dia);
+      return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+(r.t?' · '+r.t:'')+'</div><div class="row-sub">'+r.sys+'/'+r.dia+' mmHg &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
+    }).join("");
+  }).join("")):'';
+  el.innerHTML = todayHtml+pastHtml;
 }
 function rhrCategory(bpm){
   if(bpm<60)  return {label:"Athletic",color:"#4ade80"};
@@ -983,11 +1031,20 @@ function rhrCategory(bpm){
 }
 function renderRhrHistory(){
   var el=document.getElementById("rhr-history"); if(!el) return;
-  var keys=Object.keys(appData).filter(function(k){return appData[k].wellness&&appData[k].wellness.restingHR!=null;}).sort().slice(-5).reverse();
-  el.innerHTML = (!keys.length)?'':'<div class="row-sub" style="margin-bottom:6px">Recent resting HR</div>'+keys.map(function(k){
-    var v=appData[k].wellness.restingHR, c=rhrCategory(v);
-    return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+'</div><div class="row-sub">'+v+' bpm &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
-  }).join("");
+  var todayReadings=_dayRhrReadings(getDay());
+  var todayHtml=todayReadings.length?('<div class="row-sub" style="margin-bottom:6px">Today\'s readings</div>'+todayReadings.map(function(r,i){
+    var c=rhrCategory(r.v);
+    return '<div class="row"><div class="row-name" style="font-size:11px">'+(r.t||"—")+'</div><div class="row-sub" style="display:flex;align-items:center;gap:6px">'+r.v+' bpm &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span>'+(getDay().wellness.rhrLog?' <span onclick="delRhrReading('+i+')" style="cursor:pointer;color:#666;margin-left:4px">✕</span>':'')+'</div></div>';
+  }).join(""))+'<div style="height:8px"></div>':'';
+  var keys=Object.keys(appData).filter(function(k){return k!==activeDate && _dayRhrReadings(appData[k]).length;}).sort().slice(-5).reverse();
+  var pastHtml=keys.length?('<div class="row-sub" style="margin-bottom:6px">Recent days</div>'+keys.map(function(k){
+    var readings=_dayRhrReadings(appData[k]);
+    return readings.map(function(r){
+      var c=rhrCategory(r.v);
+      return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+(r.t?' · '+r.t:'')+'</div><div class="row-sub">'+r.v+' bpm &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
+    }).join("");
+  }).join("")):'';
+  el.innerHTML = todayHtml+pastHtml;
 }
 
 // ── LOG: MEASUREMENTS ───────────────────────────────────────────────────
