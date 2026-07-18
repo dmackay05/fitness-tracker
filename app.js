@@ -3400,6 +3400,7 @@ function dsItemState(id){ var d=dsDayState();
         });
       }
     }
+    if(ex) d[id].manualDone=true;
   }
   if(!d[id].sets)d[id].sets=[];
   return d[id];
@@ -3443,7 +3444,7 @@ function dsStartTimer(id,secs){
   dsTimerPaint(id,secs);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
 /* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
 function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
@@ -3462,9 +3463,43 @@ function dsMasterPool(){
 function dsMasterLookup(id){ var p=dsMasterPool(); for(var i=0;i<p.length;i++){ if(p[i].id===id) return p[i]; } return null; }
 var DS_CUSTOM={}; try{ DS_CUSTOM=JSON.parse(store.get("ds_custom")||"{}"); }catch(e){ DS_CUSTOM={}; }
 function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){} }
+var DS_USERMOVES={}; try{ DS_USERMOVES=JSON.parse(store.get("ds_usermoves")||"{}"); }catch(e){ DS_USERMOVES={}; }
+function dsUserMovesSave(){ try{ store.set("ds_usermoves", JSON.stringify(DS_USERMOVES)); }catch(e){} }
+function dsAddUserMove(dayKey,def){
+  var id="user_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  var item={id:id,name:def.name,target:def.target||"",equip:def.equip||"",rx:def.rx||"",cal:def.cal||20,log:"setsreps",sets:def.sets||3,userMove:true};
+  DS_USERMOVES[dayKey]=DS_USERMOVES[dayKey]||[];
+  DS_USERMOVES[dayKey].push(item);
+  dsUserMovesSave();
+  return id;
+}
+function dsDeleteUserMove(dayKey,id){
+  if(!DS_USERMOVES[dayKey])return;
+  DS_USERMOVES[dayKey]=DS_USERMOVES[dayKey].filter(function(m){return m.id!==id;});
+  if(!DS_USERMOVES[dayKey].length) delete DS_USERMOVES[dayKey];
+  dsUserMovesSave();
+  try{ dsUnlog(id); }catch(e){}
+  dsRender(); renderAll();
+}
 function dsCustomMoves(dayKey){
   var ids=DS_CUSTOM[dayKey]||[];
   return ids.map(function(id){ return dsMasterLookup(id); }).filter(Boolean);
+}
+function dsUserCustomMoves(dayKey){ return (DS_USERMOVES[dayKey]||[]).slice(); }
+var DS_USERADD_OPEN=false;
+function dsUserAddToggle(){ DS_USERADD_OPEN=!DS_USERADD_OPEN; dsRender(); }
+function dsUserAddSubmit(){
+  var n=(document.getElementById('ua-name')||{}).value||''; n=n.trim();
+  if(!n){ var el=document.getElementById('ua-name'); if(el)el.focus(); return; }
+  var target=(document.getElementById('ua-target')||{}).value||'';
+  var equip=(document.getElementById('ua-equip')||{}).value||'';
+  var sets=parseInt((document.getElementById('ua-sets')||{}).value,10)||3;
+  var reps=(document.getElementById('ua-reps')||{}).value||'';
+  var cal=parseInt((document.getElementById('ua-cal')||{}).value,10)||20;
+  var sk=dsSessionKey(activeDate);
+  dsAddUserMove(sk,{name:n,target:target,equip:equip,rx:(reps?(sets+'\u00d7'+reps):(sets+' sets')),cal:cal,sets:sets});
+  DS_USERADD_OPEN=false;
+  dsRender(); renderAll();
 }
 
 // ── CUSTOM SET BUILDER ───────────────────────────────────────────────────
@@ -3803,9 +3838,9 @@ function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:(v.cal!=null?v.cal:item.cal),cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:(v.secs!=null?v.secs:item.secs),perMin:(v.perMin!=null?v.perMin:item.perMin),defMin:(v.defMin!=null?v.defMin:item.defMin),variants:item.variants}; }
 
 function dsComplete(id){ var item=dsRawItem(id);
-  if(item && item.log==='setsreps'){ var target=item.sets||3; var st=dsItemState(id);
-    if(st.sets.length>=target) return true;
-    var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id && (e.sets==null || e.sets>=target);}); }
+  if(item && item.log==='setsreps'){ var st=dsItemState(id);
+    if(st.manualDone) return true;
+    var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
   var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
 function dsEncodeSets(ex,sets){
   if(!sets||!sets.length)return;
@@ -3864,7 +3899,7 @@ function dsLastTime(id){ var sid="sess_"+id; var local=null;
   return local ? {reps:local.reps,load:local.load,rir:local.rir} : null;
 }
 function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
-function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var h='';for(var i=0;i<target;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
+function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var n=Math.max(target,done);var h='';for(var i=0;i<n;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
 
 var DS_SEARCH='';
 var DS_SEARCH_HITS=0;
@@ -3942,7 +3977,8 @@ function dsRenderItem(rawItem,idx){
     var loadFld = dsWantsLoad(item) ? '<input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">' : '';
     h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
     h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
-    h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsLogSet(\''+item.id+'\','+target+')">'+(done?'\u2713 Logged \u2014 tap to clear':'Log set ('+st.sets.length+'/'+target+')')+'</button>';
+    h+='<div class="ds-setbtnrow" style="display:flex;gap:8px;align-items:stretch;margin-top:6px"><button class="ds-btn ds-logsetbtn" style="flex:1" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'+(st.sets.length?'<button class="ds-undobtn" onclick="dsUndoSet(\''+item.id+'\')" title="Remove last set" style="flex:0 0 auto;border:1px solid #444;background:none;color:#aaa;border-radius:8px;padding:0 12px;font-size:15px;cursor:pointer">\u21B6</button>':'')+'</div>';
+    h+='<button class="ds-btn ds-finishbtn '+(done?'ds-lit':'')+'" style="margin-top:6px;width:100%" onclick="dsFinishSets(\''+item.id+'\')">'+(done?'\u2713 Done \u2014 tap to reopen':'Done ('+st.sets.length+' set'+(st.sets.length===1?'':'s')+')')+'</button>';
   } else if(item.log==='time'){
     var _ts=dsTimerLabel(item.id,item.secs);
     h+='<div class="ds-timerwrap"><button class="ds-tbtn '+_ts.cls+'" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">'+_ts.txt+'</button></div>';
@@ -4286,6 +4322,31 @@ function dsRender(){
     if(_customMoves.length){
       html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
     }
+    var _userMoves=(DS_USERMOVES[sk]||[]);
+    if(_userMoves.length){
+      html+=dsRenderSection('Your Custom Exercises',_userMoves.length+' added \u00b7 '+DS_DAYLABEL[sk],'#5eead4',_userMoves,'');
+      html+='<div style="margin:-6px 0 14px;display:flex;flex-wrap:wrap;gap:8px">'+_userMoves.map(function(m){return '<button onclick="dsDeleteUserMove(\''+sk+'\',\''+m.id+'\')" style="border:1px solid #ffffff1a;background:transparent;color:#888;font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer">Remove &ldquo;'+m.name+'&rdquo;</button>';}).join('')+'</div>';
+    }
+    if(!DS_USERADD_OPEN){
+      html+='<div style="margin:0 0 18px;"><button onclick="dsUserAddToggle()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #5eead440;background:#5eead410;color:#5eead4;">+ Add Custom Exercise to '+DS_DAYLABEL[sk]+'</button></div>';
+    } else {
+      html+='<div style="margin:0 0 18px;padding:14px;border:1px solid #5eead440;border-radius:12px;background:#5eead408;">'
+        +'<div style="font-size:12px;color:#5eead4;font-weight:700;margin-bottom:10px;">Add Custom Exercise \u2014 '+DS_DAYLABEL[sk]+'</div>'
+        +'<input type="text" id="ua-name" placeholder="Exercise name" style="width:100%;margin-bottom:8px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;box-sizing:border-box">'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<input type="text" id="ua-target" placeholder="Target (e.g. Biceps)" style="background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;box-sizing:border-box">'
+        +'<input type="text" id="ua-equip" placeholder="Equipment" style="background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;box-sizing:border-box">'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">'
+        +'<input type="number" id="ua-sets" placeholder="Sets" value="3" style="background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;box-sizing:border-box">'
+        +'<input type="text" id="ua-reps" placeholder="Reps (e.g. 10-12)" style="background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;box-sizing:border-box">'
+        +'<input type="number" id="ua-cal" placeholder="Cal/set" value="20" style="background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;box-sizing:border-box">'
+        +'</div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button onclick="dsUserAddSubmit()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#5eead4;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">Add to '+DS_DAYLABEL[sk]+'</button>'
+        +'<button onclick="dsUserAddToggle()" style="padding:10px 16px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#888;font-size:13px;cursor:pointer">Cancel</button>'
+        +'</div></div>';
+    }
     var _focus=dsFocusBlock(sk);
     if(_focus)html+=dsRenderSection(_focus.title,'',_focus.accent,_focus.moves,_focus.blurb);
     html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, yin, mobility, HIIT, full ATG\u2026)')+'</button></div>';
@@ -4343,13 +4404,24 @@ function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===tr
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
 function dsLogSet(id,target){
   var st=dsItemState(id);
-  if(dsComplete(id)){ dsUnlog(id); st.sets=[]; dsSaveUI(); dsRender(); renderAll(); return; }
-  if(st.sets.length>=target)return;
+  if(st.manualDone){ st.manualDone=false; }
   var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
   st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()});
-  var nowDone=st.sets.length>=target;
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
   if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
+  dsSaveUI(); dsRender(); renderAll();
+}
+function dsUndoSet(id){
+  var st=dsItemState(id);
+  if(!st.sets||!st.sets.length) return;
+  st.sets.pop(); st.manualDone=false;
+  dsSyncPartialLog(dsViewOf(dsRawItem(id)));
+  dsSaveUI(); dsRender(); renderAll();
+}
+function dsFinishSets(id){
+  var st=dsItemState(id);
+  if(st.manualDone){ st.manualDone=false; dsSyncPartialLog(dsViewOf(dsRawItem(id))); }
+  else { st.manualDone=true; dsLogComplete(dsViewOf(dsRawItem(id))); }
   dsSaveUI(); dsRender(); renderAll();
 }
 function dsMarkDone(id){ if(ds_timers[id]){ if(ds_timers[id].interval)clearInterval(ds_timers[id].interval); delete ds_timers[id]; } if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
@@ -6784,59 +6856,6 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     if (window.egOnDotChange) egOnDotChange(tracker);
   }
 
-  // ── SET TRACKER ENHANCEMENTS: log unlimited sets + explicit Done button ──
-  function dsEnhanceTracker(tr){
-    if(!tr || tr.dataset.dsEnhanced) return;
-    tr.dataset.dsEnhanced="1";
-    var dotsWrap = tr.querySelector('.set-dots');
-    if(!dotsWrap) return;
-    var addBtn=document.createElement('button');
-    addBtn.type="button"; addBtn.title="Add another set"; addBtn.textContent="+";
-    addBtn.className="set-add-btn";
-    addBtn.style.cssText="border:none;background:none;color:var(--accent,#e8ff47);font-size:17px;font-weight:700;cursor:pointer;padding:0 8px;line-height:1;";
-    addBtn.addEventListener('click',function(e){
-      e.stopPropagation();
-      var dot=document.createElement('div');
-      dot.className="set-dot";
-      dot.setAttribute("onclick","dotClick(this)");
-      dot.title="Set "+(dotsWrap.querySelectorAll('.set-dot').length+1);
-      dotsWrap.appendChild(dot);
-      var msg=tr.querySelector('.set-complete-msg'); if(msg) msg.classList.remove('show');
-    });
-    dotsWrap.parentNode.insertBefore(addBtn, dotsWrap.nextSibling);
-
-    var doneBtn=document.createElement('button');
-    doneBtn.type="button"; doneBtn.textContent="Done";
-    doneBtn.className="set-done-btn";
-    doneBtn.style.cssText="border:1px solid var(--accent,#e8ff47);background:none;color:var(--accent,#e8ff47);font-size:11px;font-weight:700;cursor:pointer;padding:3px 12px;border-radius:12px;margin-left:8px;";
-    doneBtn.addEventListener('click',function(e){
-      e.stopPropagation();
-      tr.querySelectorAll('.set-dot').forEach(function(d){ d.classList.add('done'); });
-      var msg=tr.querySelector('.set-complete-msg'); if(msg) msg.classList.add('show');
-      if (window.egOnDotChange) egOnDotChange(tr);
-    });
-    var resetBtn=tr.querySelector('.set-reset');
-    if(resetBtn) resetBtn.parentNode.insertBefore(doneBtn, resetBtn);
-    else tr.appendChild(doneBtn);
-  }
-  function dsEnhanceAllTrackers(){ document.querySelectorAll('.set-tracker').forEach(dsEnhanceTracker); }
-  (function(){
-    function boot(){
-      dsEnhanceAllTrackers();
-      var root=document.getElementById('tg-app')||document.body;
-      var obs=new MutationObserver(function(muts){
-        muts.forEach(function(m){
-          (m.addedNodes||[]).forEach(function(n){
-            if(n.nodeType!==1) return;
-            if(n.classList && n.classList.contains('set-tracker')) dsEnhanceTracker(n);
-            if(n.querySelectorAll) n.querySelectorAll('.set-tracker').forEach(dsEnhanceTracker);
-          });
-        });
-      });
-      obs.observe(root,{childList:true,subtree:true});
-    }
-    if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded", boot);
-  })();
 
   // ── TIMER ──
   var timerInterval = null;
