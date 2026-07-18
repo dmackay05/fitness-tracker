@@ -4170,7 +4170,11 @@ function dsEstimateSeconds(ex){
     var reps2 = parseInt(ex.reps, 10) || 10;
     return ex.sets * reps2 * DS_SEC_PER_REP + Math.max(0, ex.sets-1) * DS_REST_SECS;
   }
-  return 90; // flat fallback for anything unparseable (e.g. simple dropdown log with no set/rep detail)
+  var nameMinMatch = ex.name && String(ex.name).match(/\((\d+(?:\.\d+)?)\s*min\)/i);
+  if(nameMinMatch){ // GPS-tracked rides/walks and dropdown cardio presets embed duration in the name
+    return Math.round(parseFloat(nameMinMatch[1]) * 60);
+  }
+  return 90; // flat fallback for anything unparseable (e.g. simple dropdown log with no set/rep/duration detail)
 }
 
 function dsDailyTrainingSeconds(key){
