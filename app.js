@@ -375,12 +375,7 @@ function rowToDay(row){
       sleepQ:row["Sleep Quality (1-5)"]?parseFloat(row["Sleep Quality (1-5)"]):0,
       energy:row["Energy (1-5)"]?parseFloat(row["Energy (1-5)"]):0,
       mood:row["Mood (1-5)"]?parseFloat(row["Mood (1-5)"]):0,
-      steps:row["Steps"]?parseFloat(row["Steps"]):0,
-      restingHR: row["Resting HR (bpm)"]?parseFloat(row["Resting HR (bpm)"]):null,
-      bp: (row["BP Systolic (mmHg)"]||row["BP Diastolic (mmHg)"]) ? {
-        sys: row["BP Systolic (mmHg)"]?parseFloat(row["BP Systolic (mmHg)"]):null,
-        dia: row["BP Diastolic (mmHg)"]?parseFloat(row["BP Diastolic (mmHg)"]):null
-      } : null
+      steps:row["Steps"]?parseFloat(row["Steps"]):0
     },
     supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""}
@@ -1088,46 +1083,7 @@ function renderSupps(){
 
 // ── LOG: DISTANCE TRACKER (GPS + manual) ────────────────────────────────
 var trk = {active:false, paused:false, activity:"ride", watchId:null,
-           startTs:0, elapsedMs:0, lastPt:null, distM:0, wakeLock:null, ticker:null,
-           intervalsOn:false, intervalPhase:"push", intervalPhaseStart:null};
-var TRK_PUSH_SECS=120, TRK_REST_SECS=180;
-function trkBeepOnce(){
-  try{
-    var ctx=new (window.AudioContext||window.webkitAudioContext)();
-    var osc=ctx.createOscillator(), gain=ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value=660; osc.type="sine";
-    gain.gain.setValueAtTime(0.3,ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.3);
-  }catch(e){}
-}
-function trkToggleIntervals(){
-  trk.intervalsOn=!trk.intervalsOn;
-  var t=document.getElementById("trk-interval-toggle"), k=document.getElementById("trk-interval-knob");
-  var lbl=document.getElementById("trk-phase-label");
-  if(t&&k){
-    if(trk.intervalsOn){ t.style.background="var(--accent)"; t.style.borderColor="var(--accent)"; k.style.left="23px"; k.style.background="#0f0f0f"; }
-    else { t.style.background="#2a2a2a"; t.style.borderColor="#666"; k.style.left="3px"; k.style.background="#666"; if(lbl)lbl.textContent=""; }
-  }
-  trk.intervalPhase="push"; trk.intervalPhaseStart=(trk.active&&!trk.paused&&trk.intervalsOn)?Date.now():null;
-}
-function trkUpdatePhase(){
-  var lbl=document.getElementById("trk-phase-label"); if(!lbl) return;
-  if(trk.activity!=="ride"||!trk.intervalsOn||!trk.active||trk.paused||!trk.intervalPhaseStart){ lbl.textContent=""; return; }
-  var dur=trk.intervalPhase==="push"?TRK_PUSH_SECS:TRK_REST_SECS;
-  var elapsed=Math.floor((Date.now()-trk.intervalPhaseStart)/1000);
-  var remaining=Math.max(0,dur-elapsed);
-  if(remaining<=0){
-    trk.intervalPhase=trk.intervalPhase==="push"?"rest":"push";
-    trk.intervalPhaseStart=Date.now();
-    remaining=trk.intervalPhase==="push"?TRK_PUSH_SECS:TRK_REST_SECS;
-    trkBeepOnce();
-  }
-  var m=Math.floor(remaining/60), s=remaining%60;
-  lbl.textContent=(trk.intervalPhase==="push"?"\uD83D\uDD25 PUSH HARD":"\uD83D\uDE2E\u200D\uD83D\uDCA8 RECOVER")+" \u2014 "+m+":"+String(s).padStart(2,"0");
-  lbl.style.color=trk.intervalPhase==="push"?"var(--accent)":"#7dd3fc";
-}
+           startTs:0, elapsedMs:0, lastPt:null, distM:0, wakeLock:null, ticker:null};
 
 function setTrackActivity(a){
   if(trk.active) return; // don't switch mid-session
@@ -1135,8 +1091,6 @@ function setTrackActivity(a){
   document.getElementById("trk-ride").classList.toggle("sel",a==="ride");
   document.getElementById("trk-walk").classList.toggle("sel",a==="walk");
   document.getElementById("trk-dist").style.color = a==="ride" ? "#fb923c" : "#5eead4";
-  var row=document.getElementById("trk-interval-row"); if(row) row.style.display = a==="ride" ? "flex" : "none";
-  var lbl=document.getElementById("trk-phase-label"); if(lbl && a!=="ride") lbl.textContent="";
 }
 function trkStatus(msg,color){ var s=document.getElementById("trk-status"); s.textContent=msg; s.style.color=color||"#666"; }
 function _hav(a,b){
@@ -1157,7 +1111,6 @@ function trkStart(){
   document.getElementById("trk-pause").textContent="Pause";
   trkStatus("Acquiring GPS…","#fbbf24");
   trkReqWake();
-  if(trk.activity==="ride"&&trk.intervalsOn){ trk.intervalPhase="push"; trk.intervalPhaseStart=Date.now(); }
   trk.watchId=navigator.geolocation.watchPosition(trkOnPos, trkOnErr, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
   trk.ticker=setInterval(trkTick,1000); trkTick();
 }
@@ -1186,7 +1139,6 @@ function trkOnPos(p){
 function trkTick(){
   if(trk.active && !trk.paused){ /* elapsed advances live via startTs */ }
   trkUpdate();
-  trkUpdatePhase();
 }
 function trkElapsedMs(){ return trk.elapsedMs + ((trk.active && !trk.paused) ? (Date.now()-trk.startTs) : 0); }
 function trkUpdate(){
@@ -1202,18 +1154,15 @@ function trkUpdate(){
 }
 function trkTogglePause(){
   if(!trk.active) return;
-  if(trk.paused){ trk.paused=false; trk.startTs=Date.now(); document.getElementById("trk-pause").textContent="Pause"; trkReqWake(); trkStatus("Resumed","#5eead4"); if(trk.activity==="ride"&&trk.intervalsOn) trk.intervalPhaseStart=Date.now(); }
+  if(trk.paused){ trk.paused=false; trk.startTs=Date.now(); document.getElementById("trk-pause").textContent="Pause"; trkReqWake(); trkStatus("Resumed","#5eead4"); }
   else { trk.paused=true; trk.elapsedMs+=Date.now()-trk.startTs; document.getElementById("trk-pause").textContent="Resume"; trkStatus("Paused","#888"); }
   trkUpdate();
-  trkUpdatePhase();
 }
 function trkStop(){
   if(trk.watchId!=null){ navigator.geolocation.clearWatch(trk.watchId); trk.watchId=null; }
   if(trk.ticker){ clearInterval(trk.ticker); trk.ticker=null; }
   trkRelWake();
   trk.active=false; trk.paused=false;
-  trk.intervalPhase="push"; trk.intervalPhaseStart=null;
-  var phLbl=document.getElementById("trk-phase-label"); if(phLbl) phLbl.textContent="";
   document.getElementById("trk-start").style.display="block";
   document.getElementById("trk-pause").style.display="none";
   document.getElementById("trk-finish").style.display="none";
@@ -2183,6 +2132,35 @@ function usdaScanHit(code){
 
 renderUsdaMyFoods();
 
+// ── WEDNESDAY YOGA ↔ TRACKER BRIDGE ─────────────────────────────────────
+// One tap in the Guide marks the yoga flow complete in eg_done (streak,
+// week view, auto-push to Workout Log) AND logs a 130 cal exercise entry
+// to TODAY's tracker day (Calories Burned, dashboards, Exercises column).
+var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=130, TG_YOGA_NAME="Wednesday Yoga Flow (20-25 min)";
+function tgYogaRefresh(){
+  var b=document.getElementById("yoga-complete-btn"); if(!b) return;
+  var on=(typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID);
+  b.textContent=on?"\u2713 Yoga Complete \u2014 tap to undo":"Mark Wednesday Yoga Complete";
+  b.style.background=on?"var(--accent)":"transparent";
+  b.style.color=on?"#0f0f0f":"var(--accent)";
+}
+function tgYogaToggle(){
+  var on=!((typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID));
+  if(typeof egSetDone==="function") egSetDone(TG_YOGA_ID,on);
+  var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
+  if(on){
+    if(!day.exercises.some(function(e){return e.id===exId;})){
+      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId});
+    }
+  } else {
+    day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
+  }
+  saveDay(day,tk); renderAll(); tgYogaRefresh();
+  try { ygRenderStatsBar(); } catch(e) {}
+  toast(on?("\u2713 Yoga logged \u2014 "+calAdj(TG_YOGA_CAL)+" cal"):"Yoga unmarked");
+}
+
+
 /* ===== DAILY SESSION MODULE (injected) ===== */
 var DS_FIG='#9a9d8c', DS_BAND='#4ec98a', DS_ARR='#f5b14c';
 function dsS(dur,attr,vals){return '<animate attributeName="'+attr+'" values="'+vals+'" keyTimes="0;0.5;1" dur="'+dur+'s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>';}
@@ -2857,143 +2835,6 @@ var DS_VARIANT_SETUPS={
   "mon-ohp::1": "Sit on a chair or stand, feet shoulder-width. 10 lb dumbbells at shoulder height, palms forward, elbows at 90°. Seated version is more stable — start there.",
   "mon-curl::1": "Stand feet hip-width. 10 lb dumbbells at sides, palms facing forward.",
   "thu-hammer::1": "Stand tall. 10 lb dumbbells at sides, palms facing each other — neutral grip like holding hammers throughout."
-};
-var DS_MISTAKES={
-  'atg-backwalk':['Taking steps too long instead of short, controlled ones.','Landing flat-footed instead of on the ball of the foot.','Rushing the pace instead of staying slow and deliberate.'],
-  'atg-dip':['Going too low — stop well short of shoulder-below-elbow depth.','Flaring the elbows out instead of keeping them closer to the body.','Rushing the descent instead of a slow, controlled lower.'],
-  'atg-extrot':['Letting the elbow drift away from the side instead of staying pinned.','Using too much weight and losing control of the rotation.','Rushing the reps instead of slow and deliberate.'],
-  'atg-fullsquat':['Knees caving inward — push them out over your pinky toes.','Not going low enough — aim for at least thighs parallel.','Leaning too far forward instead of sitting back into the hips.'],
-  'atg-hipflexor':['Letting the low back arch instead of staying flat.','Moving too fast instead of a slow, controlled drive and return.','Going too heavy too soon — this is meant to stay light and controlled.'],
-  'atg-nordic':['Letting the hips sag instead of staying bridged in a straight line.','Moving too fast — this movement works best slow and controlled.','Stopping the eccentric too early instead of fighting it the whole way down.'],
-  'atg-splitsquat':['Front knee caving inward or pushing far past the toes.','Leaning the torso forward instead of staying tall.','Rushing the rep — balance is part of the challenge, so go slow.'],
-  'atg-tibraise':['Shifting weight forward off the heels instead of staying back on them.','Rushing the reps instead of a full, slow range of motion.','Using momentum instead of a controlled lift of the toes.'],
-  'atg-trap3':['Using momentum to swing the arm up instead of a controlled raise.','Raising through the wrong angle instead of the ~30° line from the body.','Going too heavy — this is a light, structural exercise, not a lift.'],
-  'desk-calfraise':['Bouncing at the bottom instead of pausing at both ends.','Cutting the range short instead of a full stretch and full contraction.','Rushing the tempo — calves respond best to slow, controlled reps.'],
-  'desk-chestopen':['Rotating from the low back instead of the upper back/shoulder.','Holding too briefly instead of a full 30 seconds per side.','Forcing the stretch instead of easing into it with the breath.'],
-  'desk-deskcatcow':['Rushing the reps instead of moving one vertebra at a time.','Moving only the upper back instead of rippling through the whole spine.','Holding the breath instead of syncing breath to movement.'],
-  'desk-figure4':['Using momentum to swing wildly instead of a controlled range.','Rounding the low back instead of staying tall through the torso.','Rushing through instead of feeling the hip open each rep.'],
-  'desk-glutebridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'desk-hipcircles':['Letting the ribs flare up instead of staying stacked over the pelvis.','Making the circles too small instead of the biggest range the hip allows.','Rushing through instead of slow and controlled.'],
-  'desk-lowlunge':['Letting the front knee push far past the toes.','Sinking too aggressively instead of a gentle forward press.','Rounding the low back instead of staying tall.'],
-  'desk-posture':['Overarching the low back instead of a gentle, neutral tuck.','Rushing through it as a checkbox instead of actually resetting alignment.','Doing it only once a day instead of using it as a recurring cue between tasks.'],
-  'desk-wallpushup':['Sagging hips — tighten the core or regress to knees if this happens.','Flaring the elbows straight out to the sides instead of at ~45°.','Half reps instead of lowering all the way down.'],
-  'fri-bulg':['Front knee caving inward or pushing far past the toes.','Leaning the torso forward instead of staying tall.','Rushing the rep — balance is part of the challenge, so go slow.'],
-  'fri-calf':['Bouncing at the bottom instead of pausing at both ends.','Cutting the range short instead of a full stretch and full contraction.','Rushing the tempo — calves respond best to slow, controlled reps.'],
-  'fri-deadbug':['Letting the lower back arch off the floor — reduce the range if this happens.','Moving too fast instead of a slow 2–3 second extension.','Holding the breath instead of exhaling as you extend.'],
-  'fri-nordic':['Letting the hips sag instead of staying bridged in a straight line.','Moving too fast — this movement works best slow and controlled.','Stopping the eccentric too early instead of fighting it the whole way down.'],
-  'fri-obliques':['Pulling with the arms instead of rotating through the core.','Moving too fast and losing control in both directions.','Standing too close to the anchor, leaving no room for full rotation.'],
-  'fri-plank':['Hips sagging — squeeze the glutes to fix it.','Piking the hips up too high instead of a straight line.','Holding the breath instead of breathing normally.'],
-  'fri-slrdl':['Rounding the lower back — stop the descent where your back can stay flat.','Bending the knees too much, turning it into a squat instead of a hip hinge.','Letting the weight drift away from the legs instead of staying close.'],
-  'fri-sqpress':['Using only the arms for the press — let the legs generate the drive.','Losing the squat depth to rush toward the press.','Pressing forward instead of straight overhead.'],
-  'fri-sumo':['Knees caving in despite the wide stance — actively push them out.','Leaning forward instead of staying upright with chest proud.','Not sitting deep enough to use the wider stance\'s extra range.'],
-  'hiit-fri-bridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'hiit-fri-deadbug':['Letting the lower back arch off the floor — reduce the range if this happens.','Moving too fast instead of a slow 2–3 second extension.','Holding the breath instead of exhaling as you extend.'],
-  'hiit-fri-latwalk':['Standing up tall between steps instead of staying in the quarter-squat.','Dragging the trailing foot instead of actively stepping with both feet.','Letting the band go slack by bringing the feet too close together.'],
-  'hiit-fri-rdl':['Rounding the lower back — stop the descent where your back can stay flat.','Bending the knees too much, turning it into a squat instead of a hip hinge.','Letting the weight drift away from the legs instead of staying close.'],
-  'hiit-mon-curl':['Swinging the body to generate momentum instead of standing still.','Letting the elbows drift forward — they should stay pinned at your sides.','Using too much resistance and cutting the range of motion short.'],
-  'hiit-mon-fly':['Bending the elbows too much, turning the fly into a press.','Rushing the return instead of controlling the stretch on the way out.','Standing too close to the anchor, losing tension at the start.'],
-  'hiit-mon-pullapart':['Bending the elbows to make the pull easier — keep the arms straight.','Shrugging the shoulders up instead of pressing them down.','Rushing the reps instead of pausing at full squeeze.'],
-  'hiit-mon-row':['Rounding the lower back — the #1 mistake on this move.','Using momentum to swing the weight up instead of a controlled pull.','Standing too upright instead of holding a solid hip hinge.'],
-  'hiit-thu-facepull':['Pulling toward the chest instead of the face — keep those elbows high.','Using too much resistance and turning it into a row.','Leaning back to cheat the pull instead of standing upright.'],
-  'hiit-thu-hammer':['Swinging the body to generate momentum instead of standing still.','Letting the elbows drift forward — they should stay pinned at your sides.','Using too much resistance and cutting the range of motion short.'],
-  'hiit-thu-lateral':['Using too much resistance and swinging the weight up.','Shrugging the shoulders toward the ears instead of keeping them down.','Raising the hands above the elbows instead of leading with the elbows.'],
-  'hiit-thu-pulldown':['Pulling with the arms instead of driving the elbows down and back.','Leaning too far back, turning it into a row.','Stopping short of full overhead extension at the top.'],
-  'hiit-tue-bridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'hiit-tue-pallof-l':['Rotating toward the anchor instead of resisting it — the whole point is anti-rotation.','Leaning away from the band to compensate instead of bracing the core.','Holding the breath instead of breathing steadily through the hold.'],
-  'hiit-tue-pallof-r':['Rotating toward the anchor instead of resisting it — the whole point is anti-rotation.','Leaning away from the band to compensate instead of bracing the core.','Holding the breath instead of breathing steadily through the hold.'],
-  'hiit-tue-squat':['Knees caving inward — push them out over your pinky toes.','Not going low enough — aim for at least thighs parallel.','Leaning too far forward instead of sitting back into the hips.'],
-  'm-9090':['Letting the low back arch instead of staying flat.','Moving too fast instead of a slow, controlled drive and return.','Going too heavy too soon — this is meant to stay light and controlled.'],
-  'm-catcow':['Rushing the reps instead of moving one vertebra at a time.','Moving only the upper back instead of rippling through the whole spine.','Holding the breath instead of syncing breath to movement.'],
-  'm-child':['Forcing the stretch instead of letting gravity do the work over a few minutes.','Holding tension in the shoulders instead of relaxing forward.','Rushing out of the pose instead of a slow transition.'],
-  'm-kneehug':['Gripping the shins hard instead of a gentle hold.','Rocking too fast instead of one slow rock per breath.','Holding the breath instead of softening the low back on each exhale.'],
-  'mob-9090':['Leaning back to fake extra range instead of staying tall through the transition.','Rushing the transitions instead of slow and controlled.','Pushing into anything sharp near the SI joint instead of backing off.'],
-  'mob-clam':['Rolling the hips backward to fake extra range instead of staying stacked.','Rushing the reps instead of pausing at the top opening.','Letting the band go slack between reps.'],
-  'mob-elbow':['Loading too heavy too soon — the 2 lb dumbbell is the right starting point even if it feels light.','Lowering fast instead of a slow, controlled eccentric.','Pushing through sharp pain instead of stopping at the first sign of medial elbow discomfort.'],
-  'mob-hip':['Rushing the circle instead of the slowest, largest range you can control.','Letting other joints move to fake extra range.','Ramping the PAILs contraction too hard, too fast instead of a gradual 60–70% squeeze.'],
-  'mob-shoulder':['Rushing the circle instead of the slowest, largest range you can control.','Letting other joints move to fake extra range.','Ramping the PAILs contraction too hard, too fast instead of a gradual 60–70% squeeze.'],
-  'mob-spine':['Rushing the circle instead of the slowest, largest range you can control.','Letting other joints move to fake extra range.','Ramping the PAILs contraction too hard, too fast instead of a gradual 60–70% squeeze.'],
-  'mob-squathold':['Letting the heels lift instead of staying flat and rooted.','Rounding the lower back to force extra depth — keep it neutral.','Holding the breath — breathe steadily through the hold.'],
-  'mob-wallwalk':['Shrugging the shoulders up toward the ears instead of keeping them down.','Rushing the slide instead of a controlled tempo.','Letting the low back arch off the wall.'],
-  'mon-calf':['Bouncing at the bottom instead of pausing at both ends.','Cutting the range short instead of a full stretch and full contraction.','Rushing the tempo — calves respond best to slow, controlled reps.'],
-  'mon-curl':['Swinging the body to generate momentum instead of standing still.','Letting the elbows drift forward — they should stay pinned at your sides.','Using too much resistance and cutting the range of motion short.'],
-  'mon-hollow':['Letting the lower back arch off the floor instead of pressing it flat.','Holding the breath instead of breathing steadily through the hold.','Dropping the legs or arms too low, losing tension in the position.'],
-  'mon-inclinepress':['Flaring the elbows straight out to 90° instead of keeping them at roughly 45°.','Half reps instead of full range at the bottom.','Rushing the tempo instead of controlling the descent.'],
-  'mon-ohp':['Arching the lower back to muscle up the weight — use a lighter load instead.','Pressing forward instead of straight up toward the ceiling.','Locking the knees out for stability instead of keeping a soft bend.'],
-  'mon-pullapart':['Bending the elbows to make the pull easier — keep the arms straight.','Shrugging the shoulders up instead of pressing them down.','Rushing the reps instead of pausing at full squeeze.'],
-  'mon-pushup':['Sagging hips — tighten the core or regress to knees if this happens.','Flaring the elbows straight out to the sides instead of at ~45°.','Half reps instead of lowering all the way down.'],
-  'mon-row':['Rounding the lower back — the #1 mistake on this move.','Using momentum to swing the weight up instead of a controlled pull.','Standing too upright instead of holding a solid hip hinge.'],
-  'mon-tri':['Elbows drifting forward or flaring out instead of staying pinned.','Leaning into the movement instead of standing upright with a braced core.','Using too much resistance and cutting the range of motion short.'],
-  'p-9090':['Letting the low back arch instead of staying flat.','Moving too fast instead of a slow, controlled drive and return.','Going too heavy too soon — this is meant to stay light and controlled.'],
-  'p-bridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'post-ride':['Starting too hard and burning out before the ride is done — build pace gradually.','Skipping water — dehydration hits harder in a calorie deficit.','Ignoring hills entirely instead of using them for extra intensity.'],
-  'post-walk':['Walking too fast and turning it into a workout instead of active recovery.','Skipping it on plateau weeks — NEAT matters most when the scale stalls.','Hunching forward instead of walking tall with relaxed shoulders.'],
-  'pu-band':['Kipping or swinging instead of a controlled pull.','Using too light a band, making the rep too easy to build real strength.','Not pulling the chest to the bar — stopping the rep short.'],
-  'pu-hang':['Letting the shoulders fully relax and shrug up instead of staying slightly engaged.','Holding the breath instead of breathing steadily.','Stopping early instead of working toward full grip fatigue.'],
-  'pu-neg':['Dropping fast instead of fighting the descent the whole way down.','Losing the hollow body position and swinging instead of staying controlled.','Stopping the lower halfway instead of going to a full hang.'],
-  'pu-scap':['Bending the elbows to help — the movement should come only from the shoulder blades.','Rushing the reps instead of a slow, controlled pull and release.','Shrugging up first instead of pulling straight down.'],
-  'sat-ride':['Starting too hard and burning out before the ride is done — build pace gradually.','Skipping water — dehydration hits harder in a calorie deficit.','Ignoring hills entirely instead of using them for extra intensity.'],
-  'sat-walk':['Walking too fast and turning it into a workout instead of active recovery.','Skipping it on plateau weeks — NEAT matters most when the scale stalls.','Hunching forward instead of walking tall with relaxed shoulders.'],
-  'sathot-bridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'sathot-deadbug':['Letting the lower back arch off the floor — reduce the range if this happens.','Moving too fast instead of a slow 2–3 second extension.','Holding the breath instead of exhaling as you extend.'],
-  'sathot-hammer':['Swinging the body to generate momentum instead of standing still.','Letting the elbows drift forward — they should stay pinned at your sides.','Using too much resistance and cutting the range of motion short.'],
-  'sathot-lateral':['Using too much resistance and swinging the weight up.','Shrugging the shoulders toward the ears instead of keeping them down.','Raising the hands above the elbows instead of leading with the elbows.'],
-  'sathot-latwalk':['Walking too fast and turning it into a workout instead of active recovery.','Skipping it on plateau weeks — NEAT matters most when the scale stalls.','Hunching forward instead of walking tall with relaxed shoulders.'],
-  'sathot-row':['Rounding the lower back — the #1 mistake on this move.','Using momentum to swing the weight up instead of a controlled pull.','Standing too upright instead of holding a solid hip hinge.'],
-  'sathot-squat':['Knees caving inward — push them out over your pinky toes.','Not going low enough — aim for at least thighs parallel.','Leaning too far forward instead of sitting back into the hips.'],
-  'sathot-squathold':['Letting the heels lift instead of staying flat and rooted.','Rounding the lower back to force extra depth — keep it neutral.','Holding the breath — breathe steadily through the hold.'],
-  'sun-flow':['Turning it into a workout instead of staying slow and easy.','Skipping the areas that feel stiff instead of moving toward them gently.','Rushing through instead of breath-led, unhurried movement.'],
-  'sun-walk':['Walking too fast and turning it into a workout instead of active recovery.','Skipping it on plateau weeks — NEAT matters most when the scale stalls.','Hunching forward instead of walking tall with relaxed shoulders.'],
-  'thu-chest':['Bending the elbows to make the pull easier — keep the arms straight.','Shrugging the shoulders up instead of pressing them down.','Rushing the reps instead of pausing at full squeeze.'],
-  'thu-facepull':['Pulling toward the chest instead of the face — keep those elbows high.','Using too much resistance and turning it into a row.','Leaning back to cheat the pull instead of standing upright.'],
-  'thu-hammer':['Swinging the body to generate momentum instead of standing still.','Letting the elbows drift forward — they should stay pinned at your sides.','Using too much resistance and cutting the range of motion short.'],
-  'thu-hollow':['Letting the lower back arch off the floor instead of pressing it flat.','Holding the breath instead of breathing steadily through the hold.','Dropping the legs or arms too low, losing tension in the position.'],
-  'thu-inclinecurl':['Swinging the body to generate momentum instead of standing still.','Letting the elbows drift forward — they should stay pinned at your sides.','Using too much resistance and cutting the range of motion short.'],
-  'thu-lat':['Pulling with the arms instead of driving the elbows down and back.','Leaning too far back, turning it into a row.','Stopping short of full overhead extension at the top.'],
-  'thu-lateral':['Using too much resistance and swinging the weight up.','Shrugging the shoulders toward the ears instead of keeping them down.','Raising the hands above the elbows instead of leading with the elbows.'],
-  'thu-tri':['Elbows drifting forward or flaring out instead of staying pinned.','Leaning into the movement instead of standing upright with a braced core.','Using too much resistance and cutting the range of motion short.'],
-  'tue-ballcurl':['Letting the hips sag instead of staying bridged in a straight line.','Moving too fast — this movement works best slow and controlled.','Stopping the eccentric too early instead of fighting it the whole way down.'],
-  'tue-bridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'tue-calf':['Bouncing at the bottom instead of pausing at both ends.','Cutting the range short instead of a full stretch and full contraction.','Rushing the tempo — calves respond best to slow, controlled reps.'],
-  'tue-jump':['Landing stiff-legged instead of absorbing through soft knees.','Not resetting to a full quarter-squat between reps.','Rushing reps instead of controlling the landing before the next jump.'],
-  'tue-lat':['Standing up tall between steps instead of staying in the quarter-squat.','Dragging the trailing foot instead of actively stepping with both feet.','Letting the band go slack by bringing the feet too close together.'],
-  'tue-pallof':['Rotating toward the anchor instead of resisting it — the whole point is anti-rotation.','Leaning away from the band to compensate instead of bracing the core.','Holding the breath instead of breathing steadily through the hold.'],
-  'tue-rdl':['Rounding the lower back — stop the descent where your back can stay flat.','Bending the knees too much, turning it into a squat instead of a hip hinge.','Letting the weight drift away from the legs instead of staying close.'],
-  'tue-squat':['Knees caving inward — push them out over your pinky toes.','Not going low enough — aim for at least thighs parallel.','Leaning too far forward instead of sitting back into the hips.'],
-  'tue-step':['Pushing off the trailing leg instead of driving through the working leg.','Letting the working knee cave inward.','Using momentum to bounce up instead of a controlled drive.'],
-  'warmup-armcircle':['Rushing through instead of slow, full-range circles.','Keeping the circles small instead of the largest range the shoulder allows.','Skipping the reverse direction.'],
-  'warmup-hipflow-7':['Using momentum to swing wildly instead of a controlled range.','Rounding the low back instead of staying tall through the torso.','Rushing through instead of feeling the hip open each rep.'],
-  'warmup-hipflow-9':['Using momentum to swing wildly instead of a controlled range.','Rounding the low back instead of staying tall through the torso.','Rushing through instead of feeling the hip open each rep.'],
-  'warmup-kbhalo':['Moving the head to avoid the kettlebell instead of keeping it still.','Rushing the circle instead of staying slow and controlled close to the skull.','Letting the hips sway instead of staying still and stacked.'],
-  'wed-bike':['Rushing the reps instead of a slow, deliberate 2-second tempo per side.','Pulling on the neck with the hands instead of leading with the elbow.','Letting the low back arch off the floor.'],
-  'wed-fin-glutebridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'wed-fin-slrdl':['Rounding the lower back — stop the descent where your back can stay flat.','Bending the knees too much, turning it into a squat instead of a hip hinge.','Letting the weight drift away from the legs instead of staying close.'],
-  'wed-fin-splitsquat':['Front knee caving inward or pushing far past the toes.','Leaning the torso forward instead of staying tall.','Rushing the rep — balance is part of the challenge, so go slow.'],
-  'wed-fin-wallsit':['Letting the knees drift past the toes.','Resting weight unevenly through one leg instead of both.','Holding the breath instead of breathing steadily through the hold.'],
-  'wed-flow-birddog':['Rocking or losing balance instead of a flat, stable back.','Moving too fast instead of a slow, controlled extension.','Letting the extended leg or arm drop below level instead of holding the line.'],
-  'wed-flow-bridge':['Hyperextending the lower back at the top instead of stopping at a straight line.','Pushing through the toes instead of driving through the heels.','Rushing through reps instead of pausing at the top squeeze.'],
-  'wed-flow-cat':['Trying to keep the spine straight instead of letting it round forward.','Reaching aggressively for the feet instead of staying passive.','Skipping the blanket under the knees if the hamstrings are tight.'],
-  'wed-flow-catcow':['Rushing the reps instead of moving one vertebra at a time.','Moving only the upper back instead of rippling through the whole spine.','Holding the breath instead of syncing breath to movement.'],
-  'wed-flow-center':['Breathing shallowly into the chest instead of low into the belly.','Rushing through instead of letting the breath actually slow down.','Using it as a formality instead of a real transition into the session.'],
-  'wed-flow-child':['Forcing the stretch instead of letting gravity do the work over a few minutes.','Holding tension in the shoulders instead of relaxing forward.','Rushing out of the pose instead of a slow transition.'],
-  'wed-flow-cobra':['Overextending the low back instead of a gentle backbend.','Shrugging the shoulders up toward the ears.','Pushing up through the arms too aggressively instead of leading with the chest.'],
-  'wed-flow-downdog':['Locking the knees straight instead of keeping a soft bend if hamstrings are tight.','Rounding the upper back instead of lengthening through the spine.','Rushing the pedal-out instead of a slow, deliberate alternating stretch.'],
-  'wed-flow-dragon':['Letting the front knee cave in or push past the toes.','Forcing the hips down instead of letting gravity ease you deeper on each exhale.','Holding the breath instead of breathing into the stretch.'],
-  'wed-flow-fold':['Locking the knees straight instead of a soft bend if hamstrings are tight.','Reaching for the toes instead of just hanging heavy and passive.','Holding tension in the neck instead of letting the head fully release.'],
-  'wed-flow-legsup':['Placing the hips too far from the wall, losing the passive drain effect.','Staying tense instead of total surrender through the pose.','Cutting it short instead of using it as real recovery time.'],
-  'wed-flow-sav':['Checking the phone or clock instead of fully letting go.','Staying tense in the shoulders/jaw instead of consciously releasing.','Skipping it — this is recovery, not a step to rush through.'],
-  'wed-flow-swan':['Forcing the hips square instead of letting them rest naturally.','Holding tension instead of fully relaxing into the passive stretch.','Cutting the hold short instead of letting gravity work over 3–5 minutes.'],
-  'wed-flow-twist':['Pushing the knee down instead of letting it rest under gravity.','Turning the head into the twist too forcefully instead of gazing away gently.','Rushing through instead of holding long enough to feel the release.'],
-  'wed-hollow':['Letting the lower back arch off the floor instead of pressing it flat.','Holding the breath instead of breathing steadily through the hold.','Dropping the legs or arms too low, losing tension in the position.'],
-  'wed-legraise':['Letting the low back arch as the legs lower — stop short of that point.','Rushing the lowering phase instead of a slow, controlled descent.','Using momentum to snap the legs back up.'],
-  'wed-rotslam':['Pulling with the arms instead of rotating through the core.','Moving too fast and losing control in both directions.','Standing too close to the anchor, leaving no room for full rotation.'],
-  'wed-slam':['Using only the arms instead of driving the slam with the whole body.','Rounding the lower back on the reach instead of hinging with control.','Not resetting posture between reps.'],
-  'wed-tgu':['Losing the lockout overhead — the weight should stay stacked over the shoulder the whole way.','Rushing through a phase instead of pausing to find stability at each step.','Looking away from the weight instead of keeping eyes on it throughout.'],
-  'y-cat':['Trying to keep the spine straight instead of letting it round forward.','Reaching aggressively for the feet instead of staying passive.','Skipping the blanket under the knees if the hamstrings are tight.'],
-  'y-dragon':['Letting the front knee cave in or push past the toes.','Forcing the hips down instead of letting gravity ease you deeper on each exhale.','Holding the breath instead of breathing into the stretch.'],
-  'y-kneehug':['Gripping the shins hard instead of a gentle hold.','Rocking too fast instead of one slow rock per breath.','Holding the breath instead of softening the low back on each exhale.'],
-  'y-legsup':['Placing the hips too far from the wall, losing the passive drain effect.','Staying tense instead of total surrender through the pose.','Cutting it short instead of using it as real recovery time.'],
-  'y-swan':['Forcing the hips square instead of letting them rest naturally.','Holding tension instead of fully relaxing into the passive stretch.','Cutting the hold short instead of letting gravity work over 3–5 minutes.'],
-  'y-twist':['Pushing the knee down instead of letting it rest under gravity.','Turning the head into the twist too forcefully instead of gazing away gently.','Rushing through instead of holding long enough to feel the release.']
 };
 var DS_SETUPS={"warmup-armcircle": "Stand with feet shoulder-width. Small arm circles forward 20s, backward 20s, then big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction.", "warmup-hipflow-9": "Hold a wall or chair for balance. Front-to-back leg swings 10/leg, side-to-side swings 10/leg. Finish with 90/90 hip switches or slow hip circles, 30s each direction.", "warmup-hipflow-7": "Hold a wall or chair for balance. Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches 8/side and slow hip circles 30s each direction.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "post-walk": "After the session: a brisk 30-min walk. Easy, unhurried pace.", "post-ride": "An easy 20-min spin, conversational pace. Compression sleeve on.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
 
@@ -4082,12 +3923,6 @@ function dsRenderItem(rawItem,idx){
   var varIdx=DS_SWAPS[item.id]||0;
   var setupTxt=(varIdx>0&&DS_VARIANT_SETUPS[item.id+"::"+varIdx])||rawItem.setup||DS_SETUPS[item.id];
   if(setupTxt)h+='<div class="ds-setup">'+setupTxt+'</div>';
-  var mistakesArr=rawItem.mistakes||DS_MISTAKES[item.id];
-  if(mistakesArr&&mistakesArr.length){
-    h+='<div class="ds-mistakes" onclick="dsToggleMistakes(event,\''+item.id+'\')"><div class="ds-mistakes-h">\u26A0 Common mistakes '+(st._mistakesOpen?'\u25B4':'\u25BE')+'</div>';
-    if(st._mistakesOpen){h+='<ul class="ds-mistakes-list">'+mistakesArr.map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>';}
-    h+='</div>';
-  }
   if(typeof DS_PR!=="undefined"&&DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
     var _matchedOnlyViaVariant=_q&&!dsMainFieldsMatch(item,_q);
@@ -4170,11 +4005,7 @@ function dsEstimateSeconds(ex){
     var reps2 = parseInt(ex.reps, 10) || 10;
     return ex.sets * reps2 * DS_SEC_PER_REP + Math.max(0, ex.sets-1) * DS_REST_SECS;
   }
-  var nameMinMatch = ex.name && String(ex.name).match(/\((\d+(?:\.\d+)?)\s*min\)/i);
-  if(nameMinMatch){ // GPS-tracked rides/walks and dropdown cardio presets embed duration in the name
-    return Math.round(parseFloat(nameMinMatch[1]) * 60);
-  }
-  return 90; // flat fallback for anything unparseable (e.g. simple dropdown log with no set/rep/duration detail)
+  return 90; // flat fallback for anything unparseable (e.g. simple dropdown log with no set/rep detail)
 }
 
 function dsDailyTrainingSeconds(key){
@@ -4502,7 +4333,6 @@ function dsUpdateStats(){
 
 function dsToggleCard(id){ var st=dsItemState(id); st._open=!st._open; dsSaveUI(); dsRender(); }
 function dsToggleSwap(id){ var st=dsItemState(id); st._swapOpen=!st._swapOpen; dsSaveUI(); dsRender(); }
-function dsToggleMistakes(evt,id){ if(evt)evt.stopPropagation(); var st=dsItemState(id); st._mistakesOpen=!st._mistakesOpen; dsSaveUI(); dsRender(); }
 function dsPickVariant(id,i){ DS_SWAPS[id]=i; dsSaveSwaps(); var st=dsItemState(id); st._swapOpen=false; dsSaveUI(); dsRender(); }
 function dsBump(id,delta){ var st=dsItemState(id); st._reps=Math.max(1,(st._reps||10)+delta); var el=document.getElementById('ds-reps-'+id); if(el)el.value=st._reps; dsSaveUI(); }
 function dsRepsInput(id){ var el=document.getElementById('ds-reps-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ dsItemState(id)._reps=Math.min(999,v); dsSaveUI(); } }
@@ -6665,6 +6495,889 @@ renderPoses();;
 /* ═══════ block boundary ═══════ */
 
 if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('service-worker.js').catch(function(){}); }); };
+
+/* ═══════ block boundary ═══════ */
+
+// ── WALK TIMER ──
+  var walkTotal = 1200;
+  var walkRunning = false;
+  var walkPaused = false;
+  var walkStartedAt = null;       // real timestamp when started
+  var walkPausedAt = null;        // real timestamp when paused
+  var walkElapsedBefore = 0;      // seconds elapsed before latest pause
+  var walkIntervalId = null;
+  var WALK_CAL_PER_SEC = 175 / 1800;
+
+  function setWalkDuration(btn, secs) {
+    walkTotal = secs;
+    document.querySelectorAll('.walk-dur-btn').forEach(b => {
+      b.style.background = '#2a2a2a'; b.style.borderColor = '#666'; b.style.color = '#ccc';
+    });
+    btn.style.background = '#86efac'; btn.style.borderColor = '#86efac'; btn.style.color = '#0f0f0f';
+    walkReset();
+  }
+
+  function walkElapsed() {
+    if (!walkStartedAt) return walkElapsedBefore;
+    return walkElapsedBefore + Math.floor((Date.now() - walkStartedAt) / 1000);
+  }
+
+  function walkStart() {
+    if (walkRunning && !walkPaused) return;
+    if (!walkRunning) { walkElapsedBefore = 0; }
+    walkRunning = true;
+    walkPaused = false;
+    walkStartedAt = Date.now();
+    document.getElementById('walk-start-btn').textContent = 'WALKING...';
+    document.getElementById('walk-start-btn').style.opacity = '0.5';
+    document.getElementById('walk-pause-btn').disabled = false;
+    clearInterval(walkIntervalId);
+    walkIntervalId = setInterval(walkTick, 500);
+  }
+
+  function walkTick() {
+    var elapsed = walkElapsed();
+    var remaining = Math.max(0, walkTotal - elapsed);
+    var mins = Math.floor(remaining / 60);
+    var secs = remaining % 60;
+    var display = document.getElementById('walk-display');
+    display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+    document.getElementById('walk-bar').style.width = (remaining / walkTotal * 100) + '%';
+    var urgent = remaining <= 60;
+    display.style.color = urgent ? '#e05555' : '#86efac';
+    document.getElementById('walk-bar').style.background = urgent ? '#e05555' : '#86efac';
+    var cals = calAdj(elapsed * WALK_CAL_PER_SEC);
+    if (cals > 0) document.getElementById('walk-cal-display').textContent = '🔥 ~' + cals + ' calories burned';
+    if (remaining <= 0) {
+      clearInterval(walkIntervalId); walkRunning = false;
+      display.textContent = 'DONE!'; display.style.color = '#86efac';
+      document.getElementById('walk-cal-display').textContent = '🎉 Great walk! ~' + calAdj(walkTotal * WALK_CAL_PER_SEC) + ' cal burned';
+      document.getElementById('walk-start-btn').textContent = 'START WALK';
+      document.getElementById('walk-start-btn').style.opacity = '1';
+      beepDone();
+    }
+  }
+
+  function walkPause() {
+    if (!walkRunning) return;
+    walkPaused = !walkPaused;
+    if (walkPaused) {
+      walkElapsedBefore = walkElapsed();
+      walkStartedAt = null;
+      clearInterval(walkIntervalId);
+    } else {
+      walkStartedAt = Date.now();
+      walkIntervalId = setInterval(walkTick, 500);
+    }
+    document.getElementById('walk-pause-btn').textContent = walkPaused ? '▶' : '⏸';
+  }
+
+  function walkReset() {
+    clearInterval(walkIntervalId);
+    walkRunning = false; walkPaused = false;
+    walkStartedAt = null; walkElapsedBefore = 0;
+    var mins = Math.floor(walkTotal / 60);
+    document.getElementById('walk-display').textContent = mins + ':00';
+    document.getElementById('walk-display').style.color = '#86efac';
+    document.getElementById('walk-bar').style.width = '100%';
+    document.getElementById('walk-bar').style.background = '#86efac';
+    document.getElementById('walk-cal-display').textContent = '';
+    document.getElementById('walk-start-btn').textContent = 'START WALK';
+    document.getElementById('walk-start-btn').style.opacity = '1';
+    document.getElementById('walk-pause-btn').textContent = '⏸';
+    document.getElementById('walk-pause-btn').disabled = true;
+  }
+
+  // ── RIDE TIMER ──
+  var rideTotal = 1200;
+  var rideRunning = false;
+  var ridePaused = false;
+  var rideStartedAt = null;
+  var ridePausedElapsed = 0;
+  var rideIntervalId = null;
+  var intervalsOn = false;
+  var intervalPhase = 'push';
+  var PUSH_SECS = 120;
+  var REST_SECS = 180;
+  var intervalPhaseStart = null;  // real timestamp when current interval phase started
+
+  function setRideDuration(btn, secs) {
+    rideTotal = secs;
+    document.querySelectorAll('.ride-dur-btn').forEach(b => {
+      b.style.background = '#2a2a2a'; b.style.borderColor = '#666'; b.style.color = '#ccc';
+    });
+    btn.style.background = 'var(--accent)'; btn.style.borderColor = 'var(--accent)'; btn.style.color = '#0f0f0f';
+    rideReset();
+  }
+
+  function rideElapsed() {
+    if (!rideStartedAt) return ridePausedElapsed;
+    return ridePausedElapsed + Math.floor((Date.now() - rideStartedAt) / 1000);
+  }
+
+  function rideStart() {
+    if (rideRunning && !ridePaused) return;
+    if (!rideRunning) { ridePausedElapsed = 0; }
+    rideRunning = true; ridePaused = false;
+    rideStartedAt = Date.now();
+    if (intervalsOn && !intervalPhaseStart) {
+      intervalPhase = 'push';
+      intervalPhaseStart = Date.now();
+    }
+    document.getElementById('ride-start-btn').textContent = 'RIDING...';
+    document.getElementById('ride-start-btn').style.opacity = '0.5';
+    document.getElementById('ride-pause-btn').disabled = false;
+    clearInterval(rideIntervalId);
+    rideIntervalId = setInterval(rideTick, 500);
+  }
+
+  function rideTick() {
+    var elapsed = rideElapsed();
+    var remaining = Math.max(0, rideTotal - elapsed);
+    updateRideDisplay(remaining);
+
+    if (intervalsOn && intervalPhaseStart) {
+      var phaseElapsed = Math.floor((Date.now() - intervalPhaseStart) / 1000);
+      var phaseDur = intervalPhase === 'push' ? PUSH_SECS : REST_SECS;
+      var phaseRemaining = Math.max(0, phaseDur - phaseElapsed);
+      if (phaseRemaining <= 0) {
+        intervalPhase = intervalPhase === 'push' ? 'rest' : 'push';
+        intervalPhaseStart = Date.now();
+        phaseRemaining = intervalPhase === 'push' ? PUSH_SECS : REST_SECS;
+        beepOnce();
+      }
+      var pm = Math.floor(phaseRemaining / 60);
+      var ps = phaseRemaining % 60;
+      var label = intervalPhase === 'push' ? '🔥 PUSH HARD' : '😮‍💨 RECOVER';
+      document.getElementById('ride-phase-label').textContent = label + ' — ' + pm + ':' + (ps < 10 ? '0' : '') + ps;
+      document.getElementById('ride-phase-label').style.color = intervalPhase === 'push' ? 'var(--accent)' : '#7dd3fc';
+    }
+
+    if (remaining <= 0) {
+      clearInterval(rideIntervalId); rideRunning = false;
+      document.getElementById('ride-display').textContent = 'DONE!';
+      document.getElementById('ride-display').style.color = 'var(--accent)';
+      document.getElementById('ride-phase-label').textContent = '🎉 Great ride!';
+      document.getElementById('ride-phase-label').style.color = 'var(--accent)';
+      document.getElementById('ride-start-btn').textContent = 'START RIDE';
+      document.getElementById('ride-start-btn').style.opacity = '1';
+      beepDone();
+    }
+  }
+
+  function updateRideDisplay(remaining) {
+    var mins = Math.floor(remaining / 60);
+    var secs = remaining % 60;
+    var display = document.getElementById('ride-display');
+    display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+    document.getElementById('ride-bar').style.width = (remaining / rideTotal * 100) + '%';
+    var urgent = remaining <= 60;
+    display.style.color = urgent ? '#e05555' : 'var(--accent)';
+    document.getElementById('ride-bar').style.background = urgent ? '#e05555' : 'var(--accent)';
+  }
+
+  function ridePause() {
+    if (!rideRunning) return;
+    ridePaused = !ridePaused;
+    if (ridePaused) {
+      ridePausedElapsed = rideElapsed();
+      rideStartedAt = null;
+      clearInterval(rideIntervalId);
+    } else {
+      rideStartedAt = Date.now();
+      if (intervalsOn) intervalPhaseStart = Date.now();
+      rideIntervalId = setInterval(rideTick, 500);
+    }
+    document.getElementById('ride-pause-btn').textContent = ridePaused ? '▶' : '⏸';
+  }
+
+  function rideReset() {
+    clearInterval(rideIntervalId);
+    rideRunning = false; ridePaused = false;
+    rideStartedAt = null; ridePausedElapsed = 0;
+    intervalPhase = 'push'; intervalPhaseStart = null;
+    var mins = Math.floor(rideTotal / 60);
+    document.getElementById('ride-display').textContent = mins + ':00';
+    document.getElementById('ride-display').style.color = 'var(--accent)';
+    document.getElementById('ride-bar').style.width = '100%';
+    document.getElementById('ride-bar').style.background = 'var(--accent)';
+    document.getElementById('ride-phase-label').textContent = '';
+    document.getElementById('ride-start-btn').textContent = 'START RIDE';
+    document.getElementById('ride-start-btn').style.opacity = '1';
+    document.getElementById('ride-pause-btn').textContent = '⏸';
+    document.getElementById('ride-pause-btn').disabled = true;
+  }
+
+  function toggleIntervals() {
+    intervalsOn = !intervalsOn;
+    var toggle = document.getElementById('interval-toggle');
+    var knob = document.getElementById('interval-knob');
+    if (intervalsOn) {
+      toggle.style.background = 'var(--accent)'; toggle.style.borderColor = 'var(--accent)';
+      knob.style.left = '23px'; knob.style.background = '#0f0f0f';
+    } else {
+      toggle.style.background = '#2a2a2a'; toggle.style.borderColor = '#666';
+      knob.style.left = '3px'; knob.style.background = '#666';
+      document.getElementById('ride-phase-label').textContent = '';
+    }
+    if (rideRunning) rideReset();
+  }
+
+  function beepOnce() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 660;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+  }
+  function showDay(index) {
+    document.querySelectorAll('.day-panel').forEach((p, i) => {
+      p.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.day-nav .day-tab').forEach((t, i) => {
+      t.classList.toggle('active', i === index);
+    });
+  }
+
+  function toggle(card) {
+    card.classList.toggle('open');
+  }
+
+  function switchVar(btn, panelId) {
+    event.stopPropagation();
+    var cardBody = btn.closest('.card-body');
+    cardBody.querySelectorAll('.var-tab').forEach(t => t.classList.remove('active'));
+    cardBody.querySelectorAll('.var-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    cardBody.querySelector('#' + panelId).classList.add('active');
+  }
+
+  // ── SET TRACKER ──
+  function dotClick(dot) {
+    event.stopPropagation();
+    dot.classList.toggle('done');
+    var tracker = dot.closest('.set-tracker');
+    var dots = tracker.querySelectorAll('.set-dot');
+    var done = tracker.querySelectorAll('.set-dot.done').length;
+    var msg = tracker.querySelector('.set-complete-msg');
+    if (done === dots.length) {
+      msg.classList.add('show');
+    } else {
+      msg.classList.remove('show');
+    }
+    if (window.egOnDotChange) egOnDotChange(tracker);
+  }
+
+  function resetDots(btn) {
+    event.stopPropagation();
+    var tracker = btn.closest('.set-tracker');
+    tracker.querySelectorAll('.set-dot').forEach(d => d.classList.remove('done'));
+    tracker.querySelector('.set-complete-msg').classList.remove('show');
+    if (window.egOnDotChange) egOnDotChange(tracker);
+  }
+
+  // ── SET TRACKER ENHANCEMENTS: log unlimited sets + explicit Done button ──
+  function dsEnhanceTracker(tr){
+    if(!tr || tr.dataset.dsEnhanced) return;
+    tr.dataset.dsEnhanced="1";
+    var dotsWrap = tr.querySelector('.set-dots');
+    if(!dotsWrap) return;
+    var addBtn=document.createElement('button');
+    addBtn.type="button"; addBtn.title="Add another set"; addBtn.textContent="+";
+    addBtn.className="set-add-btn";
+    addBtn.style.cssText="border:none;background:none;color:var(--accent,#e8ff47);font-size:17px;font-weight:700;cursor:pointer;padding:0 8px;line-height:1;";
+    addBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var dot=document.createElement('div');
+      dot.className="set-dot";
+      dot.setAttribute("onclick","dotClick(this)");
+      dot.title="Set "+(dotsWrap.querySelectorAll('.set-dot').length+1);
+      dotsWrap.appendChild(dot);
+      var msg=tr.querySelector('.set-complete-msg'); if(msg) msg.classList.remove('show');
+    });
+    dotsWrap.parentNode.insertBefore(addBtn, dotsWrap.nextSibling);
+
+    var doneBtn=document.createElement('button');
+    doneBtn.type="button"; doneBtn.textContent="Done";
+    doneBtn.className="set-done-btn";
+    doneBtn.style.cssText="border:1px solid var(--accent,#e8ff47);background:none;color:var(--accent,#e8ff47);font-size:11px;font-weight:700;cursor:pointer;padding:3px 12px;border-radius:12px;margin-left:8px;";
+    doneBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      tr.querySelectorAll('.set-dot').forEach(function(d){ d.classList.add('done'); });
+      var msg=tr.querySelector('.set-complete-msg'); if(msg) msg.classList.add('show');
+      if (window.egOnDotChange) egOnDotChange(tr);
+    });
+    var resetBtn=tr.querySelector('.set-reset');
+    if(resetBtn) resetBtn.parentNode.insertBefore(doneBtn, resetBtn);
+    else tr.appendChild(doneBtn);
+  }
+  function dsEnhanceAllTrackers(){ document.querySelectorAll('.set-tracker').forEach(dsEnhanceTracker); }
+  (function(){
+    function boot(){
+      dsEnhanceAllTrackers();
+      var root=document.getElementById('tg-app')||document.body;
+      var obs=new MutationObserver(function(muts){
+        muts.forEach(function(m){
+          (m.addedNodes||[]).forEach(function(n){
+            if(n.nodeType!==1) return;
+            if(n.classList && n.classList.contains('set-tracker')) dsEnhanceTracker(n);
+            if(n.querySelectorAll) n.querySelectorAll('.set-tracker').forEach(dsEnhanceTracker);
+          });
+        });
+      });
+      obs.observe(root,{childList:true,subtree:true});
+    }
+    if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded", boot);
+  })();
+
+  // ── TIMER ──
+  var timerInterval = null;
+  var timerTotal = 0;
+  var timerRemaining = 0;
+  var timerPaused = false;
+
+  function tgStartTimer(seconds, name, label) {
+    event.stopPropagation();
+    clearInterval(timerInterval);
+    timerTotal = seconds;
+    timerRemaining = seconds;
+    timerPaused = false;
+
+    var widget = document.getElementById('timer-widget');
+    var display = document.getElementById('timer-display');
+    var bar = document.getElementById('timer-bar');
+    var lbl = document.getElementById('timer-label');
+    var nameEl = document.getElementById('timer-name');
+    var pauseBtn = document.getElementById('t-pause');
+
+    lbl.textContent = label || 'TIMER';
+    nameEl.textContent = name || '';
+    widget.classList.add('active');
+    pauseBtn.textContent = '⏸';
+    display.classList.remove('urgent');
+    bar.classList.remove('urgent');
+
+    updateTimerDisplay();
+
+    timerInterval = setInterval(function() {
+      if (!timerPaused) {
+        timerRemaining--;
+        updateTimerDisplay();
+        if (timerRemaining <= 0) {
+          clearInterval(timerInterval);
+          display.textContent = 'GO!';
+          display.classList.remove('urgent');
+          bar.style.width = '0%';
+          beepDone();
+          setTimeout(function() {
+            if (timerRemaining <= 0) closeTimer();
+          }, 2000);
+        }
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    var display = document.getElementById('timer-display');
+    var bar = document.getElementById('timer-bar');
+    var mins = Math.floor(timerRemaining / 60);
+    var secs = timerRemaining % 60;
+    display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+    var pct = (timerRemaining / timerTotal) * 100;
+    bar.style.width = pct + '%';
+    var urgent = timerRemaining <= 10;
+    display.classList.toggle('urgent', urgent);
+    bar.classList.toggle('urgent', urgent);
+  }
+
+  function pauseTimer() {
+    timerPaused = !timerPaused;
+    document.getElementById('t-pause').textContent = timerPaused ? '▶' : '⏸';
+  }
+
+  function restartTimer() {
+    timerRemaining = timerTotal;
+    timerPaused = false;
+    document.getElementById('t-pause').textContent = '⏸';
+    document.getElementById('timer-display').classList.remove('urgent');
+    document.getElementById('timer-bar').classList.remove('urgent');
+    updateTimerDisplay();
+  }
+
+  function closeTimer() {
+    clearInterval(timerInterval);
+    document.getElementById('timer-widget').classList.remove('active');
+  }
+
+  function beepDone() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.15, 0.3].forEach(function(delay) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.25);
+      });
+    } catch(e) {}
+  };
+
+/* ═══════ block boundary ═══════ */
+
+(function(){
+  function slug(s){return (s||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");}
+  function pad(n){return String(n).padStart(2,"0");}
+  function dkey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+  function today(){return dkey(new Date());}
+  function loadDone(){try{return JSON.parse(localStorage.getItem("eg_done")||"{}")||{};}catch(e){return {};}}
+  function saveDone(o){try{localStorage.setItem("eg_done",JSON.stringify(o));}catch(e){}}
+  function url(){return localStorage.getItem("ft_sheets_url")||"";}
+  window.egSlug=slug; window.egToday=today;
+  // Bridge hooks for the tracker's yoga completion card (dash + streak + auto-push)
+  window.egIsDone=function(exid){ return !!((loadDone()[today()]||{})[exid]); };
+  window.egSetDone=function(exid,on){ var d=loadDone(),t=today(); d[t]=d[t]||{}; if(on)d[t][exid]=true; else delete d[t][exid]; if(!Object.keys(d[t]).length)delete d[t]; saveDone(d); renderDash(); scheduleSync(); };
+  document.addEventListener("DOMContentLoaded",function(){ if(typeof tgYogaRefresh==="function") tgYogaRefresh(); });
+
+  function tagCards(){
+    document.querySelectorAll(".exercise-card").forEach(function(card){
+      var nm=card.querySelector(".exercise-name"); if(nm) card.dataset.exid=slug(nm.textContent);
+    });
+  }
+  window.egOnDotChange=function(tracker){
+    var card=tracker.closest(".exercise-card"); if(!card) return;
+    var exid=card.dataset.exid||slug((card.querySelector(".exercise-name")||{}).textContent||"");
+    if(!exid) return;
+    var dots=tracker.querySelectorAll(".set-dot"), done=tracker.querySelectorAll(".set-dot.done").length;
+    var all=dots.length>0 && done===dots.length;
+    var d=loadDone(), t=today(); d[t]=d[t]||{};
+    if(all) d[t][exid]=true; else delete d[t][exid];
+    if(!Object.keys(d[t]).length) delete d[t];
+    saveDone(d); egCrossLog(); renderDash(); scheduleSync();
+  };
+
+  // Log estimated calories from completed strength exercises into TODAY's tracker day.
+  // Excludes the Wednesday yoga flow (logged separately) so it isn't double-counted.
+  function egCrossLog(){
+    try{
+      if(typeof getDay!=="function"||typeof saveDay!=="function"||typeof todayKey!=="function") return;
+      var tk=todayKey(), day=getDay(tk), id="eg-strength-"+tk;
+      day.exercises=(day.exercises||[]).filter(function(e){return e.id!==id;});
+      saveDay(day,tk);
+      if(typeof renderAll==="function") renderAll();
+    }catch(e){}
+  }
+
+  function restoreToday(){
+    var set=(loadDone()[today()])||{};
+    document.querySelectorAll(".exercise-card").forEach(function(card){
+      if(!set[card.dataset.exid]) return;
+      var tr=card.querySelector(".set-tracker"); if(!tr) return;
+      tr.querySelectorAll(".set-dot").forEach(function(dot){dot.classList.add("done");});
+      var msg=tr.querySelector(".set-complete-msg"); if(msg) msg.classList.add("show");
+    });
+  }
+
+  var syncTimer=null;
+  function scheduleSync(){ if(!url())return; clearTimeout(syncTimer); syncTimer=setTimeout(function(){pushSync();},4000); }
+  function pushSync(cb){
+    var u=url(); if(!u){ if(cb)cb(false); return; }
+    setStatus("Saving\u2026");
+    fetch(u,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:"data="+encodeURIComponent(JSON.stringify({workouts:loadDone()}))})
+      .then(function(){ localStorage.setItem("eg_last_sync",Date.now()); setStatus("\u2713 Saved "+new Date().toLocaleTimeString()); if(cb)cb(true); })
+      .catch(function(){ setStatus("Offline \u2014 will retry next time"); if(cb)cb(false); });
+  }
+  function setStatus(s){ var el=document.getElementById("eg-sync-status"); if(el) el.textContent=s; }
+
+  window.egSaveUrl=function(){
+    var v=((document.getElementById("eg-url")||{}).value||"").trim();
+    localStorage.setItem("ft_sheets_url",v);
+    setStatus(v?"URL saved":"URL cleared");
+    if(v) pushSync();
+  };
+  window.egPushNow=function(){ if(!url()){setStatus("Enter your Apps Script URL first");return;} pushSync(); };
+  window.egOpenSettings=function(){ var o=document.getElementById("eg-settings"); if(!o)return; var ue=document.getElementById("eg-url"); if(ue)ue.value=url(); o.style.display="block"; };
+  window.egCloseSettings=function(){ var o=document.getElementById("eg-settings"); if(o)o.style.display="none"; };
+
+  function streak(d){
+    var s=0, day=new Date();
+    if(!(d[today()]&&Object.keys(d[today()]).length)) day.setDate(day.getDate()-1);
+    for(var g=0;g<400;g++){ var k=dkey(day); if(d[k]&&Object.keys(d[k]).length){s++;day.setDate(day.getDate()-1);}else break; }
+    return s;
+  }
+  function pretty(id){ return id.replace(/-/g," ").replace(/\b\w/g,function(c){return c.toUpperCase();}); }
+  function bestStreak(d){
+    var ks=Object.keys(d).filter(function(k){return Object.keys(d[k]).length;}).sort(), best=0,cur=0,prev=null;
+    ks.forEach(function(k){
+      if(prev){var diff=Math.round((new Date(k+"T00:00")-new Date(prev+"T00:00"))/86400000);cur=(diff===1)?cur+1:1;}else{cur=1;}
+      if(cur>best)best=cur; prev=k;
+    });
+    return best;
+  }
+  function renderDash(){
+    var el=document.getElementById("eg-dash"); if(!el) return;
+    var d=loadDone();
+    var allK=Object.keys(d).filter(function(k){return Object.keys(d[k]).length;}).sort();
+    var totalW=allK.length, totalEx=allK.reduce(function(a,k){return a+Object.keys(d[k]).length;},0);
+    var st=streak(d), best=bestStreak(d);
+    var now=new Date(), wd=(now.getDay()+6)%7, monday=new Date(now); monday.setDate(now.getDate()-wd);
+    var dl=["M","T","W","T","F","S","S"], wkTrained=0, wkCells=[];
+    for(var i=0;i<7;i++){var dt=new Date(monday);dt.setDate(monday.getDate()+i);var k=dkey(dt);var n=d[k]?Object.keys(d[k]).length:0;if(n)wkTrained++;var isT=k===today();
+      wkCells.push('<div style="flex:1;text-align:center"><div style="font-size:10px;color:#777;margin-bottom:4px">'+dl[i]+'</div><div style="height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;'+(n?"background:var(--accent);color:#0f0f0f":"background:rgba(255,255,255,.05);color:#555")+(isT?";outline:2px solid #7dd3fc;outline-offset:1px":"")+'">'+(n||"\u00b7")+'</div></div>');}
+    var heat="";
+    for(var j=34;j>=0;j--){var d2=new Date();d2.setDate(d2.getDate()-j);var k2=dkey(d2);var c2=d[k2]?Object.keys(d[k2]).length:0;
+      var bg=c2===0?"rgba(255,255,255,.05)":c2<3?"rgba(232,255,71,.35)":c2<5?"rgba(232,255,71,.65)":"var(--accent)";
+      heat+='<div title="'+k2+": "+c2+'" style="width:100%;padding-bottom:100%;border-radius:3px;background:'+bg+'"></div>';}
+    var weeks=[],labels=[];
+    for(var w=5;w>=0;w--){var ws=new Date(monday);ws.setDate(monday.getDate()-7*w);var c=0;for(var x=0;x<7;x++){var wk=new Date(ws);wk.setDate(ws.getDate()+x);var kk=dkey(wk);if(d[kk]&&Object.keys(d[kk]).length)c++;}weeks.push(c);labels.push((ws.getMonth()+1)+"/"+ws.getDate());}
+    var maxW=Math.max(1,Math.max.apply(null,weeks));
+    var bars=weeks.map(function(c,i){var hh=Math.round((c/maxW)*70);return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:#aaa">'+c+'</div><div style="width:58%;height:'+hh+'px;min-height:3px;background:'+(c?"var(--accent)":"rgba(255,255,255,.12)")+';border-radius:4px 4px 0 0"></div><div style="font-size:9px;color:#666">'+labels[i]+'</div></div>';}).join("");
+    var tally={}; allK.forEach(function(k){Object.keys(d[k]).forEach(function(ex){tally[ex]=(tally[ex]||0)+1;});});
+    var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];}).slice(0,5), maxT=top.length?tally[top[0]]:1;
+    var topHtml=top.length?top.map(function(ex){var pct=Math.round((tally[ex]/maxT)*100);return '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:#ccc">'+pretty(ex)+'</span><span style="color:#5eead4">'+tally[ex]+'\u00d7</span></div><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent)"></div></div></div>';}).join(""):'<div style="color:#666">No data yet.</div>';
+    var recent=allK.slice().reverse().slice(0,8);
+    var recentHtml=recent.length?recent.map(function(k){var n=Object.keys(d[k]).length;return '<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="color:#ccc">'+k+'</span><span style="color:#5eead4;font-weight:600">'+n+' ex</span></div>';}).join(""):'<div style="color:#666;padding:8px 0">No workouts logged yet \u2014 tap the set dots as you train.</div>';
+    function stat(v,l,c){return '<div style="flex:1;text-align:center;background:rgba(255,255,255,.03);border-radius:12px;padding:14px 4px"><div style="font-size:23px;font-weight:800;color:'+c+'">'+v+'</div><div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+l+'</div></div>';}
+    function lbl(t){return '<div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin:22px 0 10px">'+t+'</div>';}
+    var h='<div style="display:flex;gap:8px">'+stat(st,"Streak","#86efac")+stat(best,"Best","#fbbf24")+stat(wkTrained+"/7","Week","#5eead4")+stat(totalW,"Workouts","#7dd3fc")+'</div>';
+    h+=lbl("This week")+'<div style="display:flex;gap:6px">'+wkCells.join("")+'</div>';
+    h+=lbl("Last 5 weeks")+'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+heat+'</div>';
+    h+=lbl("Workouts per week")+'<div style="display:flex;align-items:flex-end;gap:6px;height:104px;padding-top:6px">'+bars+'</div>';
+    h+=lbl("Most-trained exercises")+topHtml;
+    h+=lbl("Recent workouts")+recentHtml;
+    h+='<div style="font-size:11px;color:#5a5a5a;margin-top:16px;text-align:center">'+totalEx+' exercises completed all-time</div>';
+    el.innerHTML=h;
+  }
+
+  function weekdayIdx(){ return (new Date().getDay()+6)%7; }  // Mon=0 … Sun=6
+  window.showMode=function(mode){
+    var panels=document.querySelectorAll('.day-panel'), ti=weekdayIdx();
+    panels.forEach(function(p,i){
+      p.classList.remove('week-collapsed','week-open');
+      if(mode==='progress'){ p.style.display=(p.id==='day-10')?'block':'none'; }
+      else if(mode==='week'){ if(p.id==='day-10'){p.style.display='none';} else {p.style.display='block';p.classList.add('week-collapsed');} }
+      else { p.style.display=(i===ti)?'block':'none'; }
+    });
+    var tabs=document.querySelectorAll('.mode-nav .day-tab'), order={today:0,week:1,progress:2};
+    tabs.forEach(function(t,i){ t.classList.toggle('active', i===order[mode]); });
+    if(mode==='progress' && window.egRenderDash) egRenderDash();
+    try{window.scrollTo(0,0);}catch(e){}
+  };
+  document.addEventListener('click',function(e){
+    var hdr=e.target.closest && e.target.closest('.day-header'); if(!hdr) return;
+    var panel=hdr.closest('.day-panel'); if(!panel||!panel.classList.contains('week-collapsed')) return;
+    panel.classList.toggle('week-open');
+  });
+  function init(){
+    tagCards(); restoreToday(); renderDash(); showMode('today');
+    var ue=document.getElementById("eg-url"); if(ue) ue.value=url();
+    var ls=localStorage.getItem("eg_last_sync"); if(ls) setStatus("Last saved "+new Date(+ls).toLocaleString());
+  }
+  if(document.readyState!=="loading") init(); else document.addEventListener("DOMContentLoaded",init);
+})();;
+
+/* ═══════ block boundary ═══════ */
+
+(function(){
+  var KH="eg_hidden_v1", KC="eg_custom_v1", KM="eg_moved_v1";
+  function jget(k,f){try{return JSON.parse(localStorage.getItem(k))||f;}catch(e){return f;}}
+  function hidden(){return jget(KH,[]);}
+  function saveHidden(a){localStorage.setItem(KH,JSON.stringify(a));}
+  function custom(){return jget(KC,{});}
+  function saveCustom(o){localStorage.setItem(KC,JSON.stringify(o));}
+  function moved(){return jget(KM,{});}
+  function saveMoved(o){localStorage.setItem(KM,JSON.stringify(o));}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function escA(s){return esc(s).replace(/'/g,"&#39;");}
+  function slug(s){return (window.egSlug?egSlug(s):String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""));}
+  function today(){return window.egToday?egToday():new Date().toISOString().slice(0,10);}
+  function uid(){return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  function fmt(sec){sec=+sec||0;var m=Math.floor(sec/60),s=sec%60;return m+":"+(s<10?"0":"")+s;}
+  function lines(t){return String(t||"").split("\n").map(function(x){return x.trim();}).filter(Boolean);}
+  function dotsHtml(n){var s="";for(var i=1;i<=n;i++)s+='<div class="set-dot" onclick="dotClick(this)" title="Set '+i+'"></div>';return s;}
+  function cardExid(card){return card.dataset.exid||slug((card.querySelector(".exercise-name")||{}).textContent||"");}
+  function cardName(card){return (card.querySelector(".exercise-name")||{}).textContent||"";}
+  function dayTitle(pid){var p=document.getElementById(pid);return p?((p.querySelector(".day-title")||{}).textContent||pid):pid;}
+  function daySub(pid){var p=document.getElementById(pid);if(!p)return"";var s=(p.querySelector(".day-subtitle")||{}).textContent||"";return s.split("\u00b7")[0].trim();}
+  function panelsList(){var a=[];document.querySelectorAll("#tg-app .day-panel").forEach(function(p){if(p.id==="day-10")return;a.push({id:p.id,title:dayTitle(p.id),sub:daySub(p.id)});});return a;}
+  function anchorOf(panel){return panel.querySelector(".eg-add-btn");}
+
+  // ── TOAST ──
+  var toastT=null;
+  function toast(msg){var el=document.getElementById("eg-toast");if(!el){el=document.createElement("div");el.id="eg-toast";document.body.appendChild(el);}el.textContent=msg;el.classList.add("show");clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove("show");},1800);}
+
+  // ── CUSTOM CARDS ──
+  function buildCard(c){
+    var d=document.createElement("div");
+    d.className="exercise-card eg-custom";
+    d.setAttribute("onclick","toggle(this)");
+    d.dataset.custom=c.id;
+    d.dataset.exid=slug(c.name);
+    var h='<div class="card-header"><div class="exercise-num" style="color:#e8ff47">+</div>'
+      +'<div class="card-info"><div class="exercise-name">'+esc(c.name)+'</div><div class="exercise-meta">'
+      +(c.target?'<span class="tag tag-target">'+esc(c.target)+'</span>':'')
+      +(c.band?'<span class="tag tag-band">'+esc(c.band)+'</span>':'')
+      +'</div></div>'
+      +(c.setsReps?'<div class="sets-reps">'+esc(c.setsReps)+'<span>sets &times; reps</span></div>':'')
+      +'<div class="chevron">&#9660;</div></div>';
+    var b="";
+    if(c.cue) b+='<div class="mirror-cue">'+esc(c.cue)+'</div>';
+    if(c.setup) b+='<div class="section-label">Setup</div><div class="setup-box">'+esc(c.setup)+'</div>';
+    if(c.cues&&c.cues.length) b+='<div class="section-label">Form Cues</div><ul class="cues-list">'+c.cues.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>';
+    if(c.mistakes&&c.mistakes.length) b+='<div class="section-label">Common Mistakes</div><ul class="mistakes-list">'+c.mistakes.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>';
+    if(c.note) b+='<div class="note-box">&#128161; '+esc(c.note)+'</div>';
+    var dn=Math.max(1,+c.dots||3);
+    b+='<div class="set-tracker"><span class="set-tracker-label">Sets</span><div class="set-dots">'+dotsHtml(dn)+'</div><button class="set-reset" onclick="resetDots(this)" title="Reset">&#8634;</button><span class="set-complete-msg">Done! &#10003;</span></div>';
+    if(c.rest) b+='<div class="timer-row"><button class="timer-btn" onclick="tgStartTimer('+(+c.rest)+", 'Rest &mdash; "+escA(c.name)+"', 'REST')"+'"><span class="timer-icon">&#9201;</span>'+fmt(c.rest)+' rest</button></div>';
+    var tools='<div class="eg-tools"><button class="eg-t-btn move" data-act="move">Move</button><button class="eg-t-btn" data-act="edit">Edit</button><button class="eg-t-btn danger" data-act="del">Delete</button></div>';
+    d.innerHTML=h+'<div class="card-body">'+b+'</div>'+tools;
+    d.querySelector(".eg-tools").addEventListener("click",function(e){
+      e.stopPropagation();
+      var act=e.target.getAttribute("data-act");
+      if(act==="move") openMove({type:"custom",pid:d.dataset.panel,id:c.id,name:c.name,current:d.dataset.panel});
+      else if(act==="edit") openModal(d.dataset.panel,c.id);
+      else if(act==="del"){ if(confirm('Delete "'+c.name+'"? Your completion history is kept.')) delCustom(d.dataset.panel,c.id); }
+    });
+    return d;
+  }
+
+  function renderCustom(){
+    document.querySelectorAll("#tg-app .exercise-card.eg-custom").forEach(function(n){n.remove();});
+    var store=custom();
+    Object.keys(store).forEach(function(pid){
+      var panel=document.getElementById(pid); if(!panel) return;
+      var addBtn=anchorOf(panel);
+      (store[pid]||[]).forEach(function(c){
+        var card=buildCard(c); card.dataset.panel=pid;
+        if(addBtn) panel.insertBefore(card,addBtn); else panel.appendChild(card);
+      });
+    });
+    restoreCustomToday();
+  }
+
+  function restoreCustomToday(){
+    var set=(jget("eg_done",{})[today()])||{};
+    document.querySelectorAll("#tg-app .exercise-card.eg-custom").forEach(function(card){
+      if(!set[card.dataset.exid]) return;
+      var tr=card.querySelector(".set-tracker"); if(!tr) return;
+      tr.querySelectorAll(".set-dot").forEach(function(x){x.classList.add("done");});
+      var m=tr.querySelector(".set-complete-msg"); if(m) m.classList.add("show");
+    });
+  }
+
+  function delCustom(pid,id){
+    var s=custom(); if(s[pid]){ s[pid]=s[pid].filter(function(c){return c.id!==id;}); if(!s[pid].length) delete s[pid]; saveCustom(s); }
+    renderCustom();
+  }
+
+  function moveCustom(pid,id,target){
+    var s=custom(); if(!s[pid]) return;
+    var c=null;
+    s[pid]=s[pid].filter(function(x){ if(x.id===id){c=x;return false;} return true; });
+    if(!s[pid].length) delete s[pid];
+    if(c){ (s[target]=s[target]||[]).push(c); }
+    saveCustom(s); renderCustom();
+  }
+
+  // ── PREBUILT CARDS: tools + hide + move ──
+  function injectPrebuilt(){
+    document.querySelectorAll("#tg-app .exercise-card:not(.eg-custom)").forEach(function(card){
+      if(card.querySelector(".eg-tools")) return;
+      card.dataset.home=(card.closest(".day-panel")||{}).id||"";
+      var exid=cardExid(card);
+      if(hidden().indexOf(exid)>=0) card.classList.add("eg-hidden");
+      var t=document.createElement("div"); t.className="eg-tools";
+      t.innerHTML='<button class="eg-t-btn move" data-act="move">Move</button><button class="eg-t-btn" data-act="hide"></button>';
+      card.appendChild(t);
+      syncBtn(card);
+      t.addEventListener("click",function(e){
+        e.stopPropagation();
+        var act=e.target.getAttribute("data-act");
+        if(act==="move"){ openMove({type:"pre",card:card,name:cardName(card),current:(card.closest(".day-panel")||{}).id}); return; }
+        var h=hidden(),i=h.indexOf(exid);
+        if(i>=0){h.splice(i,1);card.classList.remove("eg-hidden");}
+        else{h.push(exid);card.classList.add("eg-hidden");}
+        saveHidden(h); syncBtn(card); updateCount();
+      });
+    });
+  }
+  function syncBtn(card){var b=card.querySelector('.eg-tools [data-act="hide"]'); if(b) b.textContent=card.classList.contains("eg-hidden")?"Restore":"Hide";}
+
+  function findPrebuilt(exid){
+    var found=null;
+    document.querySelectorAll("#tg-app .exercise-card:not(.eg-custom)").forEach(function(c){ if(!found && cardExid(c)===exid) found=c; });
+    return found;
+  }
+  function applyMoves(){
+    var mv=moved();
+    Object.keys(mv).forEach(function(exid){
+      var pid=mv[exid], panel=document.getElementById(pid); if(!panel) return;
+      var card=findPrebuilt(exid); if(!card) return;
+      var anchor=anchorOf(panel);
+      if(anchor) panel.insertBefore(card,anchor); else panel.appendChild(card);
+      if(card.dataset.home!==pid) card.classList.add("eg-moved-from-home");
+    });
+  }
+  function movePrebuilt(card,target){
+    var exid=cardExid(card), home=card.dataset.home||(card.closest(".day-panel")||{}).id||"", mv=moved();
+    if(target===home){ delete mv[exid]; card.classList.remove("eg-moved-from-home"); }
+    else { mv[exid]=target; card.classList.add("eg-moved-from-home"); }
+    saveMoved(mv);
+    var panel=document.getElementById(target), anchor=anchorOf(panel);
+    if(anchor) panel.insertBefore(card,anchor); else panel.appendChild(card);
+  }
+
+  // ── ADD BUTTONS + EDIT BAR ──
+  function injectAddButtons(){
+    document.querySelectorAll("#tg-app .day-panel").forEach(function(p){
+      if(p.id==="day-10"||p.querySelector(".eg-add-btn")) return;
+      var b=document.createElement("button"); b.className="eg-add-btn"; b.type="button"; b.textContent="+ Add exercise";
+      b.addEventListener("click",function(){openModal(p.id,null);});
+      p.appendChild(b);
+    });
+  }
+  function updateCount(){var el=document.querySelector("#tg-app .eg-hidden-count"); if(el){var n=hidden().length; el.textContent=n?(n+" hidden"):"";}}
+  function injectBar(){
+    var nav=document.querySelector("#tg-app .mode-nav"); if(!nav||document.querySelector("#tg-app .eg-editbar")) return;
+    var bar=document.createElement("div"); bar.className="eg-editbar";
+    bar.innerHTML='<button type="button" class="eg-edit-toggle">&#9999; Edit exercises</button><span class="eg-hidden-count"></span>';
+    nav.insertAdjacentElement("afterend",bar);
+    bar.querySelector(".eg-edit-toggle").addEventListener("click",function(){
+      var app=document.getElementById("tg-app"); app.classList.toggle("eg-edit");
+      this.innerHTML=app.classList.contains("eg-edit")?"&#10003; Done editing":"&#9999; Edit exercises";
+    });
+  }
+
+  // ── MOVE PICKER ──
+  function buildMoveModal(){
+    if(document.getElementById("eg-move")) return;
+    var m=document.createElement("div"); m.id="eg-move";
+    m.innerHTML='<div class="eg-move-sheet"><div class="eg-move-title">Move to\u2026</div><div class="eg-move-name" id="eg-move-name"></div><div class="eg-move-days" id="eg-move-days"></div><button type="button" class="eg-move-cancel" id="eg-move-cancel">Cancel</button></div>';
+    document.body.appendChild(m);
+    document.getElementById("eg-move-cancel").addEventListener("click",closeMove);
+    m.addEventListener("click",function(e){if(e.target===m)closeMove();});
+  }
+  function openMove(ctx){
+    buildMoveModal();
+    document.getElementById("eg-move-name").textContent=ctx.name||"";
+    var wrap=document.getElementById("eg-move-days"); wrap.innerHTML="";
+    panelsList().forEach(function(p){
+      var b=document.createElement("button"); b.type="button"; b.className="eg-day-opt";
+      b.innerHTML=esc(p.title)+(p.id===ctx.current?'<span class="eg-cur-tag">CURRENT</span>':'')+(p.sub?'<small>'+esc(p.sub)+'</small>':'');
+      if(p.id===ctx.current){ b.classList.add("cur"); b.disabled=true; }
+      else b.addEventListener("click",function(){ doMove(ctx,p.id); closeMove(); });
+      wrap.appendChild(b);
+    });
+    document.getElementById("eg-move").classList.add("open");
+  }
+  function closeMove(){var m=document.getElementById("eg-move"); if(m)m.classList.remove("open");}
+  function doMove(ctx,target){
+    if(ctx.type==="custom") moveCustom(ctx.pid,ctx.id,target);
+    else movePrebuilt(ctx.card,target);
+    toast("Moved to "+dayTitle(target));
+  }
+
+  // ── ADD / EDIT MODAL ──
+  function buildModal(){
+    if(document.getElementById("eg-modal")) return;
+    var dayOpts="";
+    panelsList().forEach(function(p){ dayOpts+='<option value="'+p.id+'">'+esc(p.title)+'</option>'; });
+    var m=document.createElement("div"); m.id="eg-modal";
+    m.innerHTML='<div class="eg-sheet">'
+      +'<h2 id="eg-m-title">Add exercise</h2><div class="eg-sub">Custom exercises live on this device and track sets just like the built-in ones.</div>'
+      +'<label>Name *</label><input id="eg-f-name" placeholder="e.g. Cable Face Pull"/>'
+      +'<label>Day</label><select id="eg-f-day">'+dayOpts+'</select>'
+      +'<div class="eg-row"><div><label>Target</label><input id="eg-f-target" placeholder="Rear Delts &middot; Traps"/></div><div><label>Band / Equipment</label><input id="eg-f-band" placeholder="Tube 20&ndash;30 lb"/></div></div>'
+      +'<div class="eg-row"><div><label>Sets &times; Reps</label><input id="eg-f-sr" placeholder="3&times;12&ndash;15"/></div><div><label>Set dots</label><input id="eg-f-dots" type="number" min="1" max="8" value="3"/></div></div>'
+      +'<label>One-line cue</label><input id="eg-f-cue" placeholder="Pull to your forehead, elbows high"/>'
+      +'<label>Setup</label><textarea id="eg-f-setup" placeholder="How to get into position\u2026"></textarea>'
+      +'<label>Form cues <span class="eg-hint">one per line</span></label><textarea id="eg-f-cues" placeholder="Squeeze shoulder blades\nElbows stay high\nSlow return"></textarea>'
+      +'<label>Common mistakes <span class="eg-hint">one per line</span></label><textarea id="eg-f-miss" placeholder="Using momentum\nShrugging"></textarea>'
+      +'<label>Note (tip box)</label><textarea id="eg-f-note" placeholder="Optional coaching note\u2026"></textarea>'
+      +'<label>Rest timer (seconds) <span class="eg-hint">blank = no timer</span></label><input id="eg-f-rest" type="number" min="0" max="600" placeholder="60"/>'
+      +'<div class="eg-actions"><button type="button" class="eg-cancel" id="eg-cancel">Cancel</button><button type="button" class="eg-save" id="eg-save">Save</button></div>'
+      +'</div>';
+    document.body.appendChild(m);
+    document.getElementById("eg-cancel").addEventListener("click",closeModal);
+    m.addEventListener("click",function(e){if(e.target===m)closeModal();});
+    document.getElementById("eg-save").addEventListener("click",saveModal);
+  }
+  var editing=null;
+  function setV(id,v){document.getElementById(id).value=v==null?"":v;}
+  function getV(id){return document.getElementById(id).value;}
+  function openModal(pid,id){
+    buildModal();
+    editing=null;
+    document.getElementById("eg-m-title").textContent=id?"Edit exercise":"Add exercise";
+    setV("eg-f-name","");setV("eg-f-target","");setV("eg-f-band","");setV("eg-f-sr","");setV("eg-f-dots",3);
+    setV("eg-f-cue","");setV("eg-f-setup","");setV("eg-f-cues","");setV("eg-f-miss","");setV("eg-f-note","");setV("eg-f-rest","");
+    setV("eg-f-day",pid||"day-0");
+    if(id){
+      var arr=custom()[pid]||[],c=null;
+      arr.forEach(function(x){if(x.id===id)c=x;});
+      if(c){
+        editing={pid:pid,id:id};
+        setV("eg-f-name",c.name);setV("eg-f-target",c.target);setV("eg-f-band",c.band);setV("eg-f-sr",c.setsReps);
+        setV("eg-f-dots",c.dots||3);setV("eg-f-cue",c.cue);setV("eg-f-setup",c.setup);
+        setV("eg-f-cues",(c.cues||[]).join("\n"));setV("eg-f-miss",(c.mistakes||[]).join("\n"));
+        setV("eg-f-note",c.note);setV("eg-f-rest",c.rest||"");
+      }
+    }
+    document.getElementById("eg-modal").classList.add("open");
+  }
+  function closeModal(){var m=document.getElementById("eg-modal"); if(m)m.classList.remove("open");}
+  function saveModal(){
+    var name=getV("eg-f-name").trim();
+    if(!name){alert("Give the exercise a name.");return;}
+    var rest=getV("eg-f-rest").trim();
+    var c={
+      name:name,target:getV("eg-f-target").trim(),band:getV("eg-f-band").trim(),
+      setsReps:getV("eg-f-sr").trim(),dots:Math.max(1,Math.min(8,+getV("eg-f-dots")||3)),
+      cue:getV("eg-f-cue").trim(),setup:getV("eg-f-setup").trim(),
+      cues:lines(getV("eg-f-cues")),mistakes:lines(getV("eg-f-miss")),
+      note:getV("eg-f-note").trim(),rest:rest?Math.max(0,+rest):0
+    };
+    var day=getV("eg-f-day"),s=custom();
+    if(editing){
+      c.id=editing.id;
+      if(s[editing.pid]) s[editing.pid]=s[editing.pid].filter(function(x){return x.id!==editing.id;});
+      if(s[editing.pid] && !s[editing.pid].length) delete s[editing.pid];
+      (s[day]=s[day]||[]).push(c);
+    } else {
+      c.id=uid();
+      (s[day]=s[day]||[]).push(c);
+    }
+    saveCustom(s); renderCustom(); closeModal();
+  }
+
+  function init(){
+    if(!document.getElementById("tg-app")) return;
+    injectBar();
+    injectAddButtons();   // anchors must exist before moves/custom inserts
+    injectPrebuilt();     // tools + stamp home + apply hidden
+    applyMoves();         // relocate moved built-in cards
+    renderCustom();       // render custom cards into their day
+    updateCount();
+  }
+  if(document.readyState!=="loading") setTimeout(init,0);
+  else document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0);});
+})();;
+
+/* ═══════ block boundary ═══════ */
+
 // ── Quick Timer: standalone countdown, reachable from any tab ──────────────
 var QT_CIRC = 2*Math.PI*78;
 var qtTotalSecs = 60, qtRemaining = 60, qtPaused = false, qtInterval = null, qtEndTs = null;
