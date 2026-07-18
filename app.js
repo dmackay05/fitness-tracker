@@ -375,7 +375,12 @@ function rowToDay(row){
       sleepQ:row["Sleep Quality (1-5)"]?parseFloat(row["Sleep Quality (1-5)"]):0,
       energy:row["Energy (1-5)"]?parseFloat(row["Energy (1-5)"]):0,
       mood:row["Mood (1-5)"]?parseFloat(row["Mood (1-5)"]):0,
-      steps:row["Steps"]?parseFloat(row["Steps"]):0
+      steps:row["Steps"]?parseFloat(row["Steps"]):0,
+      restingHR: row["Resting HR (bpm)"]?parseFloat(row["Resting HR (bpm)"]):null,
+      bp: (row["BP Systolic (mmHg)"]||row["BP Diastolic (mmHg)"]) ? {
+        sys: row["BP Systolic (mmHg)"]?parseFloat(row["BP Systolic (mmHg)"]):null,
+        dia: row["BP Diastolic (mmHg)"]?parseFloat(row["BP Diastolic (mmHg)"]):null
+      } : null
     },
     supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""}

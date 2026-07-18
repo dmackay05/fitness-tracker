@@ -24,6 +24,16 @@
 //     at the end so existing columns never shift. ensureHeaders_ backfills
 //     the label on sheets created before this change.
 //   • processDailyData / hasMeasurementData now read & write meas.biceps.
+//
+// v4 CHANGES (Resting HR + Blood Pressure backup):
+//   • Added "Resting HR (bpm)", "BP Systolic (mmHg)", "BP Diastolic (mmHg)"
+//     to Daily Log headers, appended at the end (existing columns unshifted).
+//   • processDailyData now averages the day's rhrLog/bpLog readings (or the
+//     legacy single-value fields) and writes that average to the sheet, so
+//     these readings survive a local cache clear / reinstall the same way
+//     Weight and Waist already do. The app's own local history (individual
+//     timestamped readings, per-entry delete) still lives in local storage
+//     only — the sheet stores one average per day for trend-graph recovery.
 // ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -47,7 +57,8 @@ var DAILY_HEADERS = [
   "Waist (in)","Chest (in)","Hips (in)","Thighs (in)","Neck (in)",
   "Fish Oil","Simvastatin","Foods","Exercises",
   "Fiber (g)","Net Carbs (g)",   // v2: appended at the end so existing columns never shift
-  "Biceps (in)"                  // v3: appended at the end, same reasoning
+  "Biceps (in)",                 // v3: appended at the end, same reasoning
+  "Resting HR (bpm)","BP Systolic (mmHg)","BP Diastolic (mmHg)"  // v4: appended at the end, same reasoning
 ];
 
 
@@ -208,6 +219,21 @@ function processDailyData(ss, data) {
 
 
 
+    // v4: Resting HR / BP — average of the day's logged readings (or legacy single value)
+    var rhrReadings = (w.rhrLog && w.rhrLog.length) ? w.rhrLog
+      : (w.restingHR != null ? [{ v: w.restingHR }] : []);
+    var rhrAvg = rhrReadings.length
+      ? Math.round(rhrReadings.reduce(function(a, r) { return a + (r.v || 0); }, 0) / rhrReadings.length) : "";
+    var bpReadings = (w.bpLog && w.bpLog.length) ? w.bpLog
+      : ((w.bp && w.bp.sys != null) ? [{ sys: w.bp.sys, dia: w.bp.dia }] : []);
+    var bpSysAvg = bpReadings.length
+      ? Math.round(bpReadings.reduce(function(a, r) { return a + (r.sys || 0); }, 0) / bpReadings.length) : "";
+    var bpDiaAvg = bpReadings.length
+      ? Math.round(bpReadings.reduce(function(a, r) { return a + (r.dia || 0); }, 0) / bpReadings.length) : "";
+
+
+
+
     var row = [
       dateKey,
       d.weight  || "",
@@ -235,6 +261,11 @@ function processDailyData(ss, data) {
 
     // v3: Biceps, appended at the end (same reasoning as Fiber / Net Carbs above)
     row.push(meas.biceps || "");
+
+    // v4: Resting HR / BP, appended at the end (same reasoning)
+    row.push(rhrAvg);
+    row.push(bpSysAvg);
+    row.push(bpDiaAvg);
 
 
 
@@ -599,7 +630,9 @@ function sumField(arr, field) {
 
 function hasWellnessData(w) {
   if (!w) return false;
-  return w.sleepHours || w.sleepQ || w.energy || w.mood || w.steps;
+  return w.sleepHours || w.sleepQ || w.energy || w.mood || w.steps
+    || (w.rhrLog && w.rhrLog.length) || (w.bpLog && w.bpLog.length)
+    || (w.restingHR != null) || (w.bp && w.bp.sys != null);
 }
 
 
