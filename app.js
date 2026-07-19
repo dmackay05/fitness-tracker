@@ -4059,25 +4059,16 @@ function dsWeekMondayKey(refKey){
   return localDateKey(mon);
 }
 function dsWeeklyMuscleVolume(refKey){
-  var monKey=dsWeekMondayKey(refKey);
-  var mon=keyToDate(monKey);
-  var vol={};
-  for(var i=0;i<7;i++){
-    var dt=new Date(mon); dt.setDate(dt.getDate()+i);
-    var k=localDateKey(dt);
-    var day=appData[k]; if(!day||!day.exercises) continue;
-    day.exercises.forEach(function(e){
-      if(!e.id||e.id.indexOf('sess_')!==0) return;
-      var rawId=e.id.slice(5);
-      var target=dsFindExerciseTarget(rawId);
-      if(!target) return;
-      var sets=(e.sets!=null?e.sets:1);
-      dsMuscleTagsFromTarget(target).forEach(function(t){
-        vol[t.muscle]=(vol[t.muscle]||0)+sets*t.weight;
-      });
-    });
-  }
-  return vol;
+  // NOTE: as of this update, this now delegates to dsMVWeek() — the same
+  // rolling-7-day, three-source-max, DS_MV-mapped engine that powers the
+  // "Weekly Volume — fractional sets" panel. Previously this used its own
+  // Monday-Sunday calendar week plus a separate keyword-matched muscle
+  // tagging system (MUSCLE_KEYWORDS/dsMuscleTagsFromTarget), which could
+  // disagree with the fractional panel — especially mid-week, when the old
+  // calendar-week logic only had a partial week of data to count.
+  // refKey is intentionally unused now: both panels always show the same
+  // trailing 7 days, anchored to today, so they never drift apart again.
+  return dsMVWeek();
 }
 function dsRenderMuscleVolume(){
   var anchor=document.getElementById('dash-averages');
@@ -4090,7 +4081,7 @@ function dsRenderMuscleVolume(){
     anchor.parentNode.insertBefore(host, anchor.nextSibling);
   }
   var vol=dsWeeklyMuscleVolume(activeDate);
-  var order=['Chest','Back','Shoulders','Rear Delts','Traps','Biceps','Triceps','Forearms','Quads','Hamstrings','Glutes','Calves','Core'];
+  var order=DS_MV_ORDER; // shared with the fractional panel — keeps both charts in lockstep
   var rows=order.map(function(m){
     var v=vol[m]||0;
     var land=MUSCLE_LANDMARKS[m]||[8,20];
@@ -4099,10 +4090,9 @@ function dsRenderMuscleVolume(){
     var color = status==='none'?'#333':(status==='low'?'#f87171':(status==='high'?'#fbbf24':'#5eead4'));
     return {m:m,v:v,pct:pct,color:color,status:status,land:land};
   }).filter(function(r){return r.v>0 || ['Quads','Hamstrings','Glutes','Chest','Back'].indexOf(r.m)!==-1;});
-  var wk=dsWeekMondayKey(activeDate);
   host.innerHTML =
     '<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
-    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Working sets, week of '+prettyDate(wk)+' \u00b7 red = below MEV, teal = in range, amber = above MAV</div>'
+    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Working sets, last 7 days \u00b7 red = below MEV, teal = in range, amber = above MAV</div>'
     +rows.map(function(r){
       return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
         +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+r.m+'</div>'
