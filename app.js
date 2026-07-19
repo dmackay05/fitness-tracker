@@ -4058,17 +4058,28 @@ function dsWeekMondayKey(refKey){
   var mon=new Date(d0); mon.setDate(mon.getDate()+offset);
   return localDateKey(mon);
 }
-function dsWeeklyMuscleVolume(refKey){
-  // NOTE: as of this update, this now delegates to dsMVWeek() — the same
-  // rolling-7-day, three-source-max, DS_MV-mapped engine that powers the
-  // "Weekly Volume — fractional sets" panel. Previously this used its own
-  // Monday-Sunday calendar week plus a separate keyword-matched muscle
-  // tagging system (MUSCLE_KEYWORDS/dsMuscleTagsFromTarget), which could
-  // disagree with the fractional panel — especially mid-week, when the old
-  // calendar-week logic only had a partial week of data to count.
-  // refKey is intentionally unused now: both panels always show the same
-  // trailing 7 days, anchored to today, so they never drift apart again.
-  return dsMVWeek();
+function dsWeeklyMuscleVolume(mode){
+  // mode: 'rolling' (default, trailing 7 days) or 'calendar' (Mon-Sun this week)
+  var keys = (mode==='calendar') ? dsMVDateKeysCalendarWeek() : dsMVDateKeysRolling();
+  return dsMVWeek(keys);
+}
+function dsMuscleVolRowsHtml(vol){
+  var order=DS_MV_ORDER; // shared with the fractional panel — keeps all charts in lockstep
+  var rows=order.map(function(m){
+    var v=vol[m]||0;
+    var land=MUSCLE_LANDMARKS[m]||[8,20];
+    var pct=Math.min((v/land[1])*100,100);
+    var status = v===0?'none':(v<land[0]?'low':(v>land[1]?'high':'good'));
+    var color = status==='none'?'#333':(status==='low'?'#f87171':(status==='high'?'#fbbf24':'#5eead4'));
+    return {m:m,v:v,pct:pct,color:color,status:status,land:land};
+  }).filter(function(r){return r.v>0 || ['Quads','Hamstrings','Glutes','Chest','Back'].indexOf(r.m)!==-1;});
+  return rows.map(function(r){
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+r.m+'</div>'
+      +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+r.pct+'%;height:100%;background:'+r.color+'"></div></div>'
+      +'<div style="width:56px;text-align:right;font-size:11px;color:'+r.color+';font-weight:700;flex:0 0 auto">'+(r.v?r.v.toFixed(1):'0')+' / '+r.land[0]+'\u2013'+r.land[1]+'</div>'
+      +'</div>';
+  }).join('');
 }
 function dsRenderMuscleVolume(){
   var anchor=document.getElementById('dash-averages');
@@ -4080,26 +4091,17 @@ function dsRenderMuscleVolume(){
     host.style.cssText='margin:16px 0;padding:14px;border:1px solid #ffffff14;border-radius:12px;background:#ffffff06;';
     anchor.parentNode.insertBefore(host, anchor.nextSibling);
   }
-  var vol=dsWeeklyMuscleVolume(activeDate);
-  var order=DS_MV_ORDER; // shared with the fractional panel — keeps both charts in lockstep
-  var rows=order.map(function(m){
-    var v=vol[m]||0;
-    var land=MUSCLE_LANDMARKS[m]||[8,20];
-    var pct=Math.min((v/land[1])*100,100);
-    var status = v===0?'none':(v<land[0]?'low':(v>land[1]?'high':'good'));
-    var color = status==='none'?'#333':(status==='low'?'#f87171':(status==='high'?'#fbbf24':'#5eead4'));
-    return {m:m,v:v,pct:pct,color:color,status:status,land:land};
-  }).filter(function(r){return r.v>0 || ['Quads','Hamstrings','Glutes','Chest','Back'].indexOf(r.m)!==-1;});
+  var rollingVol=dsWeeklyMuscleVolume('rolling');
+  var calWk=dsMVWeekMondayKey();
+  var calVol=dsWeeklyMuscleVolume('calendar');
   host.innerHTML =
-    '<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
-    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Working sets, last 7 days \u00b7 red = below MEV, teal = in range, amber = above MAV</div>'
-    +rows.map(function(r){
-      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-        +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+r.m+'</div>'
-        +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+r.pct+'%;height:100%;background:'+r.color+'"></div></div>'
-        +'<div style="width:56px;text-align:right;font-size:11px;color:'+r.color+';font-weight:700;flex:0 0 auto">'+(r.v?r.v.toFixed(1):'0')+' / '+r.land[0]+'\u2013'+r.land[1]+'</div>'
-        +'</div>';
-    }).join('');
+    '<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle \u2014 Last 7 Days</div>'
+    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Rolling window, updates daily \u00b7 red = below MEV, teal = in range, amber = above MAV</div>'
+    +dsMuscleVolRowsHtml(rollingVol)
+    +'<div style="height:1px;background:#ffffff14;margin:14px 0"></div>'
+    +'<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle \u2014 This Week</div>'
+    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Mon\u2013Sun, week of '+prettyDate(calWk)+' \u00b7 partial until Sunday \u00b7 same bands as above</div>'
+    +dsMuscleVolRowsHtml(calVol);
 }
 function dsSuggestNext(item,lt){
   if(!lt) return null;
@@ -4498,12 +4500,29 @@ function dsMVNameIdx(){
   });
   return DS_MV_NAMEIDX;
 }
-function dsMVWeek(){
+function dsMVWeekMondayKey(){
+  var d0=new Date(); var dow=d0.getDay(); var offset=(dow===0)?-6:(1-dow);
+  var mon=new Date(d0); mon.setDate(mon.getDate()+offset);
+  return localDateKey(mon);
+}
+function dsMVDateKeysRolling(){
+  // Trailing 7 days including today — "how am I trending right now"
+  var out=[]; var now=new Date();
+  for(var d=0;d<7;d++){ var dt=new Date(now); dt.setDate(now.getDate()-d); out.push(localDateKey(dt)); }
+  return out;
+}
+function dsMVDateKeysCalendarWeek(){
+  // Monday..Sunday of the current calendar week — "did this week hit its targets"
+  // Partial (fewer than 7 days of data) on any day before Sunday, by design.
+  var monKey=dsMVWeekMondayKey(); var mon=keyToDate(monKey); var out=[];
+  for(var i=0;i<7;i++){ var dt=new Date(mon); dt.setDate(mon.getDate()+i); out.push(localDateKey(dt)); }
+  return out;
+}
+function dsMVWeek(dateKeys){
+  var keys=dateKeys||dsMVDateKeysRolling();
   var out={}; DS_MV_ORDER.forEach(function(m){out[m]=0;});
-  var now=new Date();
-  for(var d=0;d<7;d++){
-    var dt=new Date(now); dt.setDate(now.getDate()-d);
-    var key=localDateKey(dt);
+  for(var d=0;d<keys.length;d++){
+    var key=keys[d];
     var ui=DS_UI[key]||{};
     var sessCount={};
     try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){
@@ -4530,7 +4549,7 @@ function dsMVWeek(){
   return out;
 }
 function dsMVPanel(){
-  var v=dsMVWeek();
+  var v=dsMVWeek(dsMVDateKeysRolling());
   var any=DS_MV_ORDER.some(function(m){return v[m]>0;});
   var MAX=16, LO=10, HI=12;
   var rows=DS_MV_ORDER.map(function(m){
