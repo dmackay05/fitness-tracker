@@ -3385,6 +3385,39 @@ function dsWeekRirAvg(endKey,offsetDays){
     day.exercises.forEach(function(e){ var v=dsRirValue(e.rir); if(v!=null) vals.push(v); });
   });
 }
+// Recency-weighted version: today counts most, 6 days ago counts least (linear taper).
+// A single hard/PR session early in the window no longer drags the average down
+// as hard once a few days have passed — same as the flat average would.
+function dsWeekRirAvgWeighted(endKey,offsetDays){
+  offsetDays=offsetDays||0;
+  var end=keyToDate(endKey);
+  var sum=0, wsum=0;
+  for(var i=0;i<7;i++){
+    var dt=new Date(end); dt.setDate(dt.getDate()-offsetDays-i);
+    var k=localDateKey(dt); var day=appData[k]; if(!day||!day.exercises) continue;
+    var w=7-i; // i=0 (most recent day in window) -> weight 7 ... i=6 (oldest) -> weight 1
+    day.exercises.forEach(function(e){ var v=dsRirValue(e.rir); if(v!=null){ sum+=v*w; wsum+=w; } });
+  }
+  if(!wsum) return null;
+  return sum/wsum;
+}
+// Per-day RIR breakdown for the trailing 7-day window — lets the fatigue flag
+// name which specific day is dragging the average down, instead of just a
+// single opaque number.
+function dsWeekRirBreakdown(endKey,offsetDays){
+  offsetDays=offsetDays||0;
+  var end=keyToDate(endKey);
+  var days=[];
+  for(var i=0;i<7;i++){
+    var dt=new Date(end); dt.setDate(dt.getDate()-offsetDays-i);
+    var k=localDateKey(dt); var day=appData[k];
+    var vals=[];
+    if(day&&day.exercises) day.exercises.forEach(function(e){ var v=dsRirValue(e.rir); if(v!=null) vals.push(v); });
+    var avg = vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : null;
+    days.push({key:k,date:dt,avg:avg,n:vals.length});
+  }
+  return days; // newest..oldest order (index 0 = today/end date, index 6 = 6 days back)
+}
 function dsWeekRhrAvg(endKey,daysBack,offsetDays){
   return dsWindowAvg(endKey,daysBack,offsetDays||0,function(day,vals){
     _dayRhrReadings(day).forEach(function(r){ vals.push(r.v); });
@@ -3399,11 +3432,27 @@ function dsFatigueCheck(refKey){
   refKey=refKey||activeDate;
   var reasons=[];
   var rirThis=dsWeekRirAvg(refKey,0), rirPrev=dsWeekRirAvg(refKey,7);
+  var rirThisW=dsWeekRirAvgWeighted(refKey,0);
   if(rirThis!=null && rirPrev!=null && rirThis<rirPrev-0.4){
     reasons.push('RIR trending down this week ('+rirThis.toFixed(1)+' vs '+rirPrev.toFixed(1)+' last week)');
   }
-  if(rirThis!=null && rirThis<=1){
-    reasons.push('Average RIR near failure this week ('+rirThis.toFixed(1)+')');
+  // Use the recency-weighted average to decide whether to trip the flag at all —
+  // this stops one hard/PR session from single-handedly triggering it several
+  // days after the fact, once the flat average would still be dragged down.
+  if(rirThisW!=null && rirThisW<=1){
+    var breakdown=dsWeekRirBreakdown(refKey,0);
+    var logged=breakdown.filter(function(d){return d.avg!=null;});
+    var worst=null;
+    logged.forEach(function(d){ if(worst==null||d.avg<worst.avg) worst=d; });
+    var dayLbl = worst ? prettyDate(worst.key) : null;
+    var isSingleDay = logged.length>=2 && worst!=null && logged.every(function(d){return d===worst || d.avg>=worst.avg+1;});
+    var detail = 'Average RIR near failure this week ('+rirThisW.toFixed(1)+' weighted)';
+    if(dayLbl && isSingleDay){
+      detail += ' \u2014 mostly driven by '+dayLbl+' ('+worst.avg.toFixed(1)+'); other days look more moderate';
+    } else if(dayLbl){
+      detail += ' \u2014 lowest day: '+dayLbl+' ('+worst.avg.toFixed(1)+')';
+    }
+    reasons.push(detail);
   }
   var rhrThis=dsWeekRhrAvg(refKey,7,0), rhrBase=dsWeekRhrAvg(refKey,14,7);
   if(rhrThis!=null && rhrBase!=null && rhrThis>=rhrBase+2.5){
