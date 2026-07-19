@@ -4082,26 +4082,24 @@ function dsMuscleVolRowsHtml(vol){
   }).join('');
 }
 function dsRenderMuscleVolume(){
-  var anchor=document.getElementById('dash-averages');
-  if(!anchor||!anchor.parentNode) return;
   var host=document.getElementById('dash-muscle-vol');
-  if(!host){
-    host=document.createElement('div');
-    host.id='dash-muscle-vol';
-    host.style.cssText='margin:16px 0;padding:14px;border:1px solid #ffffff14;border-radius:12px;background:#ffffff06;';
-    anchor.parentNode.insertBefore(host, anchor.nextSibling);
-  }
+  if(!host) return; // static anchor now lives at the bottom of the dashboard panel, after Supplements
   var rollingVol=dsWeeklyMuscleVolume('rolling');
   var calWk=dsMVWeekMondayKey();
   var calVol=dsWeeklyMuscleVolume('calendar');
   host.innerHTML =
-    '<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle \u2014 Last 7 Days</div>'
-    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Rolling window, updates daily \u00b7 red = below MEV, teal = in range, amber = above MAV</div>'
+    '<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Weekly Volume by Muscle \u2014 Last 7 Days <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling, updates daily</span></summary>'
+    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = below MEV \u00b7 teal = in range \u00b7 amber = above MAV</div>'
     +dsMuscleVolRowsHtml(rollingVol)
-    +'<div style="height:1px;background:#ffffff14;margin:14px 0"></div>'
-    +'<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle \u2014 This Week</div>'
-    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Mon\u2013Sun, week of '+prettyDate(calWk)+' \u00b7 partial until Sunday \u00b7 same bands as above</div>'
-    +dsMuscleVolRowsHtml(calVol);
+    +'</details>'
+    +'</div>'
+    +'<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Weekly Volume by Muscle \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">Mon\u2013Sun, week of '+prettyDate(calWk)+'</span></summary>'
+    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Partial until Sunday \u00b7 same bands as above</div>'
+    +dsMuscleVolRowsHtml(calVol)
+    +'</details>'
+    +'</div>';
 }
 function dsSuggestNext(item,lt){
   if(!lt) return null;
