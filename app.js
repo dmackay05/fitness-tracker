@@ -3898,6 +3898,71 @@ function dsLastTime(id){ var sid="sess_"+id; var local=null;
   }
   return local ? {reps:local.reps,load:local.load,rir:local.rir} : null;
 }
+// ── PROGRESSIVE OVERLOAD SUGGESTIONS ─────────────────────────────────────
+function dsParseLastRir(lt){
+  if(!lt||lt.rir==null||lt.rir==='') return null;
+  var parts=(''+lt.rir).split('/').map(function(x){return x==='4+'?4:parseFloat(x);}).filter(function(x){return !isNaN(x);});
+  if(!parts.length) return null;
+  return parts.reduce(function(a,b){return a+b;},0)/parts.length; // average RIR across sets
+}
+function dsParseLastReps(lt){
+  if(!lt||lt.reps==null||lt.reps==='') return null;
+  var parts=(''+lt.reps).split('/').map(function(x){return parseFloat(x);}).filter(function(x){return !isNaN(x);});
+  if(!parts.length) return null;
+  return parts.reduce(function(a,b){return a+b;},0)/parts.length;
+}
+function dsHistoryN(id,n){
+  var sid="sess_"+id;
+  var keys=Object.keys(appData).filter(function(k){return k<activeDate&&appData[k]&&appData[k].exercises&&appData[k].exercises.some(function(e){return e.id===sid;});}).sort();
+  keys=keys.slice(-n); // most recent n, ascending chronological order
+  return keys.map(function(k){
+    var arr=appData[k].exercises;
+    for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid) return {date:k,reps:arr[i].reps,load:arr[i].load,rir:arr[i].rir}; }
+    return null;
+  }).filter(Boolean);
+}
+function dsSuggestNext(item,lt){
+  if(!lt) return null;
+  var hist=dsHistoryN(item.id,3); // ascending: oldest..newest, up to 3 sessions
+  var hasLoad=dsWantsLoad(item) && lt.load;
+  if(hist.length>=2){
+    var rirs=hist.map(dsParseLastRir).filter(function(x){return x!=null;});
+    if(rirs.length>=2){
+      var allEasy=rirs.every(function(r){return r>=3;});
+      var allHard=rirs.every(function(r){return r<=1;});
+      if(allEasy){
+        return '\u26A1 Trending easy the last '+rirs.length+' sessions \u2014 '+(hasLoad?'time to move up a band or add weight':'add reps or slow the tempo');
+      }
+      if(allHard){
+        return '\u25BC Grinding at the edge for '+rirs.length+' sessions straight \u2014 hold this load, consider a lighter week';
+      }
+      var first=rirs[0], last=rirs[rirs.length-1];
+      if(last<first-0.75){
+        return '\u2192 Getting harder each session \u2014 hold steady here, don\u2019t add load yet';
+      }
+      if(last>first+0.75){
+        return '\u2713 Getting easier each session \u2014 good sign, try progressing next time';
+      }
+      // mixed/flat trend — fall through to single-session read below
+    }
+  }
+  var avgRir=dsParseLastRir(lt), avgReps=dsParseLastReps(lt);
+  if(avgRir!=null){
+    if(avgRir>=3.5){
+      return hasLoad?'\u26A1 Last set felt easy (4+ RIR) \u2014 move up a band or add weight':'\u26A1 Last set felt easy (4+ RIR) \u2014 add 1\u20132 reps or slow the tempo';
+    } else if(avgRir>=2){
+      return '\u2713 Solid effort last time \u2014 try +1\u20132 reps at the same load';
+    } else if(avgRir>=0.5){
+      return '\u2192 You were close to failure \u2014 hold this load, focus on clean reps';
+    } else {
+      return '\u25BC Maxed out last time \u2014 keep the load light this session, prioritize form';
+    }
+  }
+  if(avgReps!=null && avgReps>=15){
+    return hasLoad?'\u26A1 High rep count last time \u2014 consider moving up a band':'\u26A1 High rep count last time \u2014 try adding a slow tempo for more challenge';
+  }
+  return null;
+}
 function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
 function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var n=Math.max(target,done);var h='';for(var i=0;i<n;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
 
@@ -3974,6 +4039,8 @@ function dsRenderItem(rawItem,idx){
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
     if(lt)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    var _sugg=dsSuggestNext(item,lt);
+    if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     var loadFld = dsWantsLoad(item) ? '<input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">' : '';
     h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
     h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
