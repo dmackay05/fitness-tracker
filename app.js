@@ -388,7 +388,19 @@ function rowToDay(row){
       sleepQ:row["Sleep Quality (1-5)"]?parseFloat(row["Sleep Quality (1-5)"]):0,
       energy:row["Energy (1-5)"]?parseFloat(row["Energy (1-5)"]):0,
       mood:row["Mood (1-5)"]?parseFloat(row["Mood (1-5)"]):0,
-      steps:row["Steps"]?parseFloat(row["Steps"]):0
+      steps:row["Steps"]?parseFloat(row["Steps"]):0,
+      // v4 fix: these were being written to the sheet (Code.gs v4) but never
+      // read back here, so any day rebuilt from a synced row silently lost
+      // its RHR/BP data. Restored as legacy single-value fields — the sheet
+      // only carries the day's average, not each individual reading, so a
+      // day resynced from the sheet after a cache clear will show one
+      // averaged reading rather than the original multiple readings. Still
+      // far better than losing the data outright.
+      restingHR: row["Resting HR (bpm)"]?parseFloat(row["Resting HR (bpm)"]):undefined,
+      bp: (row["BP Systolic (mmHg)"]||row["BP Diastolic (mmHg)"]) ? {
+        sys: row["BP Systolic (mmHg)"]?parseFloat(row["BP Systolic (mmHg)"]):null,
+        dia: row["BP Diastolic (mmHg)"]?parseFloat(row["BP Diastolic (mmHg)"]):null
+      } : undefined
     },
     supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""}
@@ -439,6 +451,17 @@ function mergeDay(key,remote){
   if((remote.foods||[]).length > (local.foods||[]).length){
     if(local.exTombs) remote.exTombs=local.exTombs;
     remote.exercises=dsMergeExercises([],remote.exercises,remote.exTombs);
+    // The sheet only carries daily averages/summaries for a few wellness
+    // fields — it can't represent multi-reading-per-day detail. Before this
+    // branch throws away `local` entirely, carry forward anything local has
+    // that remote can only approximate, so a resync never silently deletes
+    // detail the sheet was never able to store in the first place.
+    remote.wellness=remote.wellness||{};
+    if(local.wellness){
+      if(local.wellness.rhrLog && local.wellness.rhrLog.length) remote.wellness.rhrLog=local.wellness.rhrLog;
+      if(local.wellness.bpLog && local.wellness.bpLog.length) remote.wellness.bpLog=local.wellness.bpLog;
+    }
+    if(local.meditation && local.meditation.length && !(remote.meditation&&remote.meditation.length)) remote.meditation=local.meditation;
     appData[key]=remote; return; }
   if(!local.weight && remote.weight) local.weight=remote.weight;
   if(!local.waterOz && remote.waterOz) local.waterOz=remote.waterOz;
