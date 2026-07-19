@@ -592,6 +592,7 @@ function renderDash(){
   renderTrends();
   renderTrackSummary();
   renderTopFoods();
+  dsRenderMuscleVolume();
 }
 function renderRadials(items){
   var SIZE=72;
@@ -3361,6 +3362,59 @@ var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"t
 ]};
 function dsSetRir(id,v){ var st=dsItemState(id); st._rir=(st._rir===v?null:v); dsSaveUI(); dsRender(); }
 function dsBlockWeek(){ try{ var s=store.get("ds_start"); if(!s){ s=todayKey(); store.set("ds_start",s); } var a=new Date(s+"T12:00:00"), b=new Date(activeDate+"T12:00:00"); var w=Math.floor((b-a)/(7*86400000)); return w<0?0:w; }catch(e){ return 0; } }
+// ── REACTIVE DELOAD: check actual recovery signals, not a fixed week count ──
+function dsRirValue(raw){
+  if(raw==null||raw==='') return null;
+  var parts=(''+raw).split('/').map(function(x){return x==='4+'?4:parseFloat(x);}).filter(function(x){return !isNaN(x);});
+  if(!parts.length) return null;
+  return parts.reduce(function(a,b){return a+b;},0)/parts.length;
+}
+function dsWindowAvg(endKey,daysBack,offsetDays,picker){
+  var end=keyToDate(endKey); var vals=[];
+  for(var i=0;i<daysBack;i++){
+    var dt=new Date(end); dt.setDate(dt.getDate()-offsetDays-i);
+    var k=localDateKey(dt); var day=appData[k]; if(!day) continue;
+    picker(day,vals);
+  }
+  if(!vals.length) return null;
+  return vals.reduce(function(a,b){return a+b;},0)/vals.length;
+}
+function dsWeekRirAvg(endKey,offsetDays){
+  return dsWindowAvg(endKey,7,offsetDays||0,function(day,vals){
+    if(!day.exercises) return;
+    day.exercises.forEach(function(e){ var v=dsRirValue(e.rir); if(v!=null) vals.push(v); });
+  });
+}
+function dsWeekRhrAvg(endKey,daysBack,offsetDays){
+  return dsWindowAvg(endKey,daysBack,offsetDays||0,function(day,vals){
+    _dayRhrReadings(day).forEach(function(r){ vals.push(r.v); });
+  });
+}
+function dsWeekSleepQAvg(endKey,daysBack,offsetDays){
+  return dsWindowAvg(endKey,daysBack,offsetDays||0,function(day,vals){
+    if(day.wellness&&day.wellness.sleepQ!=null) vals.push(day.wellness.sleepQ);
+  });
+}
+function dsFatigueCheck(refKey){
+  refKey=refKey||activeDate;
+  var reasons=[];
+  var rirThis=dsWeekRirAvg(refKey,0), rirPrev=dsWeekRirAvg(refKey,7);
+  if(rirThis!=null && rirPrev!=null && rirThis<rirPrev-0.4){
+    reasons.push('RIR trending down this week ('+rirThis.toFixed(1)+' vs '+rirPrev.toFixed(1)+' last week)');
+  }
+  if(rirThis!=null && rirThis<=1){
+    reasons.push('Average RIR near failure this week ('+rirThis.toFixed(1)+')');
+  }
+  var rhrThis=dsWeekRhrAvg(refKey,7,0), rhrBase=dsWeekRhrAvg(refKey,14,7);
+  if(rhrThis!=null && rhrBase!=null && rhrThis>=rhrBase+2.5){
+    reasons.push('Resting HR up '+(rhrThis-rhrBase).toFixed(1)+' bpm vs your 2-week baseline');
+  }
+  var sqThis=dsWeekSleepQAvg(refKey,3,0), sqPrev=dsWeekSleepQAvg(refKey,3,3);
+  if(sqThis!=null && sqPrev!=null && sqThis<sqPrev-0.5){
+    reasons.push('Sleep quality dipping the last few days');
+  }
+  return {flag:reasons.length>0, reasons:reasons};
+}
 
 var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};}
 var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){DS_SWAPS={};}
@@ -3379,6 +3433,35 @@ function dsSyncedExercise(id){
   if(nm){ for(var j=day.exercises.length-1;j>=0;j--){ var e=day.exercises[j];
     if(String(e.id||"").indexOf("sheet_")===0 && String(e.name||"").toLowerCase().trim()===nm) return e; } }
   return null;
+}
+// ── DYNAMIC PROGRAM UPDATES: evolving reps target per exercise, based on trend ──
+var DS_PROG={}; try{ DS_PROG=JSON.parse(store.get("ds_prog")||"{}"); }catch(e){ DS_PROG={}; }
+function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catch(e){} }
+function dsProgTarget(id){
+  var rec=DS_PROG[id];
+  if(rec && rec.day===activeDate) return rec.reps; // already computed for today, don't recompute mid-session
+  var lt=dsLastTime(id);
+  var baseline = lt ? dsParseLastReps(lt) : null;
+  if(baseline==null) baseline = rec ? rec.reps : 10;
+  var newReps=Math.round(baseline);
+  var hist=dsHistoryN(id,3);
+  if(hist.length>=2){
+    var rirs=hist.map(dsParseLastRir).filter(function(x){return x!=null;});
+    if(rirs.length>=2){
+      if(rirs.every(function(r){return r>=3;})) newReps=Math.round(baseline)+2;
+      else if(rirs.every(function(r){return r<=1;})) newReps=Math.max(1,Math.round(baseline)-2);
+    }
+  } else if(lt){
+    var avgRir=dsParseLastRir(lt);
+    if(avgRir!=null){
+      if(avgRir>=3.5) newReps=Math.round(baseline)+2;
+      else if(avgRir<=1) newReps=Math.max(1,Math.round(baseline)-1);
+    }
+  }
+  newReps=Math.max(1,newReps);
+  DS_PROG[id]={reps:newReps, day:activeDate, prevReps:rec?rec.reps:null};
+  dsProgSave();
+  return newReps;
 }
 function dsItemState(id){ var d=dsDayState();
   if(!d[id]){
@@ -3401,6 +3484,7 @@ function dsItemState(id){ var d=dsDayState();
       }
     }
     if(ex) d[id].manualDone=true;
+    if(!ex){ d[id]._reps=dsProgTarget(id); }
   }
   if(!d[id].sets)d[id].sets=[];
   return d[id];
@@ -3921,6 +4005,112 @@ function dsHistoryN(id,n){
     return null;
   }).filter(Boolean);
 }
+// ── WEEKLY VOLUME PER MUSCLE GROUP ───────────────────────────────────────
+var MUSCLE_KEYWORDS=[
+  ['rear delt','Rear Delts'],['read delt','Rear Delts'],
+  ['side delt','Shoulders'],['front delt','Shoulders'],['shoulder','Shoulders'],['delt','Shoulders'],['overhead press','Shoulders'],
+  ['trap','Traps'],
+  ['chest','Chest'],['pec','Chest'],
+  ['tricep','Triceps'],
+  ['lat pull','Back'],['lat','Back'],['back','Back'],['row','Back'],
+  ['bicep','Biceps'],['forearm','Forearms'],['grip','Forearms'],
+  ['ham','Hamstrings'],
+  ['glute','Glutes'],['hip abduct','Glutes'],['abductor','Glutes'],['sumo','Glutes'],
+  ['quad','Quads'],['split squat','Quads'],['squat','Quads'],['lunge','Quads'],
+  ['calv','Calves'],
+  ['oblique','Core'],['anti-rot','Core'],['core','Core'],['woodchop','Core'],['plank','Core'],['dead bug','Core']
+];
+// Menno-style approximate weekly volume landmarks (working sets/week): [MEV, MAV-high]
+var MUSCLE_LANDMARKS={
+  Chest:[8,20],Back:[10,22],Shoulders:[8,20],'Rear Delts':[8,20],Traps:[6,16],
+  Biceps:[6,20],Triceps:[6,20],Forearms:[4,16],
+  Quads:[8,20],Hamstrings:[6,18],Glutes:[6,18],Calves:[8,20],Core:[6,20]
+};
+function dsMuscleTagsFromTarget(target){
+  if(!target) return [];
+  var parts=target.split(/[\/,&+]/).map(function(s){return s.trim();}).filter(Boolean);
+  if(!parts.length) parts=[target];
+  var byM={};
+  parts.forEach(function(p,i){
+    var low=p.toLowerCase();
+    for(var k=0;k<MUSCLE_KEYWORDS.length;k++){
+      if(low.indexOf(MUSCLE_KEYWORDS[k][0])!==-1){
+        var m=MUSCLE_KEYWORDS[k][1], w=(i===0?1:0.5);
+        byM[m]=Math.max(byM[m]||0,w);
+        break;
+      }
+    }
+  });
+  return Object.keys(byM).map(function(m){return {muscle:m,weight:byM[m]};});
+}
+function dsFindExerciseTarget(rawId){
+  var item=dsMasterLookup(rawId);
+  if(item) return item.target||'';
+  for(var dk in DS_USERMOVES){
+    var arr=DS_USERMOVES[dk]||[];
+    for(var i=0;i<arr.length;i++){ if(arr[i].id===rawId) return arr[i].target||''; }
+  }
+  return '';
+}
+function dsWeekMondayKey(refKey){
+  var d0=keyToDate(refKey||activeDate);
+  var dow=d0.getDay(); var offset=(dow===0)?-6:(1-dow);
+  var mon=new Date(d0); mon.setDate(mon.getDate()+offset);
+  return localDateKey(mon);
+}
+function dsWeeklyMuscleVolume(refKey){
+  var monKey=dsWeekMondayKey(refKey);
+  var mon=keyToDate(monKey);
+  var vol={};
+  for(var i=0;i<7;i++){
+    var dt=new Date(mon); dt.setDate(dt.getDate()+i);
+    var k=localDateKey(dt);
+    var day=appData[k]; if(!day||!day.exercises) continue;
+    day.exercises.forEach(function(e){
+      if(!e.id||e.id.indexOf('sess_')!==0) return;
+      var rawId=e.id.slice(5);
+      var target=dsFindExerciseTarget(rawId);
+      if(!target) return;
+      var sets=(e.sets!=null?e.sets:1);
+      dsMuscleTagsFromTarget(target).forEach(function(t){
+        vol[t.muscle]=(vol[t.muscle]||0)+sets*t.weight;
+      });
+    });
+  }
+  return vol;
+}
+function dsRenderMuscleVolume(){
+  var anchor=document.getElementById('dash-averages');
+  if(!anchor||!anchor.parentNode) return;
+  var host=document.getElementById('dash-muscle-vol');
+  if(!host){
+    host=document.createElement('div');
+    host.id='dash-muscle-vol';
+    host.style.cssText='margin:16px 0;padding:14px;border:1px solid #ffffff14;border-radius:12px;background:#ffffff06;';
+    anchor.parentNode.insertBefore(host, anchor.nextSibling);
+  }
+  var vol=dsWeeklyMuscleVolume(activeDate);
+  var order=['Chest','Back','Shoulders','Rear Delts','Traps','Biceps','Triceps','Forearms','Quads','Hamstrings','Glutes','Calves','Core'];
+  var rows=order.map(function(m){
+    var v=vol[m]||0;
+    var land=MUSCLE_LANDMARKS[m]||[8,20];
+    var pct=Math.min((v/land[1])*100,100);
+    var status = v===0?'none':(v<land[0]?'low':(v>land[1]?'high':'good'));
+    var color = status==='none'?'#333':(status==='low'?'#f87171':(status==='high'?'#fbbf24':'#5eead4'));
+    return {m:m,v:v,pct:pct,color:color,status:status,land:land};
+  }).filter(function(r){return r.v>0 || ['Quads','Hamstrings','Glutes','Chest','Back'].indexOf(r.m)!==-1;});
+  var wk=dsWeekMondayKey(activeDate);
+  host.innerHTML =
+    '<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
+    +'<div style="font-size:10px;color:#888;margin-bottom:10px">Working sets, week of '+prettyDate(wk)+' \u00b7 red = below MEV, teal = in range, amber = above MAV</div>'
+    +rows.map(function(r){
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+r.m+'</div>'
+        +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+r.pct+'%;height:100%;background:'+r.color+'"></div></div>'
+        +'<div style="width:56px;text-align:right;font-size:11px;color:'+r.color+';font-weight:700;flex:0 0 auto">'+(r.v?r.v.toFixed(1):'0')+' / '+r.land[0]+'\u2013'+r.land[1]+'</div>'
+        +'</div>';
+    }).join('');
+}
 function dsSuggestNext(item,lt){
   if(!lt) return null;
   var hist=dsHistoryN(item.id,3); // ascending: oldest..newest, up to 3 sessions
@@ -4041,6 +4231,11 @@ function dsRenderItem(rawItem,idx){
     if(lt)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
+    if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
+    var _prog=DS_PROG[item.id];
+    if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
+      h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB Program updated: target now '+_prog.reps+' reps (was '+_prog.prevReps+'), based on your trend</div>';
+    }
     var loadFld = dsWantsLoad(item) ? '<input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">' : '';
     h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
     h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
@@ -4370,7 +4565,7 @@ function dsRender(){
   var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=(activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk];
   var tt=document.getElementById('ds-title'); if(tt)tt.textContent=SS.title;
   var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
-  var dl=document.getElementById('ds-deload'); if(dl){var wk=dsBlockWeek()%6; if(wk===5){dl.textContent='Deload week \u2014 cut volume ~40%, keep it easy';dl.className='ds-deload warn';}else{dl.textContent='Training block \u00b7 week '+(wk+1)+' of 6';dl.className='ds-deload';}}
+  var dl=document.getElementById('ds-deload'); if(dl){var fc=dsFatigueCheck(activeDate); if(fc.flag){dl.textContent='Recovery flag \u2014 consider a lighter week: '+fc.reasons.join('; ');dl.className='ds-deload warn';}else{dl.textContent='Recovery looks normal \u2014 training as programmed';dl.className='ds-deload';}}
   var _q=(DS_SEARCH||'').trim();
   DS_SEARCH_HITS=0;
   var html;
@@ -4472,11 +4667,34 @@ function dsMinInput(id,perMin){ var el=document.getElementById('ds-min-'+id); if
 function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var el=document.getElementById('ds-min-'+id); if(el)el.value=st.mins||raw.defMin||30; }
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
+function dsAutoregulate(id){
+  var st=dsItemState(id);
+  if(!st.sets||!st.sets.length) return;
+  var lastSet=st.sets[st.sets.length-1];
+  var rir=lastSet.rir;
+  if(rir==null){ st._autoNote=null; return; }
+  var curReps=st._reps||lastSet.reps||10;
+  var note='', newReps=curReps;
+  if(rir<=0.5){ newReps=Math.max(1,curReps-2); note='\u25BC Near max on that set \u2014 dropping to '+newReps+' reps next set'; }
+  else if(rir<=1.5){ newReps=Math.max(1,curReps-1); note='\u2192 Tough set \u2014 trimming to '+newReps+' reps next set'; }
+  else if(rir>=3.5){ newReps=curReps+2; note='\u26A1 That was easy \u2014 bumping to '+newReps+' reps next set'; }
+  else if(rir>=2.5){ newReps=curReps+1; note='\u2713 Good pace \u2014 adding a rep, '+newReps+' next set'; }
+  else { note='\u2713 On target \u2014 holding at '+curReps+' reps'; }
+  if(st.sets.length>=2){
+    var prevRir=st.sets[st.sets.length-2].rir;
+    if(prevRir!=null && (prevRir-rir)>=1.5){
+      note+=' \u2014 fatigue climbing fast this session, consider wrapping up after this exercise';
+    }
+  }
+  st._reps=newReps; st._autoNote=note;
+  var repsEl=document.getElementById('ds-reps-'+id); if(repsEl) repsEl.value=newReps;
+}
 function dsLogSet(id,target){
   var st=dsItemState(id);
   if(st.manualDone){ st.manualDone=false; }
   var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
   st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()});
+  dsAutoregulate(id);
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
   if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
   dsSaveUI(); dsRender(); renderAll();
@@ -4485,13 +4703,14 @@ function dsUndoSet(id){
   var st=dsItemState(id);
   if(!st.sets||!st.sets.length) return;
   st.sets.pop(); st.manualDone=false;
+  if(st.sets.length) dsAutoregulate(id); else st._autoNote=null;
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
   dsSaveUI(); dsRender(); renderAll();
 }
 function dsFinishSets(id){
   var st=dsItemState(id);
   if(st.manualDone){ st.manualDone=false; dsSyncPartialLog(dsViewOf(dsRawItem(id))); }
-  else { st.manualDone=true; dsLogComplete(dsViewOf(dsRawItem(id))); }
+  else { st.manualDone=true; st._autoNote=null; dsLogComplete(dsViewOf(dsRawItem(id))); }
   dsSaveUI(); dsRender(); renderAll();
 }
 function dsMarkDone(id){ if(ds_timers[id]){ if(ds_timers[id].interval)clearInterval(ds_timers[id].interval); delete ds_timers[id]; } if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
