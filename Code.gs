@@ -65,7 +65,7 @@ var DAILY_HEADERS = [
 
 
 var MEASURE_HEADERS  = ["Date","Waist (in)","Chest (in)","Hips (in)","Thighs (in)","Neck (in)","Biceps (in)"];
-var RIDE_HEADERS     = ["Date","Miles","Duration (min)","Effort","With Daughter","Notes"];
+var RIDE_HEADERS     = ["Date","Miles","Duration (min)","Effort","With Daughter","Notes","Avg HR (bpm)"];
 var WORKOUT_HEADERS  = ["Date","Exercises Completed","Exercise Count"];
 var OVERLOAD_HEADERS = ["Row Key","Exercise ID","Exercise","Date","Band / Weight","Reps","Sets","RIR"];
 var LAB_HEADERS      = ["Date","A1c (%)","HDL (mg/dL)","LDL (mg/dL)","Triglycerides (mg/dL)","Notes"];
@@ -405,7 +405,7 @@ function processSupplementalData(ss, D) {
     D.rides.forEach(function(r) {
       if (!r.date) return;
       upsertRow(rSheet, r.date,
-        [r.date, r.miles||"", r.duration||"", r.effort||"", r.daughter?"Yes":"No", r.notes||""],
+        [r.date, r.miles||"", r.duration||"", r.effort||"", r.daughter?"Yes":"No", r.notes||"", r.avgHr||""],
         rIdx);
     });
   }

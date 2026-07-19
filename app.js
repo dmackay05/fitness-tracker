@@ -138,6 +138,19 @@ function calGoalLabelForKey(dateKey){
 }
 var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
 var STEP_CADENCE = parseInt(store.get('ft_cadence')) || 105; // steps/min, calibrate from your phone's health app
+var USER_AGE = parseInt(store.get('ft_age')) || 0; // used only to estimate max HR if Max HR isn't set directly
+var USER_MAXHR = parseInt(store.get('ft_maxhr')) || 0; // if unset, estimated as 220-age (Tanaka formula would be more accurate but 220-age is the common default)
+function dsEstMaxHR(){ if(USER_MAXHR>0) return USER_MAXHR; if(USER_AGE>0) return 220-USER_AGE; return null; }
+// Zone 2 = ~60-70% of max HR (Seiler/aerobic-base literature). Returns null if no max HR available.
+function dsHrZone(avgHr){
+  var mx=dsEstMaxHR(); if(!mx||!avgHr) return null;
+  var pct=avgHr/mx*100;
+  if(pct<60) return {zone:'Below Z2',pct:pct};
+  if(pct<=70) return {zone:'Zone 2',pct:pct};
+  if(pct<=80) return {zone:'Zone 3',pct:pct};
+  if(pct<=90) return {zone:'Zone 4',pct:pct};
+  return {zone:'Zone 5',pct:pct};
+}
 var STEP_GOAL = parseInt(store.get('ft_step_goal')) || 10000;
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
 var TREND_METRICS=[
@@ -271,7 +284,7 @@ function buildWkPayload(){
   var rides=[];
   Object.keys(appData).forEach(function(k){
     (appData[k].rides||[]).forEach(function(r){
-      rides.push({date:k,miles:r.miles||"",duration:r.duration||"",effort:r.effort||"",daughter:!!r.daughter,notes:r.notes||""});
+      rides.push({date:k,miles:r.miles||"",duration:r.duration||"",effort:r.effort||"",daughter:!!r.daughter,notes:r.notes||"",avgHr:r.avgHr||""});
     });
   });
   return rides.length ? {rides:rides} : null;
@@ -1022,7 +1035,19 @@ function renderBpHistory(){
       return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+(r.t?' · '+r.t:'')+'</div><div class="row-sub">'+r.sys+'/'+r.dia+' mmHg &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
     }).join("");
   }).join("")):'';
-  el.innerHTML = todayHtml+pastHtml;
+  // Inline trend sparklines — same series the Dashboard "Trends" card uses for
+  // BP Systolic / BP Diastolic, shown right here instead of requiring a trip
+  // to the Dashboard and tapping the right chip to actually see them.
+  var sysSeries=_series(function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.sys;},0)/r.length);});
+  var diaSeries=_series(function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.dia;},0)/r.length);});
+  var sparkHtml='';
+  if(sysSeries.length>=2){
+    sparkHtml+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e1e35"><div style="font-size:10px;color:#888;margin-bottom:4px">Systolic trend ('+sysSeries.length+' days logged)</div>'+sparkSVG(sysSeries,{color:'#ef4444',h:70})+'</div>';
+    sparkHtml+='<div style="margin-top:6px"><div style="font-size:10px;color:#888;margin-bottom:4px">Diastolic trend</div>'+sparkSVG(diaSeries,{color:'#f97316',h:70})+'</div>';
+  } else if(todayReadings.length){
+    sparkHtml='<div style="font-size:10px;color:#666;margin-top:10px">Log on one more day to see a trend line here</div>';
+  }
+  el.innerHTML = todayHtml+pastHtml+sparkHtml;
 }
 function rhrCategory(bpm){
   if(bpm<60)  return {label:"Athletic",color:"#4ade80"};
@@ -1045,7 +1070,14 @@ function renderRhrHistory(){
       return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+(r.t?' · '+r.t:'')+'</div><div class="row-sub">'+r.v+' bpm &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
     }).join("");
   }).join("")):'';
-  el.innerHTML = todayHtml+pastHtml;
+  // Inline trend sparkline — same series the Dashboard "Trends" card uses for
+  // the Resting HR chip, shown right here so it doesn't require navigating
+  // away and tapping the right chip to actually see it.
+  var rhrSeries=_series(function(d){var r=_dayRhrReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.v;},0)/r.length);});
+  var sparkHtml = rhrSeries.length>=2
+    ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e1e35"><div style="font-size:10px;color:#888;margin-bottom:4px">Trend ('+rhrSeries.length+' days logged)</div>'+sparkSVG(rhrSeries,{color:'#f87171',h:80})+'</div>'
+    : (todayReadings.length ? '<div style="font-size:10px;color:#666;margin-top:10px">Log on one more day to see a trend line here</div>' : '');
+  el.innerHTML = todayHtml+pastHtml+sparkHtml;
 }
 
 // ── LOG: MEASUREMENTS ───────────────────────────────────────────────────
@@ -1181,16 +1213,22 @@ function trkReset(){ trk.distM=0; trk.elapsedMs=0; trk.lastPt=null; trkUpdate();
 function trkSaveManual(){
   var miles=parseFloat(document.getElementById("trk-m-miles").value)||0;
   var dur=parseInt(document.getElementById("trk-m-min").value)||0;
+  var avgHr=parseInt((document.getElementById("trk-m-hr")||{}).value)||0;
   if(miles<=0 && dur<=0){ trkStatus("Enter miles or minutes first","#fbbf24"); return; }
-  trkCommit(+miles.toFixed(2),dur,"manual");
+  trkCommit(+miles.toFixed(2),dur,"manual",avgHr);
   document.getElementById("trk-m-miles").value=""; document.getElementById("trk-m-min").value="";
-  trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+(trk.activity==="ride"?"ride":"walk")+" (manual)","#5eead4");
+  var hrEl=document.getElementById("trk-m-hr"); if(hrEl) hrEl.value="";
+  var zoneMsg="";
+  if(avgHr && trk.activity==="ride"){ var z=dsHrZone(avgHr); if(z) zoneMsg=" \u2014 "+z.zone+" ("+Math.round(z.pct)+"% max HR)"; }
+  trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+(trk.activity==="ride"?"ride":"walk")+" (manual)"+zoneMsg,"#5eead4");
 }
-function trkCommit(miles,dur,source){
+function trkCommit(miles,dur,source,avgHr){
   var day=getDay();
   if(trk.activity==="ride"){
     day.rides=day.rides||[];
-    day.rides.push({miles:miles,duration:dur,effort:"",daughter:false,notes:source});
+    var rideEntry={miles:miles,duration:dur,effort:"",daughter:false,notes:source};
+    if(avgHr) rideEntry.avgHr=avgHr;
+    day.rides.push(rideEntry);
     if(dur) dsAddEx(day,{name:"Mountain Bike Ride ("+dur+" min)",calories:calAdj(dur*9.2),type:"cardio",id:Date.now().toString()});
   } else {
     var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
@@ -1283,6 +1321,8 @@ function saveHealthSettings(){
   var am=parseInt(g("ft-activity"))||0; if(am>0){ store.set("ft_activity_goal",am); ACTIVITY_GOAL=am; }
   var sg=parseInt(g("ft-step-goal"))||0; if(sg>0){ store.set("ft_step_goal",sg); STEP_GOAL=sg; }
   var cd=parseInt(g("ft-cadence"))||0; if(cd>0){ store.set("ft_cadence",cd); STEP_CADENCE=cd; }
+  var age=parseInt(g("ft-age"))||0; if(age>0){ store.set("ft_age",age); USER_AGE=age; }
+  var mhr=parseInt(g("ft-maxhr"))||0; if(mhr>0){ store.set("ft_maxhr",mhr); USER_MAXHR=mhr; } else { store.set("ft_maxhr",""); USER_MAXHR=0; }
   var supps=[]; document.querySelectorAll(".ft-sup-inp").forEach(function(el,i){ if(el.value.trim()) supps.push({id:"s"+i,name:el.value.trim(),desc:"",emoji:"💊"}); });
   SUPPS=supps; store.set("ft_supps",JSON.stringify(supps));
   var labs=[]; document.querySelectorAll("#ft-labs .ft-lab-row").forEach(function(r){
@@ -1313,7 +1353,7 @@ function initHealthSettings(){
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal-rest", GOALS.calRest); setv("ft-cal-recovery", GOALS.calRecovery); setv("ft-cal-active", GOALS.calActive); setv("ft-cal-ride", GOALS.calRide); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
-  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-step-goal", STEP_GOAL); setv("ft-cadence", STEP_CADENCE);
+  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-step-goal", STEP_GOAL); setv("ft-cadence", STEP_CADENCE); setv("ft-age", USER_AGE||""); setv("ft-maxhr", USER_MAXHR||"");
   var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
@@ -4130,12 +4170,48 @@ function dsMuscleVolRowsHtml(vol){
       +'</div>';
   }).join('');
 }
+function dsFreqRowsHtml(freq){
+  return DS_MV_ORDER.map(function(m){
+    var n=freq[m]||0;
+    var color = n===0?'#f87171':(n===1?'#fbbf24':'#5eead4');
+    var lbl = n+'x this week';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+m+'</div>'
+      +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+Math.min(n/3*100,100)+'%;height:100%;background:'+color+'"></div></div>'
+      +'<div style="width:78px;text-align:right;font-size:11px;color:'+color+';font-weight:700;flex:0 0 auto">'+lbl+'</div>'
+      +'</div>';
+  }).join('');
+}
+function dsProteinMealRowsHtml(pm){
+  var total=DS_MEAL_WINDOWS.reduce(function(s,w){return s+(pm[w.label]||0);},0);
+  return DS_MEAL_WINDOWS.map(function(w){
+    var v=pm[w.label]||0;
+    var pct=total? (v/total*100) : 0;
+    var flag = total>0 && pct>50;
+    var color = flag?'#fbbf24':'#5eead4';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+w.label+'</div>'
+      +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+color+'"></div></div>'
+      +'<div style="width:56px;text-align:right;font-size:11px;color:'+color+';font-weight:700;flex:0 0 auto">'+v.toFixed(0)+'g</div>'
+      +'</div>';
+  }).join('')
+  + (total>0 ? (function(){
+      var maxW=DS_MEAL_WINDOWS.reduce(function(a,w){return (pm[w.label]||0)>(pm[a.label]||0)?w:a;},DS_MEAL_WINDOWS[0]);
+      var maxPct = pm[maxW.label]/total*100;
+      if(maxPct>50) return '<div style="font-size:10px;color:#fbbf24;margin-top:6px">'+Math.round(maxPct)+'% of today\u2019s protein is in '+maxW.label+' \u2014 spreading into 3\u20134 doses improves the muscle-protein-synthesis response vs back-loading it into one meal</div>';
+      return '<div style="font-size:10px;color:#5eead4;margin-top:6px">Protein looks reasonably spread across meals today</div>';
+    })() : '<div style="font-size:10px;color:#888;margin-top:6px">No food logged yet today</div>');
+}
 function dsRenderMuscleVolume(){
   var host=document.getElementById('dash-muscle-vol');
   if(!host) return; // static anchor now lives at the bottom of the dashboard panel, after Supplements
   var rollingVol=dsWeeklyMuscleVolume('rolling');
   var calWk=dsMVWeekMondayKey();
   var calVol=dsWeeklyMuscleVolume('calendar');
+  var freq=dsMuscleFrequencyWeek();
+  var proteinByMeal=dsProteinByMealToday(activeDate);
+  var z2=dsZone2MinutesWeek();
+  var mxHr=dsEstMaxHR();
   host.innerHTML =
     '<div class="card">'
     +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Weekly Volume by Muscle \u2014 Last 7 Days <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling, updates daily</span></summary>'
@@ -4147,6 +4223,27 @@ function dsRenderMuscleVolume(){
     +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Weekly Volume by Muscle \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">Mon\u2013Sun, week of '+prettyDate(calWk)+'</span></summary>'
     +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Partial until Sunday \u00b7 same bands as above</div>'
     +dsMuscleVolRowsHtml(calVol)
+    +'</details>'
+    +'</div>'
+    +'<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Training Frequency by Muscle <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">direct sets only, last 7 days</span></summary>'
+    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x \u00b7 amber = 1x \u00b7 teal = 2x+ \u00b7 evidence favors \u22652x/week per muscle over the same volume in one session</div>'
+    +dsFreqRowsHtml(freq)
+    +'</details>'
+    +'</div>'
+    +'<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Protein by Meal \u2014 Today <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">inferred from log time</span></summary>'
+    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Spreading protein into 3\u20134 doses of ~0.3\u20130.4g/kg improves MPS response vs back-loading it into 1\u20132 meals</div>'
+    +dsProteinMealRowsHtml(proteinByMeal)
+    +'</details>'
+    +'</div>'
+    +'<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Zone 2 Cardio \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling 7 days</span></summary>'
+    +(mxHr
+      ? '<div style="font-size:10px;color:#888;margin:8px 0 10px">Est. max HR '+mxHr+' bpm \u00b7 Zone 2 = 60\u201370% ('+Math.round(mxHr*0.6)+'\u2013'+Math.round(mxHr*0.7)+' bpm) \u00b7 aerobic-base/mitochondrial-density training, separate from RPE-based ride effort</div>'
+        +'<div style="font-size:20px;font-weight:700;color:#5eead4">'+z2.mins+' <span style="font-size:11px;color:#888;font-weight:400">min in Zone 2</span></div>'
+        +'<div style="font-size:10px;color:#888;margin-top:4px">'+z2.ridesWithHr+' of '+z2.ridesTotal+' logged rides this week had an avg HR entered \u2014 log HR on manual ride entry to make this accurate</div>'
+      : '<div style="font-size:10px;color:#fbbf24;margin:8px 0">Set your age or max HR in Settings to enable Zone 2 tracking</div>')
     +'</details>'
     +'</div>';
 }
@@ -4432,7 +4529,72 @@ function dsRenderSearchAll(q){
   return html;
 }
 
-/* ===== Fractional Volume (Menno Henselmans model): direct=1.0, indirect=0.5 ===== */
+// Protein distribution by meal window (Areta et al. / Schoenfeld — spreading
+// protein into 3-4 doses of ~0.3-0.4g/kg rather than back-loading it improves
+// the muscle protein synthesis response vs the same total in 1-2 meals).
+// Meal window is inferred from each food entry's timestamp id (Date.now()
+// based) rather than requiring a manual meal-tag on every food logged.
+var DS_MEAL_WINDOWS=[
+  {label:'Breakfast', start:5, end:10.5},
+  {label:'Lunch', start:10.5, end:14.5},
+  {label:'Afternoon', start:14.5, end:17},
+  {label:'Dinner', start:17, end:20.5},
+  {label:'Evening', start:20.5, end:29} // wraps past midnight up to 5am
+];
+function dsMealWindowFor(hourFloat){
+  for(var i=0;i<DS_MEAL_WINDOWS.length;i++){
+    var w=DS_MEAL_WINDOWS[i];
+    if(hourFloat>=w.start && hourFloat<w.end) return w.label;
+  }
+  return 'Evening'; // late-night / past-midnight fallback
+}
+function dsProteinByMealToday(dayKey){
+  var day=appData[dayKey||activeDate]; var out={}; DS_MEAL_WINDOWS.forEach(function(w){out[w.label]=0;});
+  if(!day||!day.foods) return out;
+  day.foods.forEach(function(f){
+    var ts=parseInt(f.id,10);
+    var hourFloat = 12; // default to midday if id isn't a parseable timestamp (e.g. seeded/imported foods)
+    if(!isNaN(ts) && ts>1e12){ var d=new Date(ts); hourFloat=d.getHours()+d.getMinutes()/60; if(hourFloat<5) hourFloat+=24; }
+    var win=dsMealWindowFor(hourFloat);
+    out[win]+=(+f.protein||0);
+  });
+  return out;
+}
+/* ===== Training Frequency per Muscle (Schoenfeld et al. — frequency ≥2x/week
+   outperforms the same weekly volume crammed into one session) =====
+   Counts DISTINCT DAYS in the rolling 7-day window where a muscle received
+   DIRECT work (DS_MV weight===1) — assisted/indirect volume doesn't count
+   toward frequency, since it's a much smaller stimulus for that muscle. */
+function dsMuscleFrequencyWeek(){
+  var keys=dsMVDateKeysRolling();
+  var hitDays={}; DS_MV_ORDER.forEach(function(m){hitDays[m]=0;});
+  for(var d=0;d<keys.length;d++){
+    var key=keys[d];
+    var ui=DS_UI[key]||{};
+    var sessCount={};
+    try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){
+      var eid=e.id?String(e.id):"";
+      if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid])sessCount[xid]=n1; return; }
+      if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
+        if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid])sessCount[mid]=n2; return; } }
+    }); } }catch(e){}
+    var cloudDay=DS_CLOUD_VOL[key]||{};
+    var hitToday={};
+    Object.keys(DS_MV).forEach(function(id){
+      var st=ui[id];
+      var localN=(st&&st.sets)?st.sets.length:0;
+      var syncedN=sessCount[id]||0;
+      var cloudN=cloudDay[id]||0;
+      var n=Math.max(localN,syncedN,cloudN);
+      if(!n)return;
+      var map=DS_MV[id];
+      Object.keys(map).forEach(function(mu){ if(map[mu]===1) hitToday[mu]=true; });
+    });
+    Object.keys(hitToday).forEach(function(mu){ hitDays[mu]=(hitDays[mu]||0)+1; });
+  }
+  return hitDays;
+}
+
 var DS_MV_QUICKADD={
   'Turkish Get-Up (KB)':{sets:2,muscles:{'Core':.5,'Shoulders':.5}},
   'Step-Ups (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5}},
@@ -4557,6 +4719,25 @@ function dsMVDateKeysRolling(){
   var out=[]; var now=new Date();
   for(var d=0;d<7;d++){ var dt=new Date(now); dt.setDate(now.getDate()-d); out.push(localDateKey(dt)); }
   return out;
+}
+// Zone 2 minutes this week — sums ride duration for rides with a logged avgHr
+// that falls in the ~60-70% max-HR band. Rides without an avgHr logged aren't
+// counted either way (we don't know their zone), so this is a floor, not a
+// complete picture, until HR is logged consistently.
+function dsZone2MinutesWeek(){
+  var keys=dsMVDateKeysRolling();
+  var mins=0, ridesWithHr=0, ridesTotal=0;
+  keys.forEach(function(key){
+    var day=appData[key]; if(!day||!day.rides) return;
+    day.rides.forEach(function(r){
+      ridesTotal++;
+      if(!r.avgHr) return;
+      ridesWithHr++;
+      var z=dsHrZone(r.avgHr);
+      if(z && z.zone==='Zone 2') mins+=(+r.duration||0);
+    });
+  });
+  return {mins:mins, ridesWithHr:ridesWithHr, ridesTotal:ridesTotal};
 }
 function dsMVDateKeysCalendarWeek(){
   // Monday..Sunday of the current calendar week — "did this week hit its targets"

@@ -115,8 +115,10 @@
           <div style="display:flex;gap:8px">
             <input type="number" id="trk-m-miles" placeholder="miles" step="0.1" style="flex:1;margin-bottom:0"/>
             <input type="number" id="trk-m-min" placeholder="minutes" style="flex:1;margin-bottom:0"/>
+            <input type="number" id="trk-m-hr" placeholder="avg HR" style="flex:0 0 72px;margin-bottom:0"/>
             <button class="bp" onclick="trkSaveManual()">Save</button>
           </div>
+          <div style="font-size:9px;color:#555;font-family:'DM Mono',monospace;text-align:center;margin-top:4px">Avg HR is optional \u2014 used to classify the ride into a heart-rate zone (Zone 2 = ~60\u201370% of max HR). Set your age or max HR in Settings first.</div>
         </div>
       </div>
   </div>
@@ -683,6 +685,8 @@
           <div><div class="rlbl">Activity (min/wk)</div><input type="number" id="ft-activity" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Step goal (daily)</div><input type="number" id="ft-step-goal" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Cadence (steps/min)</div><input type="number" id="ft-cadence" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Age (for HR zones)</div><input type="number" id="ft-age" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Max HR (blank = est. from age)</div><input type="number" id="ft-maxhr" style="margin-bottom:0"/></div>
         </div>
         <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:6px">Cadence default is 105 steps/min. Check your phone's Health app (iPhone) or Google Fit (Android) after a walk, divide steps by minutes, and enter your real number here for more accurate estimates.</div>
         <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#666">(weight + body comp reminder)</span></div>
@@ -701,7 +705,9 @@
         <input type="text" class="ft-sup-inp" placeholder="Supplement 1 (e.g. Vitamin D)" style="margin-bottom:8px"/>
         <input type="text" class="ft-sup-inp" placeholder="Supplement 2" style="margin-bottom:8px"/>
         <input type="text" class="ft-sup-inp" placeholder="Supplement 3" style="margin-bottom:8px"/>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 4" style="margin-bottom:0"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 4" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 5 (e.g. Creatine)" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 6" style="margin-bottom:0"/>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">Lab Targets</div>
@@ -895,6 +901,6 @@
 
 
 
-<script src="app.js?v=84"></script>
+<script src="app.js?v=86"></script>
 </body>
 </html>
