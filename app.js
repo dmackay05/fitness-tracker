@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v14 — 2026-07-14";
+var APP_BUILD = "v15 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3179,10 +3179,14 @@ var DS_SESSIONS={
       {id:'fri-sumo',name:'Banded Sumo Squat',slot:'Squat',target:'Inner Thigh · Glutes',equip:'Tube 40–50 lb stacked',rx:'3×12–15',cal:35,cue:'Wide stance, toes out, knees push out — sit straight down',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Goblet Sumo Squat',equip:'10 lb dumbbell',rx:'3\u00d715\u201320',cue:'DB at the chest, wide stance \u2014 sit straight down between the knees',demo:'goblet'}]},
       {id:'fri-slrdl',name:'Single-Leg RDL',slot:'Hinge · Unilateral',target:'Hamstrings',equip:'10 lb dumbbell (opposite hand)',rx:'3×10–12/leg',cal:30,cue:'Hinge forward, DB toward the floor as the free leg extends behind — hips stay square, slow 3-count down',demo:'slrdl',log:'setsreps',sets:3,
         setup:'Stand on one leg with a soft bend in the knee, holding the dumbbell in the hand opposite your standing leg. Hinge at the hips, letting the free leg extend straight back for counterbalance, and lower the weight toward the floor. Keep your back flat and hips square to the floor throughout \u2014 stop wherever your hamstring or balance limits you. This is gentler on the SI joint than a bilateral RDL since there\'s no spinal loading from a barbell-style hold, and it directly targets the hamstring/quad volume gap.'},
+      {id:'fri-goodmorning',name:'Banded Good Morning',slot:'Hip Hinge · Posterior Chain',target:'Hamstrings · Glutes · Lower Back',equip:'Tube 30–40 → 50+ lb',rx:'3×12–15',cal:35,cue:'Hips back, flat back — squeeze glutes hard to stand up',log:'setsreps',sets:3,
+        setup:'Stand on the center of the band, feet shoulder-width apart. Loop it behind your neck across your upper back, or hold the handles at shoulder height. With a slight, fixed bend in your knees, hinge forward at the hips until your torso is roughly parallel to the floor or you feel a deep hamstring stretch. Drive your hips forward to return to standing, squeezing your glutes at the top. Same hip hinge as the RDL, but the load sits on your back instead of in your hands \\u2014 that means more demand on your spinal erectors and core to keep the torso rigid.',
+        mistakes:['Rounding the lower back \\u2014 keep it flat. If you can\\u2019t, don\\u2019t go as deep.','Bending the knees too much \\u2014 this is a hip hinge, not a squat.','Going too heavy too soon \\u2014 start light, your hamstrings and lower back need time to adapt.']},
       {id:'fri-nordic',name:'Stability Ball Leg Curl',slot:'Knee Flexion',target:'Hamstrings',equip:'Stability ball',rx:'3×10–12',cal:30,cue:'Hips stay up the whole set — curl the ball in, roll out over a slow 3-count',demo:'ballcurl',log:'setsreps',sets:3,variants:[{name:'Single-Leg Ball Curl',equip:'Stability ball',rx:'3\u00d76\u20138/leg',cue:'One heel on the ball \u2014 hips level, slow 3-count roll-out',demo:'ballcurl'}]},
       {id:'fri-calf',name:'Single-Leg Calf Raise',demo:'calf',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'4×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',log:'setsreps',sets:4},
       {id:'fri-obliques',name:'Obliques / Rotation',demo:'woodchop',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives',log:'setsreps',sets:3},
-      {id:'fri-deadbug',name:'Dead Bug',demo:'deadbug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',log:'setsreps',sets:3},
+      {id:'fri-deadbug',name:'Dead Bug',demo:'deadbug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',log:'setsreps',sets:3,
+        variants:[{name:'Bird Dog',equip:'Bodyweight · mat',rx:'3×8/side',cue:'Opposite arm and leg extend — flat back, zero rocking. Swap in if Dead Bug pops your SI joint',demo:'birddog'}]},
       {id:'fri-sqpress',name:'Squat to Press',slot:'Power',target:'Full Body',equip:'10 lb DBs or slam ball',rx:'3×10',cal:35,cue:'Legs drive up first, then press — one fluid motion',demo:'press',log:'setsreps',sets:3,variants:[{name:'KB Squat to Press',equip:'8 lb kettlebell',rx:'3\u00d712',cue:'Goblet-hold the bell, squat, then punch it overhead as you stand \u2014 one fluid motion',demo:'goblet'}]},
       {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]},
       DS_WALK30,DS_RIDE20]},
@@ -4377,6 +4381,12 @@ function dsRenderItem(rawItem,idx){
   var varIdx=DS_SWAPS[item.id]||0;
   var setupTxt=(varIdx>0&&DS_VARIANT_SETUPS[item.id+"::"+varIdx])||rawItem.setup||DS_SETUPS[item.id];
   if(setupTxt)h+='<div class="ds-setup">'+setupTxt+'</div>';
+  if(rawItem.mistakes&&rawItem.mistakes.length){
+    var _mkey=item.id, _mopen=!!st._mistakesOpen;
+    h+='<div class="ds-mistakes" onclick="dsToggleMistakes(\''+_mkey+'\')"><div class="ds-mistakes-h">\u26A0 Common Mistakes '+(_mopen?'\u25B4':'\u25BE')+'</div>'
+      +(_mopen?'<ul class="ds-mistakes-list">'+rawItem.mistakes.map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>':'')
+      +'</div>';
+  }
   if(typeof DS_PR!=="undefined"&&DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
     var _matchedOnlyViaVariant=_q&&!dsMainFieldsMatch(item,_q);
@@ -4675,6 +4685,7 @@ var DS_MV={
   'fri-bulg':{'Quads':1,'Glutes':.5},
   'fri-sumo':{'Glutes':1,'Quads':.5},
   'fri-slrdl':{'Hamstrings':1,'Glutes':.5},
+  'fri-goodmorning':{'Hamstrings':1,'Glutes':.5,'Back':.5},
   'fri-nordic':{'Hamstrings':1,'Glutes':.5},
   'fri-calf':{'Calves':1},
   'fri-obliques':{'Core':1},
@@ -4924,6 +4935,7 @@ function dsUpdateStats(){
 
 function dsToggleCard(id){ var st=dsItemState(id); st._open=!st._open; dsSaveUI(); dsRender(); }
 function dsToggleSwap(id){ var st=dsItemState(id); st._swapOpen=!st._swapOpen; dsSaveUI(); dsRender(); }
+function dsToggleMistakes(id){ var st=dsItemState(id); st._mistakesOpen=!st._mistakesOpen; dsSaveUI(); dsRender(); }
 function dsPickVariant(id,i){ DS_SWAPS[id]=i; dsSaveSwaps(); var st=dsItemState(id); st._swapOpen=false; dsSaveUI(); dsRender(); }
 function dsBump(id,delta){ var st=dsItemState(id); st._reps=Math.max(1,(st._reps||10)+delta); var el=document.getElementById('ds-reps-'+id); if(el)el.value=st._reps; dsSaveUI(); }
 function dsRepsInput(id){ var el=document.getElementById('ds-reps-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ dsItemState(id)._reps=Math.min(999,v); dsSaveUI(); } }
