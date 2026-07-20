@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v16 — 2026-07-20";
+var APP_BUILD = "v17 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3605,8 +3605,8 @@ function dsItemState(id){ var d=dsDayState();
         });
       }
     }
-    if(ex) d[id].manualDone=true;
-    if(!ex){ d[id]._reps=dsProgTarget(id); }
+    if(ex && !ex.partial) d[id].manualDone=true;
+    if(!ex || ex.partial){ d[id]._reps=dsProgTarget(id); }
   }
   if(!d[id].sets)d[id].sets=[];
   return d[id];
@@ -4061,13 +4061,13 @@ function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsIte
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   if(!st.sets||!st.sets.length){ saveDay(day); return; }
   var target=item.sets||3; var frac=Math.min(st.sets.length/target,1);
-  var ex={name:item.name,calories:calAdj((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length};
+  var ex={name:item.name,calories:calAdj((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length,partial:true};
   dsEncodeSets(ex,st.sets);
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   dsAddEx(day,ex); saveDay(day); }
 function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
-  var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:calAdj(item.cal)),type:"session",id:sid};
+  var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:calAdj(item.cal)),type:"session",id:sid,done:true};
   if(st.sets&&st.sets.length){ ex.sets=st.sets.length; dsEncodeSets(ex,st.sets); }
   else if(st.mins){ ex.reps=st.mins+" min"; }
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
