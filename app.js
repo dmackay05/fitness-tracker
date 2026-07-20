@@ -4035,8 +4035,7 @@ function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
 
 function dsComplete(id){ var item=dsRawItem(id);
   if(item && item.log==='setsreps'){ var st=dsItemState(id);
-    if(st.manualDone) return true;
-    var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
+    return !!st.manualDone; }
   var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
 function dsEncodeSets(ex,sets){
   if(!sets||!sets.length)return;
