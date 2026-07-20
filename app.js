@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v17 — 2026-07-20";
+var APP_BUILD = "v19 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3592,7 +3592,7 @@ function dsItemState(id){ var d=dsDayState();
     // so progress logged on another device shows up here instead of looking blank/incomplete.
     var ex=dsSyncedExercise(id);
     if(ex){
-      var n=ex.sets!=null?ex.sets:1;
+      var n=ex.sets!=null?Math.min(ex.sets,20):1;
       var repsArr=ex.reps!=null?String(ex.reps).split('/'):[];
       var loadsArr=ex.load!=null?String(ex.load).split('|'):[];
       var rirsArr=ex.rir!=null?String(ex.rir).split('/'):[];
@@ -3653,7 +3653,22 @@ function dsStartTimer(id,secs){
 function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
 /* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
 function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
-function dsRawItem(id){ var a=dsAllItems(); for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; } return null; }
+function dsRawItem(id){
+  var a=dsAllItems();
+  for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; }
+  // Fallback: the exercise wasn't in today's contextual list (e.g. session-key mismatch
+  // from the day picker). Search every known session/day so we never hand back null
+  // for a genuinely valid id and crash downstream (dsActiveVariant, dsViewOf, etc.)
+  var fallback=null;
+  DS_ORDER.forEach(function(dk){
+    if(fallback)return;
+    var sess=DS_SESSIONS[dk]; if(sess&&sess.moves){ sess.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); }
+  });
+  if(!fallback && typeof DS_SAT_HEAT!=="undefined" && DS_SAT_HEAT.moves){ DS_SAT_HEAT.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); }
+  if(!fallback && typeof DS_HIIT_MAP!=="undefined"){ Object.keys(DS_HIIT_MAP).forEach(function(k){ if(fallback)return; var hm=DS_HIIT_MAP[k]; if(hm&&hm.moves){ hm.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); } }); }
+  [DS_MORNING,DS_PRE,DS_YIN,DS_MOBILITY,DS_PULLUP,DS_ATG,DS_DESK].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
+  return fallback;
+}
 
 // ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
 function dsMasterPool(){
@@ -4039,8 +4054,8 @@ function dsComputeActualSecs(item, st){
   }
   return null;
 }
-function dsActiveVariant(item){ if(!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
-function dsViewOf(item){ var v=dsActiveVariant(item); if(!v)return item;
+function dsActiveVariant(item){ if(!item||!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
+function dsViewOf(item){ if(!item)return item; var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:(v.cal!=null?v.cal:item.cal),cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:(v.secs!=null?v.secs:item.secs),perMin:(v.perMin!=null?v.perMin:item.perMin),defMin:(v.defMin!=null?v.defMin:item.defMin),variants:item.variants}; }
 
 function dsComplete(id){ var item=dsRawItem(id);
@@ -4057,7 +4072,7 @@ function dsEncodeSets(ex,sets){
   ex.load=(uniqLoads.length<=1?(uniqLoads[0]||''):loads.join('|'));
   if(rirs.some(function(v){return v!=='';})) ex.rir=rirs.join('/');
 }
-function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
+function dsSyncPartialLog(item){ if(!item)return; var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   if(!st.sets||!st.sets.length){ saveDay(day); return; }
   var target=item.sets||3; var frac=Math.min(st.sets.length/target,1);
@@ -4065,7 +4080,7 @@ function dsSyncPartialLog(item){ var day=getDay(), sid="sess_"+item.id, st=dsIte
   dsEncodeSets(ex,st.sets);
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   dsAddEx(day,ex); saveDay(day); }
-function dsLogComplete(item){ var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
+function dsLogComplete(item){ if(!item)return; var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
   var ex={name:item.name,calories:(item.log==="cardio"&&st._cal!=null?st._cal:calAdj(item.cal)),type:"session",id:sid,done:true};
   if(st.sets&&st.sets.length){ ex.sets=st.sets.length; dsEncodeSets(ex,st.sets); }
