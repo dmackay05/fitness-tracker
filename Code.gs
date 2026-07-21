@@ -301,9 +301,13 @@ function realFoods_(d) {
 
 
 // Foods column formatter. Appends a fiber segment only when fiber > 0,
-// so entries without fiber are byte-identical to the old format.
+// and a timestamp segment when the food's id carries one, so entries
+// without them are byte-identical to the old format.
 //   Old: Name (240 kcal|3p|13c|22f)
-//   New: Name (240 kcal|3p|13c|22f|10.1fb)
+//   New: Name (240 kcal|3p|13c|22f|10.1fb|t1737400000000)
+// The timestamp lets the app restore which meal window (breakfast/lunch/
+// dinner/etc) a food belonged to even after a full sync round-trip —
+// without it, every synced food defaults to a midday guess.
 function foodToStr_(f) {
   var s = f.name + " (" + (f.cal || 0) + " kcal|"
         + Math.round(f.protein || 0) + "p|"
@@ -311,6 +315,8 @@ function foodToStr_(f) {
         + Math.round(f.fat     || 0) + "f";
   var fb = parseFloat(f.fiber) || 0;
   if (fb > 0) s += "|" + (Math.round(fb * 10) / 10) + "fb";
+  var tsMatch = String(f.id || "").match(/^(\d{13})/);
+  if (tsMatch) s += "|t" + tsMatch[1];
   return s + ")";
 }
 
