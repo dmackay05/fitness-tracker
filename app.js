@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v25 — 2026-07-20";
+var APP_BUILD = "v26 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -415,8 +415,8 @@ function rowToDay(row){
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""}
   };
   if(row["Foods"]) row["Foods"].split(",").forEach(function(f){ f=f.trim(); if(!f) return;
-    var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?(?:\|t(\d{13}))?)?\)$/);
-    if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:(m[7]||"sheet_"+f)}; if(m[6]) _pf.fiber=parseFloat(m[6]); remote.foods.push(_pf); }
+    var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?(?:\|t(\d{13}))?(?:\|m(Breakfast|Lunch|Dinner|Snack))?)?\)$/);
+    if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:(m[7]||"sheet_"+f)}; if(m[6]) _pf.fiber=parseFloat(m[6]); if(m[8]) _pf.mealTag=m[8]; remote.foods.push(_pf); }
     else remote.foods.push({name:f,cal:0,protein:0,carbs:0,fat:0,id:"sheet_"+f}); });
   if(row["Exercises"]){
     // Split on commas, but re-join fragments until parentheses balance —
@@ -1381,6 +1381,8 @@ function renderLog(){
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
   renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderSupps();
   document.getElementById("wt-input").value="";
+  var _mt=dsMealTagGet(), _mtEl=document.getElementById("meal-tag-picker");
+  if(_mtEl){ Array.prototype.forEach.call(_mtEl.children, function(btn){ btn.classList.toggle("on", btn.getAttribute("data-tag")===_mt); }); }
 }
 
 // ── SETTINGS ────────────────────────────────────────────────────────────
@@ -1675,10 +1677,26 @@ function loadFav(){ try{ var a=JSON.parse(store.get("ft_fav_foods")||"[]"); retu
 function saveFav(a){ store.set("ft_fav_foods", JSON.stringify(a)); }
 function loadMeals(){ try{ var a=JSON.parse(store.get("ft_meals")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function saveMeals(a){ store.set("ft_meals", JSON.stringify(a)); }
+// ── Explicit meal tag (Breakfast/Lunch/Dinner/Snack), independent of when you
+// happen to log — this is what the protein-by-meal graph trusts first, falling
+// back to a time-of-day guess only for entries logged before this existed.
+function dsCurrentHourFloat(){ var d=new Date(); var h=d.getHours()+d.getMinutes()/60; if(h<5) h+=24; return h; }
+function dsMealTagGet(){
+  try{
+    var raw=store.get("ft_meal_tag");
+    if(raw){ var o=JSON.parse(raw); if(o.date===activeDate && o.tag) return o.tag; }
+  }catch(e){}
+  return dsMealWindowFor(dsCurrentHourFloat()); // sensible default: guess from the clock, user can override
+}
+function dsMealTagSet(tag){
+  try{ store.set("ft_meal_tag", JSON.stringify({date:activeDate, tag:tag})); }catch(e){}
+  var el=document.getElementById("meal-tag-picker");
+  if(el){ Array.prototype.forEach.call(el.children, function(btn){ btn.classList.toggle("on", btn.getAttribute("data-tag")===tag); }); }
+}
 function _foodKey(f){ return (f.name||"").toLowerCase().trim()+"|"+(+f.cal||0); }
 function _foodCopy(f){ var o={name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; if(+f.fiber) o.fiber=+f.fiber; if(f.fdcId) o.fdcId=f.fdcId; if(+f.grams) o.grams=+f.grams; return o; }
 function isFavObj(f){ var k=_foodKey(f); return loadFav().some(function(x){return _foodKey(x)===k;}); }
-function addFoodObj(f){ var day=getDay(); var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); saveDay(day); renderAll(); }
+function addFoodObj(f){ var day=getDay(); var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); o.mealTag=dsMealTagGet(); day.foods.push(o); saveDay(day); renderAll(); }
 function toggleFavById(id){
   var f=getDay().foods.filter(function(x){return x.id==id;})[0]; if(!f) return;
   var fav=loadFav(), k=_foodKey(f), i=fav.map(_foodKey).indexOf(k);
@@ -4617,25 +4635,30 @@ function dsRenderSearchAll(q){
 var DS_MEAL_WINDOWS=[
   {label:'Breakfast', start:5, end:10.5},
   {label:'Lunch', start:10.5, end:14.5},
-  {label:'Afternoon', start:14.5, end:17},
+  {label:'Snack', start:14.5, end:17},
   {label:'Dinner', start:17, end:20.5},
-  {label:'Evening', start:20.5, end:29} // wraps past midnight up to 5am
+  {label:'Snack', start:20.5, end:29} // wraps past midnight up to 5am
 ];
 function dsMealWindowFor(hourFloat){
   for(var i=0;i<DS_MEAL_WINDOWS.length;i++){
     var w=DS_MEAL_WINDOWS[i];
     if(hourFloat>=w.start && hourFloat<w.end) return w.label;
   }
-  return 'Evening'; // late-night / past-midnight fallback
+  return 'Snack'; // late-night / past-midnight fallback
 }
 function dsProteinByMealToday(dayKey){
   var day=appData[dayKey||activeDate]; var out={}; DS_MEAL_WINDOWS.forEach(function(w){out[w.label]=0;});
   if(!day||!day.foods) return out;
   day.foods.forEach(function(f){
-    var ts=parseInt(f.id,10);
-    var hourFloat = 12; // default to midday if id isn't a parseable timestamp (e.g. seeded/imported foods)
-    if(!isNaN(ts) && ts>1e12){ var d=new Date(ts); hourFloat=d.getHours()+d.getMinutes()/60; if(hourFloat<5) hourFloat+=24; }
-    var win=dsMealWindowFor(hourFloat);
+    var win;
+    if(f.mealTag && out.hasOwnProperty(f.mealTag)){
+      win=f.mealTag; // explicit tag set at logging time — always trusted over any time guess
+    } else {
+      var ts=parseInt(f.id,10);
+      var hourFloat = 12; // default to midday if id isn't a parseable timestamp (e.g. seeded/imported foods)
+      if(!isNaN(ts) && ts>1e12){ var d=new Date(ts); hourFloat=d.getHours()+d.getMinutes()/60; if(hourFloat<5) hourFloat+=24; }
+      win=dsMealWindowFor(hourFloat);
+    }
     out[win]+=(+f.protein||0);
   });
   return out;

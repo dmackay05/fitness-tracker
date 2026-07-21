@@ -301,13 +301,15 @@ function realFoods_(d) {
 
 
 // Foods column formatter. Appends a fiber segment only when fiber > 0,
-// and a timestamp segment when the food's id carries one, so entries
+// a timestamp segment when the food's id carries one, and a meal-tag
+// segment (Breakfast/Lunch/Dinner/Snack) when explicitly set, so entries
 // without them are byte-identical to the old format.
 //   Old: Name (240 kcal|3p|13c|22f)
-//   New: Name (240 kcal|3p|13c|22f|10.1fb|t1737400000000)
-// The timestamp lets the app restore which meal window (breakfast/lunch/
-// dinner/etc) a food belonged to even after a full sync round-trip —
-// without it, every synced food defaults to a midday guess.
+//   New: Name (240 kcal|3p|13c|22f|10.1fb|t1737400000000|mDinner)
+// The timestamp/tag let the app restore which meal a food belonged to even
+// after a full sync round-trip — without them, every synced food defaults
+// to a midday guess, and the explicit tag (if the person set one) always
+// wins over any time-based guess.
 function foodToStr_(f) {
   var s = f.name + " (" + (f.cal || 0) + " kcal|"
         + Math.round(f.protein || 0) + "p|"
@@ -317,6 +319,7 @@ function foodToStr_(f) {
   if (fb > 0) s += "|" + (Math.round(fb * 10) / 10) + "fb";
   var tsMatch = String(f.id || "").match(/^(\d{13})/);
   if (tsMatch) s += "|t" + tsMatch[1];
+  if (f.mealTag && /^(Breakfast|Lunch|Dinner|Snack)$/.test(f.mealTag)) s += "|m" + f.mealTag;
   return s + ")";
 }
 

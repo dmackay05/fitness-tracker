@@ -225,6 +225,13 @@
 
       <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">🍽 Food</div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px">Logging as:</div>
+        <div id="meal-tag-picker" style="display:flex;gap:6px;margin-bottom:12px">
+          <button class="ld-tab" data-tag="Breakfast" onclick="dsMealTagSet('Breakfast')" style="flex:1;padding:8px 4px;font-size:11px">Breakfast</button>
+          <button class="ld-tab" data-tag="Lunch" onclick="dsMealTagSet('Lunch')" style="flex:1;padding:8px 4px;font-size:11px">Lunch</button>
+          <button class="ld-tab" data-tag="Dinner" onclick="dsMealTagSet('Dinner')" style="flex:1;padding:8px 4px;font-size:11px">Dinner</button>
+          <button class="ld-tab" data-tag="Snack" onclick="dsMealTagSet('Snack')" style="flex:1;padding:8px 4px;font-size:11px">Snack</button>
+        </div>
         <div class="ld-tabs" id="ld-food-tabs">
           <button class="ld-tab" data-ldtab="qa" onclick="ldSwitch('food','qa')"><span class="ld-ic">⚡</span><span class="ld-lbl">Quick</span></button>
           <button class="ld-tab" data-ldtab="preset" onclick="ldSwitch('food','preset')"><span class="ld-ic">📋</span><span class="ld-lbl">Preset</span></button>
@@ -902,6 +909,6 @@
 
 
 
-<script src="app.js?v=103"></script>
+<script src="app.js?v=104"></script>
 </body>
 </html>
