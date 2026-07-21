@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v24 — 2026-07-20";
+var APP_BUILD = "v25 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2963,11 +2963,9 @@ var DS_VARIANT_SETUPS={
 var DS_SETUPS={"warmup-armcircle": "Stand with feet shoulder-width. Small arm circles forward 20s, backward 20s, then big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction.", "warmup-hipflow-9": "Hold a wall or chair for balance. Front-to-back leg swings 10/leg, side-to-side swings 10/leg. Finish with 90/90 hip switches or slow hip circles, 30s each direction.", "warmup-hipflow-7": "Hold a wall or chair for balance. Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches 8/side and slow hip circles 30s each direction.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "post-walk": "After the session: a brisk 30-min walk. Easy, unhurried pace.", "post-ride": "An easy 20-min spin, conversational pace. Compression sleeve on.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the KB at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Mostly easy aerobic riding with a few honest climbs; keep it conversational. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
 
 /* ============================ ROUTINES (every day) ============================ */
-var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'10 min · every day',
+var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'8 min · every day',
   blurb:'Before anything else. Resets the spine, wakes the hips, clears the hip flexors that compressed your low back overnight.',
   moves:[
-    {id:'m-kneehug',name:'Supine Knee Hugs',rx:'90s',cal:10,demo:'kneehug',log:'time',secs:90,target:'Lower Back · Sacrum',
-      setup:'On your back, both knees to chest, arms around shins. Rock gently side to side, one rock per breath. Let the low back soften on each exhale.'},
     {id:'m-catcow',name:'Cat-Cow (breath-led)',rx:'10 slow reps',cal:10,demo:'catcow',log:'done',target:'Full Spine',
       setup:'Hands and knees. Inhale to arch (belly drops, chest lifts), exhale to round (back up, chin tucks). 4–6 sec per rep. Let it ripple through the whole spine.'},
     {id:'m-9090',name:'Half-Kneeling Hip Flexor Stretch',rx:'60s/side',cal:10,demo:'nine90',log:'time',secs:120,target:'Hip Flexors · Psoas',
@@ -2975,17 +2973,13 @@ var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',m
     {id:'m-child',name:"Child's Pose",rx:'90s',cal:10,demo:'child',log:'time',secs:90,target:'Lower Back · Hips · Lats',
       setup:'From kneeling, sit back toward heels, arms forward, forehead down. Wide knees for more hip space. Breathe into the back body. Do this before checking your phone.'}
   ]};
-var DS_PRE={key:'pre',title:'Pre-Workout Activation',accent:'var(--accent)',meta:'5 min · before band days',
-  blurb:'Before every band session. If the glutes are asleep, your low back does their job. Clear the hip flexors, fire the glutes. Non-negotiable while the SI joint is touchy.',
+var DS_PRE={key:'pre',title:'Pre-Workout Activation',accent:'var(--accent)',meta:'2 min · before band days',
+  blurb:'Right before every band session. If the glutes are asleep, your low back does their job — this fires them up. Non-negotiable while the SI joint is touchy. (Hip flexor stretch already covered in Morning Activation.)',
   moves:[
-    {id:'p-9090',name:'Half-Kneeling Hip Flexor Stretch',rx:'60s/side',cal:12,demo:'nine90',log:'time',secs:120,target:'Hip Flexors · Psoas',
-      setup:'Same as morning. Favor the tighter side. Squeeze the back glute while holding — fires the glute and releases the hip flexor at once. Clear this before any loading.'},
     {id:'p-bridge',name:'Glute Bridge Activation',rx:'2×10',cal:13,demo:'bridge',log:'done',target:'Glutes · SI Stabilizers',
       setup:'On your back, knees bent, feet flat. Drive through heels, squeeze glutes hard 2 sec at the top, lower slow. 2×10, no weight — activation, not a workout. Ball version (upper back on the stability ball) is recommended for the SI joint.'}
   ]};
-var DS_YIN={key:'yin',title:'Evening Yin',accent:'var(--purple)',meta:'30 min · every evening',
-  blurb:'Before bed. Yin holds run 3–5 min because fascia takes that long to release. Exhale twice as long as you inhale. This is your recovery engine.',
-  moves:[
+var DS_MOBILITY={"key": "mobility", "title": "Mobility", "accent": "#a78bfa", "meta": "CARs + PAILs/RAILs · daily · yin holds before bed", "blurb": "Controlled circles to own each joint, then PAILs/RAILs to build strength at end range. Keep contractions to ~60–70%, symmetric and braced — back off anything sharp, especially around the SI joint. The yin holds below run 3–5 min each (fascia takes that long to release) and are best done in the evening — exhale twice as long as you inhale.", "moves": [{"id": "mob-hip", "name": "Hips — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 20, "demo": "hipcircle", "log": "done", "target": "Hip joint", "equip": "Floor / wall", "setup": "CARs first: on all fours or standing tall, lift one knee and trace the biggest slow circle the hip can make — 2–3 each direction, ribs down, nothing else moving. Then run the PAILs/RAILs below in a deep hip end range (90/90 fold or pigeon)."}, {"id": "mob-9090", "name": "Seated 90/90 Hip Transitions", "rx": "8 transitions/side", "cal": 15, "demo": "ninetytransition", "log": "setsreps", "sets": 1, "target": "Hip Rotation", "equip": "Floor", "setup": "Sit with the front leg bent 90 at the hip and knee, shin angled away (external rotation), back leg bent 90 behind you, shin angled back (internal rotation). Stay tall through the spine — don’t lean back to cheat range. Lift the hips slightly and rotate the whole base to switch sides, swapping which hip is in and which is out. 8 slow transitions per side. Keep it controlled and pain-free — this is rotational range, not a deep static hold, so back off anything sharp near the SI joint."}, {"id": "mob-shoulder", "name": "Shoulders — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "shouldercar", "log": "done", "target": "Shoulder joint", "equip": "Wall / doorway", "setup": "CARs first: stand tall, one arm draws the largest slow circle it can — reach overhead, rotate, sweep behind — ribs down, 2–3 each way. Then run PAILs/RAILs at an end-range reach (overhead, or a doorway chest opener)."}, {"id": "mob-spine", "name": "Spine — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "catcow", "log": "done", "target": "Full spine", "equip": "Floor", "setup": "CARs first: slow segmental cat-cow moving one vertebra at a time, then gentle rotations and side-bends through the whole spine. Then run PAILs/RAILs gently — low intensity here, this is near your SI joint."},
     {id:'y-kneehug',name:'Supine Knee Hugs',rx:'2 min',cal:7,demo:'kneehug',log:'time',secs:120,target:'Arrive',
       setup:'On your back, knees to chest, rock gently. Transition in from the day. No agenda yet.'},
     {id:'y-swan',name:'Sleeping Swan (Yin Pigeon)',rx:'5 min/side',cal:10,demo:'swan',log:'time',secs:300,target:'SI Joint · Outer Hip · Glute',
@@ -2998,30 +2992,7 @@ var DS_YIN={key:'yin',title:'Evening Yin',accent:'var(--purple)',meta:'30 min ·
       setup:'On your back, bring one knee across the body toward the floor. Arms wide, palms up. Don\'t push the knee — let it rest. Gaze away from the bent knee. Switch sides.'},
     {id:'y-legsup',name:'Legs Up the Wall',rx:'5–10 min',cal:10,demo:'legsup',log:'time',secs:600,target:'Full Decompression',
       setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'}
-  ]};
-
-var DS_DESK={key:'desk',title:'Desk Mobility',accent:'var(--blue)',meta:'office days · standing desk',
-  blurb:'Snack-sized resets between meetings. Stack 3–5 across the day rather than doing them all at once. Skip any elbow-loaded wrist stretch if it\'s flaring — go straight to the band rows instead.',
-  moves:[
-    {id:'desk-posture',name:'Standing Posture Reset',rx:'30s · hourly',cal:3,demo:'stand',log:'done',target:'Posture',equip:'None',
-      setup:'Feet rooted, tuck the tailbone slightly, roll shoulders back and down, lengthen through the crown of the head. Reset before the next call.'},
-    {id:'desk-glutebridge',name:'Standing Glute Squeeze',rx:'10 reps',cal:5,demo:'standsqueeze',log:'done',target:'Glutes',equip:'None',
-      setup:'Standing, squeeze both glutes hard for 5 sec, release. 10 reps. Direct activation for the SI joint pattern — no setup needed.'},
-    {id:'desk-figure4',name:'Standing Figure-4 Hip Opener',rx:'30s/side',cal:5,demo:'figure4',log:'done',target:'Hips · Piriformis',equip:'Desk for balance',
-      setup:'Cross one ankle over the opposite knee, hold the desk for balance, hinge forward slightly until you feel the outer hip open. 30 sec per side.'},
-    {id:'desk-hipcircles',name:'Standing Hip Circles (CARs)',rx:'8/direction',cal:5,demo:'hipcircle',log:'done',target:'Hip Joint',equip:'None',
-      setup:'Hands on hips, trace the biggest slow circle each hip can make, 8 per direction per side. Ribs stay down — nothing else moves.'},
-    {id:'desk-deskcatcow',name:'Standing Cat-Cow (hands on desk)',rx:'10 reps',cal:5,demo:'standcatcow',log:'done',target:'Spine',equip:'Desk edge',
-      setup:'Hands on the desk edge, hips back. Round and arch the spine slowly with the breath, 10 reps. Same pattern as the floor version, just standing.'},
-    {id:'desk-chestopen',name:'Doorway / Desk Chest Opener',rx:'30s/side',cal:3,demo:'chestopen',log:'done',target:'Chest · Posture',equip:'Door frame or wall',
-      setup:'Forearm on the door frame or wall at shoulder height, rotate your body away from it. 30 sec per side. Direct counter to hunched screen posture.'},
-    {id:'desk-lowlunge',name:'Standing Low Lunge (hands on desk)',rx:'30s/side',cal:5,demo:'lowlunge',log:'done',target:'Hip Flexors',equip:'Desk for balance',
-      setup:'Step one foot back into a long stance, hands on the desk, sink the hips gently forward. 30 sec per side — counters hours of hip flexion from sitting/cycling.'},
-    {id:'desk-wallpushup',name:'Wall or Desk-Edge Push-ups',rx:'12 reps',cal:8,demo:'wallpushup',log:'setsreps',sets:1,target:'Chest · Triceps',equip:'Wall or sturdy desk edge',
-      setup:'Hands on the wall or desk edge, walk feet back to set the angle, lower chest toward your hands and push back. Keep wrists neutral — skip this one entirely if the elbow is flaring and do band rows instead.'},
-    {id:'desk-calfraise',name:'Standing Calf Raises',rx:'15 reps',cal:5,demo:'calf',log:'done',target:'Calves',equip:'None',
-      setup:'Rise onto the toes, 2-sec hold at the top, slow descent. 15 reps. Easy blood-flow break between calls.'}
-  ]};
+]};;
 
 var DS_ATG={key:"atg",title:"ATG Bulletproofing (adapted)",accent:"#f472b6",meta:"~20 min · optional add-on",
   blurb:"Adapted from Ben Patrick's Athletic Truth Group system (via Will Tennyson's video). Depth and eccentric intensity are capped for your SI joint and elbow. The three ⚠ moves (ATG split squat, full ROM squat, Nordic curl) are included but flagged — they're the highest SI-joint/eccentric demand in the original standard, so treat them as optional per session rather than a default.",
@@ -3287,7 +3258,7 @@ function dsRenderDayPicker(){
     }
   }
 }
-var DS_MOBILITY={"key": "mobility", "title": "Joint Mobility", "accent": "#a78bfa", "meta": "CARs + PAILs/RAILs · daily", "blurb": "Controlled circles to own each joint, then PAILs/RAILs to build strength at end range. Keep contractions to ~60–70%, symmetric and braced — back off anything sharp, especially around the SI joint.", "moves": [{"id": "mob-hip", "name": "Hips — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 20, "demo": "hipcircle", "log": "done", "target": "Hip joint", "equip": "Floor / wall", "setup": "CARs first: on all fours or standing tall, lift one knee and trace the biggest slow circle the hip can make — 2–3 each direction, ribs down, nothing else moving. Then run the PAILs/RAILs below in a deep hip end range (90/90 fold or pigeon)."}, {"id": "mob-9090", "name": "Seated 90/90 Hip Transitions", "rx": "8 transitions/side", "cal": 15, "demo": "ninetytransition", "log": "setsreps", "sets": 1, "target": "Hip Rotation", "equip": "Floor", "setup": "Sit with the front leg bent 90 at the hip and knee, shin angled away (external rotation), back leg bent 90 behind you, shin angled back (internal rotation). Stay tall through the spine — don’t lean back to cheat range. Lift the hips slightly and rotate the whole base to switch sides, swapping which hip is in and which is out. 8 slow transitions per side. Keep it controlled and pain-free — this is rotational range, not a deep static hold, so back off anything sharp near the SI joint."}, {"id": "mob-shoulder", "name": "Shoulders — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "shouldercar", "log": "done", "target": "Shoulder joint", "equip": "Wall / doorway", "setup": "CARs first: stand tall, one arm draws the largest slow circle it can — reach overhead, rotate, sweep behind — ribs down, 2–3 each way. Then run PAILs/RAILs at an end-range reach (overhead, or a doorway chest opener)."}, {"id": "mob-spine", "name": "Spine — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "catcow", "log": "done", "target": "Full spine", "equip": "Floor", "setup": "CARs first: slow segmental cat-cow moving one vertebra at a time, then gentle rotations and side-bends through the whole spine. Then run PAILs/RAILs gently — low intensity here, this is near your SI joint."}]};
+
 var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end range — weight even, hips square, breathe.", "pail": "Press the front shin and outer hip down into the floor — contract the glute and outer hip you feel stretching. Ramp to ~60–70% over 10s and hold.", "rail": "Switch the effort: gently draw the front knee down and fold a touch deeper using your hip — pull yourself into more range."}, "y-dragon": {"settle": "Sink the hips low and forward to your end range, back knee grounded, torso tall.", "pail": "Drag the back knee forward into the floor isometrically (it won't move) — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and press the hips further forward into extension — pull yourself deeper."}, "y-cat": {"settle": "Round forward over the legs to your end range, let the spine drape, breathe.", "pail": "Press the backs of the legs and heels down into the floor — contract the hamstrings that are stretching. Ramp to ~60–70%.", "rail": "Switch: engage the quads and hip flexors to actively fold yourself deeper over the legs."}, "m-9090": {"settle": "Half-kneel, hips square, shift forward to your honest end range.", "pail": "Drag the back knee forward into the floor isometrically — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and push the hips further forward into extension."}, "p-9090": {"settle": "Half-kneel, hips square, shift forward to your honest end range.", "pail": "Drag the back knee forward into the floor isometrically — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and push the hips further forward into extension."}, "mob-hip": {"settle": "Settle into a deep hip end range — a 90/90 front-leg fold or a pigeon. Breathe to your honest limit.", "pail": "Press the stretching hip down and into the floor — contract the tissue at length, ramp to ~60–70%.", "rail": "Switch: use the opposite hip muscles to pull yourself deeper into the range."}, "mob-shoulder": {"settle": "Take the shoulder to an end-range reach — overhead, or a doorway chest opener. Find your honest limit.", "pail": "Press the arm into the wall or doorway — contract the front-of-shoulder that's stretching, ramp to ~60–70%.", "rail": "Switch: use the back-of-shoulder muscles to pull the arm further into range."}, "mob-spine": {"settle": "Take the spine to a gentle end range of rotation or flexion — easy, never forced.", "pail": "Lightly contract into the stretch — ~50–60% only, keep it gentle near the SI joint.", "rail": "Switch: gently use the opposing muscles to ease a touch deeper. Stop at anything sharp.", "settleSecs": 60}};
 
 
@@ -3710,7 +3681,7 @@ function dsStartTimer(id,secs){
   dsTimerPaint(id,secs);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(sk==='wed'||sk==='thu')items=items.concat(DS_DESK.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
 /* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
 function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){
@@ -3726,7 +3697,7 @@ function dsRawItem(id){
   });
   if(!fallback && typeof DS_SAT_HEAT!=="undefined" && DS_SAT_HEAT.moves){ DS_SAT_HEAT.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); }
   if(!fallback && typeof DS_HIIT_MAP!=="undefined"){ Object.keys(DS_HIIT_MAP).forEach(function(k){ if(fallback)return; var hm=DS_HIIT_MAP[k]; if(hm&&hm.moves){ hm.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); } }); }
-  [DS_MORNING,DS_PRE,DS_YIN,DS_MOBILITY,DS_PULLUP,DS_ATG,DS_DESK].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
+  [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP,DS_ATG].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
   return fallback;
 }
 
@@ -3735,7 +3706,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_YIN.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_DESK.moves,DS_ATG.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
+  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -4596,8 +4567,6 @@ function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("d
 var DS_FINISHER_DAYS={mon:1,tue:1,thu:1,fri:1};
 var DS_FINISHER_ON={}; try{ DS_FINISHER_ON=JSON.parse(store.get("ds_fin_on")||"{}"); }catch(e){ DS_FINISHER_ON={}; }
 function dsToggleFinisher(){ var sk=dsSessionKey(activeDate); DS_FINISHER_ON[sk]=!DS_FINISHER_ON[sk]; try{ store.set("ds_fin_on", JSON.stringify(DS_FINISHER_ON)); }catch(e){} dsRender(); }
-var DS_ATG_ON={}; try{ DS_ATG_ON=JSON.parse(store.get("ds_atg_on")||"{}"); }catch(e){ DS_ATG_ON={}; }
-function dsToggleATG(){ var sk=dsSessionKey(activeDate); DS_ATG_ON[sk]=!DS_ATG_ON[sk]; try{ store.set("ds_atg_on", JSON.stringify(DS_ATG_ON)); }catch(e){} dsRender(); }
 /* ── Focus rotation (Tier 2): one small accessory block per day ─────────── */
 function dsFocusBlock(sk){
   function pick(list,ids){ return list.filter(function(m){return ids.indexOf(m.id)>=0;}); }
@@ -4628,11 +4597,9 @@ function dsRenderSearchAll(q){
   var extras=[
     {label:'Morning Activation',accent:DS_MORNING.accent,moves:DS_MORNING.moves},
     {label:'Pre-Workout',accent:DS_PRE.accent,moves:DS_PRE.moves},
-    {label:'Evening Yin',accent:DS_YIN.accent,moves:DS_YIN.moves},
-    {label:'Joint Mobility',accent:DS_MOBILITY.accent,moves:DS_MOBILITY.moves},
+    {label:'Mobility',accent:DS_MOBILITY.accent,moves:DS_MOBILITY.moves},
     {label:'Pull-Up Progression',accent:DS_PULLUP.accent,moves:DS_PULLUP.moves},
-    {label:DS_ATG.title,accent:DS_ATG.accent,moves:DS_ATG.moves},
-    {label:DS_DESK.title,accent:DS_DESK.accent,moves:DS_DESK.moves}
+    {label:DS_ATG.title,accent:DS_ATG.accent,moves:DS_ATG.moves}
   ];
   extras.forEach(function(ex){
     var m=ex.moves.filter(function(it){return dsItemMatchesSearch(it,q);});
@@ -4808,9 +4775,7 @@ var DS_MV={
   'mon-bike':{'Core':1},
   'thu-bike':{'Core':1},
   'thu-russian':{'Core':1},
-  'wed-hollow':{'Core':1},
-  'desk-wallpushup':{'Chest':.5,'Triceps':.5},
-  'desk-calfraise':{'Calves':.5}
+  'wed-hollow':{'Core':1}
 };
 var DS_MV_NAMEIDX=null;
 function dsMVNameIdx(){
@@ -4965,22 +4930,17 @@ function dsRender(){
     }
     var _focus=dsFocusBlock(sk);
     if(_focus)html+=dsRenderSection(_focus.title,'',_focus.accent,_focus.moves,_focus.blurb);
-    html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, yin, mobility, HIIT, full ATG\u2026)')+'</button></div>';
+    html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, mobility, HIIT)')+'</button></div>';
     if(DS_MORE_OPEN){
       html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
-      if(sk==='wed'||sk==='thu')html+=dsRenderSection(DS_DESK.title,DS_DESK.meta,DS_DESK.accent,DS_DESK.moves,DS_DESK.blurb);
       if(DS_FINISHER_DAYS[sk]){
         var _finOn=!!DS_FINISHER_ON[sk];
         html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
         if(_finOn&&DS_HIIT_MAP[sk]){var _hiit=DS_HIIT_MAP[sk];html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
       }
       html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
-      html+=dsRenderSection('Evening Yin',DS_YIN.meta,DS_YIN.accent,DS_YIN.moves,DS_YIN.blurb);
-      html+=dsRenderSection('Joint Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
+      html+=dsRenderSection('Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
       html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
-      var _atgOn=!!DS_ATG_ON[sk];
-      html+='<div style="margin:14px 0 0;"><button onclick="dsToggleATG()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_atgOn?DS_ATG.accent:'#ffffff1a')+';background:'+(_atgOn?DS_ATG.accent+'18':'transparent')+';color:'+(_atgOn?DS_ATG.accent:'#888')+';">'+(_atgOn?'\u26A1 '+DS_ATG.title+' ON \u2014 '+DS_ATG.meta+' (tap to hide)':'\u26A1 + '+DS_ATG.title+' \u2014 '+DS_ATG.meta)+'</button></div>';
-      if(_atgOn)html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
     }
   }
   var _note=document.getElementById('ds-search-note');
