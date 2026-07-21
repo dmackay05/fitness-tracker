@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v23 — 2026-07-20";
+var APP_BUILD = "v24 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1156,6 +1156,38 @@ function renderSupps(){
 var trk = {active:false, paused:false, activity:"ride", watchId:null,
            startTs:0, elapsedMs:0, lastPt:null, distM:0, wakeLock:null, ticker:null};
 
+// Persist the trackable parts of trk state (not watchId/wakeLock/ticker, which
+// are runtime handles that can't survive a reload) so an in-progress GPS
+// session — distance, elapsed time, last known position — isn't lost outright
+// if the tab gets backgrounded/killed or the page reloads mid-walk/ride.
+function trkPersist(){
+  try{
+    if(!trk.active){ localStorage.removeItem("trk_session"); return; }
+    localStorage.setItem("trk_session", JSON.stringify({
+      active:trk.active, paused:trk.paused, activity:trk.activity,
+      startTs:trk.startTs, elapsedMs:trk.elapsedMs, lastPt:trk.lastPt, distM:trk.distM
+    }));
+  }catch(e){}
+}
+function trkTryRestore(){
+  try{
+    var raw=localStorage.getItem("trk_session"); if(!raw) return;
+    var s=JSON.parse(raw); if(!s||!s.active) return;
+    trk.active=true; trk.paused=true; // always resume paused — GPS watch needs a fresh user tap to reacquire cleanly
+    trk.activity=s.activity||"ride"; trk.elapsedMs=(s.elapsedMs||0)+(s.paused?0:(Date.now()-(s.startTs||Date.now())));
+    trk.distM=s.distM||0; trk.lastPt=s.lastPt||null; trk.startTs=Date.now();
+    var rideBtn=document.getElementById("trk-ride"), walkBtn=document.getElementById("trk-walk");
+    if(rideBtn&&walkBtn){ rideBtn.classList.toggle("sel",trk.activity==="ride"); walkBtn.classList.toggle("sel",trk.activity==="walk"); }
+    var distEl=document.getElementById("trk-dist"); if(distEl) distEl.style.color = trk.activity==="ride" ? "#fb923c" : "#5eead4";
+    var startBtn=document.getElementById("trk-start"), pauseBtn=document.getElementById("trk-pause"), finishBtn=document.getElementById("trk-finish");
+    if(startBtn) startBtn.style.display="none";
+    if(pauseBtn){ pauseBtn.style.display="block"; pauseBtn.textContent="Resume"; }
+    if(finishBtn) finishBtn.style.display="block";
+    trkUpdate();
+    trkStatus("Recovered a session from before reload — tap Resume to keep tracking, or Finish to save what you have","#fbbf24");
+  }catch(e){}
+}
+
 function setTrackActivity(a){
   if(trk.active) return; // don't switch mid-session
   trk.activity=a;
@@ -1184,6 +1216,7 @@ function trkStart(){
   trkReqWake();
   trk.watchId=navigator.geolocation.watchPosition(trkOnPos, trkOnErr, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
   trk.ticker=setInterval(trkTick,1000); trkTick();
+  trkPersist();
 }
 function trkOnErr(e){
   if(e && e.code===1) trkStatus("Location permission denied — use manual entry","#f87171");
@@ -1206,10 +1239,12 @@ function trkOnPos(p){
   } else { trk.lastPt=pt; }
   trkStatus("Tracking · GPS ±"+Math.round(acc)+"m","#5eead4");
   trkUpdate();
+  trkPersist();
 }
 function trkTick(){
   if(trk.active && !trk.paused){ /* elapsed advances live via startTs */ }
   trkUpdate();
+  trkPersist();
 }
 function trkElapsedMs(){ return trk.elapsedMs + ((trk.active && !trk.paused) ? (Date.now()-trk.startTs) : 0); }
 function trkUpdate(){
@@ -1225,9 +1260,14 @@ function trkUpdate(){
 }
 function trkTogglePause(){
   if(!trk.active) return;
-  if(trk.paused){ trk.paused=false; trk.startTs=Date.now(); document.getElementById("trk-pause").textContent="Pause"; trkReqWake(); trkStatus("Resumed","#5eead4"); }
+  if(trk.paused){
+    trk.paused=false; trk.startTs=Date.now(); document.getElementById("trk-pause").textContent="Pause"; trkReqWake(); trkStatus("Resumed","#5eead4");
+    if(trk.watchId==null && navigator.geolocation){ trk.watchId=navigator.geolocation.watchPosition(trkOnPos, trkOnErr, {enableHighAccuracy:true, maximumAge:1000, timeout:20000}); }
+    if(!trk.ticker){ trk.ticker=setInterval(trkTick,1000); }
+  }
   else { trk.paused=true; trk.elapsedMs+=Date.now()-trk.startTs; document.getElementById("trk-pause").textContent="Resume"; trkStatus("Paused","#888"); }
   trkUpdate();
+  trkPersist();
 }
 function trkStop(){
   if(trk.watchId!=null){ navigator.geolocation.clearWatch(trk.watchId); trk.watchId=null; }
@@ -1237,6 +1277,7 @@ function trkStop(){
   document.getElementById("trk-start").style.display="block";
   document.getElementById("trk-pause").style.display="none";
   document.getElementById("trk-finish").style.display="none";
+  try{ localStorage.removeItem("trk_session"); }catch(e){}
 }
 function trkFinish(){
   var miles=+(trk.distM/1609.344).toFixed(2);
@@ -1973,6 +2014,10 @@ setInterval(function(){
     if(ok&&rows){ mergeRows(rows); renderAll(); }
   });
 }, 3 * 60 * 1000);
+
+// Recover an in-progress GPS tracking session if the page reloaded mid-walk/ride
+// (backgrounded tab getting killed, screen lock causing a refresh, etc.)
+try{ trkTryRestore(); }catch(e){}
 
 // ══════════════════════════════════════════════════════════════════════
 // USDA FOOD SEARCH (FoodData Central) — ported from food_nutrition_info.py
