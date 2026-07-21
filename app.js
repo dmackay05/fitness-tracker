@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v22 — 2026-07-20";
+var APP_BUILD = "v23 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -598,6 +598,12 @@ function renderDash(){
   var pr=GOALS.protein-Math.round(t.protein), hint=document.getElementById("protein-hint");
   if(pr>0 && isToday()){ hint.style.display="block"; hint.textContent="💡 "+pr+"g protein to go — try a shake + cottage cheese"; }
   else hint.style.display="none";
+  var bNote=document.getElementById("burned-note");
+  if(bNote){
+    bNote.textContent = burned>=GOALS.burned
+      ? "🔥 Nice — hit your activity check-in for today."
+      : "🔥 Burned is just an activity check-in, not a second calorie target. Your intake goal ("+GOALS.cal+" today) already accounts for training days — being under here doesn't mean you're maintaining or gaining.";
+  }
 
   // Averages strip (the simplified history)
   var s=statAverages();
