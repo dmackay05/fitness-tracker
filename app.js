@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v19 — 2026-07-20";
+var APP_BUILD = "v20 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -320,6 +320,15 @@ function pushToSheets(){
 
 // ── PROGRESSIVE OVERLOAD CLOUD CACHE (cross-device last-time history) ───
 var DS_CLOUD_LAST = {};
+// Sheets sometimes auto-converts slash-separated text (e.g. "10/12" reps) into a real
+// date, which we then read back as a stringified JS Date like "Thu Oct 15 2020 00:00:00
+// GMT-0600 (Mountain Daylight Time)". Detect and blank that out rather than display it.
+function dsCleanField(v){
+  if(v==null) return v;
+  var s=String(v);
+  if(/^[A-Za-z]{3}\s[A-Za-z]{3}\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2}\sGMT/.test(s)) return "";
+  return v;
+}
 var DS_CLOUD_VOL = {};   // {date: {exId: sets}} — clean per-day set counts from the Overload sheet
 function fetchOverloadCache(){
   if(!SHEETS_URL) return;
@@ -333,7 +342,7 @@ function fetchOverloadCache(){
       if(!exId||!date) return;
       var prev=DS_CLOUD_LAST[exId];
       if(!prev || date>prev.date){
-        DS_CLOUD_LAST[exId]={date:date, reps:r["Reps"]||"", load:r["Band / Weight"]||"", sets:r["Sets"]||"", rir:r["RIR"]||""};
+        DS_CLOUD_LAST[exId]={date:date, reps:dsCleanField(r["Reps"]||""), load:dsCleanField(r["Band / Weight"]||""), sets:dsCleanField(r["Sets"]||""), rir:dsCleanField(r["RIR"]||"")};
       }
       // Per-date volume history for the Weekly Volume card (survives cache wipes)
       if(date>=cutoff){
@@ -4111,7 +4120,7 @@ function dsUnlog(id){ var day=getDay(), sid="sess_"+id;
 function dsLastTime(id){ var sid="sess_"+id; var local=null;
   var keys=Object.keys(appData).filter(function(k){return k<activeDate&&appData[k]&&appData[k].exercises&&appData[k].exercises.some(function(e){return e.id===sid;});}).sort();
   if(keys.length){ var lk=keys[keys.length-1], arr=appData[lk].exercises;
-    for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid){ local={date:lk,reps:arr[i].reps,load:arr[i].load,rir:arr[i].rir}; break; } } }
+    for(var i=arr.length-1;i>=0;i--){ if(arr[i].id===sid){ local={date:lk,reps:dsCleanField(arr[i].reps),load:dsCleanField(arr[i].load),rir:arr[i].rir}; break; } } }
   var cloud=(typeof DS_CLOUD_LAST!=="undefined")?DS_CLOUD_LAST[id]:null;
   if(cloud && cloud.date<activeDate && (!local || cloud.date>local.date)){
     return {reps:cloud.reps,load:cloud.load,rir:(cloud.rir!==""&&cloud.rir!=null?cloud.rir:null)};
@@ -4417,7 +4426,7 @@ function dsRenderItem(rawItem,idx){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';

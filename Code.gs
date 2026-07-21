@@ -551,12 +551,15 @@ function buildIndex(sheet) {
 function upsertRow(sheet, key, row, index) {
   key = String(key).trim();
   if (index[key]) {
-    sheet.getRange(index[key], 1, 1, row.length).setValues([row]);
+    var r = sheet.getRange(index[key], 1, 1, row.length);
+    r.setNumberFormat("@");
+    r.setValues([row]);
   } else {
     sheet.appendRow(row);
     index[key] = sheet.getLastRow();
-    // Keep date column as plain text to prevent Sheets auto-coercion
-    sheet.getRange(index[key], 1).setNumberFormat("@");
+    // Force the whole row to plain text so Sheets never auto-converts
+    // slash-separated values (reps like "10/12", band like "30/40") into dates.
+    sheet.getRange(index[key], 1, 1, row.length).setNumberFormat("@");
   }
 }
 
