@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v20 — 2026-07-20";
+var APP_BUILD = "v21 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7387,7 +7387,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 
   function beepOnce() {
     try {
-      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var ctx = getAudioCtx();
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.connect(gain);
@@ -7455,6 +7455,16 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 
   function tgStartTimer(seconds, name, label) {
     event.stopPropagation();
+    // Unlock/resume the shared AudioContext HERE, synchronously inside the tap
+    // gesture — the same pattern the yoga session uses. If we wait until the
+    // countdown naturally hits zero (async, no gesture), modern browsers may
+    // silently refuse to play the beep.
+    try {
+      var ctx = getAudioCtx();
+      var buf = ctx.createBuffer(1, 1, 22050);
+      var src = ctx.createBufferSource();
+      src.buffer = buf; src.connect(ctx.destination); src.start(0);
+    } catch(e) {}
     clearInterval(timerInterval);
     timerTotal = seconds;
     timerRemaining = seconds;
@@ -7528,7 +7538,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 
   function beepDone() {
     try {
-      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var ctx = getAudioCtx();
       [0, 0.15, 0.3].forEach(function(delay) {
         var osc = ctx.createOscillator();
         var gain = ctx.createGain();
