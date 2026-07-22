@@ -1471,6 +1471,8 @@ html body div.app{max-width:480px}
 #panel-log .ld-tab .ld-ic{font-size:20px;line-height:1;}
 #panel-log .ld-tab .ld-lbl{display:none;}
 #panel-log .ld-tab.on{background:#5eead41a;border-color:#5eead4;}
+.meal-tag-btn{flex:1;padding:9px 4px;font-size:12px;font-weight:600;letter-spacing:.02em;font-family:'DM Mono',monospace;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;cursor:pointer;color:#cfd0dd;}
+.meal-tag-btn.on{background:#5eead41a;border-color:#5eead4;color:#5eead4;}
 #panel-log .ld-pane-hdr{font-size:13px;font-weight:700;color:#e6fffb;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
 #panel-log .fh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:#ffffff05;border:1px solid #ffffff0d;margin-bottom:7px;}
 #panel-log .fh-info{flex:1;min-width:0;}
