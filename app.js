@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v27 — 2026-07-20";
+var APP_BUILD = "v28 — 2026-07-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -704,22 +704,19 @@ function populateFoodDropdown(){
 }
 function addDropdownFood(){
   var dd=document.getElementById("food-dropdown"); if(dd.value==="") return;
-  var f=PRESET_FOODS[dd.value], day=getDay();
-  day.foods.push({name:f.name,cal:f.cal,protein:f.protein,carbs:f.carbs,fat:f.fat,id:Date.now().toString()});
-  saveDay(day); dd.value=""; document.getElementById("dropdown-preview").textContent=""; renderAll();
+  var f=PRESET_FOODS[dd.value];
+  addFoodObj({name:f.name,cal:f.cal,protein:f.protein,carbs:f.carbs,fat:f.fat});
+  dd.value=""; document.getElementById("dropdown-preview").textContent="";
 }
 function addCustomFood(){
   var n=document.getElementById("cf-name").value.trim(), c=+document.getElementById("cf-cal").value||0;
   if(!n||!c) return;
-  var day=getDay();
   var _cfb=+document.getElementById("cf-fiber").value||0;
   var _cfo={name:n,cal:c,protein:+document.getElementById("cf-protein").value||0,
-    carbs:+document.getElementById("cf-carbs").value||0,fat:+document.getElementById("cf-fat").value||0,id:Date.now().toString()};
+    carbs:+document.getElementById("cf-carbs").value||0,fat:+document.getElementById("cf-fat").value||0};
   if(_cfb) _cfo.fiber=_cfb;
-  day.foods.push(_cfo);
-  saveDay(day);
+  addFoodObj(_cfo);
   ["cf-name","cf-cal","cf-protein","cf-carbs","cf-fat","cf-fiber"].forEach(function(i){document.getElementById(i).value="";});
-  renderAll();
 }
 function removeFood(id){ var day=getDay(); day.foods=day.foods.filter(function(f){return f.id!=id;}); saveDay(day); renderAll(); }
 var editingFoodId=null;
@@ -1709,7 +1706,7 @@ function addRecentIdx(i){ var f=_recentCache[i]; if(f){ addFoodObj(f); toast("Ad
 function copyYesterday(){
   var d=keyToDate(activeDate); d.setDate(d.getDate()-1); var yk=localDateKey(d);
   var src=appData[yk]; if(!src||!src.foods||!src.foods.length){ toast("No food logged the day before"); return; }
-  var day=getDay(); src.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); });
+  var day=getDay(); src.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); if(f.mealTag) o.mealTag=f.mealTag; day.foods.push(o); });
   saveDay(day); renderAll(); toast("Copied "+src.foods.length+" item"+(src.foods.length>1?"s":""));
 }
 function recentFoods(){
@@ -1782,8 +1779,8 @@ var FT_STAPLES=[
 ];
 function addStaple(i){ var f=FT_STAPLES[i]; if(f){ addFoodObj({name:f.name,cal:f.cal,protein:f.protein,carbs:f.carbs,fat:f.fat}); } }
 function addUsualDay(){
-  var day=getDay();
-  [0,1,2,3].forEach(function(i){ var f=FT_STAPLES[i]; var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*10000)+i; day.foods.push(o); });
+  var day=getDay(); var _tags=['Breakfast','Snack','Snack','Snack'];
+  [0,1,2,3].forEach(function(i){ var f=FT_STAPLES[i]; var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*10000)+i; o.mealTag=_tags[i]; day.foods.push(o); });
   saveDay(day); renderAll(); toast("Usual day logged \u2014 95g protein banked. Just add lunch + dinner protein.");
 }
 function saveMealFromToday(){
@@ -1794,8 +1791,8 @@ function saveMealFromToday(){
   el.value=""; renderQuickAdd(); toast("Saved meal: "+name);
 }
 function addMeal(i){
-  var m=loadMeals()[i]; if(!m) return; var day=getDay();
-  m.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); day.foods.push(o); });
+  var m=loadMeals()[i]; if(!m) return; var day=getDay(); var _tag=dsMealTagGet();
+  m.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); o.mealTag=_tag; day.foods.push(o); });
   saveDay(day); renderAll(); toast("Added "+m.name);
 }
 function delMeal(i){ var meals=loadMeals(); meals.splice(i,1); saveMeals(meals); renderQuickAdd(); }
