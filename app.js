@@ -5016,7 +5016,7 @@ function dsRepsBlur(id){ var st=dsItemState(id); var el=document.getElementById(
 function dsMinInput(id,perMin){ var el=document.getElementById('ds-min-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ var st=dsItemState(id); st.mins=Math.min(600,v); dsSaveUI(); var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+calAdj(st.mins*perMin)+' kcal'; } }
 function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var el=document.getElementById('ds-min-'+id); if(el)el.value=st.mins||raw.defMin||30; }
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
-function dsIsUnilateral(item){ return /\/side/i.test(item.rx||''); }
+function dsIsUnilateral(item){ return /\/side|\/leg/i.test(item.rx||''); }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
 function dsAutoregulate(id){
   var st=dsItemState(id);
