@@ -4471,7 +4471,7 @@ function dsRenderItem(rawItem,idx){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+lt.reps+' reps'+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
@@ -4480,7 +4480,13 @@ function dsRenderItem(rawItem,idx){
       h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB Program updated: target now '+_prog.reps+' reps (was '+_prog.prevReps+'), based on your trend</div>';
     }
     var loadFld = dsWantsLoad(item) ? '<input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">' : '';
-    h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+    if(dsIsUnilateral(item)){
+      h+='<div class="ds-logrow"><span class="ds-lbl">L</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-repsL-'+item.id+'" value="'+(st._repsL||10)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'L\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'L\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',1)">+</button></div>'
+        +'<span class="ds-lbl" style="margin-left:8px">R</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-repsR-'+item.id+'" value="'+(st._repsR||10)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'R\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'R\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',1)">+</button></div>'
+        +loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+    } else {
+      h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+    }
     h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
     h+='<div class="ds-actionrow" style="display:flex;gap:6px;align-items:center;margin-top:8px">'
       +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
@@ -5001,11 +5007,16 @@ function dsToggleSwap(id){ var st=dsItemState(id); st._swapOpen=!st._swapOpen; d
 function dsToggleMistakes(id){ var st=dsItemState(id); st._mistakesOpen=!st._mistakesOpen; dsSaveUI(); dsRender(); }
 function dsPickVariant(id,i){ DS_SWAPS[id]=i; dsSaveSwaps(); var st=dsItemState(id); st._swapOpen=false; dsSaveUI(); dsRender(); }
 function dsBump(id,delta){ var st=dsItemState(id); st._reps=Math.max(1,(st._reps||10)+delta); var el=document.getElementById('ds-reps-'+id); if(el)el.value=st._reps; dsSaveUI(); }
+function dsBumpSide(id,side,delta){ var st=dsItemState(id); var k='_reps'+side; st[k]=Math.max(1,(st[k]||10)+delta); var el=document.getElementById('ds-reps'+side+'-'+id); if(el)el.value=st[k]; dsSaveUI(); }
+function dsRepsInputSide(id,side){ var el=document.getElementById('ds-reps'+side+'-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ dsItemState(id)['_reps'+side]=Math.min(999,v); dsSaveUI(); } }
+function dsRepsBlurSide(id,side){ var st=dsItemState(id); var el=document.getElementById('ds-reps'+side+'-'+id); if(el)el.value=st['_reps'+side]||10; }
+
 function dsRepsInput(id){ var el=document.getElementById('ds-reps-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ dsItemState(id)._reps=Math.min(999,v); dsSaveUI(); } }
 function dsRepsBlur(id){ var st=dsItemState(id); var el=document.getElementById('ds-reps-'+id); if(el)el.value=st._reps||10; }
 function dsMinInput(id,perMin){ var el=document.getElementById('ds-min-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ var st=dsItemState(id); st.mins=Math.min(600,v); dsSaveUI(); var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+calAdj(st.mins*perMin)+' kcal'; } }
 function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var el=document.getElementById('ds-min-'+id); if(el)el.value=st.mins||raw.defMin||30; }
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
+function dsIsUnilateral(item){ return /\/side/i.test(item.rx||''); }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
 function dsAutoregulate(id){
   var st=dsItemState(id);
@@ -5032,8 +5043,18 @@ function dsAutoregulate(id){
 function dsLogSet(id,target){
   var st=dsItemState(id);
   if(st.manualDone){ st.manualDone=false; }
-  var reps=st._reps||10; var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
-  st.sets.push({reps:reps,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()});
+  var _viewItem=dsViewOf(dsRawItem(id)); var _uni=dsIsUnilateral(_viewItem);
+  var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
+  var reps, setObj;
+  if(_uni){
+    var repsL=st._repsL||10, repsR=st._repsR||10;
+    reps=repsL+repsR;
+    setObj={reps:reps,repsL:repsL,repsR:repsR,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()};
+  } else {
+    reps=st._reps||10;
+    setObj={reps:reps,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()};
+  }
+  st.sets.push(setObj);
   dsAutoregulate(id);
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
   if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
