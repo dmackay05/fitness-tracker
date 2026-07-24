@@ -909,6 +909,53 @@
 
 
 
-<script src="app.js?v=110"></script>
+<!-- ── REST TIMER WIDGET ──────────────────────────────────────────
+     Driven by tgStartTimer() in app.js. Auto-fires after each logged
+     set (DS_REST_SECS) and from the Rest buttons in the exercise guide. -->
+<style>
+  #timer-widget{
+    position:fixed;left:50%;bottom:78px;transform:translateX(-50%) translateY(140%);
+    width:min(420px,calc(100vw - 32px));z-index:9999;
+    background:var(--bg2,#13131d);border:1px solid var(--border2,#ffffff1a);
+    border-radius:16px;padding:14px 16px 12px;
+    box-shadow:0 12px 40px #000000aa;
+    font-family:var(--font-mono,'DM Mono',monospace);
+    opacity:0;pointer-events:none;
+    transition:transform .28s cubic-bezier(.2,.8,.3,1),opacity .2s ease;
+  }
+  #timer-widget.active{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+  .tw-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+  #timer-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#c6f24e}
+  #timer-name{font-size:10px;color:var(--muted,#888);text-align:right;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+  #timer-display{font-size:38px;font-weight:700;line-height:1;color:var(--text,#f0ede8);
+    letter-spacing:.02em;transition:color .2s ease}
+  #timer-display.urgent{color:#ff8f6b}
+  .tw-track{height:4px;border-radius:4px;background:#ffffff14;overflow:hidden;margin:10px 0 12px}
+  #timer-bar{height:100%;width:100%;background:#c6f24e;border-radius:4px;
+    transition:width 1s linear,background .2s ease}
+  #timer-bar.urgent{background:#ff8f6b}
+  .tw-btns{display:flex;gap:8px}
+  .tw-btn{flex:1;padding:9px 0;border-radius:10px;cursor:pointer;
+    background:transparent;border:1px solid var(--border2,#ffffff1a);
+    color:var(--muted,#888);font-family:inherit;font-size:13px}
+  .tw-btn:active{background:#ffffff10}
+  .tw-btn.close{color:#c6f24e;border-color:#c6f24e55}
+</style>
+<div id="timer-widget" role="status" aria-live="polite">
+  <div class="tw-top">
+    <span id="timer-label">REST</span>
+    <span id="timer-name"></span>
+  </div>
+  <div id="timer-display">0:00</div>
+  <div class="tw-track"><div id="timer-bar"></div></div>
+  <div class="tw-btns">
+    <button class="tw-btn" id="t-pause" onclick="pauseTimer()">⏸</button>
+    <button class="tw-btn" onclick="restartTimer()">↻</button>
+    <button class="tw-btn close" onclick="closeTimer()">Skip</button>
+  </div>
+</div>
+
+<script src="app.js?v=111"></script>
 </body>
 </html>

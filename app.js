@@ -7532,7 +7532,10 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
   var timerPaused = false;
 
   function tgStartTimer(seconds, name, label) {
-    event.stopPropagation();
+    // Only stop propagation when this actually came from a click gesture.
+    // dsLogSet() calls this programmatically after logging a set, where there
+    // is no `event` — referencing it bare threw and killed the rest timer.
+    try { if (typeof event !== 'undefined' && event && event.stopPropagation) event.stopPropagation(); } catch(e) {}
     // Unlock/resume the shared AudioContext HERE, synchronously inside the tap
     // gesture — the same pattern the yoga session uses. If we wait until the
     // countdown naturally hits zero (async, no gesture), modern browsers may
@@ -7555,10 +7558,11 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     var nameEl = document.getElementById('timer-name');
     var pauseBtn = document.getElementById('t-pause');
 
-    lbl.textContent = label || 'TIMER';
-    nameEl.textContent = name || '';
+    if (!widget || !display || !bar) { return; }
+    if (lbl) lbl.textContent = label || 'TIMER';
+    if (nameEl) nameEl.textContent = name || '';
     widget.classList.add('active');
-    pauseBtn.textContent = '⏸';
+    if (pauseBtn) pauseBtn.textContent = '⏸';
     display.classList.remove('urgent');
     bar.classList.remove('urgent');
 
@@ -7585,6 +7589,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
   function updateTimerDisplay() {
     var display = document.getElementById('timer-display');
     var bar = document.getElementById('timer-bar');
+    if (!display || !bar) return;
     var mins = Math.floor(timerRemaining / 60);
     var secs = timerRemaining % 60;
     display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
@@ -7597,21 +7602,26 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
 
   function pauseTimer() {
     timerPaused = !timerPaused;
-    document.getElementById('t-pause').textContent = timerPaused ? '▶' : '⏸';
+    var pb = document.getElementById('t-pause');
+    if (pb) pb.textContent = timerPaused ? '▶' : '⏸';
   }
 
   function restartTimer() {
     timerRemaining = timerTotal;
     timerPaused = false;
-    document.getElementById('t-pause').textContent = '⏸';
-    document.getElementById('timer-display').classList.remove('urgent');
-    document.getElementById('timer-bar').classList.remove('urgent');
+    var pb = document.getElementById('t-pause');
+    if (pb) pb.textContent = '⏸';
+    var d = document.getElementById('timer-display');
+    var b = document.getElementById('timer-bar');
+    if (d) d.classList.remove('urgent');
+    if (b) b.classList.remove('urgent');
     updateTimerDisplay();
   }
 
   function closeTimer() {
     clearInterval(timerInterval);
-    document.getElementById('timer-widget').classList.remove('active');
+    var w = document.getElementById('timer-widget');
+    if (w) w.classList.remove('active');
   }
 
   function beepDone() {
