@@ -6551,6 +6551,76 @@ function ygLoadPose() {
 
 // ── Audio cues using Web Audio API (no files needed) ──────────────
 var _audioCtx = null;
+var _audioUnlocked = false;
+
+// Unlock audio on the FIRST user interaction anywhere in the app.
+// Previously the AudioContext was only unlocked inside ygStartSession()
+// (yoga tab), so rest-timer beeps on the Today tab fired on a suspended
+// context and were silently dropped by the browser.
+function dsUnlockAudio() {
+  try {
+    if (!_audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      _audioCtx = new Ctx();
+    }
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+    var buf = _audioCtx.createBuffer(1, 1, 22050);
+    var src = _audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(_audioCtx.destination);
+    src.start(0);
+    if (_audioCtx.state === "running") _audioUnlocked = true;
+  } catch (e) {}
+}
+(function () {
+  function onFirstTouch() {
+    dsUnlockAudio();
+    if (_audioUnlocked) {
+      document.removeEventListener('pointerdown', onFirstTouch, true);
+      document.removeEventListener('touchstart', onFirstTouch, true);
+      document.removeEventListener('click', onFirstTouch, true);
+    }
+  }
+  document.addEventListener('pointerdown', onFirstTouch, true);
+  document.addEventListener('touchstart', onFirstTouch, true);
+  document.addEventListener('click', onFirstTouch, true);
+  // Browsers suspend the context when the app is backgrounded — re-arm on return.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && _audioCtx && _audioCtx.state === 'suspended') {
+      try { _audioCtx.resume(); } catch (e) {}
+    }
+  });
+})();
+
+function dsTestSound() {
+  var el = document.getElementById('ds-sound-status');
+  function say(msg, ok) { if (el) { el.textContent = msg; el.style.color = ok ? '#5eead4' : '#f87171'; } }
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) { say('This browser has no Web Audio support.', false); return; }
+    dsUnlockAudio();
+    var ctx = _audioCtx;
+    function fire() {
+      [0, 0.15, 0.3].forEach(function (delay) {
+        var osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.25);
+      });
+      say('Played 3 beeps — context: ' + ctx.state + '. If silent, check the device is not on vibrate/silent and that media volume (not ringer) is up.', true);
+    }
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(fire).catch(function () { say('Audio blocked by browser (context suspended).', false); });
+    } else { fire(); }
+    try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) {}
+  } catch (err) {
+    say('Error: ' + (err && err.message ? err.message : err), false);
+  }
+}
 
 function getAudioCtx() {
   if (!_audioCtx) {
@@ -7540,12 +7610,10 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     // gesture — the same pattern the yoga session uses. If we wait until the
     // countdown naturally hits zero (async, no gesture), modern browsers may
     // silently refuse to play the beep.
-    try {
-      var ctx = getAudioCtx();
-      var buf = ctx.createBuffer(1, 1, 22050);
-      var src = ctx.createBufferSource();
-      src.buffer = buf; src.connect(ctx.destination); src.start(0);
-    } catch(e) {}
+    dsUnlockAudio();
+    // Short low cue so you get immediate audible confirmation that rest started.
+    // This fires inside the live gesture, so it is the most reliable beep we have.
+    beepRestStart();
     clearInterval(timerInterval);
     timerTotal = seconds;
     timerRemaining = seconds;
@@ -7624,7 +7692,28 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
     if (w) w.classList.remove('active');
   }
 
+  function beepRestStart() {
+    try {
+      var ctx = getAudioCtx();
+      function fire() {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 440;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.18);
+      }
+      if (ctx.state === 'suspended') { ctx.resume().then(fire).catch(function(){}); } else { fire(); }
+    } catch(e) {}
+    try { if (navigator.vibrate) navigator.vibrate(40); } catch(e) {}
+  }
+
   function beepDone() {
+    // Haptic fallback — fires even if the browser blocks audio entirely.
+    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch(e) {}
     try {
       var ctx = getAudioCtx();
       function fire() {

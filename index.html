@@ -749,6 +749,12 @@
         <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
+      <div class="te-section-hdr">🔊 Sound</div>
+      <div class="card">
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Rest-timer beeps use the Web Audio API. Browsers block audio until you tap the screen once. Use this to confirm sound is working on this device.</div>
+        <button class="bp bfull" style="margin-top:0" onclick="dsTestSound()">▶ Test Beep</button>
+        <div id="ds-sound-status" style="font-size:10px;color:#5eead4;text-align:center;margin-top:8px;min-height:14px;font-family:'DM Mono',monospace"></div>
+      </div>
       <div class="te-section-hdr">☁️ Backup &amp; Data</div>
       <div class="card">
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:14px;line-height:1.6">Edits auto-sync a few seconds after you make them. Tap below to force a backup now.</div>
@@ -956,6 +962,6 @@
   </div>
 </div>
 
-<script src="app.js?v=111"></script>
+<script src="app.js?v=112"></script>
 </body>
 </html>
