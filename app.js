@@ -5018,27 +5018,42 @@ function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); va
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
 function dsIsUnilateral(item){ return /\/side|\/leg/i.test(item.rx||''); }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
+var DS_AUTOREG_REP_CEIL=20; // above this, stop adding bodyweight/band reps and suggest upping the load instead
 function dsAutoregulate(id){
   var st=dsItemState(id);
   if(!st.sets||!st.sets.length) return;
   var lastSet=st.sets[st.sets.length-1];
   var rir=lastSet.rir;
   if(rir==null){ st._autoNote=null; return; }
-  var curReps=st._reps||lastSet.reps||10;
-  var note='', newReps=curReps;
+  var _viewItem=dsViewOf(dsRawItem(id)); var _uni=dsIsUnilateral(_viewItem);
+  // For unilateral moves, autoregulate the PER-SIDE rep count (what the L/R steppers
+  // actually show and what dsLogSet actually reads), not the combined L+R total.
+  // Using the combined total here was the source of the runaway "holding at 54/58" bug.
+  var curReps=_uni?(st._repsL||lastSet.repsL||10):(st._reps||lastSet.reps||10);
+  var note='', newReps=curReps, capped=false;
   if(rir<=0.5){ newReps=Math.max(1,curReps-2); note='\u25BC Near max on that set \u2014 dropping to '+newReps+' reps next set'; }
   else if(rir<=1.5){ newReps=Math.max(1,curReps-1); note='\u2192 Tough set \u2014 trimming to '+newReps+' reps next set'; }
   else if(rir>=3.5){ newReps=curReps+2; note='\u26A1 That was easy \u2014 bumping to '+newReps+' reps next set'; }
   else if(rir>=2.5){ newReps=curReps+1; note='\u2713 Good pace \u2014 adding a rep, '+newReps+' next set'; }
   else { note='\u2713 On target \u2014 holding at '+curReps+' reps'; }
-  if(st.sets.length>=2){
+  if(newReps>DS_AUTOREG_REP_CEIL){
+    newReps=DS_AUTOREG_REP_CEIL; capped=true;
+    note='\u26A1 You\u2019re maxed out at '+DS_AUTOREG_REP_CEIL+' reps \u2014 time to move up a band/weight instead of adding more reps';
+  }
+  if(!capped && st.sets.length>=2){
     var prevRir=st.sets[st.sets.length-2].rir;
     if(prevRir!=null && (prevRir-rir)>=1.5){
       note+=' \u2014 fatigue climbing fast this session, consider wrapping up after this exercise';
     }
   }
-  st._reps=newReps; st._autoNote=note;
-  var repsEl=document.getElementById('ds-reps-'+id); if(repsEl) repsEl.value=newReps;
+  if(_uni){
+    st._repsL=newReps; st._repsR=newReps; st._autoNote=note;
+    var repsLEl=document.getElementById('ds-repsL-'+id); if(repsLEl) repsLEl.value=newReps;
+    var repsREl=document.getElementById('ds-repsR-'+id); if(repsREl) repsREl.value=newReps;
+  } else {
+    st._reps=newReps; st._autoNote=note;
+    var repsEl=document.getElementById('ds-reps-'+id); if(repsEl) repsEl.value=newReps;
+  }
 }
 function dsLogSet(id,target){
   var st=dsItemState(id);
