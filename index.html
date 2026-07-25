@@ -749,6 +749,15 @@
         <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
+      <div class="te-section-hdr">🔁 Session Rotation</div>
+      <div class="card">
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate weekly</span>
+          <input type="checkbox" id="ds-rotate-toggle" onchange="dsToggleRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-rotate-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
       <div class="te-section-hdr">🔊 Sound</div>
       <div class="card">
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Rest-timer beeps use the Web Audio API. Browsers block audio until you tap the screen once. Use this to confirm sound is working on this device.</div>
@@ -962,6 +971,6 @@
   </div>
 </div>
 
-<script src="app.js?v=112"></script>
+<script src="app.js?v=113"></script>
 </body>
 </html>

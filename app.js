@@ -1578,7 +1578,27 @@ function addLabRow(){ var el=document.getElementById("ft-labs"); if(!el) return;
 function removeLabRow(btn){ var r=btn.closest(".ft-lab-row"); if(r) r.remove(); }
 
 
-function openSettings(){ initHealthSettings(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function dsRenderRotatePreview(){
+  var cb=document.getElementById('ds-rotate-toggle'); if(cb) cb.checked=!!DS_ROTATE;
+  var host=document.getElementById('ds-rotate-preview'); if(!host)return;
+  if(!DS_ROTATE){ host.textContent='Off — sessions stay on their fixed weekdays.'; return; }
+  var base=new Date(activeDate+'T12:00:00');
+  var dow=base.getDay(); var monday=new Date(base); monday.setDate(base.getDate()-((dow+6)%7));
+  var out=[];
+  for(var w=0;w<3;w++){
+    var row=[];
+    DS_ROTATE_POOL.forEach(function(dayKey){
+      var idx=['sun','mon','tue','wed','thu','fri','sat'].indexOf(dayKey);
+      var dt=new Date(monday); dt.setDate(monday.getDate()+((idx+6)%7)+w*7);
+      var k=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      var sess=DS_SESSIONS[dsRealSessionKey(k)];
+      row.push(DS_DAYLABEL[dayKey]+': '+((sess&&sess.title)||'—'));
+    });
+    out.push((w===0?'This week — ':'Week +'+w+' — ')+row.join(' · '));
+  }
+  host.innerHTML=out.join('<br>');
+}
+function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -3258,9 +3278,41 @@ var DS_SESSIONS={
 
 var DS_WEEKMAP=['sun','mon','tue','wed','thu','fri','sat'];
 var DS_DAYLABEL={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+
+// ── WEEKLY OFFSET ROTATION ──────────────────────────────────────────────
+// Shifts which resistance session lands on which weekday, one slot per week,
+// so the same session isn't always on the same day. Wed (recovery), Sat (ride)
+// and Sun (rest) stay anchored — rotating those would put a ride midweek.
+var DS_ROTATE_POOL=['mon','tue','thu','fri'];
+var DS_ROTATE_EPOCH='2026-03-30'; // Monday of week 1; week index counts from here
+var DS_ROTATE=false; try{ DS_ROTATE=store.get('ds_rotate')==='1'; }catch(e){ DS_ROTATE=false; }
+function dsWeekIndex(dk){
+  var d=new Date(dk+'T12:00:00'), e=new Date(DS_ROTATE_EPOCH+'T12:00:00');
+  return Math.floor((d-e)/604800000);
+}
+function dsRotateOffset(dk){
+  var n=DS_ROTATE_POOL.length, w=dsWeekIndex(dk);
+  return ((w%n)+n)%n; // stays correct for dates before the epoch too
+}
+function dsToggleRotate(on){
+  DS_ROTATE=!!on;
+  try{ store.set('ds_rotate', DS_ROTATE?'1':'0'); }catch(e){}
+  DS_DAY_OVERRIDE=null;
+  if(typeof dsRender==='function') dsRender();
+  if(typeof dsRenderRotatePreview==='function') dsRenderRotatePreview();
+  if(typeof renderAll==='function') renderAll();
+}
 var DS_ORDER=['mon','tue','wed','thu','fri','sat','sun'];
 var DS_DAY_OVERRIDE=null; // when set, the Today tab shows this day's session instead of the real calendar day
-function dsRealSessionKey(dk){var d=new Date(dk+'T12:00:00');return DS_WEEKMAP[d.getDay()];}
+function dsRealSessionKey(dk){
+  var d=new Date(dk+'T12:00:00');
+  var base=DS_WEEKMAP[d.getDay()];
+  if(!DS_ROTATE) return base;
+  var slot=DS_ROTATE_POOL.indexOf(base);
+  if(slot<0) return base; // wed / sat / sun are anchored
+  var n=DS_ROTATE_POOL.length;
+  return DS_ROTATE_POOL[(slot+dsRotateOffset(dk))%n];
+}
 function dsSessionKey(dk){ if(DS_DAY_OVERRIDE && dk===activeDate) return DS_DAY_OVERRIDE; return dsRealSessionKey(dk); }
 function dsPickDay(d){ DS_DAY_OVERRIDE=(d===dsRealSessionKey(activeDate))?null:d; dsRender(); }
 function dsBackToRealDay(){ DS_DAY_OVERRIDE=null; dsRender(); }
