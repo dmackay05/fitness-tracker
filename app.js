@@ -6849,6 +6849,61 @@ function ygCloseDone() {
 // ═══════════════════════════════════════════════════
 var PRESETS = [
   {
+    id:"hamstring-length",
+    icon:"🦵",
+    name:"Hamstring Length & Strength",
+    desc:"Builds real, retained hamstring range — not just temporary looseness. Standing work first while you're warm, then long loaded holds. Best on Wednesday or a rest day, NOT before a lower session.",
+    level:"intermediate",
+    duration:"~25 min",
+    focus:"Hamstring Extensibility",
+    poses:[
+      {id:"easy-pose",       dur:60},
+      {id:"catcow",          dur:60},
+      {id:"downdog",         dur:60},
+      {id:"standing-forward",dur:75},
+      {id:"pyramid",         dur:75},
+      {id:"pyramid",         dur:75},
+      {id:"wide-fold",       dur:90},
+      {id:"triangle",        dur:60},
+      {id:"triangle",        dur:60},
+      {id:"standing-split",  dur:60},
+      {id:"standing-split",  dur:60},
+      {id:"staff",           dur:45},
+      {id:"seated-forward",  dur:150},
+      {id:"half-lord",       dur:60},
+      {id:"half-lord",       dur:60},
+      {id:"bridge",          dur:60},
+      {id:"supine-twist",    dur:60},
+      {id:"supine-twist",    dur:60},
+      {id:"legs-up",         dur:180},
+      {id:"corpse",          dur:120}
+    ]
+  },
+  {
+    id:"post-ride-hamstring",
+    icon:"🚴",
+    name:"Post-Ride Hamstring Reset",
+    desc:"Short Saturday option for straight after the bike. Hamstrings are warm and shortened from the saddle — this is passive, no forcing. Pairs with or replaces Post-Ride Recovery.",
+    level:"beginner",
+    duration:"~15 min",
+    focus:"Post-Ride Hamstrings",
+    poses:[
+      {id:"childs",          dur:60},
+      {id:"downdog",         dur:60},
+      {id:"standing-forward",dur:75},
+      {id:"pyramid",         dur:60},
+      {id:"pyramid",         dur:60},
+      {id:"low-lunge",       dur:60},
+      {id:"low-lunge",       dur:60},
+      {id:"staff",           dur:45},
+      {id:"seated-forward",  dur:120},
+      {id:"happy-baby",      dur:60},
+      {id:"supine-twist",    dur:45},
+      {id:"supine-twist",    dur:45},
+      {id:"legs-up",         dur:180}
+    ]
+  },
+  {
     id:"morning-wake",
     icon:"🌅",
     name:"Morning Wake-Up",
