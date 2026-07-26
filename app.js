@@ -6586,6 +6586,33 @@ function ygBreathStop(){
   var ring=document.getElementById("breath-ring"); if(ring)ring.classList.remove("on");
 }
 
+var ygInfoOpen=false;
+function ygToggleInfo(){
+  ygInfoOpen=!ygInfoOpen;
+  var panel=document.getElementById("sess-info"), tog=document.getElementById("sess-info-tog");
+  if(panel) panel.classList.toggle("open", ygInfoOpen);
+  if(tog) tog.textContent=(ygInfoOpen?"▴":"▾")+" Pose details";
+}
+function ygRenderInfo(p){
+  var panel=document.getElementById("sess-info"); if(!panel||!p) return;
+  var h="";
+  if(p.desc){ h+='<div class="si-sec"><div class="si-lbl">About</div><div class="si-txt">'+p.desc+'</div></div>'; }
+  if(p.steps&&p.steps.length){
+    h+='<div class="si-sec"><div class="si-lbl">How to</div><ol>';
+    p.steps.forEach(function(s){ h+='<li>'+s+'</li>'; });
+    h+='</ol></div>';
+  }
+  if(p.ben&&p.ben.length){
+    h+='<div class="si-sec"><div class="si-lbl">Benefits</div><div>';
+    p.ben.forEach(function(b){ h+='<span class="si-chip">'+b+'</span>'; });
+    h+='</div></div>';
+  }
+  panel.innerHTML=h||'<div class="si-txt">No extra detail for this pose.</div>';
+  panel.classList.toggle("open", ygInfoOpen);
+  var tog=document.getElementById("sess-info-tog");
+  if(tog) tog.textContent=(ygInfoOpen?"▴":"▾")+" Pose details";
+}
+
 function ygLoadPose() {
   var item=routine[sessIdx];
   if (!item) return;
@@ -6597,6 +6624,7 @@ function ygLoadPose() {
   document.getElementById("sess-name").textContent=p.n;
   document.getElementById("sess-sans").textContent=p.s;
   document.getElementById("sess-cue").textContent=p.cue;
+  ygRenderInfo(p);
   document.getElementById("sess-nxt").textContent=sessIdx===routine.length-1?"Finish ✓":"Next ›";
   startTimer(item.dur);
 }

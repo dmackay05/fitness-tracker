@@ -552,6 +552,28 @@
   </div>
   <div class="breath-lbl" id="breath-lbl">Inhale</div>
   <div class="sess-cue" id="sess-cue">Breathe and find stillness.</div>
+  <!-- Pose detail panel — collapsed by default so it doesn't crowd the timer -->
+  <style>
+    .sess-info-tog{display:block;width:100%;margin:10px 0 0;padding:8px 0;background:transparent;
+      border:1px solid var(--border2,#ffffff1a);border-radius:10px;color:var(--muted,#888);
+      font-family:var(--font-mono,'DM Mono',monospace);font-size:11px;letter-spacing:.05em;cursor:pointer}
+    .sess-info-tog:active{background:#ffffff10}
+    #sess-info{display:none;margin-top:10px;padding:12px 14px;border-radius:12px;
+      background:#ffffff08;border:1px solid var(--border,#ffffff10);text-align:left}
+    #sess-info.open{display:block}
+    #sess-info .si-lbl{font-family:var(--font-mono,'DM Mono',monospace);font-size:9px;
+      letter-spacing:.18em;text-transform:uppercase;color:#c6f24e;margin-bottom:5px}
+    #sess-info .si-sec{margin-bottom:12px}
+    #sess-info .si-sec:last-child{margin-bottom:0}
+    #sess-info .si-txt{font-size:12px;line-height:1.65;color:var(--text,#f0ede8)}
+    #sess-info ol{margin:0;padding-left:18px}
+    #sess-info ol li{font-size:12px;line-height:1.65;color:var(--text,#f0ede8);margin-bottom:5px}
+    #sess-info .si-chip{display:inline-block;padding:3px 9px;margin:3px 4px 0 0;border-radius:20px;
+      background:#c6f24e18;border:1px solid #c6f24e33;color:#c6f24e;
+      font-family:var(--font-mono,'DM Mono',monospace);font-size:10px}
+  </style>
+  <button class="sess-info-tog" id="sess-info-tog" onclick="ygToggleInfo()">▾ Pose details</button>
+  <div id="sess-info"></div>
   <div class="sess-upnext" id="sess-upnext">
     <div class="sess-upnext-demo" id="sess-upnext-demo"></div>
     <div class="sess-upnext-info"><div class="sess-upnext-lbl">Up next</div><div class="sess-upnext-name" id="sess-upnext-name">—</div></div>
@@ -971,6 +993,6 @@
   </div>
 </div>
 
-<script src="app.js?v=114"></script>
+<script src="app.js?v=115"></script>
 </body>
 </html>
