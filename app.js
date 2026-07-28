@@ -1598,7 +1598,30 @@ function dsRenderRotatePreview(){
   }
   host.innerHTML=out.join('<br>');
 }
-function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function dsRenderVarRotatePreview(){
+  var cb=document.getElementById('ds-var-rotate-toggle'); if(cb) cb.checked=!!DS_VAR_ROTATE;
+  var host=document.getElementById('ds-var-rotate-preview'); if(!host)return;
+  if(!DS_VAR_ROTATE){ host.textContent='Off — exercises stay on whatever variant you last picked (or the base move).'; return; }
+  var count=0, sample=[];
+  try{
+    Object.keys(DS_SESSIONS||{}).forEach(function(k){
+      (DS_SESSIONS[k].moves||[]).forEach(function(it){
+        if(it&&it.variants&&it.variants.length){
+          count++;
+          if(sample.length<3){
+            var idx=dsVariantAutoIndex(it);
+            var label=idx===0?it.name:it.variants[idx-1].name;
+            sample.push(it.name+' → '+label);
+          }
+        }
+      });
+    });
+  }catch(e){}
+  var out='On — '+count+' exercise'+(count===1?'':'s')+' with variants cycle automatically, one slot per week, overriding manual swaps.';
+  if(sample.length) out+='<br>This week, e.g.: '+sample.join(' · ');
+  host.innerHTML=out;
+}
+function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -3302,6 +3325,25 @@ function dsToggleRotate(on){
   if(typeof dsRenderRotatePreview==='function') dsRenderRotatePreview();
   if(typeof renderAll==='function') renderAll();
 }
+// ── VARIANT ROTATION ────────────────────────────────────────────────────
+// Auto-cycles each exercise's variant (base + variants[]) one slot per week,
+// using the same weekly clock as session rotation, so variants that never
+// get manually swapped to still see regular use. A manual swap (dsPickVariant)
+// always wins over the auto pick for that exercise — auto only fills in
+// exercises nobody has explicitly touched (DS_SWAPS[id]===undefined).
+var DS_VAR_ROTATE=true; try{ var _vr=store.get('ds_var_rotate'); DS_VAR_ROTATE=(_vr==null)?true:(_vr==='1'); }catch(e){ DS_VAR_ROTATE=true; }
+function dsVariantAutoIndex(item,dk){
+  var n=(item&&item.variants)?item.variants.length:0; if(n===0) return 0;
+  var w=dsWeekIndex(dk||activeDate);
+  return ((w%(n+1))+(n+1))%(n+1); // 0=base, 1..n = variants[0..n-1]
+}
+function dsToggleVarRotate(on){
+  DS_VAR_ROTATE=!!on;
+  try{ store.set('ds_var_rotate', DS_VAR_ROTATE?'1':'0'); }catch(e){}
+  if(typeof dsRender==='function') dsRender();
+  if(typeof dsRenderVarRotatePreview==='function') dsRenderVarRotatePreview();
+  if(typeof renderAll==='function') renderAll();
+}
 var DS_ORDER=['mon','tue','wed','thu','fri','sat','sun'];
 var DS_DAY_OVERRIDE=null; // when set, the Today tab shows this day's session instead of the real calendar day
 function dsRealSessionKey(dk){
@@ -4160,7 +4202,12 @@ function dsComputeActualSecs(item, st){
   }
   return null;
 }
-function dsActiveVariant(item){ if(!item||!item.variants)return null; var idx=DS_SWAPS[item.id]; if(idx==null||idx===0)return null; return item.variants[idx-1]; }
+function dsActiveVariant(item){
+  if(!item||!item.variants)return null;
+  var idx=DS_VAR_ROTATE?dsVariantAutoIndex(item):DS_SWAPS[item.id];
+  if(idx==null||idx===0)return null;
+  return item.variants[idx-1];
+}
 function dsViewOf(item){ if(!item)return item; var v=dsActiveVariant(item); if(!v)return item;
   return {id:item.id,name:v.name,slot:item.slot,target:item.target,equip:v.equip||item.equip,rx:v.rx||item.rx,cal:(v.cal!=null?v.cal:item.cal),cue:v.cue||item.cue,demo:(v.demo!==undefined?v.demo:item.demo),log:item.log,sets:item.sets,secs:(v.secs!=null?v.secs:item.secs),perMin:(v.perMin!=null?v.perMin:item.perMin),defMin:(v.defMin!=null?v.defMin:item.defMin),variants:item.variants}; }
 

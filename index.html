@@ -780,6 +780,15 @@
         </label>
         <div id="ds-rotate-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
+      <div class="te-section-hdr">🔄 Variant Rotation</div>
+      <div class="card">
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Auto-cycles each exercise's variants (including the base move) one slot per week, so options you never manually swap to still get used. On by default — this overrides any manual swap, so turn it off if you need to lock an exercise to a specific variant (e.g. avoiding one for your elbow or SI joint).</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate variants weekly</span>
+          <input type="checkbox" id="ds-var-rotate-toggle" onchange="dsToggleVarRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-var-rotate-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
       <div class="te-section-hdr">🔊 Sound</div>
       <div class="card">
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Rest-timer beeps use the Web Audio API. Browsers block audio until you tap the screen once. Use this to confirm sound is working on this device.</div>
@@ -993,6 +1002,6 @@
   </div>
 </div>
 
-<script src="app.js?v=116"></script>
+<script src="app.js?v=118"></script>
 </body>
 </html>
