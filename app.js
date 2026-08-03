@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v28 — 2026-07-20";
+var APP_BUILD = "v29 — 2026-08-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3182,6 +3182,7 @@ var DS_WARMUP_HIPFLOW7={id:'warmup-hipflow-7',name:'Leg Swings + Hip Openers',de
 var DS_WARMUP_KBHALO={id:'warmup-kbhalo',name:'KB Halo + Around-the-World',demo:'kbhalo',slot:'Warm-up',target:'Shoulders · Core',equip:'8 lb kettlebell',rx:'10/dir + 8/dir',cal:15,cue:'Halo: circle the KB close around your head, core braced. Around-the-World: pass hand to hand around your waist, reverse halfway. Keep the circle small on the right side — this is an overhead/behind-the-head path, exactly where your right shoulder history shows up.',log:'setsreps',sets:1};
 var DS_WALK30={id:'post-walk',name:'Post-session Walk',demo:'walk',slot:'Cardio',target:'Close the calorie gap',equip:'None',rx:'~30 min brisk',cal:170,cue:'Brisk but easy — this is volume, not intensity',log:'done',variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'~30 min brisk',cal:230,cue:'Pack rides high between the shoulder blades, straps cinched tight — posture tall, no forward lean. Start ~15 lb; if the SI joint complains, drop weight, not the walk',demo:'ruck'}]};
 var DS_RIDE20={id:'post-ride',name:'Easy Ride',demo:'ride',slot:'Cardio',target:'Close the calorie gap',equip:'Compression sleeve on',rx:'~20 min easy spin',cal:120,cue:'Easy spin, conversational pace — recovery-grade effort',log:'done'};
+var DS_ACTIVEREST={id:'active-rest',name:'Active Rest Intervals',slot:'Cardio',target:'Extra calorie burn between sets',equip:'Jump rope or light band',rx:'3–5 min total, spread across rest periods',cal:40,cue:'Light jump rope or low-resistance band work between sets — heart rate up, not a second workout',log:'done',setup:'Instead of standing still between sets, spend 3–5 min total (30–45s at a time) on light jump rope or a low-resistance band exercise. Keep it easy enough that it doesn\\u2019t eat into your strength sets — the point is extra burn, not extra fatigue.'};
 
 /* ── Saturday heat alternative: indoor full-body circuit (arms/legs/core/mobility) ── */
 var DS_SATHEAT_MOVES=[
@@ -3232,7 +3233,7 @@ var DS_SESSIONS={
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2},
       dsCore('mon-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
-      DS_WALK30,DS_RIDE20]},
+      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
   tue:{title:'Lower Body + Core',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,
@@ -3250,7 +3251,7 @@ var DS_SESSIONS={
       {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
       {id:'tue-step',name:'Step-Up',demo:'stepup',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",log:'setsreps',sets:3},
       {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4},
-      DS_WALK30,DS_RIDE20]},
+      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
   wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
     moves:[
@@ -3268,6 +3269,7 @@ var DS_SESSIONS={
       {id:'wed-flow-bridge',name:'Slow Bridge Rolls',slot:'Flow · 12',target:'Spine · Glutes',equip:'Mat',rx:'90s',cal:8,cue:'Roll up one vertebra at a time on the inhale, melt down on the exhale. Center back onto your spine from the twist',demo:'bridge',log:'time',secs:90},
       {id:'wed-flow-legsup',name:'Legs Up the Wall',slot:'Flow · 13',target:'Recovery · Circulation',equip:'Wall',rx:'3 min',cal:5,cue:'Hips close to the wall, arms wide — total surrender. Scoot to the wall and swing your legs up from lying down',demo:'legsup',log:'time',secs:180},
       {id:'wed-flow-sav',name:'Savasana',slot:'Flow · 14',target:'Integration',equip:'Mat',rx:'3 min',cal:3,cue:'Flat on your back, let everything go — the pose where the practice lands. Lower your legs down from the wall into this',demo:'savasana',log:'time',secs:180},
+      {id:'wed-flow-extcars',name:'Extended Flow — Hip + Shoulder CARs',slot:'Flow · 15 (add-on)',target:'Joint Health · Mobility',equip:'Mat',rx:'5–8 min',cal:15,cue:'Slow, controlled circles — quality over range. This is the stretch of the practice, not a new one',demo:'catcow',log:'time',secs:360,setup:'Extra add-on beyond the core 14-pose flow: a few slow hip CARs (controlled articular rotations) and shoulder CARs, standing or on hands and knees. Move to the edge of range without forcing it — this is what bumps the daily practice from ~20 min to ~25–30 min.'},
       {id:'wed-hollow',name:'Hollow Hold — breath focus',slot:'Core',target:'Full Core',equip:'Bodyweight',rx:'2×30s',cal:20,cue:'Exhale everything out, ribs down — hold the compression',demo:'hollow',log:'time',secs:30,
         variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — much less pull on the low back/hip flexors',demo:'hollow'}]},
       {id:'wed-bike',name:'Slow Bicycle Crunch',demo:'bicycle',slot:'Core',target:'Obliques',equip:'Bodyweight',rx:'2×8/side',cal:18,cue:'Rotate from the ribcage — 2 full seconds each way',log:'setsreps',sets:2,
@@ -3287,7 +3289,8 @@ var DS_SESSIONS={
       {id:'wed-fin-slrdl',name:'Single-Leg RDL Reach (bodyweight)',slot:'Finisher · Hamstrings',target:'Hamstrings · Balance',equip:'Bodyweight',rx:'3×8/leg',cal:15,cue:'Hinge at the hip and reach toward the floor, planted knee soft — flat back the whole way down',demo:'slrdl',log:'setsreps',sets:3,
         setup:'Stand on one leg with a soft bend in the knee. Hinge forward at the hips, letting the free leg extend straight back for balance, and reach toward the floor with the opposite hand. Keep your back flat — stop the descent wherever your hamstring or balance limits you. Slow and controlled beats going deep.'},
       {id:'wed-fin-wallsit',name:'Wall Sit',slot:'Finisher · Quads (isometric)',target:'Quads',equip:'Bodyweight + wall',rx:'2×30–45s',cal:12,cue:'Back flat against the wall, knees near 90° — no spinal loading, just hold and breathe',demo:'squat',log:'time',secs:30,
-        setup:'Slide your back down a wall until your knees are bent to roughly 90 degrees, thighs close to parallel with the floor. Hold, keeping your back flat against the wall and breathing steadily. Zero impact and zero spinal load — a good pick specifically because it\'s easy on the SI joint while still building quad endurance.'}]},
+        setup:'Slide your back down a wall until your knees are bent to roughly 90 degrees, thighs close to parallel with the floor. Hold, keeping your back flat against the wall and breathing steadily. Zero impact and zero spinal load — a good pick specifically because it\'s easy on the SI joint while still building quad endurance.'},
+      DS_WALK30]},
 
   thu:{title:'Upper Body Hypertrophy',sub:'Chest · Back · Shoulders · Arms',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_KBHALO,
@@ -3310,7 +3313,7 @@ var DS_SESSIONS={
       dsCore('thu-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
       dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing. Keep the range small if you feel anything near the SI joint; this is a rotational load like the Friday woodchop.'),
-      DS_WALK30,DS_RIDE20]},
+      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
   fri:{title:'Lower Body + Core Strength',sub:'Quads · Hamstrings · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,
@@ -3331,7 +3334,7 @@ var DS_SESSIONS={
         variants:[{name:'Bird Dog',equip:'Bodyweight · mat',rx:'3×8/side',cue:'Opposite arm and leg extend — flat back, zero rocking. Swap in if Dead Bug pops your SI joint',demo:'birddog'}]},
       {id:'fri-sqpress',name:'Squat to Press',slot:'Power',target:'Full Body',equip:'10 lb DBs or slam ball',rx:'3×10',cal:35,cue:'Legs drive up first, then press — one fluid motion',demo:'press',log:'setsreps',sets:3,variants:[{name:'KB Squat to Press',equip:'8 lb kettlebell',rx:'3\u00d712',cue:'Goblet-hold the bell, squat, then punch it overhead as you stand \u2014 one fluid motion',demo:'goblet'}]},
       {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]},
-      DS_WALK30,DS_RIDE20]},
+      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
   sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost',accent:'var(--blue)',
     moves:[
@@ -4760,11 +4763,11 @@ function dsFocusBlock(sk){
   var map={
     mon:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])),blurb:"Today's one accessory block. Pull-ups are your active goal and the biggest muscle-builder in the accessory pile — this plus the session is a complete day."},
     tue:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Today's one accessory block: tibialis, rotator cuff, lower traps. Ten minutes of structural work — this plus the session is a complete day."},
-    wed:{title:"Focus: Squat Hold + Hips",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090","mob-clam"]),blurb:"Low-load day, so the focus is your squat hold progression and hip work. This plus your walk/yoga is a complete day."},
+    wed:{title:"Focus: Squat Hold + Hips + Playground",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090","mob-clam"]).concat(pick(DS_PULLUP.moves,["pu-hang","pu-scap"])),blurb:"Low-load day, so the focus is your squat hold progression and hip work, plus a light extra playground pull-up session. This plus your walk/yoga is a complete day."},
     thu:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])),blurb:"Second pull-up day of the week. This plus the session is a complete day."},
     fri:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Second structural day: tibialis, rotator cuff, lower traps. This plus the session is a complete day."},
     sat:null,
-    sun:{title:"Focus: Squat Hold",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold"]),blurb:"Rest day — just the squat hold to keep the streak alive. Nothing else required."}
+    sun:{title:"Focus: Squat Hold + Playground",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold"]).concat(pick(DS_PULLUP.moves,["pu-hang","pu-scap"])),blurb:"Rest day — squat hold plus a light extra playground pull-up session to keep both streaks alive. Nothing else required."}
   };
   return map[sk]||null;
 }
