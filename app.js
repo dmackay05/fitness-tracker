@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v32 — 2026-08-07";
+var APP_BUILD = "v33 — 2026-08-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5201,8 +5201,8 @@ function dsAutoregulate(id){
   else if(rir>=2.5){ newReps=curReps+1; note='\u2713 Good pace \u2014 adding a rep, '+newReps+' next set'; }
   else { note='\u2713 On target \u2014 holding at '+curReps+' reps'; }
   if(newReps>DS_AUTOREG_REP_CEIL){
-    newReps=DS_AUTOREG_REP_CEIL; capped=true;
-    note='\u26A1 You\u2019re maxed out at '+DS_AUTOREG_REP_CEIL+' reps \u2014 time to move up a band/weight instead of adding more reps';
+    newReps=curReps; capped=true;
+    note='\u26A1 Maxed out at '+DS_AUTOREG_REP_CEIL+'+ reps on your top band \u2014 holding at '+curReps+' reps. Add difficulty with a slower tempo (3\u20134 sec down) or a pause at peak contraction instead of more reps.';
   }
   if(!capped && st.sets.length>=2){
     var prevRir=st.sets[st.sets.length-2].rir;
