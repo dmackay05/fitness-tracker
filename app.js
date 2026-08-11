@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v36 — 2026-08-11";
+var APP_BUILD = "v37 — 2026-08-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -882,8 +882,8 @@ function saveExEdit(){
   saveDay(day); closeExEdit(); renderAll();
 }
 function renderExLog(){
-  var day=getDay(), el=document.getElementById("ex-log");
-  document.getElementById("burned-lbl2").textContent="🔥 "+getBurned()+" kcal";
+  var day=getDay(), el=document.getElementById("ex-log"); if(!el) return;
+  var bl=document.getElementById("burned-lbl2"); if(bl) bl.textContent="🔥 "+getBurned()+" kcal";
   el.innerHTML=(!day.exercises.length)?'<div class="empty">No workouts logged yet</div>':
     day.exercises.map(function(e){var det=exDetailStr(e);return '<details class="log-row"><summary class="log-row-sum"><span class="log-row-name">'+e.name+'</span><span class="log-row-sub">🔥 '+e.calories+' kcal'+(det?' · '+det:'')+'</span></summary>'+
       '<div class="log-row-actions"><button class="bs" onclick="editEx(\''+attrId(e.id)+'\')">Edit</button>'+
@@ -955,8 +955,9 @@ function setMedType(el){ medType=el.dataset.type;
   document.querySelectorAll(".med-type-btn").forEach(function(b){b.classList.toggle("sel",b===el);}); }
 function saveWellness(){
   var d=getDay(); d.wellness=d.wellness||{};
-  d.wellness.sleepHours=parseFloat(document.getElementById("sleep-hrs").value)||0;
-  d.wellness.steps=parseInt(document.getElementById("steps-in").value)||0;
+  var slEl=document.getElementById("sleep-hrs"), stEl=document.getElementById("steps-in");
+  if(slEl) d.wellness.sleepHours=parseFloat(slEl.value)||0;
+  if(stEl) d.wellness.steps=parseInt(stEl.value)||0;
   if(wellnessRatings.sleepQ) d.wellness.sleepQ=wellnessRatings.sleepQ;
   if(wellnessRatings.energy) d.wellness.energy=wellnessRatings.energy;
   if(wellnessRatings.mood) d.wellness.mood=wellnessRatings.mood;
@@ -1027,8 +1028,8 @@ function renderMedHistory(){
 }
 function renderWellness(){
   var w=getDay().wellness||{};
-  document.getElementById("sleep-hrs").value=w.sleepHours||"";
-  document.getElementById("steps-in").value=w.steps||"";
+  var slEl=document.getElementById("sleep-hrs"); if(slEl) slEl.value=w.sleepHours||"";
+  var stEl=document.getElementById("steps-in"); if(stEl) stEl.value=w.steps||"";
   document.getElementById("rhr-in").value="";
   document.getElementById("bp-sys-in").value="";
   document.getElementById("bp-dia-in").value="";

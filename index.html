@@ -302,44 +302,6 @@
       <div class="card"><div class="card-title" id="log-title">Today's Food Log</div><div id="food-log"><div class="empty">Nothing logged yet</div></div></div>
 
       <div class="card" style="padding-bottom:14px">
-        <div class="card-title" style="margin-bottom:10px">💪 Exercise</div>
-        <div class="ld-tabs" id="ld-ex-tabs">
-          <button class="ld-tab" data-ldtab="dropdown" onclick="ldSwitch('ex','dropdown')"><span class="ld-ic">💪</span><span class="ld-lbl">Log</span></button>
-          <button class="ld-tab" data-ldtab="custom" onclick="ldSwitch('ex','custom')"><span class="ld-ic">✏️</span><span class="ld-lbl">Custom</span></button>
-        </div>
-        <div class="ld-pane" data-ldpane="dropdown">
-          <div class="ld-pane-hdr"><span class="ld-ic">💪</span>Log Exercise</div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <select id="ex-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select exercise —</option></select>
-            <button class="bp" onclick="addDropdownEx()">+ Log</button>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
-            <input type="number" id="ex-sets" placeholder="Sets" style="margin-bottom:0"/>
-            <input type="text" id="ex-reps" placeholder="Reps" style="margin-bottom:0"/>
-            <input type="text" id="ex-load" placeholder="Band / weight" style="margin-bottom:0"/>
-          </div>
-          <div id="ex-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px"></div>
-          <div id="ex-dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
-        </div>
-        <div class="ld-pane" data-ldpane="custom">
-          <div class="ld-pane-hdr"><span class="ld-ic">✏️</span>Custom</div>
-          <select id="ce-fav-select" style="margin-bottom:8px" onchange="loadCeFav(this.value)"><option value="">★ Favorites — pick one to reuse…</option></select>
-          <input type="text" id="ce-name" placeholder="Exercise name" oninput="showLastHint(this.value,'ce-last-hint')"/><input type="number" id="ce-cal" placeholder="Calories burned"/>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-bottom:6px">
-            <input type="number" id="ce-sets" placeholder="Sets" style="margin-bottom:0"/>
-            <input type="text" id="ce-reps" placeholder="Reps" style="margin-bottom:0"/>
-            <input type="text" id="ce-load" placeholder="Band / weight" style="margin-bottom:0"/>
-          </div>
-          <div id="ce-last-hint" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:6px"></div>
-          <div style="display:flex;gap:8px"><button class="bp bfull" onclick="addCustomEx()">Add Custom</button><button class="bp" style="white-space:nowrap" onclick="saveCeFav()">★ Save as favorite</button></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="card-title" style="margin-bottom:0">Today's Workouts</div><div style="font-size:12px;color:#fb923c;font-family:'DM Mono',monospace;font-weight:700" id="burned-lbl2">🔥 0 kcal</div></div>
-        <div id="ex-log"><div class="empty">No workouts logged yet</div></div>
-      </div>
-
-      <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">📝 Daily Tracking</div>
         <div class="ld-tabs" id="ld-track-tabs">
           <button class="ld-tab" data-ldtab="water" onclick="ldSwitch('track','water')"><span class="ld-ic">💧</span><span class="ld-lbl">Water</span></button>
@@ -348,7 +310,6 @@
           <button class="ld-tab" data-ldtab="med" onclick="ldSwitch('track','med')"><span class="ld-ic">🧘</span><span class="ld-lbl">Meditate</span></button>
           <button class="ld-tab" data-ldtab="measure" onclick="ldSwitch('track','measure')"><span class="ld-ic">📏</span><span class="ld-lbl">Measure</span></button>
           <button class="ld-tab" data-ldtab="supps" onclick="ldSwitch('track','supps')"><span class="ld-ic">💊</span><span class="ld-lbl">Supps</span></button>
-          <button class="ld-tab" data-ldtab="habits" onclick="ldSwitch('track','habits')"><span class="ld-ic">🔥</span><span class="ld-lbl">Habits</span></button>
         </div>
 
         <div class="ld-pane" data-ldpane="water">
@@ -376,13 +337,8 @@
 
         <div class="ld-pane" data-ldpane="wellness">
           <div class="ld-pane-hdr"><span class="ld-ic">💡</span>Wellness</div>
-          <div class="rlbl" style="margin-top:0">Sleep Hours</div>
-          <div style="display:flex;gap:8px;align-items:center"><input type="number" id="sleep-hrs" class="winput" placeholder="e.g. 7.5" step="0.5" min="0" max="24"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">hrs</div></div>
-          <div class="rlbl">Sleep Quality</div><div class="rating-row" id="row-sleepQ"><button class="rbtn" data-field="sleepQ" data-val="1">1</button><button class="rbtn" data-field="sleepQ" data-val="2">2</button><button class="rbtn" data-field="sleepQ" data-val="3">3</button><button class="rbtn" data-field="sleepQ" data-val="4">4</button><button class="rbtn" data-field="sleepQ" data-val="5">5</button></div><div class="range-hint"><span>Poor</span><span>Great</span></div>
-          <div class="rlbl">Energy</div><div class="rating-row" id="row-energy"><button class="rbtn" data-field="energy" data-val="1">1</button><button class="rbtn" data-field="energy" data-val="2">2</button><button class="rbtn" data-field="energy" data-val="3">3</button><button class="rbtn" data-field="energy" data-val="4">4</button><button class="rbtn" data-field="energy" data-val="5">5</button></div><div class="range-hint"><span>Drained</span><span>Energized</span></div>
+          <div class="rlbl" style="margin-top:0">Energy</div><div class="rating-row" id="row-energy"><button class="rbtn" data-field="energy" data-val="1">1</button><button class="rbtn" data-field="energy" data-val="2">2</button><button class="rbtn" data-field="energy" data-val="3">3</button><button class="rbtn" data-field="energy" data-val="4">4</button><button class="rbtn" data-field="energy" data-val="5">5</button></div><div class="range-hint"><span>Drained</span><span>Energized</span></div>
           <div class="rlbl">Mood</div><div class="rating-row" id="row-mood"><button class="rbtn" data-field="mood" data-val="1">😞</button><button class="rbtn" data-field="mood" data-val="2">😟</button><button class="rbtn" data-field="mood" data-val="3">😐</button><button class="rbtn" data-field="mood" data-val="4">🙂</button><button class="rbtn" data-field="mood" data-val="5">😁</button></div>
-          <div class="rlbl">Steps Today</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="steps-in" class="winput" placeholder="e.g. 8500"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">steps</div></div>
-          <div class="steps-bar-wrap"><div class="steps-bar" id="steps-bar" style="width:0%"></div></div>
           <div class="rlbl">Resting Heart Rate</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="rhr-in" class="winput" placeholder="e.g. 62" min="30" max="150"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">bpm</div><button class="bp" style="padding:8px 14px;white-space:nowrap" onclick="addRhrReading()">+ Add</button></div>
           <div id="rhr-history" style="margin-top:6px"></div>
           <div class="rlbl">Blood Pressure</div><div style="display:flex;gap:8px;align-items:center">
@@ -432,10 +388,6 @@
           <div class="supp-list" id="supp-list"></div>
         </div>
 
-        <div class="ld-pane" data-ldpane="habits">
-          <div class="ld-pane-hdr"><span class="ld-ic">🔥</span>Daily Habits</div>
-          <div id="habits-list"></div>
-        </div>
       </div>
 
     </div>
@@ -745,11 +697,6 @@
         <button class="bs bfull" onclick="addLabRow()" style="margin-top:8px">+ Add Lab</button>
       </div>
       <div class="card" style="margin-top:10px">
-        <div class="card-title">🔥 Daily Habits</div>
-        <div id="ft-habits"></div>
-        <button class="bs bfull" onclick="addHabitRow()" style="margin-top:8px">+ Add Habit</button>
-      </div>
-      <div class="card" style="margin-top:10px">
         <div class="card-title">🏋️ Custom Exercise Set</div>
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from existing exercises and assign it to any day. Shows alongside that day's routine on the Today tab.</div>
         <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
@@ -1002,6 +949,6 @@
   </div>
 </div>
 
-<script src="app.js?v=130"></script>
+<script src="app.js?v=131"></script>
 </body>
 </html>
