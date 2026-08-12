@@ -302,6 +302,21 @@
       <div class="card"><div class="card-title" id="log-title">Today's Food Log</div><div id="food-log"><div class="empty">Nothing logged yet</div></div></div>
 
       <div class="card" style="padding-bottom:14px">
+        <div class="card-title" style="margin-bottom:10px">🏋️ Exercise</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <select id="ex-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select exercise —</option></select>
+          <button class="bp" onclick="addDropdownEx()">+ Add</button>
+        </div>
+        <div id="ex-dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:8px"></div>
+        <div class="g2">
+          <input type="number" id="ex-sets" placeholder="Sets"/><input type="text" id="ex-reps" placeholder="Reps"/>
+          <input type="text" id="ex-load" placeholder="Load (e.g. 30lb band)" style="grid-column:span 2"/>
+        </div>
+        <div id="ex-last-hint" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:6px;min-height:14px"></div>
+      </div>
+      <div class="card"><div class="card-title">🔥 Today's Exercise Log <span id="burned-lbl2" style="float:right;font-weight:400;color:#888;font-size:11px"></span></div><div id="ex-log"><div class="empty">No workouts logged yet</div></div></div>
+
+      <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">📝 Daily Tracking</div>
         <div class="ld-tabs" id="ld-track-tabs">
           <button class="ld-tab" data-ldtab="water" onclick="ldSwitch('track','water')"><span class="ld-ic">💧</span><span class="ld-lbl">Water</span></button>
@@ -951,6 +966,6 @@
   </div>
 </div>
 
-<script src="app.js?v=134"></script>
+<script src="app.js?v=135"></script>
 </body>
 </html>
