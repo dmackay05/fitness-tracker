@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v37 — 2026-08-11";
+var APP_BUILD = "v38 — 2026-08-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6413,6 +6413,7 @@ function yogaSwitchTab(id) {
   if (panel) panel.classList.add("active");
   if (id==="routine") renderRoutine();
   if (id==="presets") renderPresets();
+  if (id==="poses") renderPoses();
   if (id==="saved") renderSaved();
 }
 document.querySelectorAll(".yg-tab-btn").forEach(function(btn){

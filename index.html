@@ -408,9 +408,11 @@
         <div class="yoga-stats-bar" id="yoga-stats-bar"></div>
         <div class="yg-inner-tabbar">
           <button class="yg-tab-btn active" data-ytab="presets">Presets</button>
+          <button class="yg-tab-btn" data-ytab="poses">Poses</button>
           <button class="yg-tab-btn" data-ytab="routine">My Routine</button>
+          <button class="yg-tab-btn" data-ytab="saved">Saved</button>
         </div>
-        <div class="yg-panel" id="yg-panel-poses" style="display:none">
+        <div class="yg-panel" id="yg-panel-poses">
           <div class="search-area">
             <div class="search-wrap">
               <span class="s-icon">🔍</span>
@@ -443,7 +445,7 @@
         <div class="yg-panel" id="yg-panel-routine">
           <div id="r-empty" class="r-empty">
             <span class="r-empty-icon">🌱</span>
-            Go to <strong>Presets</strong> and tap <strong>Load</strong><br>to build your routine.
+            Tap <strong>Poses</strong> to build a custom flow,<br>or load a <strong>Preset</strong> to start from a template.
           </div>
           <div id="r-content" style="display:none">
             <div class="r-header">
@@ -472,7 +474,7 @@
             </div>
           </div>
         </div>
-        <div class="yg-panel" id="yg-panel-saved" style="display:none">
+        <div class="yg-panel" id="yg-panel-saved">
           <div style="padding:14px 16px 8px">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:300;margin-bottom:4px;color:#f0ede8">Saved Routines</div>
             <div style="font-size:10px;color:#888">Your custom routines. Tap Load to restore any routine.</div>
@@ -949,6 +951,6 @@
   </div>
 </div>
 
-<script src="app.js?v=131"></script>
+<script src="app.js?v=132"></script>
 </body>
 </html>
