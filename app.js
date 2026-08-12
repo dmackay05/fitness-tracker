@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v38 — 2026-08-11";
+var APP_BUILD = "v40 — 2026-08-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6377,7 +6377,169 @@ ben:["Hip Flexors","Hamstrings","Hip Opening","Groin","Patience"]},
 desc:"An extreme backbend where the chin rests on the floor while the legs extend overhead. Requires exceptional spine flexibility.",
 steps:["Start lying face down, hands under shoulders.","Press up into a deep Cobra.","Continue arching back as far as possible.","Walk feet toward head.","Lower chin to mat if your spine allows.","This is a pose for very flexible practitioners only."],
 cue:"Never force this. It is years of backbend work expressing itself.",
-ben:["Full Spine Flexibility","Chest","Shoulders","Hip Flexors","Back Strength"]}
+ben:["Full Spine Flexibility","Chest","Shoulders","Hip Flexors","Back Strength"]},
+
+// ═══════════════════════════════════════════════════
+// MOBILITY FLOWS (added 2026-08-11)
+// ═══════════════════════════════════════════════════
+{id:"figure8",e:"➰",n:"Hip Figure 8s",s:"Ashtanga Chalanasana",l:"beginner",c:"seated",cpm:2.4,dur:60,
+desc:"A fluid hip-mobility drill tracing a figure-8 pattern through the pelvis. Loosens the hips and lower back and warms up the SI joint.",
+steps:["Stand with feet a bit wider than hips, soft knees, hands on hips.","Shift weight into the right hip, then trace the pelvis forward, across, and back in a figure-8 path.","Let the motion flow continuously — don't stop at the corners.","Keep the upper body relatively still; the movement stays in the hips and pelvis.","Reverse the direction of the 8 halfway through.","Continue 45-60 seconds, moving slow and controlled."],
+cue:"Trace a lazy figure-8 with your hips — smooth and continuous, not choppy.",
+ben:["Hip Mobility","SI Joint","Lower Back","Pelvic Control","Warm-Up"]},
+
+{id:"spinalrot",e:"🔄",n:"Seated Spinal Rotations",s:"Parivrtta Sukhasana Flow",l:"beginner",c:"twist",cpm:2.2,dur:60,
+desc:"A gentle, repeated rotational drill through the thoracic spine. Improves rotational mobility and eases tension along the back.",
+steps:["Sit cross-legged or in a chair, spine tall.","Place right hand on left knee, left hand behind you on the floor/chair back.","Inhale to lengthen the spine, exhale to rotate left from the ribcage.","Lead the twist with the breath, not force — go a little further each exhale.","Return to center with control, then repeat to the other side.","Alternate sides continuously for 45-60 seconds."],
+cue:"Lengthen up out of the hips first, then twist — don't collapse into the rotation.",
+ben:["Thoracic Mobility","Spinal Health","Digestion","Posture","Back Tension"]},
+
+{id:"cobraroll",e:"🐍",n:"Cobra Rolls",s:"Bhujangasana Chalanasana",l:"beginner",c:"backbend",cpm:2.6,dur:60,
+desc:"A wave-like flow from Chaturanga through Cobra and back, rolling through the spine one segment at a time. Builds spinal articulation and back extensor strength.",
+steps:["Lie face down, hands under shoulders, elbows hugging the ribs.","Inhale, roll up through the spine one vertebra at a time — tailbone, low back, mid back, chest, then head last.","Keep the pelvis and lower ribs light on the mat as you rise, avoiding a hard crunch into the low back.","Exhale, reverse the roll — head lowers first, then chest, then unstack down to the tailbone.","Keep the motion slow and wave-like the entire time.","Repeat for 45-60 seconds."],
+cue:"Roll through the spine like a wave — one vertebra at a time, not a single hinge.",
+ben:["Spinal Articulation","Back Extensors","Core Control","Posture","Mobility"]},
+
+{id:"barrelroll",e:"🛢️",n:"Barrel Rolls",s:"Vasisthasana Chalanasana",l:"intermediate",c:"core",cpm:3.4,dur:45,
+desc:"A rolling side-to-side drill through the torso, transitioning between side plank-like positions. Builds rotational core control and shoulder stability.",
+steps:["Lie on your back, arms out in a T, knees bent and stacked.","Keeping shoulders grounded, let the knees roll to one side toward the floor.","Roll the knees back through center and continue to the opposite side, like a barrel rolling.","Keep the motion slow and controlled — this is mobility, not momentum.","Let the head gently counter-rotate opposite the knees for a full spinal wring.","Continue rolling side to side for 30-45 seconds."],
+cue:"Move like a barrel rolling smoothly — slow, controlled, no momentum flinging you side to side.",
+ben:["Rotational Core","Obliques","Spinal Mobility","Shoulder Stability","SI Joint"]},
+
+{id:"downdogpedal",e:"🐕",n:"Downward Dog Pedals",s:"Adho Mukha Svanasana Chalanasana",l:"beginner",c:"standing",cpm:3.6,dur:60,
+desc:"Downward Dog with alternating heel presses, 'pedaling' one leg at a time. Warms up calves and hamstrings and adds gentle movement to the classic hold.",
+steps:["Start in Downward Dog — hips high, hands pressing firmly, spine long.","Bend the right knee and press the left heel toward the floor.","Switch, bending the left knee and pressing the right heel down.","Keep alternating in a smooth pedaling rhythm, like walking out the hamstrings.","Keep hips lifted and even the whole time — avoid rocking side to side.","Continue pedaling for 45-60 seconds."],
+cue:"Pedal the feet like you're walking out your hamstrings — steady rhythm, hips stay tall.",
+ben:["Hamstrings","Calves","Shoulders","Ankle Mobility","Warm-Up"]},
+
+{id:"lizardlunge",e:"🦎",n:"Lizard Lunge",s:"Utthan Pristhasana",l:"intermediate",c:"standing",cpm:2.8,dur:60,
+desc:"A deep hip-opening lunge with the front foot planted outside the hand. Targets hip flexors, groin, and hamstrings simultaneously.",
+steps:["From Downward Dog, step the right foot forward outside the right hand.","Lower onto the left knee (or keep back leg lifted for more challenge).","Let the front knee track out over the pinky toe, hips sinking low and forward.","Keep the chest lifted or lower to forearms for a deeper stretch.","Breathe into the front hip and groin, letting it release with each exhale.","Hold 30-60 seconds, then switch sides."],
+cue:"Sink the hips low and forward — let gravity open the front hip, don't force it.",
+ben:["Hip Flexors","Groin","Hamstrings","Hip Opening","Deep Squat Prep"]},
+
+{id:"lizardtwist",e:"🦎",n:"Lizard Twist",s:"Parivrtta Utthan Pristhasana",l:"intermediate",c:"twist",cpm:3.0,dur:45,
+desc:"Lizard Lunge with an added rotation and reach, combining a deep hip opener with thoracic rotation. Great for the hips and mid-back together.",
+steps:["Set up in Lizard Lunge, front foot outside the same-side hand.","Shift weight onto the outside hand, freeing the inside arm.","Rotate the chest open and reach the inside arm toward the ceiling.","Follow the reaching hand with your gaze if balance allows.","Hold the rotation for a few breaths, feeling the twist through the upper back.","Return to center, then switch sides."],
+cue:"Rotate from the chest, not the low back — let the reaching arm lead the twist.",
+ben:["Hip Opening","Thoracic Rotation","Balance","Groin","Obliques"]},
+
+{id:"sidelunge",e:"🤸",n:"Side Lunge",s:"Skandasana",l:"beginner",c:"standing",cpm:3.0,dur:45,
+desc:"A lateral lunge that stretches the inner thigh of the extended leg while strengthening the bent-knee side. Builds frontal-plane hip mobility often missing from forward-only training.",
+steps:["Stand with feet wide, toes forward.","Shift weight into the right leg, bending the right knee and sitting the hips back.","Keep the left leg straight, foot flat, toes forward — feel the inner thigh stretch.","Keep the chest lifted and both feet grounded through the whole range.","Push through the right heel to return to center.","Repeat on the other side, alternating for 30-45 seconds."],
+cue:"Sit back and down into the bent knee like a sideways squat — keep the straight leg's foot flat.",
+ben:["Inner Thighs","Hip Mobility","Adductors","Groin","Frontal-Plane Strength"]},
+
+{id:"revtable",e:"🪑",n:"Reverse Table Top",s:"Ardha Purvottanasana",l:"intermediate",c:"backbend",cpm:2.8,dur:45,
+desc:"A backward-facing bridge-like pose that opens the chest and shoulders while strengthening the posterior chain and wrists.",
+steps:["Sit with knees bent, feet flat, hands behind hips with fingers pointing toward feet.","Press through hands and feet to lift the hips until the torso is parallel to the floor.","Knees stack over ankles, shoulders stack over wrists — tabletop shape.","Let the head relax back gently, or keep it neutral if the neck is sensitive.","Squeeze the glutes and press the chest open.","Hold 20-45 seconds, then lower with control."],
+cue:"Press the hips up like leveling a tabletop — knees and shoulders stacked over ankles and wrists.",
+ben:["Shoulders","Chest","Glutes","Wrists","Posterior Chain"]},
+
+{id:"headcircle",e:"⭕",n:"Head Circles",s:"Griva Chalanasana",l:"beginner",c:"seated",cpm:1.6,dur:60,
+desc:"Slow, controlled circles of the head and neck. Releases tension in the cervical spine and upper traps — a gentle way to start or end a flow.",
+steps:["Sit or stand tall, shoulders relaxed away from the ears.","Slowly drop the chin toward the chest.","Roll the head gently toward one shoulder, then back, then toward the other shoulder in a smooth circle.","Keep the movement slow and small — this is not a full aggressive neck roll.","Complete 4-5 circles one direction, then reverse.","Breathe steadily throughout, 45-60 seconds total."],
+cue:"Keep it slow and small — let gravity do the work, don't force the range.",
+ben:["Neck Tension","Cervical Mobility","Upper Traps","Stress Relief","Warm-Up"]},
+
+// ═══════════════════════════════════════════════════
+// CHARLIE FOLLOWS SET (added 2026-08-11)
+// ═══════════════════════════════════════════════════
+{id:"rev-high-lunge",e:"🤸",n:"Revolved High Lunge",s:"Parivrtta Ashta Chandrasana",l:"intermediate",c:"twist",cpm:3.2,dur:45,
+desc:"High Lunge with a torso twist toward the front leg, arms extended in a T. Builds rotational control while under a hip-flexor stretch.",
+steps:["Start in High Lunge, right foot forward, back heel lifted.","Square the hips forward and press the back heel toward the wall behind you.","Rotate the torso toward the front leg, sweeping arms out into a T.","Keep the front knee tracking over the ankle, back leg strong and straight.","Hold the twist for a few breaths, feeling length through the spine before rotating.","Untwist with control, then repeat on the other side."],
+cue:"Lengthen the spine first, then rotate from the ribcage — the twist follows the length.",
+ben:["Rotational Core","Hip Flexors","Balance","Thoracic Mobility","Leg Strength"]},
+
+{id:"low-lunge-side",e:"🙆",n:"Low Lunge with Side Bend",s:"Anjaneyasana Variation",l:"beginner",c:"standing",cpm:2.6,dur:45,
+desc:"Low Lunge with a lateral reach over the side body. Combines a hip-flexor stretch with a side-body opener.",
+steps:["From Low Lunge, back knee down, front knee stacked over ankle.","Sink the hips forward and down to deepen the hip flexor stretch.","Reach the same-side arm as the back leg up and over into a side bend.","Let the opposite hand rest on the front thigh for support.","Breathe into the stretch along the ribs and hip together.","Hold 30-45 seconds, then switch sides."],
+cue:"Sink the hips forward first, then reach up and over — don't shortcut the hip stretch for the side bend.",
+ben:["Hip Flexors","Side Body","Obliques","Hip Opening","Posture"]},
+
+{id:"rev-half-moon",e:"🌗",n:"Revolved Half Moon",s:"Parivrtta Ardha Chandrasana",l:"advanced",c:"balance",cpm:4.0,dur:30,
+desc:"A standing balance pose combining a forward hinge, a twist, and a lifted back leg. Demands hip, hamstring, and core coordination together.",
+steps:["From a forward fold, shift weight onto the right foot.","Lift the left leg straight back to hip height as the torso hinges forward.","Lower the right hand (or a block) to the floor under the shoulder.","Rotate the torso open, reaching the left arm toward the ceiling.","Keep the standing knee soft, not locked, and the lifted leg active.","Hold a few breaths, then release with control and switch sides."],
+cue:"Root through the standing foot first — the twist and lift both come from a stable base, not the reverse.",
+ben:["Balance","Hamstrings","Rotational Core","Hip Stability","Focus"]},
+
+{id:"standing-fold-bound",e:"🙇",n:"Standing Forward Fold, Bound Arms",s:"Uttanasana Variation",l:"intermediate",c:"standing",cpm:2.4,dur:45,
+desc:"Standing Forward Fold with the arms clasped behind the back and lifted overhead. Adds a shoulder and chest opener to the hamstring stretch.",
+steps:["Stand with feet hip-width, then hinge forward from the hips into a fold.","Clasp the hands behind your back, arms straight.","Let the fold deepen as you lift the clasped arms up and over, away from your back.","Keep a slight bend in the knees if the hamstrings are tight.","Let the head hang heavy, breathing into the stretch.","Hold 30-45 seconds, then release the hands before rolling up."],
+cue:"Lift the clasped hands up and away from your back — that's what opens the shoulders here.",
+ben:["Hamstrings","Shoulders","Chest","Spinal Decompression","Stress Relief"]},
+
+{id:"highplank",e:"🧍",n:"High Plank",s:"Phalakasana",l:"beginner",c:"core",cpm:3.4,dur:45,
+desc:"A full-body isometric hold from hands to toes. Builds core, shoulder, and full-body stability that underlies most other poses.",
+steps:["Start on hands and knees, wrists stacked under shoulders.","Step feet back one at a time into a straight line from head to heels.","Press the floor away, spreading fingers wide, engaging the shoulders.","Draw the belly in and squeeze the glutes to keep the hips level — no sagging or piking.","Keep the neck long, gaze slightly forward of the hands.","Hold 20-45 seconds, breathing steadily throughout."],
+cue:"Push the floor away and zip the ribs down — a straight line from head to heels, nothing sagging.",
+ben:["Core Strength","Shoulder Stability","Full-Body Strength","Posture","Wrist Strength"]},
+
+{id:"side-plank-mod",e:"🤸",n:"Modified Side Plank (Kneeling)",s:"Supported Vasisthasana",l:"beginner",c:"core",cpm:2.6,dur:30,
+desc:"A kneeling version of Side Plank that stacks a lateral side-body and neck stretch on top of the core and shoulder work.",
+steps:["Kneel, then lower onto the right forearm or hand, knees stacked and bent behind you.","Lift the hips so the body forms a diagonal line from knee to shoulder.","Extend the left arm overhead, reaching long through the side body.","Optionally tilt the head away from the lifted arm for a gentle neck stretch.","Keep the hips lifted and square, not sagging toward the floor.","Hold 20-30 seconds, then switch sides."],
+cue:"Lift the hips up and reach long through the top arm — think one long line from knee to fingertips.",
+ben:["Obliques","Shoulder Stability","Side Body","Neck Release","Core"]},
+
+{id:"chaturanga",e:"💪",n:"Chaturanga",s:"Chaturanga Dandasana",l:"intermediate",c:"core",cpm:4.0,dur:15,
+desc:"A low push-up hold with elbows hugging the ribs. Builds the pressing strength that links plank to upward-facing dog in a vinyasa flow.",
+steps:["Start in High Plank, shoulders slightly ahead of the wrists.","Shift weight forward, then bend the elbows straight back, hugging the ribs.","Lower until the upper arms are roughly parallel to the floor — no lower.","Keep the body in one straight line the entire way down, no sagging hips.","Hold briefly at the bottom or flow directly into Upward Dog or Cobra.","For a modified version, lower the knees to the floor first."],
+cue:"Elbows hug the ribs like closing a door — don't let them wing out to the sides.",
+ben:["Triceps","Shoulders","Core Strength","Chest","Full-Body Control"]},
+
+{id:"prone-pec",e:"🦅",n:"Prone Pec Stretch",s:"Broken Wing Pose",l:"intermediate",c:"backbend",cpm:2.0,dur:45,
+desc:"A deep chest and shoulder stretch performed lying prone with one arm extended to a T, rolling weight onto the side and hip.",
+steps:["Lie face down, right arm extended straight out to the side in a T, palm down.","Bend the left knee and plant the left foot near the right knee.","Use the left foot to push, rolling the hips and chest up and over the right arm.","Let the right shoulder and chest sink toward the floor, feeling the stretch through the chest and front shoulder.","Rest the head on the mat or turn it away from the extended arm.","Hold 30-45 seconds, then roll back and switch sides."],
+cue:"Let gravity roll the chest open over the extended arm — don't force the roll, sink into it.",
+ben:["Chest","Front Shoulder","Rotator Cuff","Thoracic Mobility","Posture"]},
+
+{id:"kneeling-sugarcane",e:"🏹",n:"Kneeling Sugarcane",s:"Supported Vasisthasana Variation",l:"advanced",c:"backbend",cpm:3.2,dur:30,
+desc:"Modified Side Plank with a reach back to catch the top foot, adding a quad and hip-flexor stretch to the side-body and shoulder work of Side Plank.",
+steps:["Set up in Modified Side Plank (Kneeling), hips lifted, top arm reaching overhead.","Bend the top knee, reaching the top hand back to catch the top foot.","Draw the heel toward the glute, feeling the stretch through the quad and hip flexor.","Keep the hips lifted and square — don't let them sag as you reach back.","Press the foot into the hand slightly to deepen the bow shape.","Hold 20-30 seconds, then release and switch sides."],
+cue:"Keep the hips lifted first, then reach back for the foot — the bow shape comes after the hips are set.",
+ben:["Quads","Hip Flexors","Obliques","Shoulder Stability","Balance"]},
+
+{id:"banana",e:"🍌",n:"Banana Pose",s:"Bananasana",l:"beginner",c:"restorative",cpm:1.6,dur:60,
+desc:"A reclined crescent-shaped side stretch with the ankles crossed. A gentle, passive way to lengthen the entire side body.",
+steps:["Lie on your back, then walk both feet and hips a few inches to the right.","Cross the right ankle over the left, staying in that shifted crescent shape.","Reach both arms overhead and shift them slightly to the right as well, creating a full-body banana curve.","Relax completely into the stretch along the left side body.","Breathe slowly, letting the stretch deepen with each exhale.","Hold 45-60 seconds, then switch to curve the other direction."],
+cue:"Let the whole body curve like a banana — hips, ribs, and arms all shift the same direction.",
+ben:["Side Body","Obliques","Lats","Relaxation","Spinal Decompression"]},
+
+{id:"windshield-wipers",e:"🚗",n:"Reclined Windshield Wipers",s:"Jathara Parivartanasana Variation",l:"beginner",c:"twist",cpm:2.2,dur:45,
+desc:"Bent knees sweeping side to side while lying on the back (or belly), gently massaging and mobilizing the lower spine.",
+steps:["Lie on your back, knees bent and stacked, feet flat, arms out in a T.","Keeping the knees together, let them fall slowly to the right toward the floor.","Keep both shoulders grounded as the knees lower.","Sweep the knees back through center and continue to the left side.","Keep the movement slow and controlled, breathing with each sweep.","Continue side to side for 30-45 seconds."],
+cue:"Keep both shoulders glued to the floor — the twist happens below the ribs, not through the upper back.",
+ben:["Lower Back","SI Joint","Spinal Mobility","Obliques","Relaxation"]},
+
+{id:"side-leg-ext",e:"🦵",n:"Side-Lying Leg Extensions",s:"Anantasana Variation",l:"beginner",c:"core",cpm:2.4,dur:45,
+desc:"Lying on the side, drawing the top knee to the chest and then extending the leg skyward. Builds hip flexibility and hamstring control together.",
+steps:["Lie on your right side, head resting on the right arm or a block.","Draw the left knee in toward the chest, hugging it with the left hand.","Straighten the left leg up toward the ceiling, holding the foot, calf, or a strap.","Keep the leg as straight as comfortable without rounding the low back.","Lower back to the bent-knee hug, then extend again.","Repeat 6-8 times, then switch sides."],
+cue:"Hug the knee in fully before you extend — don't rush straight to the straight-leg reach.",
+ben:["Hamstrings","Hip Flexibility","Core Control","Balance","Leg Strength"]},
+
+{id:"knees-chest",e:"🤰",n:"Knees-to-Chest",s:"Apanasana",l:"beginner",c:"restorative",cpm:1.6,dur:60,
+desc:"A simple reclined pose hugging both knees to the chest. Gently massages the lower back and relieves tension after backbend or twist-heavy work.",
+steps:["Lie on your back, then draw both knees in toward the chest.","Wrap the arms around the shins or behind the thighs.","Gently rock side to side or in small circles if it feels good on the low back.","Keep the head and shoulders relaxed on the mat.","Breathe slowly, letting the low back release with each exhale.","Hold 45-60 seconds, or longer as a resting pose."],
+cue:"Let the knees pull gently toward the chest with each exhale — don't grip, just breathe into it.",
+ben:["Lower Back","SI Joint","Digestion","Relaxation","Recovery"]},
+
+{id:"wrist-rolls",e:"🤲",n:"Wrist Rolls",s:"Standing/Seated Wrist Mobility",l:"beginner",c:"seated",cpm:1.4,dur:45,
+desc:"Simple circular wrist mobilization, done standing or seated. A quick warm-up before any weight-bearing hand work like Plank or Downward Dog.",
+steps:["Extend both arms forward or clasp the hands together at chest height.","Slowly circle both wrists in one direction, going through the full range of motion.","Complete 8-10 slow circles, then reverse direction for another 8-10.","Keep the shoulders relaxed and the motion isolated to the wrists.","If seated, you can also press palms together and circle at the wrist joint.","Finish by gently shaking out the hands."],
+cue:"Keep the circles slow and full — this is about range, not speed.",
+ben:["Wrist Mobility","Forearms","Injury Prevention","Warm-Up","Circulation"]},
+
+{id:"wrist-figure8",e:"➰",n:"Tabletop Wrist Figure 8s",s:"Tabletop Wrist Chalanasana",l:"beginner",c:"core",cpm:2.0,dur:45,
+desc:"Weighted figure-8 circles through the wrist while in tabletop position. Builds wrist resilience and stability for load-bearing poses.",
+steps:["Come to tabletop, hands under shoulders, knees under hips.","Keeping the palm planted, rock the weight in a figure-8 pattern through the wrist — forward-diagonal, back-diagonal, repeat.","Move slowly, exploring the full range without pain.","Complete 30 seconds on one hand, then switch.","Keep the shoulder stacked over the wrist as you rock, avoiding collapsing into the joint.","Breathe steadily throughout."],
+cue:"Trace a slow figure-8 through the palm and wrist — small range, full control.",
+ben:["Wrist Resilience","Forearm Strength","Injury Prevention","Grip Stability","Warm-Up"]},
+
+{id:"neck-shoulder-release",e:"🙆",n:"Seated Neck & Shoulder Release",s:"Kneeling Griva Chalanasana",l:"beginner",c:"seated",cpm:1.6,dur:60,
+desc:"A lateral ear-to-shoulder stretch with the hands clasped behind the lower back or gently guiding the head. Releases the upper traps and side of the neck.",
+steps:["Sit or kneel tall, clasp the hands behind the lower back (or let one arm hang if that's more accessible).","Gently tilt the right ear toward the right shoulder, feeling the stretch along the left side of the neck.","Optionally use the right hand to add slight, gentle overpressure — never pull hard.","Keep the shoulders down and away from the ears throughout.","Hold 20-30 seconds, breathing slowly, then return to center.","Switch sides and repeat."],
+cue:"Let the ear drift toward the shoulder — any hand pressure should be a whisper, not a pull.",
+ben:["Neck Tension","Upper Traps","Stress Relief","Posture","Shoulder Release"]}
 
 ]; // end POSES
 
