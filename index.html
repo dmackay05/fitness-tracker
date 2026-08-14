@@ -300,6 +300,13 @@
         </div>
       </div>
       <div class="card"><div class="card-title" id="log-title">Today's Food Log</div><div id="food-log"><div class="empty">Nothing logged yet</div></div></div>
+      <div class="card" style="padding-bottom:14px">
+        <div class="card-title" style="margin-bottom:10px">📥 Import Food JSON</div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px">Uploads and <b>replaces</b> that day's food log. Format:<br>
+          <code style="font-size:10px">{"date":"2026-08-13","meals":{"breakfast":[{"name":"Overnight Oats","calories":300,"protein":20,"carbs":45,"fat":8}]}}</code>
+        </div>
+        <input type="file" id="food-import-input" accept=".json,application/json" onchange="importFoodFile(this)" style="width:100%"/>
+      </div>
 
       <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">🏋️ Exercise</div>
@@ -966,6 +973,6 @@
   </div>
 </div>
 
-<script src="app.js?v=135"></script>
+<script src="app.js?v=136"></script>
 </body>
 </html>

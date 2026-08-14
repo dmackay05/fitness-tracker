@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v41 — 2026-08-12";
+var APP_BUILD = "v42 — 2026-08-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1738,6 +1738,61 @@ function _foodKey(f){ return (f.name||"").toLowerCase().trim()+"|"+(+f.cal||0); 
 function _foodCopy(f){ var o={name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; if(+f.fiber) o.fiber=+f.fiber; if(f.fdcId) o.fdcId=f.fdcId; if(+f.grams) o.grams=+f.grams; return o; }
 function isFavObj(f){ var k=_foodKey(f); return loadFav().some(function(x){return _foodKey(x)===k;}); }
 function addFoodObj(f){ var day=getDay(); var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); o.mealTag=dsMealTagGet(); day.foods.push(o); saveDay(day); renderAll(); }
+
+// ── JSON FOOD IMPORT (file upload, replaces that day's entries) ─────────
+function importFoodFile(input){
+  var file = input.files && input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{ importFoodJSON(JSON.parse(e.target.result)); }
+    catch(err){ toast("Couldn't parse that file — check it's valid JSON"); }
+    input.value = ""; // allow re-selecting the same file next time
+  };
+  reader.readAsText(file);
+}
+
+// Accepts either one day object {date, meals} or an array of them.
+// REPLACES that date's food log entirely.
+function importFoodJSON(data){
+  var days = Array.isArray(data) ? data : [data];
+  var importedCount = 0, dayCount = 0, skipped = [];
+  days.forEach(function(d){
+    if(!d || !d.date || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)){ skipped.push(d&&d.date||"?"); return; }
+    var meals = d.meals || {};
+    var foods = [];
+    Object.keys(meals).forEach(function(mealKey){
+      var tag = mealKey.charAt(0).toUpperCase()+mealKey.slice(1).toLowerCase();
+      if(!/^(Breakfast|Lunch|Dinner|Snack)$/.test(tag)) tag = "Snack"; // "other" -> Snack
+      (meals[mealKey]||[]).forEach(function(f,i){
+        if(!f || !f.name) return;
+        var cal = +f.calories || +f.cal || 0;
+        if(cal<=0) return;
+        var o = {
+          name: String(f.name).trim(),
+          cal: cal,
+          protein: +f.protein || 0,
+          carbs: +f.carbs || 0,
+          fat: +f.fat || 0,
+          id: Date.now().toString()+Math.floor(Math.random()*10000)+i,
+          mealTag: tag
+        };
+        if(f.fiber) o.fiber = +f.fiber;
+        if(f.amount) o.name += " ("+f.amount+")";
+        foods.push(o);
+      });
+    });
+    var day = getDay(d.date);
+    day.foods = foods; // replace, per import spec
+    appData[d.date] = day;
+    importedCount += foods.length;
+    dayCount++;
+  });
+  saveAll();
+  renderAll();
+  if(skipped.length) toast("Skipped "+skipped.length+" entr"+(skipped.length===1?"y":"ies")+" with bad/missing dates");
+  else toast("Imported "+importedCount+" food"+(importedCount===1?"":"s")+" across "+dayCount+" day"+(dayCount===1?"":"s"));
+}
 function toggleFavById(id){
   var f=getDay().foods.filter(function(x){return x.id==id;})[0]; if(!f) return;
   var fav=loadFav(), k=_foodKey(f), i=fav.map(_foodKey).indexOf(k);
