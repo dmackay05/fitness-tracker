@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v47 — 2026-08-15";
+var APP_BUILD = "v48 — 2026-08-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1373,9 +1373,10 @@ function trkFinish(){
   var miles=+(trk.distM/1609.344).toFixed(2);
   var dur=Math.round(trkElapsedMs()/60000);
   var ivlNote=ivlSummary();
+  var ivlData=(ivl.label&&ivl.roundsDone>0)?{label:ivl.label,work:ivl.work,rest:ivl.rest,rounds:ivl.rounds,roundsDone:ivl.roundsDone}:null;
   trkStop();
   if(miles<=0 && dur<=0){ trkStatus("Nothing to save",""); trkReset(); return; }
-  trkCommit(miles,dur,"GPS tracked"+ivlNote);
+  trkCommit(miles,dur,"GPS tracked"+ivlNote,null,ivlData);
   trkReset();
   ivlOff();
   trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+(trk.activity==="ride"?"ride":"walk"),"#5eead4");
@@ -1393,12 +1394,13 @@ function trkSaveManual(){
   if(avgHr && trk.activity==="ride"){ var z=dsHrZone(avgHr); if(z) zoneMsg=" \u2014 "+z.zone+" ("+Math.round(z.pct)+"% max HR)"; }
   trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+(trk.activity==="ride"?"ride":"walk")+" (manual)"+zoneMsg,"#5eead4");
 }
-function trkCommit(miles,dur,source,avgHr){
+function trkCommit(miles,dur,source,avgHr,intervals){
   var day=getDay();
   if(trk.activity==="ride"){
     day.rides=day.rides||[];
     var rideEntry={miles:miles,duration:dur,effort:"",daughter:false,notes:source};
     if(avgHr) rideEntry.avgHr=avgHr;
+    if(intervals) rideEntry.intervals=intervals;
     day.rides.push(rideEntry);
     if(dur) dsAddEx(day,{name:"Mountain Bike Ride ("+dur+" min)",calories:calAdj(dur*9.2),type:"cardio",id:Date.now().toString()});
   } else {
@@ -4627,6 +4629,7 @@ function dsRenderMuscleVolume(){
   var freq=dsMuscleFrequencyWeek();
   var proteinByMeal=dsProteinByMealToday(activeDate);
   var z2=dsZone2MinutesWeek();
+  var ivlStats=dsIntervalStatsWeek();
   var mxHr=dsEstMaxHR();
   host.innerHTML =
     '<div class="card">'
@@ -4660,6 +4663,15 @@ function dsRenderMuscleVolume(){
         +'<div style="font-size:20px;font-weight:700;color:#5eead4">'+z2.mins+' <span style="font-size:11px;color:#888;font-weight:400">min in Zone 2</span></div>'
         +'<div style="font-size:10px;color:#888;margin-top:4px">'+z2.ridesWithHr+' of '+z2.ridesTotal+' logged rides this week had an avg HR entered \u2014 log HR on manual ride entry to make this accurate</div>'
       : '<div style="font-size:10px;color:#fbbf24;margin:8px 0">Set your age or max HR in Settings to enable Zone 2 tracking</div>')
+    +'</details>'
+    +'</div>'
+    +'<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Interval Training \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling 7 days</span></summary>'
+    +(ivlStats.sessions>0
+      ? '<div style="font-size:10px;color:#888;margin:8px 0 10px">Push/ease surge rounds completed during GPS-tracked rides \u2014 separate from Zone 2, since intervals mix effort levels on purpose</div>'
+        +'<div style="font-size:20px;font-weight:700;color:#fb923c">'+ivlStats.sessions+' <span style="font-size:11px;color:#888;font-weight:400">session'+(ivlStats.sessions===1?'':'s')+'</span></div>'
+        +'<div style="font-size:10px;color:#888;margin-top:4px">'+ivlStats.roundsDone+' of '+ivlStats.roundsTotal+' rounds completed \u00b7 ~'+ivlStats.pushMins+' min at push effort \u00b7 last protocol: '+ivlStats.lastLabel+'</div>'
+      : '<div style="font-size:10px;color:#888;margin:8px 0">No interval rides logged this week \u2014 pick a preset in the ride tracker before you start a GPS-tracked ride</div>')
     +'</details>'
     +'</div>';
 }
@@ -5177,6 +5189,20 @@ function dsMVDateKeysRolling(){
 // that falls in the ~60-70% max-HR band. Rides without an avgHr logged aren't
 // counted either way (we don't know their zone), so this is a floor, not a
 // complete picture, until HR is logged consistently.
+function dsIntervalStatsWeek(){
+  var keys=dsMVDateKeysRolling();
+  var sessions=0, roundsDone=0, roundsTotal=0, pushMins=0, lastLabel='';
+  keys.forEach(function(key){
+    var day=appData[key]; if(!day||!day.rides) return;
+    day.rides.forEach(function(r){
+      if(!r.intervals) return;
+      sessions++; roundsDone+=(+r.intervals.roundsDone||0); roundsTotal+=(+r.intervals.rounds||0);
+      pushMins+=((+r.intervals.roundsDone||0)*(+r.intervals.work||0))/60;
+      lastLabel=r.intervals.label||lastLabel;
+    });
+  });
+  return {sessions:sessions, roundsDone:roundsDone, roundsTotal:roundsTotal, pushMins:Math.round(pushMins), lastLabel:lastLabel};
+}
 function dsZone2MinutesWeek(){
   var keys=dsMVDateKeysRolling();
   var mins=0, ridesWithHr=0, ridesTotal=0;
