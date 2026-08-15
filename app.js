@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v45 — 2026-08-15";
+var APP_BUILD = "v46 — 2026-08-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2474,8 +2474,8 @@ var DS_DEMOS={
     '<line x1="156" y1="30" x2="172" y2="30" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
     '<circle cx="156" cy="30" r="3" fill="#5F5E5A"/>'+
     '<line x1="30" y1="122" x2="172" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="90" y1="96" x2="90" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="120" x2="70" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="96" x2="92" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="92" y1="112" x2="72" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
     '<line x1="90" y1="96" x2="86" y2="56" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
     '<circle cx="84" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
     '<polyline points="86,58 108,50 132,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.6,'points','86,58 108,50 132,40; 86,58 104,84 94,64; 86,58 108,50 132,40')+'</polyline>'+
@@ -3581,12 +3581,12 @@ DS_DEMOS.curl=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3
   '<line x1="96" y1="45" x2="96" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
   '<line x1="96" y1="92" x2="86" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
   '<line x1="96" y1="92" x2="106" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-  '<line x1="96" y1="54" x2="100" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-  '<line x1="100" y1="82" x2="106" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" transform="rotate(0 100 82)">'+
-  '<animateTransform attributeName="transform" type="rotate" values="0 100 82;-118 100 82;0 100 82" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-  '<line x1="90" y1="124" x2="106" y2="110" stroke="#5eead4" stroke-width="3" stroke-linecap="round" opacity="0.9">'+
-  '<animate attributeName="x2" values="106;92;106" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-  '<animate attributeName="y2" values="110;62;110" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+  '<line x1="99" y1="50" x2="120" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="120" y1="70" x2="128" y2="102" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" transform="rotate(0 120 70)">'+
+  '<animateTransform attributeName="transform" type="rotate" values="0 120 70;-118 120 70;0 120 70" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+  '<line x1="132" y1="124" x2="128" y2="102" stroke="#5eead4" stroke-width="3" stroke-linecap="round" opacity="0.9">'+
+  '<animate attributeName="x2" values="128;114;128" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+  '<animate attributeName="y2" values="102;54;102" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
   '</svg>';};
 DS_DEMOS.hipthrust=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
   '<line x1="20" y1="126" x2="180" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
