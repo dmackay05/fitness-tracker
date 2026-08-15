@@ -94,6 +94,24 @@
           <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
           <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
         </div>
+        <div id="ivl-panel" style="border:1px solid #2a2a45;border-radius:12px;padding:10px 12px;margin-bottom:14px">
+          <div class="rlbl" style="margin-top:0">⚡ Intervals (optional — push/ease surges on the ride)</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="ivl-preset" id="ivl-preset-short" onclick="ivlSetPreset('short')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">30s/90s ×8</button>
+            <button class="ivl-preset" id="ivl-preset-std" onclick="ivlSetPreset('std')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">1:00/2:00 ×6</button>
+            <button class="ivl-preset" id="ivl-preset-long" onclick="ivlSetPreset('long')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">2:00/3:00 ×5</button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="ivl-c-work" placeholder="push sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
+            <input type="number" id="ivl-c-rest" placeholder="ease sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
+            <input type="number" id="ivl-c-rounds" placeholder="rounds" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
+            <button onclick="ivlSetCustom()" style="padding:8px 12px;border-radius:10px;border:1px solid #5eead440;background:#5eead410;color:#5eead4;font-size:11px;cursor:pointer">Set</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <div id="ivl-status" style="font-size:11px;font-family:'DM Mono',monospace;color:#555"></div>
+            <button onclick="ivlOff()" style="font-size:10px;color:#666;background:transparent;border:none;cursor:pointer;text-decoration:underline">clear</button>
+          </div>
+        </div>
         <div style="text-align:center;margin:6px 0 10px">
           <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px">
             <div class="big-num" id="trk-dist" style="color:#fb923c;font-size:48px">0.00</div>
@@ -974,6 +992,6 @@
   </div>
 </div>
 
-<script src="app.js?v=140"></script>
+<script src="app.js?v=141"></script>
 </body>
 </html>

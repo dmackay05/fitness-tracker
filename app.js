@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v46 — 2026-08-15";
+var APP_BUILD = "v47 — 2026-08-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1192,8 +1192,96 @@ function setTrackActivity(a){
   document.getElementById("trk-ride").classList.toggle("sel",a==="ride");
   document.getElementById("trk-walk").classList.toggle("sel",a==="walk");
   document.getElementById("trk-dist").style.color = a==="ride" ? "#fb923c" : "#5eead4";
+  var ivlPanel=document.getElementById('ivl-panel'); if(ivlPanel) ivlPanel.style.display = a==="ride" ? "block" : "none";
+  if(a!=="ride"){ ivlOff(); }
 }
-function trkStatus(msg,color){ var s=document.getElementById("trk-status"); s.textContent=msg; s.style.color=color||"#666"; }
+// ── RIDE INTERVALS (push/ease surge intervals layered on top of GPS tracking) ──
+var ivl = {on:false, work:60, rest:120, rounds:6, phase:null, phaseEndsAt:0, roundsDone:0, remainMs:0, label:''};
+var IVL_PRESETS = {
+  short:  {work:30,  rest:90,  rounds:8, label:'30s push / 90s ease \u00d7 8'},
+  std:    {work:60,  rest:120, rounds:6, label:'1:00 push / 2:00 ease \u00d7 6'},
+  long:   {work:120, rest:180, rounds:5, label:'2:00 push / 3:00 ease \u00d7 5'}
+};
+function ivlSetPreset(key){
+  var p=IVL_PRESETS[key]; if(!p) return;
+  ivl.work=p.work; ivl.rest=p.rest; ivl.rounds=p.rounds; ivl.label=p.label; ivl.on=true;
+  document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
+  var btn=document.getElementById('ivl-preset-'+key); if(btn){btn.style.border='1px solid #fb923c';btn.style.background='#fb923c18';btn.style.color='#fb923c';}
+  ivlRenderStatus();
+}
+function ivlSetCustom(){
+  var w=parseInt(document.getElementById('ivl-c-work').value)||0;
+  var r=parseInt(document.getElementById('ivl-c-rest').value)||0;
+  var n=parseInt(document.getElementById('ivl-c-rounds').value)||0;
+  if(w<=0||r<=0||n<=0){ return; }
+  ivl.work=w; ivl.rest=r; ivl.rounds=n; ivl.label=w+'s push / '+r+'s ease \u00d7 '+n; ivl.on=true;
+  document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
+  ivlRenderStatus();
+}
+function ivlOff(){
+  ivl.on=false; ivl.phase=null;
+  document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
+  ivlRenderStatus();
+}
+function ivlBeep(freq,durMs){
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    if(!ivl._ctx) ivl._ctx=new AC();
+    var ctx=ivl._ctx, o=ctx.createOscillator(), g=ctx.createGain();
+    o.frequency.value=freq; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.15,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+durMs/1000);
+    o.start(); o.stop(ctx.currentTime+durMs/1000);
+  }catch(e){}
+}
+function ivlCue(phase){
+  try{ if(navigator.vibrate) navigator.vibrate(phase==='work'?[220]:[110,90,110,90,110]); }catch(e){}
+  if(phase==='work') ivlBeep(880,220); else ivlBeep(440,300);
+}
+function ivlBegin(){
+  if(!ivl.on) return;
+  ivl.phase='work'; ivl.roundsDone=0; ivl.phaseEndsAt=Date.now()+ivl.work*1000;
+  ivlCue('work');
+}
+function ivlPauseFreeze(){
+  if(!ivl.on||!ivl.phase) return;
+  ivl.remainMs=Math.max(ivl.phaseEndsAt-Date.now(),0);
+}
+function ivlResume(){
+  if(!ivl.on||!ivl.phase) return;
+  ivl.phaseEndsAt=Date.now()+ivl.remainMs;
+}
+function ivlTick(){
+  if(!ivl.on||!ivl.phase) return;
+  var now=Date.now();
+  if(now>=ivl.phaseEndsAt){
+    if(ivl.phase==='work'){
+      ivl.phase='rest'; ivl.phaseEndsAt=now+ivl.rest*1000; ivlCue('rest');
+    } else {
+      ivl.roundsDone++;
+      if(ivl.roundsDone>=ivl.rounds){ ivl.phase='done'; try{ if(navigator.vibrate) navigator.vibrate([200,100,200,100,200]); }catch(e){} }
+      else { ivl.phase='work'; ivl.phaseEndsAt=now+ivl.work*1000; ivlCue('work'); }
+    }
+  }
+  ivlRenderStatus();
+}
+function ivlRenderStatus(){
+  var el=document.getElementById('ivl-status'); if(!el) return;
+  if(!ivl.on){ el.textContent=''; el.style.color='#555'; return; }
+  if(!trk.active){ el.textContent='Intervals armed: '+ivl.label+' \u2014 starts when you tap Start'; el.style.color='#888'; return; }
+  if(ivl.phase==='done'){ el.textContent='\ud83c\udfc1 Intervals complete \u2014 '+ivl.rounds+'/'+ivl.rounds+' rounds'; el.style.color='#4ade80'; return; }
+  var remain=Math.max(Math.ceil((ivl.phaseEndsAt-Date.now())/1000),0);
+  var m=Math.floor(remain/60), s=remain%60;
+  var tstr=m+':'+String(s).padStart(2,'0');
+  if(ivl.phase==='work'){ el.textContent='\ud83d\udd25 PUSH \u2014 '+tstr+'  (round '+(ivl.roundsDone+1)+'/'+ivl.rounds+')'; el.style.color='#fb923c'; }
+  else { el.textContent='\ud83d\ude0c EASE \u2014 '+tstr+'  (round '+(ivl.roundsDone+1)+'/'+ivl.rounds+')'; el.style.color='#5eead4'; }
+}
+function ivlSummary(){
+  if(!ivl.label||ivl.roundsDone<=0) return '';
+  return ' \u00b7 Intervals: '+ivl.label+' ('+ivl.roundsDone+'/'+ivl.rounds+' completed)';
+}
+
+function trkStatus(msg,color){ var s=document.getElementById('trk-status'); s.textContent=msg; s.style.color=color||'#666'; }
 function _hav(a,b){
   var R=6371000, toR=Math.PI/180;
   var dLa=(b.lat-a.lat)*toR, dLo=(b.lng-a.lng)*toR, la1=a.lat*toR, la2=b.lat*toR;
@@ -1214,6 +1302,7 @@ function trkStart(){
   trkReqWake();
   trk.watchId=navigator.geolocation.watchPosition(trkOnPos, trkOnErr, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
   trk.ticker=setInterval(trkTick,1000); trkTick();
+  if(trk.activity==='ride' && ivl.on) ivlBegin(); else { ivl.phase=null; }
   trkPersist();
 }
 function trkOnErr(e){
@@ -1240,7 +1329,7 @@ function trkOnPos(p){
   trkPersist();
 }
 function trkTick(){
-  if(trk.active && !trk.paused){ /* elapsed advances live via startTs */ }
+  if(trk.active && !trk.paused){ /* elapsed advances live via startTs */ ivlTick(); }
   trkUpdate();
   trkPersist();
 }
@@ -1262,9 +1351,11 @@ function trkTogglePause(){
     trk.paused=false; trk.startTs=Date.now(); document.getElementById("trk-pause").textContent="Pause"; trkReqWake(); trkStatus("Resumed","#5eead4");
     if(trk.watchId==null && navigator.geolocation){ trk.watchId=navigator.geolocation.watchPosition(trkOnPos, trkOnErr, {enableHighAccuracy:true, maximumAge:1000, timeout:20000}); }
     if(!trk.ticker){ trk.ticker=setInterval(trkTick,1000); }
+    ivlResume();
   }
-  else { trk.paused=true; trk.elapsedMs+=Date.now()-trk.startTs; document.getElementById("trk-pause").textContent="Resume"; trkStatus("Paused","#888"); }
+  else { trk.paused=true; trk.elapsedMs+=Date.now()-trk.startTs; document.getElementById("trk-pause").textContent="Resume"; trkStatus("Paused","#888"); ivlPauseFreeze(); }
   trkUpdate();
+  ivlRenderStatus();
   trkPersist();
 }
 function trkStop(){
@@ -1276,14 +1367,17 @@ function trkStop(){
   document.getElementById("trk-pause").style.display="none";
   document.getElementById("trk-finish").style.display="none";
   try{ localStorage.removeItem("trk_session"); }catch(e){}
+  ivl.phase=null;
 }
 function trkFinish(){
   var miles=+(trk.distM/1609.344).toFixed(2);
   var dur=Math.round(trkElapsedMs()/60000);
+  var ivlNote=ivlSummary();
   trkStop();
   if(miles<=0 && dur<=0){ trkStatus("Nothing to save",""); trkReset(); return; }
-  trkCommit(miles,dur,"GPS tracked");
+  trkCommit(miles,dur,"GPS tracked"+ivlNote);
   trkReset();
+  ivlOff();
   trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+(trk.activity==="ride"?"ride":"walk"),"#5eead4");
 }
 function trkReset(){ trk.distM=0; trk.elapsedMs=0; trk.lastPt=null; trkUpdate(); }
