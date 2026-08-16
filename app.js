@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v50 — 2026-08-15";
+var APP_BUILD = "v51 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -847,7 +847,13 @@ function attrId(id){ return String(id).replace(/\\/g,"\\\\").replace(/'/g,"\\'")
 function dsTombKey(nameOrEx){ var nm=(typeof nameOrEx==="string")?nameOrEx:String((nameOrEx&&nameOrEx.name)||""); return "n_"+nm.toLowerCase().trim(); }
 function dsSetTomb(day,e){ if(!e)return; day.exTombs=day.exTombs||{}; day.exTombs[dsTombKey(e)]=Date.now(); }
 function dsClearTomb(day,e){ if(day.exTombs){ delete day.exTombs[dsTombKey(e)]; } }
-function dsAddEx(day,ex){ dsClearTomb(day,ex); day.exercises.push(ex); }
+function dsAddEx(day,ex){
+  if(ex && ex.type==="cardio" && !ex.reps && ex.name){
+    var m=String(ex.name).match(/\((\d+(?:\.\d+)?)\s*min/i);
+    if(m) ex.reps=m[1]+" min";
+  }
+  dsClearTomb(day,ex); day.exercises.push(ex);
+}
 function removeEx(id){ var day=getDay();
   var gone=day.exercises.filter(function(e){return e.id==id;})[0];
   if(gone) dsSetTomb(day,gone);
@@ -1406,7 +1412,8 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     if(dur) dsAddEx(day,{name:"Mountain Bike Ride ("+dur+" min)",calories:calAdj(dur*9.2),type:"cardio",id:Date.now().toString()});
   } else {
     var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
-    dsAddEx(day,{name:"Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:cals,type:"cardio",id:Date.now().toString()});
+    var walkMin = dur>0 ? dur : Math.round(miles*20); // fallback est. if only distance was logged (manual, no duration)
+    dsAddEx(day,{name:"Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min"});
     if(miles>0 || dur>0){
       var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE) : Math.round(miles*STEP_CADENCE*20);
       day.wellness=day.wellness||{};
@@ -4932,11 +4939,8 @@ function dsWeeklyActivityMinutes(endKey){
   var cursor = new Date(keyToDate(endKey));
   for(var i=0;i<7;i++){
     var k = localDateKey(cursor);
-    // Lift sessions + yoga sessions logged as exercises
+    // Lift sessions + yoga sessions + rides/walks — all logged exercises, duration parsed from each entry
     totalMin += dsDailyTrainingSeconds(k)/60;
-    // Bike rides logged separately
-    var d = appData[k];
-    if(d && d.rides){ d.rides.forEach(function(r){ totalMin += parseFloat(r.duration)||0; }); }
     cursor.setDate(cursor.getDate()-1);
   }
   return Math.round(totalMin);
