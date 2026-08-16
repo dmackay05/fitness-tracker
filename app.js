@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v51 — 2026-08-16";
+var APP_BUILD = "v52 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -643,7 +643,7 @@ function renderDash(){
   renderTrends();
   renderTrackSummary();
   renderTopFoods();
-  dsRenderMuscleVolume();
+  dsRenderProteinMeal();
 }
 function renderRadials(items){
   var SIZE=72;
@@ -668,6 +668,7 @@ function switchTab(id){
   if(id==="yoga" && typeof renderPoses==="function") renderPoses();
   if(id==="today" && typeof renderToday==="function") renderToday();
   if(id==="log" && typeof ldInit==="function") ldInit();
+  if(id==="volume" && typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume();
   document.querySelector(".content").scrollTop=0;
 }
 var _lastSheetPull = 0;
@@ -4628,40 +4629,66 @@ function dsProteinMealRowsHtml(pm){
       return '<div style="font-size:10px;color:#5eead4;margin-top:6px">Protein looks reasonably spread across meals today</div>';
     })() : '<div style="font-size:10px;color:#888;margin-top:6px">No food logged yet today</div>');
 }
+function dsRenderProteinMeal(){
+  var host=document.getElementById('dash-protein-meal');
+  if(!host) return;
+  var proteinByMeal=dsProteinByMealToday(activeDate);
+  host.innerHTML =
+    '<div class="card">'
+    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Protein by Meal \u2014 Today <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">inferred from log time</span></summary>'
+    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Spreading protein into 3\u20134 doses of ~0.3\u20130.4g/kg improves MPS response vs back-loading it into 1\u20132 meals</div>'
+    +dsProteinMealRowsHtml(proteinByMeal)
+    +'</details>'
+    +'</div>';
+}
+var DS_VOL_VIEW = 'rolling';
+function dsSetVolView(v){ DS_VOL_VIEW=v; dsRenderMuscleVolume(); }
 function dsRenderMuscleVolume(){
-  var host=document.getElementById('dash-muscle-vol');
-  if(!host) return; // static anchor now lives at the bottom of the dashboard panel, after Supplements
+  var host=document.getElementById('volume-tab-host');
+  var naHost=document.getElementById('volume-needs-attention');
+  if(!host) return; // only rendered when the Volume tab exists/is visited
   var rollingVol=dsWeeklyMuscleVolume('rolling');
   var calWk=dsMVWeekMondayKey();
   var calVol=dsWeeklyMuscleVolume('calendar');
   var freq=dsMuscleFrequencyWeek();
-  var proteinByMeal=dsProteinByMealToday(activeDate);
   var z2=dsZone2MinutesWeek();
   var ivlStats=dsIntervalStatsWeek();
   var mxHr=dsEstMaxHR();
+
+  // Needs Attention: muscles below MEV (red/'low'/'none') in the rolling 7-day view — most actionable list, shown first
+  if(naHost){
+    var order=DS_MV_ORDER;
+    var flagged=order.map(function(m){
+      var v=rollingVol[m]||0; var land=MUSCLE_LANDMARKS[m]||[8,20];
+      return {m:m,v:v,land:land,status:v===0?'none':(v<land[0]?'low':'ok')};
+    }).filter(function(r){return r.status!=='ok';});
+    naHost.innerHTML = flagged.length
+      ? '<div class="card" style="border:1px solid #f8717140">'
+        +'<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">⚠️ Needs Attention \u2014 below MEV this week</div>'
+        +'<div style="font-size:11px;color:#ccc">'+flagged.map(function(r){return r.m+' ('+r.v.toFixed(1)+'/'+r.land[0]+')';}).join(' \u00b7 ')+'</div>'
+        +'<div style="font-size:10px;color:#888;margin-top:6px">Add 2\u20133 direct sets for these before adding volume anywhere else</div>'
+        +'</div>'
+      : '<div class="card" style="border:1px solid #5eead440"><div style="font-size:12px;font-weight:700;color:#5eead4">✓ Every muscle is at or above its minimum this week</div></div>';
+  }
+
+  var volToggle = '<div style="display:flex;gap:6px;margin-bottom:10px">'
+    +'<button onclick="dsSetVolView(\'rolling\')" style="flex:1;padding:8px;border-radius:10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer;border:1px solid '+(DS_VOL_VIEW==='rolling'?'#5eead4':'#ffffff1a')+';background:'+(DS_VOL_VIEW==='rolling'?'#5eead418':'transparent')+';color:'+(DS_VOL_VIEW==='rolling'?'#5eead4':'#ccc')+'">Last 7 Days</button>'
+    +'<button onclick="dsSetVolView(\'calendar\')" style="flex:1;padding:8px;border-radius:10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer;border:1px solid '+(DS_VOL_VIEW==='calendar'?'#5eead4':'#ffffff1a')+';background:'+(DS_VOL_VIEW==='calendar'?'#5eead418':'transparent')+';color:'+(DS_VOL_VIEW==='calendar'?'#5eead4':'#ccc')+'">This Week (Mon\u2013Sun)</button>'
+    +'</div>';
+  var activeVol = DS_VOL_VIEW==='calendar'?calVol:rollingVol;
+  var activeLabel = DS_VOL_VIEW==='calendar'?('Partial until Sunday \u00b7 week of '+prettyDate(calWk)):'Rolling, updates daily';
+
   host.innerHTML =
     '<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Weekly Volume by Muscle \u2014 Last 7 Days <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling, updates daily</span></summary>'
-    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = below MEV \u00b7 teal = in range \u00b7 amber = above MAV</div>'
-    +dsMuscleVolRowsHtml(rollingVol)
-    +'</details>'
-    +'</div>'
-    +'<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Weekly Volume by Muscle \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">Mon\u2013Sun, week of '+prettyDate(calWk)+'</span></summary>'
-    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Partial until Sunday \u00b7 same bands as above</div>'
-    +dsMuscleVolRowsHtml(calVol)
-    +'</details>'
+    +'<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
+    +'<div style="font-size:10px;color:#888;margin-bottom:10px">'+activeLabel+' \u00b7 Red = below MEV \u00b7 teal = in range \u00b7 amber = above MAV</div>'
+    +volToggle
+    +dsMuscleVolRowsHtml(activeVol)
     +'</div>'
     +'<div class="card">'
     +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Training Frequency by Muscle <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">direct sets only, last 7 days</span></summary>'
     +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x \u00b7 amber = 1x \u00b7 teal = 2x+ \u00b7 evidence favors \u22652x/week per muscle over the same volume in one session</div>'
     +dsFreqRowsHtml(freq)
-    +'</details>'
-    +'</div>'
-    +'<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Protein by Meal \u2014 Today <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">inferred from log time</span></summary>'
-    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Spreading protein into 3\u20134 doses of ~0.3\u20130.4g/kg improves MPS response vs back-loading it into 1\u20132 meals</div>'
-    +dsProteinMealRowsHtml(proteinByMeal)
     +'</details>'
     +'</div>'
     +'<div class="card">'
@@ -5260,23 +5287,6 @@ function dsMVWeek(dateKeys){
   }
   return out;
 }
-function dsMVPanel(){
-  var v=dsMVWeek(dsMVDateKeysRolling());
-  var any=DS_MV_ORDER.some(function(m){return v[m]>0;});
-  var MAX=16, LO=10, HI=12;
-  var rows=DS_MV_ORDER.map(function(m){
-    var val=Math.round(v[m]*10)/10;
-    var pct=Math.min(val/MAX,1)*100;
-    var cls=val>=LO?(val>HI+3?'ds-mv-high':'ds-mv-good'):(val>=6?'ds-mv-mid':'ds-mv-low');
-    return '<div class="ds-mvrow"><span class="ds-mvname">'+m+'</span>'+
-      '<div class="ds-mvbar"><div class="ds-mvband" style="left:'+(LO/MAX*100)+'%;width:'+((HI-LO)/MAX*100)+'%"></div>'+
-      '<div class="ds-mvfill '+cls+'" style="width:'+pct+'%"></div></div>'+
-      '<span class="ds-mvval">'+(val%1===0?val.toFixed(0):val.toFixed(1))+'</span></div>';
-  }).join('');
-  return '<details class="ds-mvwrap"><summary class="ds-mvsum">Weekly Volume \u2014 fractional sets <span class="ds-mvhint">last 7 days \u00b7 target band 10\u201312</span></summary>'+
-    '<div class="ds-mvnote">Direct work = 1 set \u00b7 assisting muscle on a compound = \u00bd set (Henselmans). '+(any?'Green band = the 10\u201312 growth sweet spot. Under 6 for a muscle you care about? Add 2\u20133 direct sets before adding anything else.':'Log some sets and this fills in.')+'</div>'+
-    rows+'</details>';
-}
 
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
@@ -5361,7 +5371,7 @@ function dsRender(){
     } else { _note.style.display='none'; }
   }
   if(_q&&!_hasHit){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d across any day.</div>'; }
-  if(!_q)html+=dsMVPanel();
+  if(!_q)html+='<div class="card" style="text-align:center;cursor:pointer" onclick="switchTab(\'volume\')"><span style="font-size:12px;color:#5eead4;font-weight:700">📊 View Weekly Volume &amp; Training Load \u2192</span></div>';
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }

@@ -62,11 +62,18 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="dash"><span class="tab-icon">◈</span>Dashboard</button>
     <button class="tab-btn" data-tab="log"><span class="tab-icon">✎</span>Log</button>
+    <button class="tab-btn" data-tab="volume"><span class="tab-icon">📊</span>Volume</button>
     <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
   </div>
 
   <div class="content">
+
+<div class="panel" id="panel-volume">
+  <div class="ds-eyebrow">Weekly Volume &amp; Training Load</div>
+  <div id="volume-needs-attention"></div>
+  <div id="volume-tab-host"></div>
+</div>
 
 <div class="panel" id="panel-today">
   <div class="ds-eyebrow" id="ds-eyebrow">Today</div>
@@ -234,7 +241,7 @@
 
       <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
 
-      <div id="dash-muscle-vol"></div>
+      <div id="dash-protein-meal"></div>
     </div>
 
     <!-- ════════ LOG ════════ -->
@@ -992,6 +999,6 @@
   </div>
 </div>
 
-<script src="app.js?v=145"></script>
+<script src="app.js?v=146"></script>
 </body>
 </html>
