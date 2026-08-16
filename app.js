@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v54 — 2026-08-16";
+var APP_BUILD = "v55 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4636,15 +4636,11 @@ function dsRenderProteinMeal(){
     +'</details>'
     +'</div>';
 }
-var DS_VOL_VIEW = 'rolling';
-function dsSetVolView(v){ DS_VOL_VIEW=v; dsRenderMuscleVolume(); }
 function dsRenderMuscleVolume(){
   var host=document.getElementById('volume-tab-host');
   var naHost=document.getElementById('volume-needs-attention');
   if(!host) return; // only rendered when the Volume tab exists/is visited
   var rollingVol=dsWeeklyMuscleVolume('rolling');
-  var calWk=dsMVWeekMondayKey();
-  var calVol=dsWeeklyMuscleVolume('calendar');
   var freq=dsMuscleFrequencyWeek();
   var ivlStats=dsIntervalStatsWeek();
 
@@ -4664,12 +4660,8 @@ function dsRenderMuscleVolume(){
       : '<div class="card" style="border:1px solid #5eead440"><div style="font-size:12px;font-weight:700;color:#5eead4">✓ Every muscle is at or above its minimum this week</div></div>';
   }
 
-  var volToggle = '<div style="display:flex;gap:6px;margin-bottom:10px">'
-    +'<button onclick="dsSetVolView(\'rolling\')" style="flex:1;padding:8px;border-radius:10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer;border:1px solid '+(DS_VOL_VIEW==='rolling'?'#5eead4':'#ffffff1a')+';background:'+(DS_VOL_VIEW==='rolling'?'#5eead418':'transparent')+';color:'+(DS_VOL_VIEW==='rolling'?'#5eead4':'#ccc')+'">Last 7 Days</button>'
-    +'<button onclick="dsSetVolView(\'calendar\')" style="flex:1;padding:8px;border-radius:10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer;border:1px solid '+(DS_VOL_VIEW==='calendar'?'#5eead4':'#ffffff1a')+';background:'+(DS_VOL_VIEW==='calendar'?'#5eead418':'transparent')+';color:'+(DS_VOL_VIEW==='calendar'?'#5eead4':'#ccc')+'">This Week (Mon\u2013Sun)</button>'
-    +'</div>';
-  var activeVol = DS_VOL_VIEW==='calendar'?calVol:rollingVol;
-  var activeLabel = DS_VOL_VIEW==='calendar'?('Partial until Sunday \u00b7 week of '+prettyDate(calWk)):'Rolling, updates daily';
+  var activeVol = rollingVol;
+  var activeLabel = 'Rolling 7 days \u00b7 updates daily';
 
   host.innerHTML =
     '<div class="card">'
