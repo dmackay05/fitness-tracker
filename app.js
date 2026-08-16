@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v55 — 2026-08-16";
+var APP_BUILD = "v56 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4667,7 +4667,6 @@ function dsRenderMuscleVolume(){
     '<div class="card">'
     +'<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
     +'<div style="font-size:10px;color:#888;margin-bottom:10px">'+activeLabel+' \u00b7 band = each muscle\u2019s own MEV\u2013MAV \u00b7 red = below \u00b7 teal = in range \u00b7 amber = above</div>'
-    +volToggle
     +dsMuscleVolBandRowsHtml(activeVol)
     +'</div>'
     +'<div class="card">'
