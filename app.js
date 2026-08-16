@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v56 — 2026-08-16";
+var APP_BUILD = "v57 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3477,6 +3477,8 @@ var DS_SESSIONS={
 
   fri:{title:'Lower Body Pull',sub:'Hamstrings · Glutes · Lower Back',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,
+      {id:'fri-goblet',name:'Goblet Squat',slot:'Quads (light add-on)',target:'Quads · Glutes',equip:'10 lb dumbbell',rx:'2–3×12–15',cal:25,cue:'DB at the chest, sit straight down between the knees — this is a light top-off, not a max effort',demo:'goblet',log:'setsreps',sets:3,
+        setup:'This is intentionally light — 2–3 sets just to get real quad volume on your second lower-body day without competing with Tuesday\'s main squat work. Keep it easy, well short of failure.'},
       {id:'tue-rdl',name:'Romanian Deadlift',slot:'Hinge',target:'Hamstrings',equip:'Tube 40–50 → 90+ lb',rx:'3–4×10–12',cal:35,cue:'Push hips back to the wall — handles glued to your legs',demo:'hinge',log:'setsreps',sets:4,
         variants:[{name:'Single-Leg DB RDL',equip:'10 lb dumbbell (opposite hand)',rx:'3×10–12/leg',cue:'Hinge forward, DB toward the floor as the free leg extends behind you — hips stay square',demo:'slrdl'},
                   {name:'Super Band RDL',equip:'Ultra Heavy band underfoot',rx:'3–4×8–10',cue:'Stand on the band, hinge back — tension peaks at lockout, squeeze the glutes hard at the top',demo:'hinge'}]},
@@ -5101,6 +5103,7 @@ var DS_MV={
   'mon-calf':{'Calves':1},
   'mon-hollow':{'Core':1},
   'tue-squat':{'Quads':1,'Glutes':.5},
+  'fri-goblet':{'Quads':1,'Glutes':.5},
   'tue-rdl':{'Hamstrings':1,'Glutes':.5},
   'tue-lat':{'Glutes':1},
   'tue-bridge':{'Glutes':1,'Hamstrings':.5},
