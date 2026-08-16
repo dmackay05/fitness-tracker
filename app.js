@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v48 — 2026-08-15";
+var APP_BUILD = "v50 — 2026-08-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1196,7 +1196,7 @@ function setTrackActivity(a){
   if(a!=="ride"){ ivlOff(); }
 }
 // ── RIDE INTERVALS (push/ease surge intervals layered on top of GPS tracking) ──
-var ivl = {on:false, work:60, rest:120, rounds:6, phase:null, phaseEndsAt:0, roundsDone:0, remainMs:0, label:''};
+var ivl = {on:false, work:60, rest:120, rounds:6, phase:null, phaseEndsAt:0, roundsDone:0, remainMs:0, label:'', started:false};
 var IVL_PRESETS = {
   short:  {work:30,  rest:90,  rounds:8, label:'30s push / 90s ease \u00d7 8'},
   std:    {work:60,  rest:120, rounds:6, label:'1:00 push / 2:00 ease \u00d7 6'},
@@ -1204,9 +1204,10 @@ var IVL_PRESETS = {
 };
 function ivlSetPreset(key){
   var p=IVL_PRESETS[key]; if(!p) return;
-  ivl.work=p.work; ivl.rest=p.rest; ivl.rounds=p.rounds; ivl.label=p.label; ivl.on=true;
+  ivl.work=p.work; ivl.rest=p.rest; ivl.rounds=p.rounds; ivl.label=p.label; ivl.on=true; ivl.started=false;
   document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
   var btn=document.getElementById('ivl-preset-'+key); if(btn){btn.style.border='1px solid #fb923c';btn.style.background='#fb923c18';btn.style.color='#fb923c';}
+  if(trk.active && trk.activity==='ride' && !trk.paused) ivlBegin();
   ivlRenderStatus();
 }
 function ivlSetCustom(){
@@ -1214,12 +1215,13 @@ function ivlSetCustom(){
   var r=parseInt(document.getElementById('ivl-c-rest').value)||0;
   var n=parseInt(document.getElementById('ivl-c-rounds').value)||0;
   if(w<=0||r<=0||n<=0){ return; }
-  ivl.work=w; ivl.rest=r; ivl.rounds=n; ivl.label=w+'s push / '+r+'s ease \u00d7 '+n; ivl.on=true;
+  ivl.work=w; ivl.rest=r; ivl.rounds=n; ivl.label=w+'s push / '+r+'s ease \u00d7 '+n; ivl.on=true; ivl.started=false;
   document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
+  if(trk.active && trk.activity==='ride' && !trk.paused) ivlBegin();
   ivlRenderStatus();
 }
 function ivlOff(){
-  ivl.on=false; ivl.phase=null;
+  ivl.on=false; ivl.phase=null; ivl.started=false;
   document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
   ivlRenderStatus();
 }
@@ -1240,7 +1242,7 @@ function ivlCue(phase){
 }
 function ivlBegin(){
   if(!ivl.on) return;
-  ivl.phase='work'; ivl.roundsDone=0; ivl.phaseEndsAt=Date.now()+ivl.work*1000;
+  ivl.phase='work'; ivl.roundsDone=0; ivl.phaseEndsAt=Date.now()+ivl.work*1000; ivl.started=true;
   ivlCue('work');
 }
 function ivlPauseFreeze(){
@@ -1275,10 +1277,6 @@ function ivlRenderStatus(){
   var tstr=m+':'+String(s).padStart(2,'0');
   if(ivl.phase==='work'){ el.textContent='\ud83d\udd25 PUSH \u2014 '+tstr+'  (round '+(ivl.roundsDone+1)+'/'+ivl.rounds+')'; el.style.color='#fb923c'; }
   else { el.textContent='\ud83d\ude0c EASE \u2014 '+tstr+'  (round '+(ivl.roundsDone+1)+'/'+ivl.rounds+')'; el.style.color='#5eead4'; }
-}
-function ivlSummary(){
-  if(!ivl.label||ivl.roundsDone<=0) return '';
-  return ' \u00b7 Intervals: '+ivl.label+' ('+ivl.roundsDone+'/'+ivl.rounds+' completed)';
 }
 
 function trkStatus(msg,color){ var s=document.getElementById('trk-status'); s.textContent=msg; s.style.color=color||'#666'; }
@@ -1370,16 +1368,19 @@ function trkStop(){
   ivl.phase=null;
 }
 function trkFinish(){
+  if(trk._finishing) return;
+  trk._finishing=true;
   var miles=+(trk.distM/1609.344).toFixed(2);
   var dur=Math.round(trkElapsedMs()/60000);
-  var ivlNote=ivlSummary();
-  var ivlData=(ivl.label&&ivl.roundsDone>0)?{label:ivl.label,work:ivl.work,rest:ivl.rest,rounds:ivl.rounds,roundsDone:ivl.roundsDone}:null;
+  var ivlData=ivl.started?{label:ivl.label,work:ivl.work,rest:ivl.rest,rounds:ivl.rounds,roundsDone:ivl.roundsDone}:null;
+  var ivlNote=ivlData?(' \u00b7 Intervals: '+ivl.label+' ('+ivl.roundsDone+'/'+ivl.rounds+' rounds completed)'):'';
   trkStop();
-  if(miles<=0 && dur<=0){ trkStatus("Nothing to save",""); trkReset(); return; }
+  if(miles<=0 && dur<=0){ trkStatus("Nothing to save",""); trkReset(); trk._finishing=false; return; }
   trkCommit(miles,dur,"GPS tracked"+ivlNote,null,ivlData);
   trkReset();
   ivlOff();
   trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+(trk.activity==="ride"?"ride":"walk"),"#5eead4");
+  trk._finishing=false;
 }
 function trkReset(){ trk.distM=0; trk.elapsedMs=0; trk.lastPt=null; trkUpdate(); }
 function trkSaveManual(){
