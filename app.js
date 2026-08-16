@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v57 — 2026-08-16";
+var APP_BUILD = "v58 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -642,7 +642,6 @@ function renderDash(){
   renderWeekSummary();
   renderTrends();
   renderTrackSummary();
-  renderTopFoods();
   dsRenderProteinMeal();
 }
 function renderRadials(items){
@@ -1441,33 +1440,7 @@ function renderTrackSummary(){
     '<div class="hsum-stat"><div class="hsum-val" style="color:#5eead4">'+walkMi.toFixed(1)+'</div><div class="hsum-lbl">Walk mi (7d)</div></div>'+
     '<div class="hsum-stat"><div class="hsum-val" style="color:#a78bfa">'+(rideMi+walkMi).toFixed(1)+'</div><div class="hsum-lbl">Total mi (7d)</div></div>';
 }
-function renderTopFoods(){
-  var el=document.getElementById("topfoods-bars"); if(!el) return;
-  var counts={}; // normalized name -> {name, count, cal}
-  Object.keys(appData).forEach(function(k){
-    var fs=(appData[k]&&appData[k].foods)||[];
-    fs.forEach(function(f){
-      if(!f.name) return;
-      var key=f.name.toLowerCase().trim();
-      if(!counts[key]) counts[key]={name:f.name,count:0,cal:f.cal||0};
-      counts[key].count++;
-    });
-  });
-  var list=Object.keys(counts).map(function(k){return counts[k];}).sort(function(a,b){return b.count-a.count;}).slice(0,5);
-  var sub=document.getElementById("topfoods-sub");
-  if(!list.length){
-    if(sub) sub.textContent="Your most-logged foods";
-    el.innerHTML='<div style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace;text-align:center;padding:10px 0">Log a few foods and this fills in automatically.</div>';
-    return;
-  }
-  if(sub) sub.textContent="Across "+Object.keys(appData).length+" logged day"+(Object.keys(appData).length===1?"":"s");
-  var max=list[0].count;
-  var colors=["#5eead4","#a78bfa","#fbbf24","#fb923c","#4ade80"];
-  el.innerHTML=list.map(function(f,i){
-    return '<div class="mrow"><div class="mlrow"><span>'+escH(f.name)+'</span><span>'+f.count+'x \u00b7 '+f.cal+' kcal</span></div>'+
-      '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.max((f.count/max)*100,4)+'%;background:'+colors[i]+'"></div></div></div>';
-  }).join("");
-}
+
 
 // keep wake lock alive if iOS drops it on tab refocus
 document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible" && trk.active && !trk.paused) trkReqWake(); });
