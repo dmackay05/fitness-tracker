@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v52 — 2026-08-16";
+var APP_BUILD = "v54 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4542,6 +4542,19 @@ var MUSCLE_LANDMARKS={
   Biceps:[6,20],Triceps:[6,20],Forearms:[4,16],
   Quads:[8,20],Hamstrings:[6,18],Glutes:[6,18],Calves:[8,20],Core:[6,20]
 };
+function dsMuscleVolBandRowsHtml(v){
+  return DS_MV_ORDER.map(function(m){
+    var land=MUSCLE_LANDMARKS[m]||[8,20];
+    var LO=land[0], HI=land[1], MAX=HI+6; // headroom scaled per muscle, band placed at this muscle's own MEV\u2013MAV
+    var val=Math.round((v[m]||0)*10)/10;
+    var pct=Math.min(val/MAX,1)*100;
+    var cls=val===0?'ds-mv-low':(val<LO?'ds-mv-mid':(val>HI?'ds-mv-high':'ds-mv-good'));
+    return '<div class="ds-mvrow"><span class="ds-mvname">'+m+'</span>'+
+      '<div class="ds-mvbar"><div class="ds-mvband" style="left:'+(LO/MAX*100)+'%;width:'+((HI-LO)/MAX*100)+'%"></div>'+
+      '<div class="ds-mvfill '+cls+'" style="width:'+pct+'%"></div></div>'+
+      '<span class="ds-mvval">'+(val%1===0?val.toFixed(0):val.toFixed(1))+'</span></div>';
+  }).join('');
+}
 function dsMuscleTagsFromTarget(target){
   if(!target) return [];
   var parts=target.split(/[\/,&+]/).map(function(s){return s.trim();}).filter(Boolean);
@@ -4578,24 +4591,6 @@ function dsWeeklyMuscleVolume(mode){
   // mode: 'rolling' (default, trailing 7 days) or 'calendar' (Mon-Sun this week)
   var keys = (mode==='calendar') ? dsMVDateKeysCalendarWeek() : dsMVDateKeysRolling();
   return dsMVWeek(keys);
-}
-function dsMuscleVolRowsHtml(vol){
-  var order=DS_MV_ORDER; // shared with the fractional panel — keeps all charts in lockstep
-  var rows=order.map(function(m){
-    var v=vol[m]||0;
-    var land=MUSCLE_LANDMARKS[m]||[8,20];
-    var pct=Math.min((v/land[1])*100,100);
-    var status = v===0?'none':(v<land[0]?'low':(v>land[1]?'high':'good'));
-    var color = status==='none'?'#333':(status==='low'?'#f87171':(status==='high'?'#fbbf24':'#5eead4'));
-    return {m:m,v:v,pct:pct,color:color,status:status,land:land};
-  }).filter(function(r){return r.v>0 || ['Quads','Hamstrings','Glutes','Chest','Back'].indexOf(r.m)!==-1;});
-  return rows.map(function(r){
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+r.m+'</div>'
-      +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+r.pct+'%;height:100%;background:'+r.color+'"></div></div>'
-      +'<div style="width:56px;text-align:right;font-size:11px;color:'+r.color+';font-weight:700;flex:0 0 auto">'+(r.v?r.v.toFixed(1):'0')+' / '+r.land[0]+'\u2013'+r.land[1]+'</div>'
-      +'</div>';
-  }).join('');
 }
 function dsFreqRowsHtml(freq){
   return DS_MV_ORDER.map(function(m){
@@ -4651,9 +4646,7 @@ function dsRenderMuscleVolume(){
   var calWk=dsMVWeekMondayKey();
   var calVol=dsWeeklyMuscleVolume('calendar');
   var freq=dsMuscleFrequencyWeek();
-  var z2=dsZone2MinutesWeek();
   var ivlStats=dsIntervalStatsWeek();
-  var mxHr=dsEstMaxHR();
 
   // Needs Attention: muscles below MEV (red/'low'/'none') in the rolling 7-day view — most actionable list, shown first
   if(naHost){
@@ -4681,23 +4674,14 @@ function dsRenderMuscleVolume(){
   host.innerHTML =
     '<div class="card">'
     +'<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
-    +'<div style="font-size:10px;color:#888;margin-bottom:10px">'+activeLabel+' \u00b7 Red = below MEV \u00b7 teal = in range \u00b7 amber = above MAV</div>'
+    +'<div style="font-size:10px;color:#888;margin-bottom:10px">'+activeLabel+' \u00b7 band = each muscle\u2019s own MEV\u2013MAV \u00b7 red = below \u00b7 teal = in range \u00b7 amber = above</div>'
     +volToggle
-    +dsMuscleVolRowsHtml(activeVol)
+    +dsMuscleVolBandRowsHtml(activeVol)
     +'</div>'
     +'<div class="card">'
     +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Training Frequency by Muscle <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">direct sets only, last 7 days</span></summary>'
     +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x \u00b7 amber = 1x \u00b7 teal = 2x+ \u00b7 evidence favors \u22652x/week per muscle over the same volume in one session</div>'
     +dsFreqRowsHtml(freq)
-    +'</details>'
-    +'</div>'
-    +'<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Zone 2 Cardio \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling 7 days</span></summary>'
-    +(mxHr
-      ? '<div style="font-size:10px;color:#888;margin:8px 0 10px">Est. max HR '+mxHr+' bpm \u00b7 Zone 2 = 60\u201370% ('+Math.round(mxHr*0.6)+'\u2013'+Math.round(mxHr*0.7)+' bpm) \u00b7 aerobic-base/mitochondrial-density training, separate from RPE-based ride effort</div>'
-        +'<div style="font-size:20px;font-weight:700;color:#5eead4">'+z2.mins+' <span style="font-size:11px;color:#888;font-weight:400">min in Zone 2</span></div>'
-        +'<div style="font-size:10px;color:#888;margin-top:4px">'+z2.ridesWithHr+' of '+z2.ridesTotal+' logged rides this week had an avg HR entered \u2014 log HR on manual ride entry to make this accurate</div>'
-      : '<div style="font-size:10px;color:#fbbf24;margin:8px 0">Set your age or max HR in Settings to enable Zone 2 tracking</div>')
     +'</details>'
     +'</div>'
     +'<div class="card">'
@@ -5234,21 +5218,6 @@ function dsIntervalStatsWeek(){
     });
   });
   return {sessions:sessions, roundsDone:roundsDone, roundsTotal:roundsTotal, pushMins:Math.round(pushMins), lastLabel:lastLabel};
-}
-function dsZone2MinutesWeek(){
-  var keys=dsMVDateKeysRolling();
-  var mins=0, ridesWithHr=0, ridesTotal=0;
-  keys.forEach(function(key){
-    var day=appData[key]; if(!day||!day.rides) return;
-    day.rides.forEach(function(r){
-      ridesTotal++;
-      if(!r.avgHr) return;
-      ridesWithHr++;
-      var z=dsHrZone(r.avgHr);
-      if(z && z.zone==='Zone 2') mins+=(+r.duration||0);
-    });
-  });
-  return {mins:mins, ridesWithHr:ridesWithHr, ridesTotal:ridesTotal};
 }
 function dsMVDateKeysCalendarWeek(){
   // Monday..Sunday of the current calendar week — "did this week hit its targets"
