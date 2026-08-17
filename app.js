@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v58 — 2026-08-16";
+var APP_BUILD = "v59 — 2026-08-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -160,6 +160,7 @@ var TREND_METRICS=[
   {key:"hips",    label:"Hips",     unit:"in",  dir:"lower",   color:"#2dd4bf", get:function(d){return _meas(d,"hips");}},
   {key:"thighs",  label:"Thighs",   unit:"in",  dir:"lower",   color:"#34d399", get:function(d){return _meas(d,"thighs");}},
   {key:"neck",    label:"Neck",     unit:"in",  dir:"lower",   color:"#60a5fa", get:function(d){return _meas(d,"neck");}},
+  {key:"biceps",  label:"Biceps",   unit:"in",  dir:"higher",  color:"#c084fc", get:function(d){return _meas(d,"biceps");}},
   {key:"cal",     label:"Calories", unit:"kcal",dir:"neutral", color:"#5eead4", goal:function(){return GOALS.calActive||GOALS.cal||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.cal||0);},0):null;}},
   {key:"protein", label:"Protein",  unit:"g",   dir:"higher",  color:"#fbbf24", goal:function(){return GOALS.protein||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.protein||0);},0):null;}},
   {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
