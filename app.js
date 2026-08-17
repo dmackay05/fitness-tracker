@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v61 — 2026-08-17";
+var APP_BUILD = "v62 — 2026-08-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3359,6 +3359,7 @@ var DS_SESSIONS={
                   {name:'Low-Anchor Stretch Fly',equip:'Tube 10–20 lb · low anchor',rx:'3×12–15',cue:'Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body',demo:'fly'}]},
       {id:'thu-lateral',name:'Lateral Raise',demo:'lateralraise',slot:'Side Delts',target:'Side Delts',equip:'Tube 10 → 20 lb',rx:'3×12–15',cal:25,cue:'Lead with elbows, not hands — pour water from a pitcher',log:'setsreps',sets:3,
         variants:[{name:'Front-Angled Lateral Raise',equip:'Tube 10 lb · anchored low in front of you',rx:'3×12–15',cue:'Stand on the band so it pulls slightly from in front rather than straight down — this loads the side delt earlier, right at the stretched bottom position',demo:'lateralraise'},{name:'Incline Ball Lateral Raise',equip:'Ball + 2× 10 lb dumbbells (or 2 lb to start)',rx:'3×12–15',cue:'Lie chest-down on the ball at an incline, feet braced on the floor behind you — raise both DBs out to your sides leading with the elbows, control the lower for a deep stretch at the bottom. The ball locks your torso still so the delt does all the work instead of momentum.',demo:'lateralraise'}]},
+      {id:'mon-standbandpress',name:'Standing Band Chest Press',slot:'Horizontal Push',target:'Chest',equip:'Tube band anchored behind back',rx:'3×12–15',cal:30,cue:'Band anchored around your back, thumbs looped through the handles — press straight out in front of you and squeeze the chest hard at full extension, then control the return',demo:'press',log:'setsreps',sets:3},
       {id:'mon-slamskull',name:'Slam Ball Skull Crusher (supine)',slot:'Triceps',target:'Triceps',equip:'Slam ball',rx:'3×6–8',cal:20,cue:'⚠️ Elbow + control flag — lie on your back, arms straight up holding the ball overhead. Bend only the elbows to lower the ball toward your forehead, then press back to lockout. Use your lightest ball, stop the set the moment you feel any elbow pull, and check in on elbow status the next day before adding reps.',log:'setsreps',sets:3},
       {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3},
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2},
