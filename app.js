@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v68 — 2026-08-17";
+var APP_BUILD = "v69 — 2026-08-18";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7440,6 +7440,7 @@ var PRESETS = [
       {id:"low-lunge",    dur:45},
       {id:"standing-forward",dur:45},
       {id:"mountain",     dur:30},
+      {id:"downdog",      dur:30},
       {id:"cobra",        dur:30},
       {id:"childs",       dur:60},
       {id:"supine-twist", dur:45},
@@ -7529,10 +7530,10 @@ var PRESETS = [
     poses:[
       {id:"easy-pose",        dur:120},
       {id:"catcow",           dur:90},
-      {id:"childs",           dur:120},
       {id:"thread-needle",    dur:60},
       {id:"thread-needle",    dur:60},
       {id:"puppy",            dur:90},
+      {id:"childs",           dur:120},
       {id:"seated-forward",   dur:90},
       {id:"butterfly",        dur:90},
       {id:"supine-twist",     dur:60},
@@ -7640,9 +7641,9 @@ var PRESETS = [
       {id:"side-plank",    dur:30},
       {id:"side-plank",    dur:30},
       {id:"crow",          dur:20},
-      {id:"wheel",         dur:20},
       {id:"locust",        dur:30},
       {id:"bow",           dur:30},
+      {id:"wheel",         dur:20},
       {id:"camel",         dur:30},
       {id:"childs",        dur:60},
       {id:"corpse",        dur:120}
@@ -7685,8 +7686,8 @@ var PRESETS = [
       {id:"cobra",       dur:30},
       {id:"sphinx",      dur:60},
       {id:"upward-dog",  dur:20},
-      {id:"camel",       dur:30},
       {id:"bow",         dur:30},
+      {id:"camel",       dur:30},
       {id:"fish",        dur:30},
       {id:"bridge",      dur:45},
       {id:"wheel",       dur:20},
