@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v67 — 2026-08-17";
+var APP_BUILD = "v68 — 2026-08-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4908,6 +4908,10 @@ function dsEstimateSeconds(ex){
   var rawId = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
   var item = rawId ? dsRawItem(rawId) : null;
   var minMatch = ex.reps && String(ex.reps).match(/(\d+(?:\.\d+)?)\s*min/i);
+  // Also check the display name for a "(NN min)" pattern — covers entries like
+  // "Yoga (30 min)" logged before actualSecs was captured for that flow, so
+  // older stored entries recover their real duration instead of the flat fallback.
+  if(!minMatch) minMatch = ex.name && String(ex.name).match(/\((\d+(?:\.\d+)?)\s*min\)/i);
 
   if(item && item.log==="time"){
     var sets = ex.sets || 1;
