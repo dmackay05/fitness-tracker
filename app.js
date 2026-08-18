@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v66 — 2026-08-17";
+var APP_BUILD = "v67 — 2026-08-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4882,6 +4882,17 @@ function dsRenderSection(label,meta,accent,items,blurb){
 var DS_REST_SECS = 60;
 var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
 
+// Parses a leading minute estimate out of an rx string like "~25 min easy spin",
+// "20–30 min", or "~30 min brisk". Ranges are averaged. Returns null if no minute value found.
+function dsParseRxMinutes(rx){
+  if(!rx) return null;
+  var m = String(rx).match(/(\d+(?:\.\d+)?)\s*(?:[–\-]\s*(\d+(?:\.\d+)?))?\s*min/i);
+  if(!m) return null;
+  var lo = parseFloat(m[1]);
+  var hi = m[2] ? parseFloat(m[2]) : lo;
+  return (lo+hi)/2;
+}
+
 function dsEstimateSeconds(ex){
   if(ex.actualSecs!=null){
     var rawId0 = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
@@ -4912,6 +4923,14 @@ function dsEstimateSeconds(ex){
   if(ex.sets){ // custom/dropdown-logged, no matching item definition
     var reps2 = parseInt(ex.reps, 10) || 10;
     return ex.sets * reps2 * DS_SEC_PER_REP + Math.max(0, ex.sets-1) * DS_REST_SECS;
+  }
+  // "done"-type items (a single complete button, no sets/mins captured) — e.g.
+  // Easy Ride, Post-session Walk. Fall back to the prescribed rx duration
+  // (e.g. "~25 min") rather than a flat guess, so cardio cards like these
+  // count their real prescribed time instead of a token 90 seconds.
+  if(item && item.rx){
+    var rxMin = dsParseRxMinutes(item.rx);
+    if(rxMin!=null) return Math.round(rxMin*60);
   }
   return 90; // flat fallback for anything unparseable (e.g. simple dropdown log with no set/rep detail)
 }
