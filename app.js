@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v64 — 2026-08-17";
+var APP_BUILD = "v66 — 2026-08-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4883,7 +4883,17 @@ var DS_REST_SECS = 60;
 var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
 
 function dsEstimateSeconds(ex){
-  if(ex.actualSecs!=null) return Math.min(ex.actualSecs, 900); // cap: no single exercise realistically runs >15 min; guards against stale bad data from the pre-fix gap bug
+  if(ex.actualSecs!=null){
+    var rawId0 = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
+    var item0 = rawId0 ? dsRawItem(rawId0) : null;
+    // The 15-min cap guards against stale/corrupted strength-set data (pre-fix
+    // gap bug) where a single lift exercise could show an inflated duration.
+    // Cardio/yoga sessions (rides, walks, yoga flows) are legitimately >15 min,
+    // so give them a much higher ceiling instead of the strength-set cap.
+    var isCardioOrYoga = (item0 && item0.log==="cardio") || ex.type==="cardio" || ex.type==="yoga";
+    var cap = isCardioOrYoga ? 10800 : 900; // 180 min vs 15 min
+    return Math.min(ex.actualSecs, cap);
+  }
   var rawId = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
   var item = rawId ? dsRawItem(rawId) : null;
   var minMatch = ex.reps && String(ex.reps).match(/(\d+(?:\.\d+)?)\s*min/i);
@@ -7316,7 +7326,7 @@ function ygShowDone() {
     var label="Yoga ("+totMins+" min)";
     var already=ftData[dk].exercises.some(function(x){return x.name===label;});
     if (!already) {
-      ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString()});
+      ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString(),actualSecs:totMins*60});
       store.set("ft_data",JSON.stringify(ftData));
       if(typeof appData!=="undefined") appData=ftData;
       if(typeof renderAll==="function") renderAll();
@@ -8063,7 +8073,32 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
       document.getElementById('ride-start-btn').textContent = 'START RIDE';
       document.getElementById('ride-start-btn').style.opacity = '1';
       beepDone();
+      rideCrossLog(elapsed);
     }
+  }
+
+  // This standalone ride timer is a countdown display only — it doesn't
+  // otherwise touch day.exercises. Cross-log actual ride time on completion
+  // so it counts toward Weekly Activity / trained-time instead of being lost.
+  function rideCrossLog(elapsedSecs) {
+    try {
+      var mins = Math.round(elapsedSecs / 60);
+      if (mins < 1) return;
+      var d = new Date();
+      var dk = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+      var ftData = JSON.parse(store.get("ft_data") || "{}");
+      if (!ftData[dk]) ftData[dk] = {foods:[],exercises:[],weight:null,waterOz:0,wellness:{},supplements:{}};
+      if (!ftData[dk].exercises) ftData[dk].exercises = [];
+      var label = "Bike Ride (" + mins + " min)";
+      var already = ftData[dk].exercises.some(function(x){ return x.name===label; });
+      if (!already) {
+        ftData[dk].exercises.push({name:label, calories:calAdj(Math.round(mins*9.2)), type:"cardio", id:Date.now().toString(), actualSecs:elapsedSecs});
+        store.set("ft_data", JSON.stringify(ftData));
+        if (typeof appData !== "undefined") appData = ftData;
+        if (typeof renderAll === "function") renderAll();
+        if (typeof pushToSheets === "function") pushToSheets();
+      }
+    } catch(e) {}
   }
 
   function updateRideDisplay(remaining) {
