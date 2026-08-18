@@ -100,13 +100,16 @@
         <div style="display:flex;gap:8px;margin-bottom:14px">
           <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
           <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
+          <div class="eff-btn" id="trk-ruck" onclick="setTrackActivity('ruck')">🎒 Ruck</div>
         </div>
+        <input type="number" id="trk-ruck-lb" placeholder="pack weight (lb)" style="display:none;width:100%;margin-bottom:14px;font-size:13px;padding:9px"/>
         <div id="ivl-panel" style="border:1px solid #2a2a45;border-radius:12px;padding:10px 12px;margin-bottom:14px">
-          <div class="rlbl" style="margin-top:0">⚡ Intervals (optional — push/ease surges on the ride)</div>
+          <div class="rlbl" style="margin-top:0">⚡ Intervals — <span id="ivl-hint">Optional push/ease surges</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
             <button class="ivl-preset" id="ivl-preset-short" onclick="ivlSetPreset('short')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">30s/90s ×8</button>
             <button class="ivl-preset" id="ivl-preset-std" onclick="ivlSetPreset('std')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">1:00/2:00 ×6</button>
             <button class="ivl-preset" id="ivl-preset-long" onclick="ivlSetPreset('long')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">2:00/3:00 ×5</button>
+            <button class="ivl-preset" id="ivl-preset-walk1" onclick="ivlSetPreset('walk1')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">1:00/1:30 ×9 (walk)</button>
           </div>
           <div style="display:flex;gap:6px;align-items:center">
             <input type="number" id="ivl-c-work" placeholder="push sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
@@ -118,6 +121,7 @@
             <div id="ivl-status" style="font-size:11px;font-family:'DM Mono',monospace;color:#555"></div>
             <button onclick="ivlOff()" style="font-size:10px;color:#666;background:transparent;border:none;cursor:pointer;text-decoration:underline">clear</button>
           </div>
+          <div style="font-size:9px;color:#555;font-family:'DM Mono',monospace;text-align:center;margin-top:6px">A tone + vibration marks every push/ease switch — no need to watch the screen</div>
         </div>
         <div style="text-align:center;margin:6px 0 10px">
           <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px">
@@ -212,7 +216,7 @@
 
       <div class="card">
         <div class="card-title">🚴 Distance · last 7 days</div>
-        <div id="dash-distance" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
+        <div id="dash-distance" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
       </div>
 
       <div class="card">
@@ -994,6 +998,6 @@
   </div>
 </div>
 
-<script src="app.js?v=163"></script>
+<script src="app.js?v=164"></script>
 </body>
 </html>
