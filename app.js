@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v63 — 2026-08-17";
+var APP_BUILD = "v64 — 2026-08-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -621,11 +621,14 @@ function renderDash(){
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
 
-  // Weekly Activity (rolling 7-day, all logged activity types)
-  var actMin=dsWeeklyActivityMinutes(activeDate);
+  // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
+  // rolling 7-day kept as a secondary reference line since it reads differently mid-week.
+  var actMin=dsCalendarWeekActivityMinutes(activeDate);
+  var rollMin=dsWeeklyActivityMinutes(activeDate);
   var _am=document.getElementById("dash-activity-min"); if(_am) _am.textContent=actMin;
   var _ag=document.getElementById("dash-activity-goal"); if(_ag) _ag.textContent="min · goal "+ACTIVITY_GOAL;
   var _ab=document.getElementById("dash-activity-bar"); if(_ab) _ab.style.width=Math.min((actMin/ACTIVITY_GOAL)*100,100)+"%";
+  var _ar=document.getElementById("dash-activity-rolling"); if(_ar) _ar.textContent="Rolling 7 days: "+rollMin+" min";
 
   // Weight
   var day=getDay();
@@ -4927,6 +4930,25 @@ function dsWeeklyActivityMinutes(endKey){
     // Lift sessions + yoga sessions + rides/walks — all logged exercises, duration parsed from each entry
     totalMin += dsDailyTrainingSeconds(k)/60;
     cursor.setDate(cursor.getDate()-1);
+  }
+  return Math.round(totalMin);
+}
+// True calendar-week total: Monday through Sunday containing refDate, summed
+// only through today (doesn't project future days). Resets to 0 every Monday.
+function dsCalendarWeekActivityMinutes(refKey){
+  refKey = refKey || todayKey();
+  var ref = new Date(keyToDate(refKey));
+  var dow = ref.getDay(); // 0=Sun,1=Mon,...6=Sat
+  var daysSinceMon = (dow===0) ? 6 : (dow-1);
+  var monday = new Date(ref);
+  monday.setDate(ref.getDate()-daysSinceMon);
+  var totalMin = 0;
+  var cursor = new Date(monday);
+  for(var i=0;i<7;i++){
+    if(cursor > ref) break; // don't count future days within the week
+    var k = localDateKey(cursor);
+    totalMin += dsDailyTrainingSeconds(k)/60;
+    cursor.setDate(cursor.getDate()+1);
   }
   return Math.round(totalMin);
 }
