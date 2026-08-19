@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v72 — 2026-08-18";
+var APP_BUILD = "v73 — 2026-08-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1734,7 +1734,7 @@ function dsRenderVarRotatePreview(){
   if(sample.length) out+='<br>This week, e.g.: '+sample.join(' · ');
   host.innerHTML=out;
 }
-function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -3518,6 +3518,105 @@ var DS_SESSIONS={
       {id:'sun-walk',name:'Recovery Walk',demo:'walk',slot:'Cardio',target:'NEAT · circulation',equip:'Outdoors',rx:'30–45 min',cal:0,cue:'Easy pace, nose breathing — let the body recover, not work',log:'cardio',perMin:4.3,defMin:35,variants:[{name:'Rucked Walk',equip:'Loaded backpack · 10–15 lb',rx:'30–45 min',perMin:5.8,defMin:35,cue:'Sunday version stays easy — lighter load, nose breathing, tall posture',demo:'ruck'}]},
       {id:'sun-flow',name:'Gentle Mobility Flow',slot:'Mobility',target:'Whole body',equip:'Mat',rx:'15–20 min',cal:50,cue:'Move where you feel stuck — slow, breath-led, no intensity',demo:'catcow',log:'done'}]}
 };
+
+// ── CUSTOM PLAN IMPORT ──────────────────────────────────────────────────
+// Lets a different person load their own Mon–Sun exercise structure instead
+// of the built-in one above, without touching any code. Settings > Import
+// Exercise Plan (JSON) accepts a file shaped like:
+// {
+//   "mon": {
+//     "title": "Upper Body Push",
+//     "sub": "Chest · Shoulders · Triceps",     // optional
+//     "accent": "var(--accent)",                 // optional, any CSS color
+//     "moves": [
+//       {
+//         "id": "mon-pushup",                    // required, unique across the whole plan
+//         "name": "Push-ups",                    // required
+//         "rx": "3x10-15",                        // required, shown as the prescription
+//         "log": "setsreps",                     // required: "setsreps" | "time" | "cardio" | "done"
+//         "sets": 3,                             // required if log is "setsreps"
+//         "secs": 40,                            // required if log is "time"
+//         "perMin": 8, "defMin": 30,             // required if log is "cardio"
+//         "slot": "Horizontal Push",             // optional, muscle-group label
+//         "target": "Chest",                     // optional
+//         "equip": "Bodyweight",                 // optional
+//         "cal": 30,                             // optional, est. calories for the set
+//         "cue": "Keep a flat back."             // optional, coaching cue shown under the move
+//       }
+//     ]
+//   },
+//   "tue": { ... }, "wed": { ... }, "thu": { ... }, "fri": { ... }, "sat": { ... }, "sun": { ... }
+// }
+// Only the days included are overridden — any day left out keeps the default
+// built-in session for that weekday. Demo animations, PR/PAIL-RAIL cues, and
+// variant rotation are David's own content and are not required for a custom
+// plan to work; moves simply render without them if omitted.
+var DS_PLAN_DAYS=['mon','tue','wed','thu','fri','sat','sun'];
+function dsCustomPlanRaw(){ try{ return store.get('ds_custom_plan')||""; }catch(e){ return ""; } }
+function dsValidateCustomPlan(obj){
+  if(!obj || typeof obj!=='object') return "File isn't a JSON object.";
+  var touched=false;
+  for(var i=0;i<DS_PLAN_DAYS.length;i++){
+    var d=DS_PLAN_DAYS[i], sess=obj[d];
+    if(sess==null) continue;
+    touched=true;
+    if(typeof sess.title!=='string' || !sess.title.trim()) return "\""+d+"\" needs a title.";
+    if(!Array.isArray(sess.moves) || !sess.moves.length) return "\""+d+"\" needs a non-empty moves array.";
+    for(var j=0;j<sess.moves.length;j++){
+      var m=sess.moves[j];
+      if(!m || typeof m!=='object') return "\""+d+"\" has an invalid move at position "+(j+1)+".";
+      if(!m.id || typeof m.id!=='string') return "\""+d+"\" move "+(j+1)+" needs a string \"id\".";
+      if(!m.name || typeof m.name!=='string') return "\""+d+"\" move \""+m.id+"\" needs a \"name\".";
+      if(!m.rx || typeof m.rx!=='string') return "\""+d+"\" move \""+m.id+"\" needs an \"rx\".";
+      if(['setsreps','time','cardio','done'].indexOf(m.log)===-1) return "\""+d+"\" move \""+m.id+"\" needs \"log\" to be setsreps, time, cardio, or done.";
+      if(m.log==='setsreps' && !(m.sets>0)) return "\""+d+"\" move \""+m.id+"\" has log:\"setsreps\" but no \"sets\" number.";
+      if(m.log==='time' && !(m.secs>0)) return "\""+d+"\" move \""+m.id+"\" has log:\"time\" but no \"secs\" number.";
+      if(m.log==='cardio' && !(m.perMin>0 && m.defMin>0)) return "\""+d+"\" move \""+m.id+"\" has log:\"cardio\" but is missing \"perMin\"/\"defMin\" numbers.";
+    }
+  }
+  if(!touched) return "No recognized day keys found (mon/tue/wed/thu/fri/sat/sun).";
+  return null; // valid
+}
+function dsApplyCustomPlan(obj){
+  DS_PLAN_DAYS.forEach(function(d){
+    if(obj[d] && Array.isArray(obj[d].moves)) DS_SESSIONS[d]=obj[d];
+  });
+}
+(function dsLoadCustomPlanOnInit(){
+  var raw=dsCustomPlanRaw(); if(!raw) return;
+  try{
+    var obj=JSON.parse(raw);
+    if(!dsValidateCustomPlan(obj)) dsApplyCustomPlan(obj);
+    else console.warn('Stored custom plan failed validation, ignoring it.');
+  }catch(e){ console.warn('Stored custom plan is not valid JSON, ignoring it.'); }
+})();
+function dsImportPlanFile(input){
+  var file=input && input.files && input.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    var text=String(reader.result||"");
+    var obj;
+    try{ obj=JSON.parse(text); }
+    catch(e){ toast("Not valid JSON — check the file and try again"); input.value=""; return; }
+    var err=dsValidateCustomPlan(obj);
+    if(err){ toast("Plan not imported: "+err); input.value=""; return; }
+    try{ store.set('ds_custom_plan', text); }catch(e){}
+    dsApplyCustomPlan(obj);
+    toast("Plan imported \u2014 reloading\u2026");
+    setTimeout(function(){ location.reload(); }, 700);
+  };
+  reader.onerror=function(){ toast("Couldn't read that file"); };
+  reader.readAsText(file);
+  input.value="";
+}
+function dsResetCustomPlan(){
+  try{ store.set('ds_custom_plan',''); }catch(e){}
+  toast("Reverted to the default plan \u2014 reloading\u2026");
+  setTimeout(function(){ location.reload(); }, 700);
+}
+function dsCustomPlanStatus(){
+  return dsCustomPlanRaw() ? "Custom plan active" : "Using default plan";
+}
 
 var DS_WEEKMAP=['sun','mon','tue','wed','thu','fri','sat'];
 var DS_DAYLABEL={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};

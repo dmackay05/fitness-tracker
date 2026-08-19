@@ -758,6 +758,14 @@
         <button class="bs bfull" onclick="planReload()" style="margin-top:6px">↻ Reload Plan</button>
       </div>
       <div class="card" style="margin-top:10px">
+        <div class="card-title">🗓️ Exercise Plan (Mon–Sun)</div>
+        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
+        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default.</div>
+        <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
+        <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()">⬆ Import Plan (JSON)</button>
+        <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
+      </div>
+      <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
@@ -998,6 +1006,6 @@
   </div>
 </div>
 
-<script src="app.js?v=166"></script>
+<script src="app.js?v=167"></script>
 </body>
 </html>
