@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v71 — 2026-08-18";
+var APP_BUILD = "v72 — 2026-08-18";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8145,9 +8145,17 @@ if('serviceWorker' in navigator){ window.addEventListener('load',function(){ nav
       if (!ftData[dk]) ftData[dk] = {foods:[],exercises:[],weight:null,waterOz:0,wellness:{},supplements:{}};
       if (!ftData[dk].exercises) ftData[dk].exercises = [];
       var label = "Bike Ride (" + mins + " min)";
-      var already = ftData[dk].exercises.some(function(x){ return x.name===label; });
+      // Dedup by type+day, not exact-minute name match: a GPS-tracked ride
+      // logged elsewhere (e.g. "Bike Ride (19 min)") would not string-match
+      // this timer's "Bike Ride (20 min)" and both would persist, double-
+      // counting burned calories. Any existing bike-ride entry today blocks
+      // this auto-log instead.
+      var already = ftData[dk].exercises.some(function(x){ return x.type==="cardio" && /^Bike Ride/.test(x.name||""); });
       if (!already) {
-        ftData[dk].exercises.push({name:label, calories:calAdj(Math.round(mins*9.2)), type:"cardio", id:Date.now().toString(), actualSecs:elapsedSecs});
+        // sess_ prefix so dsMergeExercises' name-keyed merge (mkey) also
+        // recognizes this as the same real-world exercise during sync,
+        // instead of stacking as an unrelated raw-timestamp id.
+        ftData[dk].exercises.push({name:label, calories:calAdj(Math.round(mins*9.2)), type:"cardio", id:"sess_rideTimer_"+dk, actualSecs:elapsedSecs});
         store.set("ft_data", JSON.stringify(ftData));
         if (typeof appData !== "undefined") appData = ftData;
         if (typeof renderAll === "function") renderAll();
