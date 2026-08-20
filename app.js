@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v73 — 2026-08-19";
+var APP_BUILD = "v76 — 2026-08-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2510,6 +2510,117 @@ function tgYogaToggle(){
   toast(on?("\u2713 Yoga logged \u2014 "+calAdj(TG_YOGA_CAL)+" cal"):"Yoga unmarked");
 }
 
+// ── WEDNESDAY GUIDED FLOW — hands-free auto-advance through the 14-pose sequence ──
+// Start Flow times each pose (or paces the one rep-based move), marks it done
+// automatically when the hold ends, and moves to the next pose on its own.
+var DS_FLOW_IDS=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child',
+  'wed-flow-downdog','wed-flow-dragon','wed-flow-cobra','wed-flow-fold','wed-flow-swan',
+  'wed-flow-cat','wed-flow-twist','wed-flow-bridge','wed-flow-legsup','wed-flow-sav'];
+var DS_FLOW_REP_SECS=60; // pacing duration for the one non-timed move (Bird Dog) in the flow
+var DS_FLOW={active:false,paused:false,idx:-1,left:0,total:0,interval:null,side:null};
+function dsFlowCurrentItem(){
+  if(!DS_FLOW.active||DS_FLOW.idx<0||DS_FLOW.idx>=DS_FLOW_IDS.length) return null;
+  return dsRawItem(DS_FLOW_IDS[DS_FLOW.idx]);
+}
+function dsFlowDurFor(item){ if(item&&item.log==='time'&&item.secs) return item.secs; return DS_FLOW_REP_SECS; }
+function dsFlowStart(){
+  if(DS_FLOW.active) return;
+  DS_FLOW.active=true; DS_FLOW.paused=false; DS_FLOW.idx=-1;
+  dsFlowNext();
+}
+function dsFlowStop(){
+  if(DS_FLOW.interval){ clearInterval(DS_FLOW.interval); DS_FLOW.interval=null; }
+  DS_FLOW.active=false; DS_FLOW.paused=false; DS_FLOW.idx=-1;
+  dsRender();
+}
+function dsFlowNext(){
+  if(DS_FLOW.interval){ clearInterval(DS_FLOW.interval); DS_FLOW.interval=null; }
+  DS_FLOW.idx++;
+  if(DS_FLOW.idx>=DS_FLOW_IDS.length){ dsFlowFinishAll(); return; }
+  var raw=dsRawItem(DS_FLOW_IDS[DS_FLOW.idx]);
+  if(!raw){ dsFlowNext(); return; }
+  var item=dsViewOf(raw);
+  DS_FLOW.side=raw.perSide?'L':null;
+  var dur=raw.perSide?Math.round(item.secs/2):dsFlowDurFor(item);
+  DS_FLOW.total=dur; DS_FLOW.left=dur; DS_FLOW.paused=false;
+  if(typeof yogaBeepStart==='function'){ try{ yogaBeepStart(); }catch(e){} }
+  var st=dsItemState(raw.id); st._open=true; dsSaveUI();
+  dsRender();
+  setTimeout(function(){
+    var el=document.getElementById('ds-move-'+raw.id);
+    if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'});
+  },80);
+  DS_FLOW.interval=setInterval(function(){ dsFlowTick(raw); },1000);
+}
+function dsFlowTick(raw){
+  if(DS_FLOW.paused) return;
+  DS_FLOW.left--;
+  if(DS_FLOW.left===5 && typeof yogaBeepWarning==='function'){ try{ yogaBeepWarning(); }catch(e){} }
+  dsFlowPaintBar();
+  if(DS_FLOW.left<=0){
+    if(typeof yogaBeepEnd==='function'){ try{ yogaBeepEnd(); }catch(e){} }
+    if(raw.perSide && DS_FLOW.side==='L'){
+      // switch to the right side, same pose, fresh half-timer, own ding
+      DS_FLOW.side='R'; DS_FLOW.left=DS_FLOW.total;
+      dsToast('Switch sides \u2014 Right');
+      dsFlowPaintBar();
+      return; // keep the same interval running
+    }
+    clearInterval(DS_FLOW.interval); DS_FLOW.interval=null;
+    dsFlowCompleteItem(raw);
+  }
+}
+function dsFlowCompleteItem(raw){
+  if(raw.log==='setsreps'){
+    var st=dsItemState(raw.id); if(!st.manualDone) dsFinishSets(raw.id);
+  } else {
+    if(!dsComplete(raw.id)) dsLogComplete(dsViewOf(raw));
+    dsSaveUI(); dsRender(); renderAll();
+  }
+  dsFlowNext();
+}
+function dsFlowPause(){ if(!DS_FLOW.active) return; DS_FLOW.paused=!DS_FLOW.paused; dsFlowPaintBar(); }
+function dsFlowSkip(){ if(!DS_FLOW.active) return; dsFlowNext(); }
+function dsFlowFinishAll(){
+  DS_FLOW.active=false; DS_FLOW.idx=-1;
+  if(DS_FLOW.interval){ clearInterval(DS_FLOW.interval); DS_FLOW.interval=null; }
+  dsToast('\u2713 Yoga flow complete');
+  try{ if(!((typeof egIsDone==='function')&&egIsDone(TG_YOGA_ID))) tgYogaToggle(); }catch(e){}
+  dsRender(); renderAll();
+}
+function dsFlowPaintBar(){
+  var nameEl=document.getElementById('ds-flow-name');
+  var timeEl=document.getElementById('ds-flow-time');
+  var pauseBtn=document.getElementById('ds-flow-pause');
+  if(!nameEl||!timeEl) return; // bar not on screen (different day/tab) — countdown still runs, UI catches up on next render
+  var raw=dsFlowCurrentItem(); if(!raw) return;
+  nameEl.textContent=raw.name+(DS_FLOW.side?' \u2014 '+(DS_FLOW.side==='L'?'Left':'Right'):'');
+  timeEl.textContent=dsMMSS(Math.max(0,DS_FLOW.left));
+  if(pauseBtn) pauseBtn.textContent=DS_FLOW.paused?'\u25B6 Resume':'\u23F8 Pause';
+}
+function dsFlowBarHtml(sk){
+  if(sk!=='wed') return '';
+  var n=DS_FLOW_IDS.length;
+  if(!DS_FLOW.active){
+    return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
+      +'<div style="font-size:12px;color:#c084fc;font-weight:700;margin-bottom:8px">\ud83e\uddd8 Guided Flow \u2014 hands-free</div>'
+      +'<div style="font-size:11px;color:#999;margin-bottom:10px">Auto-advances through all '+n+' poses, times each hold, and marks them done as it goes</div>'
+      +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c084fc;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
+      +'</div>';
+  }
+  var raw=dsFlowCurrentItem(); var nm=raw?(raw.name+(DS_FLOW.side?' \u2014 '+(DS_FLOW.side==='L'?'Left':'Right'):'')):'';
+  return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
+    +'<div style="font-size:11px;color:#999;margin-bottom:2px">Pose '+(DS_FLOW.idx+1)+' of '+n+'</div>'
+    +'<div id="ds-flow-name" style="font-size:14px;color:#f0f0f0;font-weight:700;margin-bottom:6px">'+nm+'</div>'
+    +'<div id="ds-flow-time" style="font-size:28px;color:#c084fc;font-weight:700;font-family:\'DM Mono\',monospace;margin-bottom:10px">'+dsMMSS(DS_FLOW.left)+'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button id="ds-flow-pause" onclick="dsFlowPause()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #c084fc55;background:transparent;color:#c084fc;font-weight:700;font-size:12px;cursor:pointer">'+(DS_FLOW.paused?'\u25B6 Resume':'\u23F8 Pause')+'</button>'
+    +'<button onclick="dsFlowSkip()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#aaa;font-weight:700;font-size:12px;cursor:pointer">\u23ED Skip</button>'
+    +'<button onclick="dsFlowStop()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #f8717155;background:transparent;color:#f87171;font-weight:700;font-size:12px;cursor:pointer">\u2715 Stop</button>'
+    +'</div>'
+    +'</div>';
+}
+
 
 /* ===== DAILY SESSION MODULE (injected) ===== */
 var DS_FIG='#9a9d8c', DS_BAND='#4ec98a', DS_ARR='#f5b14c';
@@ -3236,7 +3347,7 @@ var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',m
   moves:[
     {id:'m-catcow',name:'Cat-Cow (breath-led)',rx:'10 slow reps',cal:10,demo:'catcow',log:'done',target:'Full Spine',
       setup:'Hands and knees. Inhale to arch (belly drops, chest lifts), exhale to round (back up, chin tucks). 4–6 sec per rep. Let it ripple through the whole spine.'},
-    {id:'m-9090',name:'Half-Kneeling Hip Flexor Stretch',rx:'60s/side',cal:10,demo:'nine90',log:'time',secs:120,target:'Hip Flexors · Psoas',
+    {id:'m-9090',name:'Half-Kneeling Hip Flexor Stretch',rx:'60s/side',cal:10,demo:'nine90',log:'time',secs:120,perSide:true,target:'Hip Flexors · Psoas',
       setup:'Half-kneel, back knee is the side stretched, front shin vertical, hips square. Shift hips forward; lightly squeeze the back glute to deepen it. 60 sec per side.'},
     {id:'m-child',name:"Child's Pose",rx:'90s',cal:10,demo:'child',log:'time',secs:90,target:'Lower Back · Hips · Lats',
       setup:'From kneeling, sit back toward heels, arms forward, forehead down. Wide knees for more hip space. Breathe into the back body. Do this before checking your phone.'}
@@ -3250,13 +3361,13 @@ var DS_PRE={key:'pre',title:'Pre-Workout Activation',accent:'var(--accent)',meta
 var DS_MOBILITY={"key": "mobility", "title": "Mobility", "accent": "#a78bfa", "meta": "CARs + PAILs/RAILs · daily · yin holds before bed", "blurb": "Controlled circles to own each joint, then PAILs/RAILs to build strength at end range. Keep contractions to ~60–70%, symmetric and braced — back off anything sharp, especially around the SI joint. The yin holds below run 3–5 min each (fascia takes that long to release) and are best done in the evening — exhale twice as long as you inhale.", "moves": [{"id": "mob-hip", "name": "Hips — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 20, "demo": "hipcircle", "log": "done", "target": "Hip joint", "equip": "Floor / wall", "setup": "CARs first: on all fours or standing tall, lift one knee and trace the biggest slow circle the hip can make — 2–3 each direction, ribs down, nothing else moving. Then run the PAILs/RAILs below in a deep hip end range (90/90 fold or pigeon)."}, {"id": "mob-9090", "name": "Seated 90/90 Hip Transitions", "rx": "8 transitions/side", "cal": 15, "demo": "ninetytransition", "log": "setsreps", "sets": 1, "target": "Hip Rotation", "equip": "Floor", "setup": "Sit with the front leg bent 90 at the hip and knee, shin angled away (external rotation), back leg bent 90 behind you, shin angled back (internal rotation). Stay tall through the spine — don’t lean back to cheat range. Lift the hips slightly and rotate the whole base to switch sides, swapping which hip is in and which is out. 8 slow transitions per side. Keep it controlled and pain-free — this is rotational range, not a deep static hold, so back off anything sharp near the SI joint."}, {"id": "mob-shoulder", "name": "Shoulders — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "shouldercar", "log": "done", "target": "Shoulder joint", "equip": "Wall / doorway", "setup": "CARs first: stand tall, one arm draws the largest slow circle it can — reach overhead, rotate, sweep behind — ribs down, 2–3 each way. Then run PAILs/RAILs at an end-range reach (overhead, or a doorway chest opener)."}, {"id": "mob-spine", "name": "Spine — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "catcow", "log": "done", "target": "Full spine", "equip": "Floor", "setup": "CARs first: slow segmental cat-cow moving one vertebra at a time, then gentle rotations and side-bends through the whole spine. Then run PAILs/RAILs gently — low intensity here, this is near your SI joint."},
     {id:'y-kneehug',name:'Supine Knee Hugs',rx:'2 min',cal:7,demo:'kneehug',log:'time',secs:120,target:'Arrive',
       setup:'On your back, knees to chest, rock gently. Transition in from the day. No agenda yet.'},
-    {id:'y-swan',name:'Sleeping Swan (Yin Pigeon)',rx:'5 min/side',cal:10,demo:'swan',log:'time',secs:300,target:'SI Joint · Outer Hip · Glute',
+    {id:'y-swan',name:'Sleeping Swan (Yin Pigeon)',rx:'5 min/side',cal:10,demo:'swan',log:'time',secs:300,perSide:true,target:'SI Joint · Outer Hip · Glute',
       setup:'From all fours, one knee forward behind the wrist, back leg straight. Fold forward passively, forehead down. Pillow under the front hip if needed. Gravity does it over 3–5 min. Deep dull ache in the outer glute is right; sharp knee pain means add support. Switch sides.'},
-    {id:'y-dragon',name:'Dragon (Low Lunge)',rx:'5 min/side',cal:8,demo:'dragon',log:'time',secs:300,target:'Hip Flexors · Psoas',
+    {id:'y-dragon',name:'Dragon (Low Lunge)',rx:'5 min/side',cal:8,demo:'dragon',log:'time',secs:300,perSide:true,target:'Hip Flexors · Psoas',
       setup:'Front foot forward, back knee down on a blanket. Sink the hips low and hold passively, hands on the front knee or blocks. Let gravity pull the hips down with each exhale. First 90 sec can feel intense; the release comes after.'},
     {id:'y-cat',name:'Caterpillar',rx:'5 min',cal:8,demo:'caterpillar',log:'time',secs:300,target:'Back Body · Hamstrings',
       setup:'Seated, legs straight. Let the spine round forward — don\'t straighten it. Reach toward the feet, completely passive. The rounding is the release. Blanket under the knees if hamstrings are tight.'},
-    {id:'y-twist',name:'Supine Twist',rx:'3 min/side',cal:7,demo:'twist',log:'time',secs:180,target:'SI Joint · Lower Back',
+    {id:'y-twist',name:'Supine Twist',rx:'3 min/side',cal:7,demo:'twist',log:'time',secs:180,perSide:true,target:'SI Joint · Lower Back',
       setup:'On your back, bring one knee across the body toward the floor. Arms wide, palms up. Don\'t push the knee — let it rest. Gaze away from the bent knee. Switch sides.'},
     {id:'y-legsup',name:'Legs Up the Wall',rx:'5–10 min',cal:10,demo:'legsup',log:'time',secs:600,target:'Full Decompression',
       setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'}
@@ -3422,12 +3533,12 @@ var DS_SESSIONS={
       {id:'wed-flow-birddog',name:'Bird Dog — slow flow',slot:'Flow · 3',target:'Core · SI Stability',equip:'Mat',rx:'6/side',cal:10,cue:'Exhale extend, inhale return — flat back, zero rocking. Stay right where Cat-Cow left you, on hands and knees',demo:'birddog',log:'setsreps',sets:1},
       {id:'wed-flow-child',name:'Child\'s Pose — side reaches',slot:'Flow · 4',target:'Lats · Low Back',equip:'Mat',rx:'90s',cal:5,cue:'Hips to heels, walk the hands right and hold 3 breaths, then left. Sit back from tabletop into this',demo:'child',log:'time',secs:90},
       {id:'wed-flow-downdog',name:'Downward Dog — pedal out',slot:'Flow · 5',target:'Posterior Chain · Shoulders',equip:'Mat',rx:'2 min',cal:10,cue:'Hips high, spine long — bend one knee then the other, pedaling the heels. Press up from Child\'s Pose into this',demo:'downdog',log:'time',secs:120},
-      {id:'wed-flow-dragon',name:'Dragon — Low Lunge',slot:'Flow · 6',target:'Hip Flexors',equip:'Mat · yoga blocks',rx:'90s/side',cal:10,cue:'Back knee down, sink the hips forward — blocks under hands if the floor is far. Step one foot forward from Downward Dog',demo:'dragon',log:'time',secs:180},
+      {id:'wed-flow-dragon',name:'Dragon — Low Lunge',slot:'Flow · 6',target:'Hip Flexors',equip:'Mat · yoga blocks',rx:'90s/side',cal:10,cue:'Back knee down, sink the hips forward — blocks under hands if the floor is far. Step one foot forward from Downward Dog',demo:'dragon',log:'time',secs:180,perSide:true},
       {id:'wed-flow-cobra',name:'Cobra — gentle backbend',slot:'Flow · 7',target:'Spine · Chest',equip:'Mat',rx:'90s',cal:6,cue:'Press the chest forward and up, hips glued to the mat — low back stays comfortable. Lower down from Dragon onto your belly',demo:'cobra',log:'time',secs:90},
       {id:'wed-flow-fold',name:'Standing Forward Fold',slot:'Flow · 8',target:'Hamstrings · Spine',equip:'Mat',rx:'90s',cal:5,cue:'Soft knees, hang heavy — grab opposite elbows and sway gently. Push back through Downward Dog, then walk your feet up to standing',demo:'fold',log:'time',secs:90},
-      {id:'wed-flow-swan',name:'Sleeping Swan',slot:'Flow · 9',target:'Glutes · Deep Hip',equip:'Mat · block under hip',rx:'2 min/side',cal:10,cue:'Front shin angled, fold over it — block under the hip keeps the pelvis square. Fold your knees and sit down from standing into this',demo:'swan',log:'time',secs:240},
+      {id:'wed-flow-swan',name:'Sleeping Swan',slot:'Flow · 9',target:'Glutes · Deep Hip',equip:'Mat · block under hip',rx:'2 min/side',cal:10,cue:'Front shin angled, fold over it — block under the hip keeps the pelvis square. Fold your knees and sit down from standing into this',demo:'swan',log:'time',secs:240,perSide:true},
       {id:'wed-flow-cat',name:'Caterpillar — seated fold',slot:'Flow · 10',target:'Hamstrings · Spine',equip:'Mat',rx:'2 min',cal:6,cue:'Round forward and hang — this is yin, let gravity do the work. Straighten your legs out from Swan into this',demo:'caterpillar',log:'time',secs:120},
-      {id:'wed-flow-twist',name:'Supine Twist',slot:'Flow · 11',target:'Spine · Obliques',equip:'Mat',rx:'90s/side',cal:6,cue:'Knees drop gently to one side, both shoulders stay down — easy does it with the SI. Roll onto your back from Caterpillar',demo:'twist',log:'time',secs:180},
+      {id:'wed-flow-twist',name:'Supine Twist',slot:'Flow · 11',target:'Spine · Obliques',equip:'Mat',rx:'90s/side',cal:6,cue:'Knees drop gently to one side, both shoulders stay down — easy does it with the SI. Roll onto your back from Caterpillar',demo:'twist',log:'time',secs:180,perSide:true},
       {id:'wed-flow-bridge',name:'Slow Bridge Rolls',slot:'Flow · 12',target:'Spine · Glutes',equip:'Mat',rx:'90s',cal:8,cue:'Roll up one vertebra at a time on the inhale, melt down on the exhale. Center back onto your spine from the twist',demo:'bridge',log:'time',secs:90},
       {id:'wed-flow-legsup',name:'Legs Up the Wall',slot:'Flow · 13',target:'Recovery · Circulation',equip:'Wall',rx:'3 min',cal:5,cue:'Hips close to the wall, arms wide — total surrender. Scoot to the wall and swing your legs up from lying down',demo:'legsup',log:'time',secs:180},
       {id:'wed-flow-sav',name:'Savasana',slot:'Flow · 14',target:'Integration',equip:'Mat',rx:'3 min',cal:3,cue:'Flat on your back, let everything go — the pose where the practice lands. Lower your legs down from the wall into this',demo:'savasana',log:'time',secs:180},
@@ -4757,7 +4868,6 @@ function dsRenderMuscleVolume(){
   if(!host) return; // only rendered when the Volume tab exists/is visited
   var rollingVol=dsWeeklyMuscleVolume('rolling');
   var freq=dsMuscleFrequencyWeek();
-  var ivlStats=dsIntervalStatsWeek();
 
   // Needs Attention: muscles below MEV (red/'low'/'none') in the rolling 7-day view — most actionable list, shown first
   if(naHost){
@@ -4788,15 +4898,6 @@ function dsRenderMuscleVolume(){
     +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Training Frequency by Muscle <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">direct sets only, last 7 days</span></summary>'
     +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x \u00b7 amber = 1x \u00b7 teal = 2x+ \u00b7 evidence favors \u22652x/week per muscle over the same volume in one session</div>'
     +dsFreqRowsHtml(freq)
-    +'</details>'
-    +'</div>'
-    +'<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Interval Training \u2014 This Week <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">rolling 7 days</span></summary>'
-    +(ivlStats.sessions>0
-      ? '<div style="font-size:10px;color:#888;margin:8px 0 10px">Push/ease surge rounds completed during GPS-tracked rides \u2014 separate from Zone 2, since intervals mix effort levels on purpose</div>'
-        +'<div style="font-size:20px;font-weight:700;color:#fb923c">'+ivlStats.sessions+' <span style="font-size:11px;color:#888;font-weight:400">session'+(ivlStats.sessions===1?'':'s')+'</span></div>'
-        +'<div style="font-size:10px;color:#888;margin-top:4px">'+ivlStats.roundsDone+' of '+ivlStats.roundsTotal+' rounds completed \u00b7 ~'+ivlStats.pushMins+' min at push effort \u00b7 last protocol: '+ivlStats.lastLabel+'</div>'
-      : '<div style="font-size:10px;color:#888;margin:8px 0">No interval rides logged this week \u2014 pick a preset in the ride tracker before you start a GPS-tracked ride</div>')
     +'</details>'
     +'</div>';
 }
@@ -4913,7 +5014,7 @@ function dsRenderItem(rawItem,idx){
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
-  var h='<div class="'+cls+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
+  var h='<div class="'+cls+'" id="ds-move-'+item.id+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
   h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+'</div>';
   var _target=item.target||'';
   var _equip=item.equip||'';
@@ -4971,8 +5072,18 @@ function dsRenderItem(rawItem,idx){
       +'<button class="ds-btn ds-finishbtn '+(done?'ds-lit':'')+'" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsFinishSets(\''+item.id+'\')">'+(done?'\u2713 Done':'Done ('+st.sets.length+')')+'</button>'
       +'</div>';
   } else if(item.log==='time'){
-    var _ts=dsTimerLabel(item.id,item.secs);
-    h+='<div class="ds-timerwrap"><button class="ds-tbtn '+_ts.cls+'" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">'+_ts.txt+'</button></div>';
+    if(rawItem.perSide){
+      var _half=Math.round(item.secs/2);
+      var _idL=item.id+'_L', _idR=item.id+'_R';
+      var _tsL=dsTimerLabel(_idL,_half), _tsR=dsTimerLabel(_idR,_half);
+      h+='<div class="ds-sidewrap" style="display:flex;gap:8px;margin:6px 0">'
+        +'<div style="flex:1;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:700">LEFT</div><button class="ds-tbtn '+_tsL.cls+'" id="ds-t-'+_idL+'" style="width:100%" onclick="dsStartTimer(\''+_idL+'\','+_half+')">'+_tsL.txt+'</button></div>'
+        +'<div style="flex:1;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:700">RIGHT</div><button class="ds-tbtn '+_tsR.cls+'" id="ds-t-'+_idR+'" style="width:100%" onclick="dsStartTimer(\''+_idR+'\','+_half+')">'+_tsR.txt+'</button></div>'
+        +'</div>';
+    } else {
+      var _ts=dsTimerLabel(item.id,item.secs);
+      h+='<div class="ds-timerwrap"><button class="ds-tbtn '+_ts.cls+'" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">'+_ts.txt+'</button></div>';
+    }
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   } else if(item.log==='cardio'){
     var mins=st.mins||item.defMin;
@@ -5442,7 +5553,8 @@ function dsRender(){
       var _hot=!!DS_SAT_HEAT_ON[activeDate];
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
-    html=_satHeatBtn+_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
+    var _flowBar=dsFlowBarHtml(sk);
+    html=_flowBar+_satHeatBtn+_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
     var _customMoves=dsCustomMoves(sk);
     if(_customMoves.length){
       html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
