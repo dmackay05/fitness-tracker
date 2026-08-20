@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v76 — 2026-08-19";
+var APP_BUILD = "v77 — 2026-08-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2513,14 +2513,33 @@ function tgYogaToggle(){
 // ── WEDNESDAY GUIDED FLOW — hands-free auto-advance through the 14-pose sequence ──
 // Start Flow times each pose (or paces the one rep-based move), marks it done
 // automatically when the hold ends, and moves to the next pose on its own.
-var DS_FLOW_IDS=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child',
+var DS_FLOW_IDS_A=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child',
   'wed-flow-downdog','wed-flow-dragon','wed-flow-cobra','wed-flow-fold','wed-flow-swan',
   'wed-flow-cat','wed-flow-twist','wed-flow-bridge','wed-flow-legsup','wed-flow-sav'];
+// Warrior-focused variant: swaps the hip-opener/backbend middle section (Dragon→Cobra→Fold)
+// for a standing balance/strength block, keeping the same breath-in/breath-out bookends.
+var DS_FLOW_IDS_B=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child',
+  'wed-flow-downdog','wed-flow-warrior1','wed-flow-warrior2','wed-flow-revwarrior','wed-flow-fold','wed-flow-swan',
+  'wed-flow-cat','wed-flow-twist','wed-flow-bridge','wed-flow-legsup','wed-flow-sav'];
+// Balance/twist-focused variant: swaps Dragon for Warrior III (single-leg balance),
+// good change-up since it hits balance + core instead of a static hip-flexor hold.
+var DS_FLOW_IDS_C=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child',
+  'wed-flow-downdog','wed-flow-warrior3','wed-flow-trianglepose','wed-flow-cobra','wed-flow-fold','wed-flow-swan',
+  'wed-flow-cat','wed-flow-twist','wed-flow-bridge','wed-flow-legsup','wed-flow-sav'];
+var DS_FLOW_SEQUENCES=[DS_FLOW_IDS_A,DS_FLOW_IDS_B,DS_FLOW_IDS_C];
+var DS_FLOW_SEQ_LABELS=['Grounding Flow','Warrior Flow','Balance Flow'];
+function dsFlowSeqIndex(dk){
+  if(!DS_VAR_ROTATE) return 0; // rotation off → always the original grounding flow
+  var w=dsWeekIndex(dk||activeDate);
+  return ((w%DS_FLOW_SEQUENCES.length)+DS_FLOW_SEQUENCES.length)%DS_FLOW_SEQUENCES.length;
+}
+function dsFlowActiveIds(){ return DS_FLOW_SEQUENCES[dsFlowSeqIndex(activeDate)]; }
 var DS_FLOW_REP_SECS=60; // pacing duration for the one non-timed move (Bird Dog) in the flow
 var DS_FLOW={active:false,paused:false,idx:-1,left:0,total:0,interval:null,side:null};
 function dsFlowCurrentItem(){
-  if(!DS_FLOW.active||DS_FLOW.idx<0||DS_FLOW.idx>=DS_FLOW_IDS.length) return null;
-  return dsRawItem(DS_FLOW_IDS[DS_FLOW.idx]);
+  var _ids=dsFlowActiveIds();
+  if(!DS_FLOW.active||DS_FLOW.idx<0||DS_FLOW.idx>=_ids.length) return null;
+  return dsRawItem(_ids[DS_FLOW.idx]);
 }
 function dsFlowDurFor(item){ if(item&&item.log==='time'&&item.secs) return item.secs; return DS_FLOW_REP_SECS; }
 function dsFlowStart(){
@@ -2536,8 +2555,9 @@ function dsFlowStop(){
 function dsFlowNext(){
   if(DS_FLOW.interval){ clearInterval(DS_FLOW.interval); DS_FLOW.interval=null; }
   DS_FLOW.idx++;
-  if(DS_FLOW.idx>=DS_FLOW_IDS.length){ dsFlowFinishAll(); return; }
-  var raw=dsRawItem(DS_FLOW_IDS[DS_FLOW.idx]);
+  var _ids=dsFlowActiveIds();
+  if(DS_FLOW.idx>=_ids.length){ dsFlowFinishAll(); return; }
+  var raw=dsRawItem(_ids[DS_FLOW.idx]);
   if(!raw){ dsFlowNext(); return; }
   var item=dsViewOf(raw);
   DS_FLOW.side=raw.perSide?'L':null;
@@ -2600,10 +2620,12 @@ function dsFlowPaintBar(){
 }
 function dsFlowBarHtml(sk){
   if(sk!=='wed') return '';
-  var n=DS_FLOW_IDS.length;
+  var n=dsFlowActiveIds().length;
+  var _seqLabel=DS_FLOW_SEQ_LABELS[dsFlowSeqIndex(activeDate)];
   if(!DS_FLOW.active){
     return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
       +'<div style="font-size:12px;color:#c084fc;font-weight:700;margin-bottom:8px">\ud83e\uddd8 Guided Flow \u2014 hands-free</div>'
+      +'<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:4px">This week: '+_seqLabel+'</div>'
       +'<div style="font-size:11px;color:#999;margin-bottom:10px">Auto-advances through all '+n+' poses, times each hold, and marks them done as it goes</div>'
       +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c084fc;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
       +'</div>';
@@ -3503,10 +3525,10 @@ var DS_SESSIONS={
                   {name:'Low-Anchor Stretch Fly',equip:'Tube 10–20 lb · low anchor',rx:'3×12–15',cue:'Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body',demo:'fly'}]},
       {id:'thu-lateral',name:'Lateral Raise',demo:'lateralraise',slot:'Side Delts',target:'Side Delts',equip:'Tube 10 → 20 lb',rx:'3×12–15',cal:25,cue:'Lead with elbows, not hands — pour water from a pitcher',log:'setsreps',sets:3,
         variants:[{name:'Front-Angled Lateral Raise',equip:'Tube 10 lb · anchored low in front of you',rx:'3×12–15',cue:'Stand on the band so it pulls slightly from in front rather than straight down — this loads the side delt earlier, right at the stretched bottom position',demo:'lateralraise'},{name:'Incline Ball Lateral Raise',equip:'Ball + 2× 10 lb dumbbells (or 2 lb to start)',rx:'3×12–15',cue:'Lie chest-down on the ball at an incline, feet braced on the floor behind you — raise both DBs out to your sides leading with the elbows, control the lower for a deep stretch at the bottom. The ball locks your torso still so the delt does all the work instead of momentum.',demo:'lateralraise'}]},
-      {id:'mon-standbandpress',name:'Standing Band Chest Press',slot:'Horizontal Push',target:'Chest',equip:'Tube band anchored behind back',rx:'3×12–15',cal:30,cue:'Band anchored around your back, thumbs looped through the handles — press straight out in front of you and squeeze the chest hard at full extension, then control the return',demo:'press',log:'setsreps',sets:3},
-      {id:'mon-slamskull',name:'Slam Ball Skull Crusher (supine)',slot:'Triceps',target:'Triceps',equip:'Slam ball',rx:'3×6–8',cal:20,cue:'⚠️ Elbow + control flag — lie on your back, arms straight up holding the ball overhead. Bend only the elbows to lower the ball toward your forehead, then press back to lockout. Use your lightest ball, stop the set the moment you feel any elbow pull, and check in on elbow status the next day before adding reps.',log:'setsreps',sets:3},
-      {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3},
-      {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2},
+      {id:'mon-standbandpress',name:'Standing Band Chest Press',slot:'Horizontal Push',target:'Chest',equip:'Tube band anchored behind back',rx:'3×12–15',cal:30,cue:'Band anchored around your back, thumbs looped through the handles — press straight out in front of you and squeeze the chest hard at full extension, then control the return',demo:'press',log:'setsreps',sets:3,variants:[{name:'Ball DB Chest Press',equip:'Ball + 2× 10 lb DBs',rx:'3×12–15',cue:'Upper back on the ball, hips bridged level with shoulders and knees — press both DBs up over the chest, lower to a deep stretch just below the ball line, press back up. Keep hips locked, no sagging as you fatigue',demo:'press'}]},
+      {id:'mon-slamskull',name:'Slam Ball Skull Crusher (supine)',slot:'Triceps',target:'Triceps',equip:'Slam ball',rx:'3×6–8',cal:20,cue:'⚠️ Elbow + control flag — lie on your back, arms straight up holding the ball overhead. Bend only the elbows to lower the ball toward your forehead, then press back to lockout. Use your lightest ball, stop the set the moment you feel any elbow pull, and check in on elbow status the next day before adding reps.',log:'setsreps',sets:3,variants:[{name:'Banded Overhead Triceps Extension',equip:'Tube 10–20 lb, anchored underfoot',rx:'3×10–12',cue:'Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Lower elbow shear than the skull crusher, easier to stop the instant the elbow complains',demo:'triceps'}]},
+      {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3,variants:[{name:'Single-Leg Calf Raise',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cue:'One heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top — unilateral load builds strength faster than bilateral once bodyweight gets easy',demo:'calf'}]},
+      {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors, good swap on days the SI joint feels touchy',demo:'hollow'}]},
       dsCore('mon-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
@@ -3516,14 +3538,14 @@ var DS_SESSIONS={
       {id:'tue-squat',name:'Banded Squat',slot:'Squat',target:'Quads · Glutes',equip:'Clench mini loop above knees',rx:'4×12–15',cal:40,cue:'Mini loop above the knees — sit back and down, knees push out against the band',demo:'squat',log:'setsreps',sets:4,
         variants:[{name:'Goblet Squat',equip:'10 lb dumbbell',rx:'4×15–20',cue:'Hold the DB at your chest — sit back, elbows brush inside the knees',demo:'goblet'},
                   {name:'Long-Length Partial Squat',equip:'Mini loop above knees or bodyweight',rx:'3×15–20',cue:'Drop to the bottom of the squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in the deep stretch the whole set; quads burn fast.',demo:'squat'},{name:'Ball Wall Squat',equip:'Stability ball against wall',rx:'3\u00d715',cue:'Ball in the low back against the wall \u2014 roll down to parallel, drive up through the heels. Very SI-friendly',demo:'squat'}]},
-      {id:'tue-lat',name:'Banded Lateral Walk',demo:'latwalk',slot:'Abductors',target:'Hip Abductors',equip:'Mini loop above knees',rx:'3×12/side',cal:25,cue:"Stay in the quarter squat — don't stand up between steps",log:'setsreps',sets:3},
+      {id:'tue-lat',name:'Banded Lateral Walk',demo:'latwalk',slot:'Abductors',target:'Hip Abductors',equip:'Mini loop above knees',rx:'3×12/side',cal:25,cue:"Stay in the quarter squat — don't stand up between steps",log:'setsreps',sets:3,variants:[{name:'Standing Clamshell (banded)',equip:'Mini loop above knees',rx:'3×15/side',cue:'Stand on one leg holding a wall or chair, band above the knees — drive the free knee out to the side and back without rotating the hips. Same abductor target, less quad fatigue than the walk',demo:'latwalk'}]},
       {id:'fri-bulg',name:'Banded Bulgarian Split Squat',slot:'Unilateral Squat',target:'Quads · Balance',equip:'Tube 20–30 → 40–50 lb',rx:'3×10/leg',cal:40,cue:'Front heel drives through the floor — torso stays tall',demo:'splitsquat',log:'setsreps',sets:3,variants:[{name:'Banded Reverse Lunge',equip:'Tube 20\u201330 lb',rx:'3\u00d710/leg',cue:'Step back, drop the knee, drive through the front heel \u2014 easier to balance than Bulgarians, same quad work',demo:'splitsquat'}]},
       {id:'fri-sumo',name:'Banded Sumo Squat',slot:'Squat',target:'Inner Thigh · Glutes',equip:'Tube 40–50 lb stacked',rx:'3×12–15',cal:35,cue:'Wide stance, toes out, knees push out — sit straight down',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Goblet Sumo Squat',equip:'10 lb dumbbell',rx:'3\u00d715\u201320',cue:'DB at the chest, wide stance \u2014 sit straight down between the knees',demo:'goblet'}]},
       {id:'fri-sqpress',name:'Squat to Press',slot:'Power',target:'Full Body',equip:'10 lb DBs or slam ball',rx:'3×10',cal:35,cue:'Legs drive up first, then press — one fluid motion',demo:'press',log:'setsreps',sets:3,variants:[{name:'KB Squat to Press',equip:'8 lb kettlebell',rx:'3\u00d712',cue:'Goblet-hold the bell, squat, then punch it overhead as you stand \u2014 one fluid motion',demo:'goblet'}]},
-      {id:'tue-pallof',name:'Banded Pallof Press',demo:'pallof',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',log:'setsreps',sets:3},
+      {id:'tue-pallof',name:'Banded Pallof Press',demo:'pallof',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',log:'setsreps',sets:3,variants:[{name:'Kneeling Pallof Press',equip:'Tube 10–20 lb, mid anchor',rx:'3×10/side',cue:'Same anchor and press, but from tall-kneeling — takes the legs out of the equation so it is pure anti-rotation core, and it is gentler on the SI joint than the standing version',demo:'pallof'}]},
       {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
-      {id:'tue-step',name:'Step-Up',demo:'stepup',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",log:'setsreps',sets:3},
-      {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4},
+      {id:'tue-step',name:'Step-Up',demo:'stepup',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",log:'setsreps',sets:3,variants:[{name:'Banded Reverse Lunge',equip:'Tube 20–30 lb',rx:'3×10/side',cue:'Step back, drop the knee, drive through the front heel — easier to balance than a step-up, same unilateral quad work',demo:'splitsquat'}]},
+      {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]},
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
   wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
@@ -3534,6 +3556,11 @@ var DS_SESSIONS={
       {id:'wed-flow-child',name:'Child\'s Pose — side reaches',slot:'Flow · 4',target:'Lats · Low Back',equip:'Mat',rx:'90s',cal:5,cue:'Hips to heels, walk the hands right and hold 3 breaths, then left. Sit back from tabletop into this',demo:'child',log:'time',secs:90},
       {id:'wed-flow-downdog',name:'Downward Dog — pedal out',slot:'Flow · 5',target:'Posterior Chain · Shoulders',equip:'Mat',rx:'2 min',cal:10,cue:'Hips high, spine long — bend one knee then the other, pedaling the heels. Press up from Child\'s Pose into this',demo:'downdog',log:'time',secs:120},
       {id:'wed-flow-dragon',name:'Dragon — Low Lunge',slot:'Flow · 6',target:'Hip Flexors',equip:'Mat · yoga blocks',rx:'90s/side',cal:10,cue:'Back knee down, sink the hips forward — blocks under hands if the floor is far. Step one foot forward from Downward Dog',demo:'dragon',log:'time',secs:180,perSide:true},
+      {id:'wed-flow-warrior1',name:'Warrior I',slot:'Flow · 6 (Warrior)',target:'Quads · Hip Flexors · Core',equip:'Mat',rx:'45s/side',cal:12,cue:'Step one foot forward from Downward Dog, back heel down at 45°, square the hips forward, arms reach overhead. Front knee tracks over the ankle — stop short of 90° if the right SI joint complains',demo:'warrior1',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-warrior2',name:'Warrior II',slot:'Flow · 7 (Warrior)',target:'Inner Thigh · Shoulders · Focus',equip:'Mat',rx:'45s/side',cal:12,cue:'Open the hips wide, arms extend parallel to the floor, gaze over the front hand. Sink only as deep as feels stable on the right side',demo:'warrior2',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-revwarrior',name:'Reverse Warrior',slot:'Flow · 8 (Warrior)',target:'Side Body · Obliques',equip:'Mat',rx:'30s/side',cal:8,cue:'From Warrior II, flip the front palm up and reach back — long arc through the side body, back hand slides down the back leg. Keep it easy on the SI — don\'t force the lean',demo:'reverse-warrior',log:'time',secs:60,perSide:true},
+      {id:'wed-flow-warrior3',name:'Warrior III',slot:'Flow · 6 (Balance)',target:'Balance · Glutes · Core',equip:'Mat',rx:'20s/side',cal:10,cue:'Shift weight onto one leg, hinge forward as the other leg lifts behind for a T-shape. Use a wall or chair nearby if balance is off — no shame in a light touch-down',demo:'warrior3',log:'time',secs:40,perSide:true},
+      {id:'wed-flow-trianglepose',name:'Triangle Pose',slot:'Flow · 7 (Balance)',target:'Hamstrings · IT Band · Side Body',equip:'Mat',rx:'45s/side',cal:10,cue:'Feet wide, hinge at the hip and reach the front hand toward the shin or floor, back arm reaches up. Great for the left IT band history — keep both legs long, not locked hard',demo:'triangle',log:'time',secs:90,perSide:true},
       {id:'wed-flow-cobra',name:'Cobra — gentle backbend',slot:'Flow · 7',target:'Spine · Chest',equip:'Mat',rx:'90s',cal:6,cue:'Press the chest forward and up, hips glued to the mat — low back stays comfortable. Lower down from Dragon onto your belly',demo:'cobra',log:'time',secs:90},
       {id:'wed-flow-fold',name:'Standing Forward Fold',slot:'Flow · 8',target:'Hamstrings · Spine',equip:'Mat',rx:'90s',cal:5,cue:'Soft knees, hang heavy — grab opposite elbows and sway gently. Push back through Downward Dog, then walk your feet up to standing',demo:'fold',log:'time',secs:90},
       {id:'wed-flow-swan',name:'Sleeping Swan',slot:'Flow · 9',target:'Glutes · Deep Hip',equip:'Mat · block under hip',rx:'2 min/side',cal:10,cue:'Front shin angled, fold over it — block under the hip keeps the pelvis square. Fold your knees and sit down from standing into this',demo:'swan',log:'time',secs:240,perSide:true},
@@ -3567,7 +3594,7 @@ var DS_SESSIONS={
 
   thu:{title:'Upper Body Pull',sub:'Back · Biceps · Rear Delts',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_KBHALO,
-      {id:'mon-pullapart',name:'Band Pull-Apart',slot:'Rear Delts',target:'Rear Delts',equip:'Tube 10–20 lb',rx:'3×15–20',cal:25,cue:'Crack a walnut between your shoulder blades — arms stay straight',demo:'fly',log:'setsreps',sets:3},
+      {id:'mon-pullapart',name:'Band Pull-Apart',slot:'Rear Delts',target:'Rear Delts',equip:'Tube 10–20 lb',rx:'3×15–20',cal:25,cue:'Crack a walnut between your shoulder blades — arms stay straight',demo:'fly',log:'setsreps',sets:3,variants:[{name:'Cross-Body Rear Delt Fly',equip:'Tube 10–20 lb · chest-height anchor',rx:'3×12–15',cue:'Anchor at chest height, reach the working arm all the way across your body toward the anchor for a deep pre-stretch, then sweep it out and back — rear delt only, no shrugging',demo:'fly'}]},
       {id:'mon-row',name:'Bent-Over Row',slot:'Horizontal Pull',target:'Back · Biceps',equip:'Tube 30–40 → 50–70 lb',rx:'3–4×10–12',cal:35,cue:'Drive elbows into your back pockets — not hands to your chest',demo:'row',log:'setsreps',sets:4,
         variants:[{name:'Wide Row (free)',equip:'Tube 20–30 lb',rx:'3×12',cue:'Pull wide to the ribs, squeeze the mid-back',demo:'row'},
                   {name:'Chest-Supported Row (ball)',equip:'Chest on stability ball + tube band',rx:'3×12',cue:'Chest stays glued to the ball — zero lower back, all upper back',demo:'ballrow'},
@@ -3587,17 +3614,18 @@ var DS_SESSIONS={
       {id:'thu-hammer',name:'Hammer Curl',slot:'Biceps',target:'Biceps · Forearms',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:25,cue:'Thumbs up the whole time — slow and controlled on the way down. Neutral grip is easier on the medial elbow than supinated curls, so this is the one to progress heaviest — go up one band step at a time.',log:'setsreps',sets:3,
         variants:[{name:'DB Hammer Curl',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Neutral grip, thumbs up — curl both DBs together or alternate',demo:'curl'}]},
       {id:'thu-inclinecurl',name:'Stability Ball Incline Curl (long head)',slot:'Biceps',target:'Biceps — Long Head',equip:'Stability ball tilted + tube band, low anchor',rx:'3×6–10',cal:20,cue:'⚠️ Highest elbow caution — lie back on the ball at an incline, arms hanging behind your torso line, curl from a deep stretch. Start with a light band or no band at all the first session. Stop immediately if elbow soreness lingers past 24h. Trial on a separate week from wall-braced curls so you know which one caused any flare-up.',demo:'curl',log:'setsreps',sets:3,variants:[{name:'DB Incline Curl on Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312',cue:'Lean back over the ball so the arms hang behind the torso \u2014 curl from that deep stretch, slow negatives. Full supination (palms up) targets the long head best, but if your left wrist pops, rotate hands slightly inward toward neutral \u2014 same fix as your standing curl.',demo:'curl'},{name:'Ball Preacher Curl',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312',cue:'Kneel behind the ball, drape the back of your upper arm over the front at a downward angle (not flat on top) \u2014 let the arm hang almost straight at the bottom, curl up, squeeze 1 sec, then 3-sec slow lower. Keep the wrist neutral, straight in line with the forearm — if it still pops, back off from full palms-up toward a slight inward angle.',demo:'curl'}]},
-      {id:'thu-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2},
+      {id:'thu-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — much less pull on the low back/hip flexors',demo:'hollow'}]},
       dsCore('thu-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
       dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing. Keep the range small if you feel anything near the SI joint; this is a rotational load like the Friday woodchop.'),
-      {id:'thu-ballpullover',name:'Straight-Arm Ball Pullover',slot:'Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'3×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:3},
+      {id:'thu-ballpullover',name:'Straight-Arm Ball Pullover',slot:'Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'3×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:3,variants:[{name:'Banded Straight-Arm Pulldown',equip:'Tube 20–30 lb, anchored high',rx:'3×12–15',cue:'Anchor overhead, arms straight out in front — sweep both arms down to your thighs keeping elbows soft, control the return. Same lat/serratus target with less loading on the shoulder end-range than the ball pullover',demo:'fly'}]},
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
   fri:{title:'Lower Body Pull',sub:'Hamstrings · Glutes · Lower Back',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,
       {id:'fri-goblet',name:'Goblet Squat',slot:'Quads (light add-on)',target:'Quads · Glutes',equip:'10 lb dumbbell',rx:'2–3×12–15',cal:25,cue:'DB at the chest, sit straight down between the knees — this is a light top-off, not a max effort',demo:'goblet',log:'setsreps',sets:3,
-        setup:'This is intentionally light — 2–3 sets just to get real quad volume on your second lower-body day without competing with Tuesday\'s main squat work. Keep it easy, well short of failure.'},
+        setup:'This is intentionally light — 2–3 sets just to get real quad volume on your second lower-body day without competing with Tuesday\'s main squat work. Keep it easy, well short of failure.',
+        variants:[{name:'Banded Squat',equip:'Mini loop above knees',rx:'2–3×15–20',cue:'Loop the mini band above the knees, bodyweight squat, actively push the knees out against the band the whole way. Zero load on the grip/forearm, same light top-off intent',demo:'squat'}]},
       {id:'tue-rdl',name:'Romanian Deadlift',slot:'Hinge',target:'Hamstrings',equip:'Tube 40–50 → 90+ lb',rx:'3–4×10–12',cal:35,cue:'Push hips back to the wall — handles glued to your legs',demo:'hinge',log:'setsreps',sets:4,
         variants:[{name:'Single-Leg DB RDL',equip:'10 lb dumbbell (opposite hand)',rx:'3×10–12/leg',cue:'Hinge forward, DB toward the floor as the free leg extends behind you — hips stay square',demo:'slrdl'},
                   {name:'Super Band RDL',equip:'Ultra Heavy band underfoot',rx:'3–4×8–10',cue:'Stand on the band, hinge back — tension peaks at lockout, squeeze the glutes hard at the top',demo:'hinge'}]},
@@ -3611,7 +3639,7 @@ var DS_SESSIONS={
         mistakes:['Rounding the lower back — keep it flat. If you can’t, don’t go as deep.','Bending the knees too much — this is a hip hinge, not a squat.','Going too heavy too soon — start light, your hamstrings and lower back need time to adapt.'],
         variants:[{name:'Stability Ball Hamstring Bridge',equip:'Stability ball',rx:'3×12–15',cue:'Heels on the ball, hips bridged up — no spinal loading at all, pure hamstring/glute posterior chain work if the Good Morning feels like too much load on the back',demo:'hipthrust'}]},
       {id:'fri-nordic',name:'Stability Ball Leg Curl',slot:'Knee Flexion',target:'Hamstrings',equip:'Stability ball',rx:'3×10–12',cal:30,cue:'Hips stay up the whole set — curl the ball in, roll out over a slow 3-count',demo:'ballcurl',log:'setsreps',sets:3,variants:[{name:'Single-Leg Ball Curl',equip:'Stability ball',rx:'3\u00d76\u20138/leg',cue:'One heel on the ball \u2014 hips level, slow 3-count roll-out',demo:'ballcurl'}]},
-      {id:'fri-calf',name:'Single-Leg Calf Raise',demo:'calf',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'4×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',log:'setsreps',sets:4},
+      {id:'fri-calf',name:'Single-Leg Calf Raise',demo:'calf',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'4×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Bilateral swap that takes balance out of the equation on a fatigued Friday',demo:'calf'}]},
       {id:'fri-obliques',name:'Obliques / Rotation',demo:'woodchop',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives. Stop short of any pinch near the SI joint — rotation under load is a higher-demand pattern for it.',log:'setsreps',sets:3,
         variants:[{name:'Slow Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern, far less rotational force on the SI joint',demo:'pallof'}]},
       {id:'fri-deadbug',name:'Dead Bug',demo:'deadbug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',log:'setsreps',sets:3,
