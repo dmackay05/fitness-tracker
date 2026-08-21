@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v80 — 2026-08-20";
+var APP_BUILD = "v81 — 2026-08-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -200,6 +200,12 @@ function localDateKey(d){ d=d||new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function todayKey(){ return localDateKey(new Date()); }
 function keyToDate(k){ var p=k.split("-"); return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); }
+// Fixed-timezone "today" anchor (America/Denver / Utah), used ONLY for week-boundary
+// math (Weekly Activity, Calendar Week) so phone/desktop/tablet agree regardless of
+// each device's own timezone or clock drift. Does not affect food/exercise "today" logging.
+function utahDateKey(d){ d=d||new Date();
+  return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Denver",year:"numeric",month:"2-digit",day:"2-digit"}).format(d); }
+function utahTodayKey(){ return utahDateKey(new Date()); }
 function prettyDate(k){ return keyToDate(k).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}); }
 
 // ── STATE ───────────────────────────────────────────────────────────────
@@ -623,8 +629,11 @@ function renderDash(){
 
   // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
   // rolling 7-day kept as a secondary reference line since it reads differently mid-week.
-  var actMin=dsCalendarWeekActivityMinutes(activeDate);
-  var rollMin=dsWeeklyActivityMinutes(activeDate);
+  // Anchor "today" to a fixed timezone (Utah) rather than activeDate's device-local
+  // today-key, so phone/desktop/tablet always compute the same week window.
+  var _actRefKey = isToday() ? utahTodayKey() : activeDate;
+  var actMin=dsCalendarWeekActivityMinutes(_actRefKey);
+  var rollMin=dsWeeklyActivityMinutes(_actRefKey);
   var _am=document.getElementById("dash-activity-min"); if(_am) _am.textContent=actMin;
   var _ag=document.getElementById("dash-activity-goal"); if(_ag) _ag.textContent="min · goal "+ACTIVITY_GOAL;
   var _ab=document.getElementById("dash-activity-bar"); if(_ab) _ab.style.width=Math.min((actMin/ACTIVITY_GOAL)*100,100)+"%";
@@ -5249,7 +5258,7 @@ function dsFormatTrainingTime(totalSecs){
 var ACTIVITY_GOAL = parseInt(store.get('ft_activity_goal')) || 300;
 function setActivityGoal(v){ ACTIVITY_GOAL = parseInt(v)||300; store.set('ft_activity_goal', ACTIVITY_GOAL); renderDash(); }
 function dsWeeklyActivityMinutes(endKey){
-  endKey = endKey || todayKey();
+  endKey = endKey || utahTodayKey();
   var totalMin = 0;
   var cursor = new Date(keyToDate(endKey));
   for(var i=0;i<7;i++){
@@ -5263,7 +5272,7 @@ function dsWeeklyActivityMinutes(endKey){
 // True calendar-week total: Monday through Sunday containing refDate, summed
 // only through today (doesn't project future days). Resets to 0 every Monday.
 function dsCalendarWeekActivityMinutes(refKey){
-  refKey = refKey || todayKey();
+  refKey = refKey || utahTodayKey();
   var ref = new Date(keyToDate(refKey));
   var dow = ref.getDay(); // 0=Sun,1=Mon,...6=Sat
   var daysSinceMon = (dow===0) ? 6 : (dow-1);
