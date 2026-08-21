@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v81 — 2026-08-21";
+var APP_BUILD = "v82 — 2026-08-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3497,7 +3497,8 @@ var DS_HIIT_FRI={key:'hiit-fri',title:'HIIT Finisher \u2014 Lower EMOM',accent:'
       setup:'Quarter-squat, step sideways for 45 seconds switching direction every 4 steps. Rest the remainder of the minute. Repeat at min 6.'},
     {id:'hiit-fri-deadbug',name:'Dead Bug \u2014 EMOM',rx:'8/side \xb7 min 3 & 7',cal:12,demo:'deadbug',log:'setsreps',sets:1,target:'Core \xb7 Anti-Extension',equip:'Bodyweight',
       setup:'Slow tempo \u2014 3 sec extend, 3 sec return. Low back pinned the entire time. 8 reps per side. Rest the remainder. Repeat at min 7.',
-      variants:[{name:'Bird Dog — EMOM',equip:'Bodyweight',rx:'8/side · min 3 & 7',cue:'Opposite arm and leg extend, flat back, zero rocking. Swap in if Dead Bug pops your SI joint.',demo:'birddog'}]},
+      variants:[{name:'Heel Tap + Block Anchor — EMOM',equip:'Yoga block',rx:'8/side · min 3 & 7',cue:'90° knee, heel taps only — no full extension. Block pinned between the still-side knee and hand the whole set. Full exhale on each tap.',demo:'deadbug'},
+        {name:'Bird Dog — EMOM',equip:'Bodyweight',rx:'8/side · min 3 & 7',cue:'Opposite arm and leg extend, flat back, zero rocking. Swap in if Dead Bug pops your SI joint.',demo:'birddog'}]},
     {id:'hiit-fri-bridge',name:'Banded Glute Bridge \u2014 EMOM',rx:'15 explosive \xb7 min 4 & 8',cal:18,demo:'bridge',log:'setsreps',sets:1,target:'Glutes \xb7 Hamstrings',equip:'Tube 30\u201340 lb',
       setup:'Drive through heels, full squeeze at the top \u2014 15 reps. Rest remainder. That ends round 1 \u2014 start round 2 at min 5.'}
   ]};
@@ -3525,7 +3526,8 @@ var DS_SATHEAT_MOVES=[
   {id:'sathot-latwalk',name:'Lateral Band Walk',slot:'Hips',target:'Hip Abductors',equip:'Mini loop band',rx:'3×12/side',cal:25,cue:'Stay low in the quarter-squat, keep tension on the band the whole way',demo:'latwalk',log:'setsreps',sets:3},
   {id:'sathot-hammer',name:'Hammer Curl',demo:'curl',slot:'Biceps',target:'Biceps · Forearms',equip:'Tube 10–20 lb',rx:'3×12–15',cal:25,cue:'Neutral grip, thumbs up — easier on the medial elbow than a straight-bar curl',log:'setsreps',sets:3},
   {id:'sathot-deadbug',name:'Dead Bug',demo:'deadbug',slot:'Core',target:'Core · SI Joint',equip:'Bodyweight',rx:'3×10/side',cal:20,cue:'Low back glued to the floor — gentle, floor-supported anti-extension work',log:'setsreps',sets:3,
-    variants:[{name:'Bird Dog',equip:'Bodyweight',rx:'3×8/side',cue:'Opposite arm and leg extend, flat back, zero rocking. Swap in if Dead Bug pops your SI joint.',demo:'birddog'}]},
+    variants:[{name:'Heel Tap + Block Anchor (SI-safe)',equip:'Yoga block',rx:'3×10/side',cue:'Bend the moving knee to 90°, only tap the heel down — don\'t extend the leg straight. Pin a yoga block between the other knee and hand, pressing knee-into-hand to lock the pelvis still. Full exhale on the tap. Stop short of the SI pop point.',demo:'deadbug'},
+      {name:'Bird Dog',equip:'Bodyweight',rx:'3×8/side',cue:'Opposite arm and leg extend, flat back, zero rocking. Swap in if Dead Bug pops your SI joint.',demo:'birddog'}]},
   {id:'sathot-squathold',name:'Deep Squat Hold',demo:'squat',slot:'Mobility',target:'Hips · Ankles',equip:'Bodyweight',rx:'Build toward 30 min',cal:15,cue:'Sink into the bottom of a squat, chest up — hold as long as feels good today',log:'time',secs:60}
 ];
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
@@ -3673,7 +3675,8 @@ var DS_SESSIONS={
       {id:'fri-obliques',name:'Obliques / Rotation',demo:'woodchop',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives. Stop short of any pinch near the SI joint — rotation under load is a higher-demand pattern for it.',log:'setsreps',sets:3,
         variants:[{name:'Slow Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern, far less rotational force on the SI joint',demo:'pallof'}]},
       {id:'fri-deadbug',name:'Dead Bug',demo:'deadbug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',log:'setsreps',sets:3,
-        variants:[{name:'Bird Dog',equip:'Bodyweight · mat',rx:'3×8/side',cue:'Opposite arm and leg extend — flat back, zero rocking. Swap in if Dead Bug pops your SI joint',demo:'birddog'}]},
+        variants:[{name:'Heel Tap + Block Anchor (SI-safe)',equip:'Yoga block',rx:'3×8/side',cue:'Bend the moving knee to 90° and only tap the heel down — don\'t extend the leg straight. Pin a yoga block between the OTHER knee and hand, pressing knee-into-hand the whole set to lock the pelvis still. Full exhale through the mouth as you tap down. Stop 2–3" before the point where the SI joint usually pops, and only expand that range as it stays quiet week over week.',demo:'deadbug'},
+          {name:'Bird Dog',equip:'Bodyweight · mat',rx:'3×8/side',cue:'Opposite arm and leg extend — flat back, zero rocking. Swap in if Dead Bug pops your SI joint',demo:'birddog'}]},
       {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]},
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
