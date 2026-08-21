@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v78 — 2026-08-20";
+var APP_BUILD = "v80 — 2026-08-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3418,6 +3418,27 @@ var DS_ATG={key:"atg",title:"ATG Bulletproofing (adapted)",accent:"#f472b6",meta
       setup:"⚠ Your call — of everything in this routine, this is the one I'd actually push back on hardest. It's a maximal eccentric hamstring load with your torso hinging forward from a kneeling lock — real potential to pull the pelvis into exactly the position that's aggravated your SI joint before. If you do it: use your hands to catch yourself early (don't fight it all the way down), very few reps, and stop for the day at the first sign of anything in the low back or SI joint — not just the second or third rep."}
   ]};
 
+var DS_BWLEG={key:"bwleg",title:"Bodyweight Leg Circuit",accent:"#4ec98a",meta:"~20 min · optional add-on · no equipment",
+  blurb:"From a bodyweight leg circuit video — 8 moves, one round through, 20-min target. Add sets or hold light dumbbells once it gets easy. Reps are as demonstrated; dial back range on anything that pokes the right SI joint, left knee, or right elbow.",
+  moves:[
+    {id:"bwl-revlunge",name:"Reverse Lunges",rx:"20 reps total (10/side)",cal:30,demo:"splitsquat",log:"setsreps",sets:1,target:"Quads · Single-Leg Stability",equip:"Bodyweight",
+      setup:"Step one foot straight back into a lunge, back knee tapping lightly toward the floor, then drive through the front heel to stand. Alternate legs. Keep the front knee tracking over the ankle, not caving in."},
+    {id:"bwl-squat",name:"Bodyweight Squats",rx:"20 reps",cal:25,demo:"squat",log:"setsreps",sets:1,target:"Quads · Knees",equip:"Bodyweight",
+      setup:"Feet shoulder-width, sit back and down like into a chair, chest tall. Full stand at the top, controlled descent — no bouncing at the bottom."},
+    {id:"bwl-slhinge",name:"Single-Leg Hip Hinge",rx:"10/side",cal:20,demo:"slrdl",log:"setsreps",sets:1,target:"Hamstrings · Glutes",equip:"Bodyweight (wall/chair for balance)",
+      setup:"Stand on one leg, soft knee, hinge forward at the hip as the other leg extends straight back for counterbalance — flat back the whole way. Touch a wall or chair if balance is shaky. Stop the range the moment the low back rounds or the SI joint complains."},
+    {id:"bwl-curtsy",name:"Curtsy Lunges",rx:"20 reps total (10/side)",cal:30,demo:"splitsquat",log:"setsreps",sets:1,target:"Glute Medius · Knee Stability",equip:"Bodyweight",
+      setup:"Step one leg diagonally behind and across the other, both knees bending toward a kneeling curtsy, then drive back to standing. Keep the front knee tracking straight — this is a rotational lunge, so ease the depth back if the right SI joint or knee reacts."},
+    {id:"bwl-slthrust",name:"Single-Leg Hip Thrusts",rx:"10 reps/side",cal:20,demo:"hipthrust",log:"setsreps",sets:1,target:"Hamstrings · Hip Extension",equip:"Bodyweight (couch or floor)",
+      setup:"Shoulders on the floor or couch edge, one foot planted, other leg extended straight — drive the hips up through the planted heel to a flat line, squeeze the glute, lower under control. Switch legs."},
+    {id:"bwl-legabd",name:"Leg Abductions",rx:"10 reps/side",cal:15,demo:"latwalk",log:"setsreps",sets:1,target:"Outer Thigh · Glute Medius",equip:"Bodyweight (floor)",
+      setup:"Lying on your side, bottom leg bent for support, top leg straight — lift it up toward the ceiling and lower with control, hips stacked and stable the whole time."},
+    {id:"bwl-legadd",name:"Medial Leg Raises",rx:"10 reps/side",cal:12,demo:null,log:"setsreps",sets:1,target:"Inner Thigh (Adductors)",equip:"Bodyweight (floor)",
+      setup:"Lying on your side, bottom leg straight and top leg crossed over in front (foot planted), lift the bottom leg up toward the ceiling and lower slowly. Small controlled range, no swinging."},
+    {id:"bwl-liftoff",name:"Single-Leg Lift-Offs",rx:"10 reps/side",cal:12,demo:"kneeraise",log:"setsreps",sets:1,target:"Hip Flexors",equip:"Bodyweight (floor)",
+      setup:"Lying on your back, one leg bent with the foot flat, the other leg straight — lift the straight leg a few inches off the floor and lower without touching down between reps. Keep the low back pressed flat; stop short of any SI pinch."}
+  ]};
+
 /* ── Day-specific HIIT Finishers ─────────────────────────────────────────── */
 var DS_HIIT_MON={key:'hiit-mon',title:'HIIT Finisher \u2014 Upper',accent:'#fb923c',meta:'6 min \xb7 30s on / 30s off \xb7 2 rounds',
   blurb:'Back-to-back upper body intervals. Push to 80\u201390% effort on each work block. No overhead loading, no ballistic elbow movement \u2014 elbow-safe by design.',
@@ -4279,7 +4300,7 @@ function dsStartTimer(id,secs){
   dsTimerPaint(id,secs);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
 /* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
 function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){
@@ -4295,7 +4316,7 @@ function dsRawItem(id){
   });
   if(!fallback && typeof DS_SAT_HEAT!=="undefined" && DS_SAT_HEAT.moves){ DS_SAT_HEAT.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); }
   if(!fallback && typeof DS_HIIT_MAP!=="undefined"){ Object.keys(DS_HIIT_MAP).forEach(function(k){ if(fallback)return; var hm=DS_HIIT_MAP[k]; if(hm&&hm.moves){ hm.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); } }); }
-  [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP,DS_ATG].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
+  [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP,DS_ATG,DS_BWLEG].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
   return fallback;
 }
 
@@ -4304,7 +4325,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
+  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves,DS_HIIT_MON.moves,DS_HIIT_TUE.moves,DS_HIIT_THU.moves,DS_HIIT_FRI.moves);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -4846,15 +4867,20 @@ function dsWeeklyMuscleVolume(mode){
   var keys = (mode==='calendar') ? dsMVDateKeysCalendarWeek() : dsMVDateKeysRolling();
   return dsMVWeek(keys);
 }
-function dsFreqRowsHtml(freq){
+function dsFreqRowsHtml(freq,vol){
+  vol=vol||{};
   return DS_MV_ORDER.map(function(m){
     var n=freq[m]||0;
-    var color = n===0?'#f87171':(n===1?'#fbbf24':'#5eead4');
+    var land=MUSCLE_LANDMARKS[m]||[8,20];
+    var v=vol[m]||0;
+    var volLow = v < land[0]; // volume itself below MEV — this is the only case worth a warning color
+    var color = n===0?'#f87171':((n===1&&volLow)?'#fbbf24':'#5eead4');
     var lbl = n+'x this week';
+    var note = (n===1&&!volLow) ? ' \\u00b7 volume\\u2019s covered' : '';
     return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
       +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+m+'</div>'
       +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+Math.min(n/3*100,100)+'%;height:100%;background:'+color+'"></div></div>'
-      +'<div style="width:78px;text-align:right;font-size:11px;color:'+color+';font-weight:700;flex:0 0 auto">'+lbl+'</div>'
+      +'<div style="width:110px;text-align:right;font-size:11px;color:'+color+';font-weight:700;flex:0 0 auto">'+lbl+note+'</div>'
       +'</div>';
   }).join('');
 }
@@ -4924,8 +4950,8 @@ function dsRenderMuscleVolume(){
     +'</div>'
     +'<div class="card">'
     +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Training Frequency by Muscle <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">direct sets only, last 7 days</span></summary>'
-    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x \u00b7 amber = 1x \u00b7 teal = 2x+ \u00b7 evidence favors \u22652x/week per muscle over the same volume in one session</div>'
-    +dsFreqRowsHtml(freq)
+    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x this week \u00b7 amber = 1x AND below its weekly volume minimum \u00b7 teal = 2x+, or 1x with volume already covered</div>'
+    +dsFreqRowsHtml(freq,rollingVol)
     +'</details>'
     +'</div>';
 }
@@ -5293,7 +5319,8 @@ function dsRenderSearchAll(q){
     {label:'Pre-Workout',accent:DS_PRE.accent,moves:DS_PRE.moves},
     {label:'Mobility',accent:DS_MOBILITY.accent,moves:DS_MOBILITY.moves},
     {label:'Pull-Up Progression',accent:DS_PULLUP.accent,moves:DS_PULLUP.moves},
-    {label:DS_ATG.title,accent:DS_ATG.accent,moves:DS_ATG.moves}
+    {label:DS_ATG.title,accent:DS_ATG.accent,moves:DS_ATG.moves},
+    {label:DS_BWLEG.title,accent:DS_BWLEG.accent,moves:DS_BWLEG.moves}
   ];
   extras.forEach(function(ex){
     var m=ex.moves.filter(function(it){return dsItemMatchesSearch(it,q);});
@@ -5614,7 +5641,7 @@ function dsRender(){
     }
     var _focus=dsFocusBlock(sk);
     if(_focus)html+=dsRenderSection(_focus.title,'',_focus.accent,_focus.moves,_focus.blurb);
-    html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, mobility, ATG, HIIT)')+'</button></div>';
+    html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, mobility, ATG, bodyweight legs, HIIT)')+'</button></div>';
     if(DS_MORE_OPEN){
       html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
       if(DS_FINISHER_DAYS[sk]){
@@ -5626,6 +5653,7 @@ function dsRender(){
       html+=dsRenderSection('Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
       html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
       html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
+      html+=dsRenderSection(DS_BWLEG.title,DS_BWLEG.meta,DS_BWLEG.accent,DS_BWLEG.moves,DS_BWLEG.blurb);
     }
   }
   var _note=document.getElementById('ds-search-note');
