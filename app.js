@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v86 — 2026-08-22";
+var APP_BUILD = "v87 — 2026-08-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3838,6 +3838,7 @@ function dsToggleVarRotate(on){
 }
 var DS_ORDER=['mon','tue','wed','thu','fri','sat','sun'];
 var DS_DAY_OVERRIDE=null; // when set, the Today tab shows this day's session instead of the real calendar day
+var DS_EXTRAS_ACTIVE=false; // when true, the Extras tab is showing instead of any day's session
 function dsRealSessionKey(dk){
   var d=new Date(dk+'T12:00:00');
   var base=DS_WEEKMAP[d.getDay()];
@@ -3848,17 +3849,23 @@ function dsRealSessionKey(dk){
   return DS_ROTATE_POOL[(slot+dsRotateOffset(dk))%n];
 }
 function dsSessionKey(dk){ if(DS_DAY_OVERRIDE && dk===activeDate) return DS_DAY_OVERRIDE; return dsRealSessionKey(dk); }
-function dsPickDay(d){ DS_DAY_OVERRIDE=(d===dsRealSessionKey(activeDate))?null:d; dsRender(); }
-function dsBackToRealDay(){ DS_DAY_OVERRIDE=null; dsRender(); }
+function dsPickDay(d){
+  if(d==='extras'){ DS_EXTRAS_ACTIVE=!DS_EXTRAS_ACTIVE; dsRender(); return; }
+  DS_EXTRAS_ACTIVE=false;
+  DS_DAY_OVERRIDE=(d===dsRealSessionKey(activeDate))?null:d; dsRender();
+}
+function dsBackToRealDay(){ DS_DAY_OVERRIDE=null; DS_EXTRAS_ACTIVE=false; dsRender(); }
 function dsRenderDayPicker(){
   var pickHost=document.getElementById('ds-daypick'); var bannerHost=document.getElementById('ds-dayswitched-wrap');
   if(!pickHost)return;
   var realKey=dsRealSessionKey(activeDate);
   var activeKey=DS_DAY_OVERRIDE||realKey;
-  pickHost.innerHTML=DS_ORDER.map(function(d){
-    var cls='ds-daypill'+(d===realKey?' is-real':'')+(d===activeKey?' is-active':'');
+  var html=DS_ORDER.map(function(d){
+    var cls='ds-daypill'+(!DS_EXTRAS_ACTIVE&&d===realKey?' is-real':'')+(!DS_EXTRAS_ACTIVE&&d===activeKey?' is-active':'');
     return '<button class="'+cls+'" onclick="dsPickDay(\''+d+'\')">'+DS_DAYLABEL[d]+(d===realKey?'<span class="ds-daydot"></span>':'')+'</button>';
   }).join('');
+  html+='<button class="ds-daypill ds-daypill-extras'+(DS_EXTRAS_ACTIVE?' is-active':'')+'" onclick="dsPickDay(\'extras\')">Extra</button>';
+  pickHost.innerHTML=html;
   if(bannerHost){
     if(DS_DAY_OVERRIDE && DS_DAY_OVERRIDE!==realKey){
       bannerHost.innerHTML='<div class="ds-dayswitched"><span>Viewing '+DS_DAYLABEL[DS_DAY_OVERRIDE]+'\u2019s session \u2014 today is really '+DS_DAYLABEL[realKey]+'</span><button onclick="dsBackToRealDay()">Back to today</button></div>';
@@ -5317,6 +5324,20 @@ function dsFocusBlock(sk){
 }
 var DS_MORE_OPEN=false;
 function dsToggleMore(){ DS_MORE_OPEN=!DS_MORE_OPEN; dsRender(); }
+function dsRenderExtras(){
+  var html=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
+  html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
+  html+=dsRenderSection('Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
+  html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
+  html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
+  html+=dsRenderSection(DS_BWLEG.title,DS_BWLEG.meta,DS_BWLEG.accent,DS_BWLEG.moves,DS_BWLEG.blurb);
+  html+='<div style="margin:22px 0 8px;font-size:11px;color:#666;letter-spacing:.06em;">HIIT FINISHERS \u2014 PAIRED BY DAY</div>';
+  ['mon','tue','thu','fri'].forEach(function(k){
+    var h=DS_HIIT_MAP[k];
+    if(h)html+=dsRenderSection(h.title+' \u00b7 '+DS_DAYLABEL[k],h.meta,h.accent,h.moves,h.blurb);
+  });
+  return html;
+}
 function dsEstMin(moves){ var t=0; moves.forEach(function(m){ if(m.log==="setsreps"){ t+=(m.sets||3)*2; } else if(m.log==="time"){ t+=Math.ceil((m.secs||30)/60)*(m.sets||1)+1; } else if(m.log==="cardio"){ t+=(m.defMin||20); } else { t+=2; } }); return t; }
 function dsRenderSearchAll(q){
   var html='',totalHits=0;
@@ -5601,15 +5622,17 @@ function dsRender(){
   dsRenderDayPicker();
   dsRenderMuscleChips();
   var sk=dsSessionKey(activeDate); var SS=dsSessOf(sk);
-  var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=(activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk];
-  var tt=document.getElementById('ds-title'); if(tt)tt.textContent=SS.title;
-  var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=SS.sub;
+  var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=DS_EXTRAS_ACTIVE?'Optional extras':((activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk]);
+  var tt=document.getElementById('ds-title'); if(tt)tt.textContent=DS_EXTRAS_ACTIVE?'Extras':SS.title;
+  var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=DS_EXTRAS_ACTIVE?'Not day-specific \u2014 stack any of these on top of your regular session':SS.sub;
   var dl=document.getElementById('ds-deload'); if(dl){var fc=dsFatigueCheck(activeDate); if(fc.flag){dl.textContent='Recovery flag \u2014 consider a lighter week: '+fc.reasons.join('; ');dl.className='ds-deload warn';}else{dl.textContent='Recovery looks normal \u2014 training as programmed';dl.className='ds-deload';}}
   var _q=(DS_SEARCH||'').trim();
   DS_SEARCH_HITS=0;
   var html;
   if(_q){
     html=dsRenderSearchAll(_q);
+  } else if(DS_EXTRAS_ACTIVE){
+    html=dsRenderExtras();
   } else {
     var _allMoves=SS.moves;
     var _moves=DS_TIME_CRUNCH?_allMoves.filter(dsTcKeep):_allMoves;
@@ -5654,20 +5677,12 @@ function dsRender(){
     }
     var _focus=dsFocusBlock(sk);
     if(_focus)html+=dsRenderSection(_focus.title,'',_focus.accent,_focus.moves,_focus.blurb);
-    html+='<div style="margin:18px 0 0;"><button onclick="dsToggleMore()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_MORE_OPEN?'#ffffff40':'#ffffff1a')+';background:transparent;color:#888;">'+(DS_MORE_OPEN?'\u2212 Hide optional extras':'+ More (optional: morning, mobility, ATG, bodyweight legs, HIIT)')+'</button></div>';
-    if(DS_MORE_OPEN){
-      html+=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
-      if(DS_FINISHER_DAYS[sk]){
-        var _finOn=!!DS_FINISHER_ON[sk];
-        html+='<div style="margin:14px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
-        if(_finOn&&DS_HIIT_MAP[sk]){var _hiit=DS_HIIT_MAP[sk];html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
-      }
-      html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
-      html+=dsRenderSection('Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
-      html+=dsRenderSection('Pull-Up Progression',DS_PULLUP.meta,DS_PULLUP.accent,DS_PULLUP.moves,DS_PULLUP.blurb);
-      html+=dsRenderSection(DS_ATG.title,DS_ATG.meta,DS_ATG.accent,DS_ATG.moves,DS_ATG.blurb);
-      html+=dsRenderSection(DS_BWLEG.title,DS_BWLEG.meta,DS_BWLEG.accent,DS_BWLEG.moves,DS_BWLEG.blurb);
+    if(DS_FINISHER_DAYS[sk]){
+      var _finOn=!!DS_FINISHER_ON[sk];
+      html+='<div style="margin:18px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
+      if(_finOn&&DS_HIIT_MAP[sk]){var _hiit=DS_HIIT_MAP[sk];html+=dsRenderSection(_hiit.title,_hiit.meta,_hiit.accent,_hiit.moves,_hiit.blurb);}
     }
+    html+='<div style="margin:18px 0 0;font-size:11px;color:#666;">Optional morning, mobility, pull-up, ATG, and bodyweight-leg work moved to the <b>Extra</b> tab above.</div>';
   }
   var _note=document.getElementById('ds-search-note');
   var _hasHit=_q&&DS_SEARCH_HITS>0;

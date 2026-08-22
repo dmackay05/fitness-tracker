@@ -1382,6 +1382,8 @@ html body div.app{max-width:480px}
 #panel-today .ds-daypill.is-real{color:#cfe84f;}
 #panel-today .ds-daypill.is-active{background:#cfe84f18;border-color:#cfe84f;color:#cfe84f;}
 #panel-today .ds-daypill .ds-daydot{position:absolute;top:3px;right:5px;width:5px;height:5px;border-radius:50%;background:#cfe84f;}
+#panel-today .ds-daypill-extras{border-color:rgba(167,139,250,.4);color:#a78bfa;margin-left:4px;}
+#panel-today .ds-daypill-extras.is-active{background:#a78bfa18;border-color:#a78bfa;color:#a78bfa;}
 #panel-today .ds-dayswitched{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 0;padding:9px 12px;border-radius:10px;background:#fbbf2414;border:1px solid #fbbf242a;font-size:12px;color:#fbbf24;}
 #panel-today .ds-dayswitched button{background:transparent;border:1px solid #fbbf2455;color:#fbbf24;border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;white-space:nowrap;}
 #panel-today .ds-h1{font-size:25px;margin:1px 0;font-weight:700;color:#f1f3e8;}
