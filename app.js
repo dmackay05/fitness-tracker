@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v88 — 2026-08-23";
+var APP_BUILD = "v89 — 2026-08-24";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3539,7 +3539,7 @@ function dsSessOf(sk){ if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate])return DS_SAT_H
 var DS_SESSIONS={
   mon:{title:'Upper Body A',sub:'Push · Pull alternating — Chest · Back · Shoulders',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_KBHALO,
-      {id:'mon-pushup',name:'Banded Push-ups',slot:'Push · Horizontal Push',target:'Chest · Triceps',equip:'Tube band or bodyweight',rx:'3–4×10–15',cal:35,cue:'Chest to floor, elbows 45° back — push the floor away explosively. Wrists stay stacked directly under the shoulders — if the left wrist complains from full extension, try push-up handles/blocks or a slight fist grip to keep it neutral.',demo:'pushup',log:'setsreps',sets:4,
+      {id:'mon-pushup',name:'Banded Push-ups',pat:'pushup',slot:'Push · Horizontal Push',target:'Chest · Triceps',equip:'Tube band or bodyweight',rx:'3–4×10–15',cal:35,cue:'Chest to floor, elbows 45° back — push the floor away explosively. Wrists stay stacked directly under the shoulders — if the left wrist complains from full extension, try push-up handles/blocks or a slight fist grip to keep it neutral.',demo:'pushup',log:'setsreps',sets:4,
         variants:[{name:'Wall Push-up',equip:'Bodyweight only',rx:'3×12–15',cue:'Hands on the wall, feet back — lean in and press away. Easiest regression, start here if floor push-ups aren\'t happening yet',demo:'wallpushup'},
                   {name:'Incline Push-up (counter/desk)',equip:'Bodyweight only',rx:'3×10–15',cue:'Hands on a sturdy counter or desk edge — the higher the surface, the easier. Lower the surface height as you get stronger',demo:'pushup'},
                   {name:'Knee Push-up',equip:'Bodyweight only',rx:'3×8–12',cue:'Knees down, straight line from knees to head — chest to floor, full range of motion counts more than reps',demo:'pushup'},
@@ -3555,10 +3555,10 @@ var DS_SESSIONS={
         variants:[{name:'DB Overhead Press',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Press both DBs straight up, brief squeeze at the top — control the descent',demo:'press'},{name:'Seated OHP on Stability Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d712',cue:'Sit tall on the ball, feet planted wide \u2014 press straight up. The ball keeps you honest: no lower-back arch possible',demo:'press'}]},
       {id:'thu-facepull',name:'Rear Delts / Face Pull',slot:'Pull · Rear Delts',target:'Rear Delts · Traps',equip:'Tube 10–20 → 30 lb',rx:'3–4×15–20',cal:30,cue:'Pull to your temples, elbows high — thumbs point behind you at the finish',demo:'facepull',log:'setsreps',sets:4,
         variants:[{name:'Cross-Body Rear Delt Fly',equip:'Tube 10–20 lb · chest-height anchor',rx:'3×12–15',cue:'Anchor at chest height, reach the working arm all the way across your body toward the anchor for a deep pre-stretch, then sweep it out and back — rear delt only, no shrugging',demo:'fly'}]},
-      {id:'thu-chest',name:'Chest — Pull-Apart / Fly',slot:'Push · Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 30 lb',rx:'4×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest',demo:'fly',log:'setsreps',sets:4,
-        variants:[{name:'Banded Push-up',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
-                  {name:'Floor DB Press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'},
-                  {name:'Low-Anchor Stretch Fly',equip:'Tube 10–20 lb · low anchor',rx:'3×12–15',cue:'Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body',demo:'fly'}]},
+      {id:'thu-chest',name:'Chest — Pull-Apart / Fly',pat:'fly',slot:'Push · Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 30 lb',rx:'4×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest',demo:'fly',log:'setsreps',sets:4,
+        variants:[{name:'Banded Push-up',pat:'pushup',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
+                  {name:'Floor DB Press',pat:'press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'},
+                  {name:'Low-Anchor Stretch Fly',pat:'fly',equip:'Tube 10–20 lb · low anchor',rx:'3×12–15',cue:'Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body',demo:'fly'}]},
       {id:'mon-curl',name:'Bicep Curl',slot:'Pull · Biceps',target:'Biceps',equip:'Tube 10–20 → 30 lb',rx:'3×12–15',cal:25,cue:'Upper arms glued to your sides — only forearms move',log:'setsreps',sets:3,
         variants:[{name:'DB Curl (neutral grip)',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Rotate hands slightly inward (semi-neutral, not full palms-forward) — this is the wrist-friendly angle. Curl to the shoulders, slow on the way down. Go back to full supination only if the wrist stays quiet.',demo:'curl'},
                   {name:'Iso-Hold Curl',equip:'2× 10 lb dumbbells or tube',rx:'3×10 + 5s holds',cue:'Curl up, stop and hold 5 sec at 90° halfway, then finish the rep — the hold is the exercise',demo:'curl'},
@@ -4724,9 +4724,41 @@ function dsComputeActualSecs(item, st){
   }
   return null;
 }
+function dsPatternAt(item,idx){
+  if(!idx)return item.pat||null;
+  var v=item.variants&&item.variants[idx-1];
+  return (v&&v.pat)||item.pat||null;
+}
+var DS_DAY_RESOLVED={};
+function dsResolveDayVariants(dk,moves){
+  DS_DAY_RESOLVED={};
+  if(!DS_VAR_ROTATE)return;
+  var used={};
+  (moves||[]).forEach(function(item){
+    if(!item||!item.variants||DS_SWAPS[item.id]!=null)return; // manual picks are untouched
+    var n=item.variants.length;
+    var idx=dsVariantAutoIndex(item,dk);
+    var pat=dsPatternAt(item,idx);
+    if(pat&&used[pat]){
+      var found=-1;
+      for(var step=1;step<=n;step++){
+        var cand=(idx+step)%(n+1);
+        var cpat=dsPatternAt(item,cand);
+        if(!cpat||!used[cpat]){ found=cand; break; }
+      }
+      if(found!==-1)idx=found; // else: every option collides, keep original rather than break the week's programming
+    }
+    DS_DAY_RESOLVED[item.id]=idx;
+    var finalPat=dsPatternAt(item,idx);
+    if(finalPat)used[finalPat]=true;
+  });
+}
 function dsActiveVariant(item){
   if(!item||!item.variants)return null;
-  var idx=(DS_VAR_ROTATE&&DS_SWAPS[item.id]==null)?dsVariantAutoIndex(item):DS_SWAPS[item.id];
+  var idx;
+  if(DS_SWAPS[item.id]!=null) idx=DS_SWAPS[item.id];
+  else if(DS_VAR_ROTATE) idx=(DS_DAY_RESOLVED[item.id]!=null)?DS_DAY_RESOLVED[item.id]:dsVariantAutoIndex(item);
+  else idx=0;
   if(idx==null||idx===0)return null;
   return item.variants[idx-1];
 }
@@ -5635,6 +5667,7 @@ function dsRender(){
     html=dsRenderExtras();
   } else {
     var _allMoves=SS.moves;
+    dsResolveDayVariants(activeDate,_allMoves);
     var _moves=DS_TIME_CRUNCH?_allMoves.filter(dsTcKeep):_allMoves;
     if(!_moves.length)_moves=_allMoves;  // no compounds to isolate (e.g. core/yoga day) -> show full
     var _estFull=dsEstMin(_allMoves), _estNow=dsEstMin(_moves), _tcOn=DS_TIME_CRUNCH;
