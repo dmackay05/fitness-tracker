@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v89 — 2026-08-24";
+var APP_BUILD = "v90 — 2026-08-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5053,20 +5053,23 @@ function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart
 function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var n=Math.max(target,done);var h='';for(var i=0;i<n;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
 
 var DS_SEARCH='';
+var DS_CHIP_MODE=false;
 var DS_MUSCLE_CHIPS=[
-  {label:'Hamstrings',q:'hamstring'},
-  {label:'Quads',q:'quad'},
-  {label:'Glutes',q:'glute'},
+  {label:'Hamstrings',q:'hamstrings?'},
+  {label:'Quads',q:'quads?'},
+  {label:'Glutes',q:'glutes?'},
   {label:'Chest',q:'chest'},
-  {label:'Back \u00b7 Lats',q:'lat'},
-  {label:'Shoulders',q:'delt'},
-  {label:'Biceps',q:'bicep'},
-  {label:'Triceps',q:'tricep'},
+  {label:'Back \u00b7 Lats',q:'lats?'},
+  {label:'Shoulders',q:'shoulders?'},
+  {label:'Rear Delts',q:'rear delts?'},
+  {label:'Biceps',q:'biceps?'},
+  {label:'Triceps',q:'triceps?'},
   {label:'Core',q:'core'},
-  {label:'Calves',q:'calf'}
+  {label:'Calves',q:'calves'}
 ];
 function dsSetMuscleFilter(q){
-  DS_SEARCH=q; var inp=document.getElementById('ds-search'); if(inp)inp.value=q;
+  DS_SEARCH=q; DS_CHIP_MODE=true;
+  var inp=document.getElementById('ds-search'); if(inp)inp.value=q;
   var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=q?'block':'none';
   dsRenderMuscleChips(); dsRender();
 }
@@ -5085,14 +5088,21 @@ function dsMainFieldsMatch(item,q){
   for(var i=0;i<fields.length;i++){ if(fields[i]&&re.test(String(fields[i])))return true; }
   return false;
 }
-function dsSetSearch(v){ DS_SEARCH=v||''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=DS_SEARCH?'block':'none'; dsRenderMuscleChips(); dsRender(); }
-function dsClearSearch(){ DS_SEARCH=''; var inp=document.getElementById('ds-search'); if(inp)inp.value=''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display='none'; dsRenderMuscleChips(); dsRender(); }
+function dsSetSearch(v){ DS_SEARCH=v||''; DS_CHIP_MODE=false; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=DS_SEARCH?'block':'none'; dsRenderMuscleChips(); dsRender(); }
+function dsClearSearch(){ DS_SEARCH=''; DS_CHIP_MODE=false; var inp=document.getElementById('ds-search'); if(inp)inp.value=''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display='none'; dsRenderMuscleChips(); dsRender(); }
 function dsEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 function dsSearchPattern(q){ return dsEsc(q).replace(/[\s-]+/g,'[-\\s]+'); }
 function dsHi(text,q){ if(!q||!text)return text; try{ var re=new RegExp('('+dsSearchPattern(q)+')','ig'); return String(text).replace(re,'<mark class="ds-hit">$1</mark>'); }catch(e){ return text; } }
 function dsItemMatchesSearch(rawItem,q){
   if(!q)return true;
   var item=dsViewOf(rawItem);
+  if(DS_CHIP_MODE){
+    // Muscle-group chips: match the target field only, on whole word boundaries,
+    // so e.g. the Lats chip won't hit "flat back" or "bilateral", and the
+    // Shoulders chip won't pull in Rear-Delts-only or Chest-only items.
+    var cre; try{ cre=new RegExp('\\b'+q+'\\b','i'); }catch(e){ return false; }
+    return !!(item.target && cre.test(String(item.target)));
+  }
   var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ return false; }
   var fields=[item.name,item.target,item.slot,item.equip,item.cue];
   for(var i=0;i<fields.length;i++){ if(fields[i]&&re.test(String(fields[i])))return true; }
