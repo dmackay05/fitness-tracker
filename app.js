@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v96 — 2026-08-28";
+var APP_BUILD = "v97 — 2026-08-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5443,6 +5443,10 @@ var DS_MUSCLE_CHIPS=[
   {label:'Core',q:'core'},
   {label:'Calves',q:'calves'}
 ];
+function dsChipLabelFor(q){
+  for(var i=0;i<DS_MUSCLE_CHIPS.length;i++){ if(DS_MUSCLE_CHIPS[i].q===q) return DS_MUSCLE_CHIPS[i].label; }
+  return 'matching';
+}
 function dsSetMuscleFilter(q){
   DS_SEARCH=q; DS_CHIP_MODE=true;
   var inp=document.getElementById('ds-search'); if(inp)inp.value=q;
@@ -5528,9 +5532,10 @@ function dsRenderItem(rawItem,idx){
   }
   if(typeof DS_PR!=="undefined"&&DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
-    var _matchedOnlyViaVariant=_q&&!dsMainFieldsMatch(item,_q);
-    var _forceOpen=st._swapOpen||_matchedOnlyViaVariant;
-    h+='<div class="ds-swap" onclick="dsToggleSwap(\''+item.id+'\')">\u21C4 Swap this exercise'+(_matchedOnlyViaVariant?' <span style="color:var(--accent)">\u2014 match below \u2193</span>':'')+'</div>';
+    var _matchedOnlyViaVariant=_q&&!DS_CHIP_MODE&&!dsMainFieldsMatch(item,_q);
+    var _chipBrowsing=_q&&DS_CHIP_MODE; // muscle-group chip: show every variant, not just the currently active one
+    var _forceOpen=st._swapOpen||_matchedOnlyViaVariant||_chipBrowsing;
+    h+='<div class="ds-swap" onclick="dsToggleSwap(\''+item.id+'\')">\u21C4 Swap this exercise'+(_matchedOnlyViaVariant?' <span style="color:var(--accent)">\u2014 match below \u2193</span>':(_chipBrowsing?' <span style="color:var(--accent)">\u2014 all '+dsChipLabelFor(_q)+' options \u2193</span>':''))+'</div>';
     if(_forceOpen){
       var sel=DS_SWAPS[item.id]||0;
       h+='<div class="ds-variants"><div class="ds-vh">Same slot: '+rawItem.slot+'</div>';
