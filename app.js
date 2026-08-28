@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v94 — 2026-08-27";
+var APP_BUILD = "v95 — 2026-08-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3707,7 +3707,17 @@ var DS_MOBILITY={"key": "mobility", "title": "Mobility", "accent": "#a78bfa", "m
     {id:'y-twist',name:'Supine Twist',rx:'3 min/side',cal:7,demo:'twist',log:'time',secs:180,perSide:true,target:'SI Joint · Lower Back',
       setup:'On your back, bring one knee across the body toward the floor. Arms wide, palms up. Don\'t push the knee — let it rest. Gaze away from the bent knee. Switch sides.'},
     {id:'y-legsup',name:'Legs Up the Wall',rx:'5–10 min',cal:10,demo:'legsup',log:'time',secs:600,target:'Full Decompression',
-      setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'}
+      setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'},
+    {id:'y-restsquat',name:'Deep Resting Squat',rx:'2–3 min',cal:10,demo:'restsquat',log:'time',secs:150,target:'Hips · Ankle/Knee Mobility',
+      setup:'Feet just past shoulder width, sink into the bottom of a squat, elbows brace the inside of the knees to help them track out. Heels down if you can — a rolled towel or block under them is fine if not. Let the hips sink lower with each exhale. SI-friendly since it\'s passive, not loaded — ease off if it pinches.'},
+    {id:'y-sidelunge',name:'Side Lunge',rx:'90s/side',cal:8,demo:'sidelunge',log:'time',secs:180,perSide:true,target:'Adductors · Groin',
+      setup:'Wide stance, sink into one bent knee while the other leg stays straight out to the side, foot flat, toes forward. Hands can rest on the ground or the bent thigh for balance. Feel the stretch up the inner thigh of the straight leg. Switch sides.'},
+    {id:'y-dancerbridge',name:"Dancer's Bridge",rx:'60–90s/side',cal:10,demo:'dancerbridge',log:'time',secs:150,perSide:true,target:'Glutes · Scapular Stability',
+      setup:'From a floor bridge, hips lifted and level, extend one leg straight up toward the ceiling while the other foot stays planted. Press the shoulder blades down and back into the floor to keep the chest open. Keep the hips square — don\'t let the lifted-leg side drop. Switch sides.'},
+    {id:'y-tspinetwist',name:'T-Spine Twist',rx:'60s/side',cal:8,demo:'tspinetwist',log:'time',secs:120,perSide:true,target:'Thoracic Spine',
+      setup:'From tabletop, thread one arm under the body, resting the shoulder and ear on the floor, then find your end range and hold — you can also rotate the top arm open toward the ceiling for a deeper hold, eyes following the hand. Keep the hips square and still; all the rotation comes from the mid-back, not the low back or SI joint. Switch sides.'},
+    {id:'y-tailor',name:"Tailor's Pose",rx:'2–3 min',cal:8,demo:'tailorpose',log:'time',secs:150,target:'Adductors · Hips',
+      setup:'Seated, soles of the feet together, knees drop open to the sides. Sit tall on your sit bones rather than rounding forward — let gravity and the breath open the knees, don\'t press down on them. Hands can rest on the feet or ankles. Deep, passive inner-thigh stretch.'}
 ]};;
 
 var DS_ATG={key:"atg",title:"ATG Bulletproofing (adapted)",accent:"#f472b6",meta:"~20 min · optional add-on",
@@ -4356,6 +4366,65 @@ DS_DEMOS.ride=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3
   '<line x1="114" y1="58" x2="88" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
   '<polyline points="106,74 96,94 100,110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(1.6,'points','106,74 96,94 100,110; 106,74 108,96 100,110; 106,74 96,94 100,110')+'</polyline>'+
   '</svg>';};
+DS_DEMOS.restsquat=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="25" y1="126" x2="175" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<g><animate attributeName="opacity" values="0.7;1;0.7" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+  '<circle cx="98" cy="80" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="100" y1="88" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="108" x2="70" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="70" y1="122" x2="66" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="108" x2="130" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="130" y1="122" x2="134" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="92" x2="78" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '<line x1="100" y1="92" x2="122" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '</g></svg>';};
+DS_DEMOS.sidelunge=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="25" y1="126" x2="175" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<g><animate attributeName="opacity" values="0.7;1;0.7" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+  '<circle cx="98" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="100" y1="80" x2="100" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="106" x2="80" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="80" y1="118" x2="72" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="106" x2="152" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="85" x2="78" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '<line x1="100" y1="85" x2="122" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '</g></svg>';};
+DS_DEMOS.dancerbridge=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="25" y1="126" x2="175" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<g><animate attributeName="opacity" values="0.7;1;0.7" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+  '<circle cx="55" cy="118" r="7" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="60" y1="123" x2="40" y2="126" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '<line x1="60" y1="123" x2="112" y2="103" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="112" y1="103" x2="128" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="128" y1="122" x2="132" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="112" y1="103" x2="140" y2="66" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'y2','66;70;66')+'</line>'+
+  '</g></svg>';};
+DS_DEMOS.tspinetwist=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="25" y1="126" x2="175" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<g><animate attributeName="opacity" values="0.7;1;0.7" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+  '<line x1="70" y1="126" x2="115" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="122" x2="102" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<circle cx="104" cy="82" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="100" y1="100" x2="62" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '<line x1="100" y1="95" x2="132" y2="58" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1.8,'y2','58;54;58')+'</line>'+
+  '</g></svg>';};
+DS_DEMOS.tailorpose=function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+  '<line x1="25" y1="126" x2="175" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+  '<g><animate attributeName="opacity" values="0.7;1;0.7" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
+  '<circle cx="100" cy="78" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+  '<line x1="100" y1="86" x2="100" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="118" x2="72" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="72" y1="110" x2="100" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="118" x2="128" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="128" y1="110" x2="100" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+  '<line x1="100" y1="95" x2="82" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '<line x1="100" y1="95" x2="118" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+  '</g></svg>';};
+DS_DEMOCAP.restsquat="sit low between the heels, elbows brace the inner knees — spine stays long, heels down if possible";
+DS_DEMOCAP.sidelunge="sink into the bent knee, straight leg reaches long to the side — chest stays up";
+DS_DEMOCAP.dancerbridge="hips lifted and level, one leg reaches straight to the ceiling — shoulder blades pull down and back";
+DS_DEMOCAP.tspinetwist="hips square and still, rotate from the mid-back — top arm opens toward the ceiling";
+DS_DEMOCAP.tailorpose="soles of the feet together, knees float open — spine stays tall, no forcing the knees down";
 DS_DEMOCAP.bridge="drive through the heels — straight line from shoulders to knees at the top, no higher";
 DS_DEMOCAP.deadhang="shoulder-width grip, arms straight — shoulder blades pulled down and back";
 DS_DEMOCAP.child="kneel and fold back over the heels — arms long, forehead toward the floor";
