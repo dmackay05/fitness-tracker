@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v97 — 2026-08-28";
+var APP_BUILD = "v98 — 2026-08-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5744,6 +5744,7 @@ function dsShowHealthExport(){
   var ta = document.getElementById('ds-health-export-text');
   var title = document.getElementById('ds-health-export-title');
   if(!modal||!ta) return;
+  DS_EXPORT_KIND='workout';
   title.textContent = (isToday()?"Today's":prettyDate(activeDate)+"'s")+" Workout";
   ta.value = dsBuildHealthExportText(activeDate);
   modal.style.display = 'flex';
@@ -5756,7 +5757,7 @@ function dsCopyHealthExport(){
   var done=false;
   try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value); done=true; } }catch(e){}
   if(!done){ try{ document.execCommand('copy'); done=true; }catch(e){} }
-  dsToast(done ? '✓ Copied — paste into Google Health' : 'Select the text above and copy manually');
+  dsToast(done ? ('✓ Copied — paste into '+(DS_EXPORT_KIND==='food'?'Google Health':'Google Health')) : 'Select the text above and copy manually');
 }
 function dsDownloadHealthExport(){
   var ta = document.getElementById('ds-health-export-text');
@@ -5764,10 +5765,72 @@ function dsDownloadHealthExport(){
   var blob = new Blob([ta.value], {type:'text/plain'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  a.href = url; a.download = 'workout-'+activeDate+'.txt';
+  a.href = url; a.download = (DS_EXPORT_KIND==='food'?'food-':'workout-')+activeDate+'.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-  dsToast('✓ Downloaded workout-'+activeDate+'.txt');
+  dsToast('✓ Downloaded '+(DS_EXPORT_KIND==='food'?'food-':'workout-')+activeDate+'.txt');
+}
+
+/* ── Food export — grouped by meal window, same copy/download pattern as the workout export ── */
+var DS_EXPORT_KIND='workout';
+var DS_FOOD_EXPORT_ORDER=['Breakfast','Lunch','Snack','Dinner'];
+function dsBuildFoodExportText(key){
+  key = key || activeDate;
+  var day = getDay(key);
+  var foods = (day.foods||[]).slice();
+  var label = (key===todayKey()) ? "Today" : prettyDate(key);
+  if(!foods.length){
+    return label+" ("+key+")\nNo food logged yet.";
+  }
+  var groups = {}; DS_FOOD_EXPORT_ORDER.forEach(function(w){ groups[w] = []; });
+  var totals = {cal:0, protein:0, carbs:0, fat:0, fiber:0};
+  foods.forEach(function(f){
+    var win;
+    if(f.mealTag && groups.hasOwnProperty(f.mealTag)){
+      win = f.mealTag;
+    } else {
+      var ts=parseInt(f.id,10);
+      var hourFloat = 12;
+      if(!isNaN(ts) && ts>1e12){ var d=new Date(ts); hourFloat=d.getHours()+d.getMinutes()/60; if(hourFloat<5) hourFloat+=24; }
+      win = dsMealWindowFor(hourFloat);
+    }
+    if(!groups[win]) groups[win]=[];
+    groups[win].push(f);
+    totals.cal += (+f.cal||0); totals.protein += (+f.protein||0);
+    totals.carbs += (+f.carbs||0); totals.fat += (+f.fat||0); totals.fiber += (+f.fiber||0);
+  });
+  var lines = [];
+  lines.push(label+" \u2014 Food Log ("+key+")");
+  lines.push("");
+  var order = DS_FOOD_EXPORT_ORDER.concat(Object.keys(groups).filter(function(w){return DS_FOOD_EXPORT_ORDER.indexOf(w)<0;}));
+  order.forEach(function(win){
+    var items = groups[win];
+    if(!items || !items.length) return;
+    var wCal=0,wP=0,wC=0,wF=0;
+    lines.push(win.toUpperCase()+":");
+    items.forEach(function(f){
+      wCal+=(+f.cal||0); wP+=(+f.protein||0); wC+=(+f.carbs||0); wF+=(+f.fat||0);
+      var bits = [Math.round(+f.cal||0)+" kcal", Math.round(+f.protein||0)+"g P", Math.round(+f.carbs||0)+"g C", Math.round(+f.fat||0)+"g F"];
+      if(+f.fiber) bits.push(Math.round(+f.fiber)+"g Fb");
+      lines.push("\u2022 "+f.name+" \u2014 "+bits.join(" \u00b7 "));
+    });
+    lines.push("  Subtotal: "+Math.round(wCal)+" kcal \u00b7 "+Math.round(wP)+"g P \u00b7 "+Math.round(wC)+"g C \u00b7 "+Math.round(wF)+"g F");
+    lines.push("");
+  });
+  lines.push("DAILY TOTAL:");
+  lines.push(Math.round(totals.cal)+" kcal \u00b7 "+Math.round(totals.protein)+"g protein \u00b7 "+Math.round(totals.carbs)+"g carbs \u00b7 "+Math.round(totals.fat)+"g fat"+(totals.fiber?(" \u00b7 "+Math.round(totals.fiber)+"g fiber"):""));
+  return lines.join("\n");
+}
+function dsShowFoodExport(){
+  var modal = document.getElementById('ds-health-export-modal');
+  var ta = document.getElementById('ds-health-export-text');
+  var title = document.getElementById('ds-health-export-title');
+  if(!modal||!ta) return;
+  DS_EXPORT_KIND='food';
+  title.textContent = (isToday()?"Today's":prettyDate(activeDate)+"'s")+" Food Log";
+  ta.value = dsBuildFoodExportText(activeDate);
+  modal.style.display = 'flex';
+  ta.focus(); ta.select();
 }
 
 /* ── Weekly Activity Minutes (rolling 7-day, all logged activity types) ── */
