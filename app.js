@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v95 — 2026-08-28";
+var APP_BUILD = "v96 — 2026-08-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5681,6 +5681,88 @@ function dsFormatTrainingTime(totalSecs){
   if(mins < 60) return mins + " min";
   var h = Math.floor(mins/60), m = mins % 60;
   return h + "h " + m + "m";
+}
+
+/* ── Google Health manual-log export ──
+   Google Health's "Add workout" screen wants: activity type, duration, calories.
+   It has no file-import — this builds a copy/paste-ready summary so logging by hand is fast. */
+function dsHealthActivityType(ex){
+  var t=(ex.type||'').toLowerCase(), n=(ex.name||'').toLowerCase();
+  if(t==='yoga'||n.indexOf('yoga')>=0||n.indexOf('flow')>=0||n.indexOf('pose')>=0) return 'Yoga';
+  if(t==='cardio'||n.indexOf('ride')>=0||n.indexOf('bike')>=0) return 'Biking';
+  if(n.indexOf('walk')>=0||n.indexOf('ruck')>=0) return 'Walking';
+  return 'Strength training';
+}
+function dsBuildHealthExportText(key){
+  key = key || activeDate;
+  var day = getDay(key);
+  var list = (day.exercises||[]).slice();
+  var label = (key===todayKey()) ? "Today" : prettyDate(key);
+  if(!list.length){
+    return label+" ("+key+")\nNo completed exercises logged yet.";
+  }
+  // Group by activity type for a quick top-line summary (how Google Health's Add Workout screen wants it)
+  var groups = {};
+  var totalCal = 0;
+  list.forEach(function(ex){
+    var type = dsHealthActivityType(ex);
+    var secs = dsEstimateSeconds(ex);
+    var cal = Math.round(ex.calories||0);
+    totalCal += cal;
+    if(!groups[type]) groups[type] = {secs:0, cal:0};
+    groups[type].secs += secs;
+    groups[type].cal += cal;
+  });
+  var lines = [];
+  lines.push(label+" \u2014 Workout Summary ("+key+")");
+  lines.push("");
+  lines.push("QUICK LOG (for Google Health \u2192 Add Workout):");
+  Object.keys(groups).forEach(function(type){
+    var g = groups[type];
+    lines.push("\u2022 "+type+" \u2014 "+dsFormatTrainingTime(g.secs)+" \u2014 "+Math.round(g.cal)+" kcal");
+  });
+  lines.push("");
+  lines.push("Total: "+dsFormatTrainingTime(dsDailyTrainingSeconds(key))+" \u2014 "+Math.round(totalCal)+" kcal");
+  lines.push("");
+  lines.push("EXERCISE DETAIL:");
+  list.forEach(function(ex){
+    var bits = [ex.name];
+    if(ex.sets) bits.push(ex.sets+" sets"+(ex.reps?" \u00d7 "+ex.reps:""));
+    else if(ex.reps) bits.push(ex.reps);
+    if(ex.calories) bits.push(Math.round(ex.calories)+" kcal");
+    lines.push("\u2022 "+bits.join(" \u2014 "));
+  });
+  return lines.join("\n");
+}
+function dsShowHealthExport(){
+  var modal = document.getElementById('ds-health-export-modal');
+  var ta = document.getElementById('ds-health-export-text');
+  var title = document.getElementById('ds-health-export-title');
+  if(!modal||!ta) return;
+  title.textContent = (isToday()?"Today's":prettyDate(activeDate)+"'s")+" Workout";
+  ta.value = dsBuildHealthExportText(activeDate);
+  modal.style.display = 'flex';
+  ta.focus(); ta.select();
+}
+function dsCopyHealthExport(){
+  var ta = document.getElementById('ds-health-export-text');
+  if(!ta) return;
+  ta.select();
+  var done=false;
+  try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value); done=true; } }catch(e){}
+  if(!done){ try{ document.execCommand('copy'); done=true; }catch(e){} }
+  dsToast(done ? '✓ Copied — paste into Google Health' : 'Select the text above and copy manually');
+}
+function dsDownloadHealthExport(){
+  var ta = document.getElementById('ds-health-export-text');
+  if(!ta) return;
+  var blob = new Blob([ta.value], {type:'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'workout-'+activeDate+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  dsToast('✓ Downloaded workout-'+activeDate+'.txt');
 }
 
 /* ── Weekly Activity Minutes (rolling 7-day, all logged activity types) ── */

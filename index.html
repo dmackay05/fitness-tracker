@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=25">
+<link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
 
@@ -178,7 +178,21 @@
         <div class="cal-meta"><span id="eaten-lbl">🍽 0 eaten</span><span id="burned-lbl">🔥 0 burned</span><span id="rem-lbl" style="color:#5eead4">— left</span><span id="time-lbl">🕐 0 min trained</span></div>
         <div class="pbar-wrap"><div class="pbar" id="cal-bar" style="width:0%"></div></div>
         <div class="bar-lbls"><span>eaten</span><span id="dash-cal-goal">Goal: --</span></div>
+        <button class="refresh-btn-sm" style="margin-top:10px;width:100%" onclick="dsShowHealthExport()">📋 Copy Today's Workout for Google Health</button>
       </div>
+
+      <div id="ds-health-export-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;padding:16px">
+        <div style="background:#1a1a1a;border-radius:12px;padding:16px;max-width:420px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:10px">
+          <div style="font-weight:600;color:#5eead4" id="ds-health-export-title">Today's Workout</div>
+          <textarea id="ds-health-export-text" readonly style="flex:1;min-height:220px;background:#0d0d0d;color:#e5e5e5;border:1px solid #333;border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:12px;resize:vertical"></textarea>
+          <div style="display:flex;gap:8px">
+            <button class="refresh-btn-sm" style="flex:1" onclick="dsCopyHealthExport()">Copy Text</button>
+            <button class="refresh-btn-sm" style="flex:1" onclick="dsDownloadHealthExport()">Download .txt</button>
+          </div>
+          <button class="refresh-btn-sm" onclick="document.getElementById('ds-health-export-modal').style.display='none'">Close</button>
+        </div>
+      </div>
+
 
       <div class="card">
         <div class="card-title" style="color:#38bdf8">💧 Water</div>
@@ -1006,6 +1020,6 @@
   </div>
 </div>
 
-<script src="app.js?v=189"></script>
+<script src="app.js?v=190"></script>
 </body>
 </html>
