@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v103 — 2026-08-30";
+var APP_BUILD = "v104 — 2026-08-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5605,6 +5605,31 @@ function dsWeekMondayKey(refKey){
   var mon=new Date(d0); mon.setDate(mon.getDate()+offset);
   return localDateKey(mon);
 }
+// A muscle can read below MEV simply because the sets that cover it are
+// scheduled later in the week and have not been performed yet. Telling someone
+// to "add 2-3 sets" in that case makes them double up on volume that is already
+// on the calendar, so look ahead before giving that advice.
+function dsScheduledAheadFor(muscle,days){
+  days=days||7;
+  var out={sets:0, days:[], moves:[]};
+  var now=new Date();
+  for(var i=1;i<=days;i++){
+    var dt=new Date(now); dt.setDate(now.getDate()+i);
+    var dk=localDateKey(dt);
+    var sk=dsRealSessionKey(dk);
+    var S=DS_SESSIONS[sk]; if(!S||!S.moves) continue;
+    var dayHit=false;
+    S.moves.forEach(function(m){
+      var mv=DS_MV[m.id]; if(!mv||!(mv[muscle]>0)) return;
+      var sets=(m.sets||0)*mv[muscle];
+      if(sets<=0) return;
+      out.sets+=sets; dayHit=true;
+      if(out.moves.indexOf(m.name)<0) out.moves.push(m.name);
+    });
+    if(dayHit && out.days.indexOf(sk)<0) out.days.push(sk);
+  }
+  return out;
+}
 function dsWeeklyMuscleVolume(mode){
   // mode: 'rolling' (default, trailing 7 days) or 'calendar' (Mon-Sun this week)
   var keys = (mode==='calendar') ? dsMVDateKeysCalendarWeek() : dsMVDateKeysRolling();
@@ -5673,13 +5698,41 @@ function dsRenderMuscleVolume(){
       var v=rollingVol[m]||0; var land=MUSCLE_LANDMARKS[m]||[8,20];
       return {m:m,v:v,land:land,status:v===0?'none':(v<land[0]?'low':'ok')};
     }).filter(function(r){return r.status!=='ok';});
-    naHost.innerHTML = flagged.length
-      ? '<div class="card" style="border:1px solid #f8717140">'
-        +'<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">⚠️ Needs Attention \u2014 below MEV this week</div>'
-        +'<div style="font-size:11px;color:#ccc">'+flagged.map(function(r){return r.m+' ('+r.v.toFixed(1)+'/'+r.land[0]+')';}).join(' \u00b7 ')+'</div>'
-        +'<div style="font-size:10px;color:#888;margin-top:6px">Add 2\u20133 direct sets for these before adding volume anywhere else</div>'
-        +'</div>'
-      : '<div class="card" style="border:1px solid #5eead440"><div style="font-size:12px;font-weight:700;color:#5eead4">✓ Every muscle is at or above its minimum this week</div></div>';
+    // Split the flagged list: sets already on the calendar vs nothing scheduled.
+    flagged.forEach(function(r){
+      var ahead=dsScheduledAheadFor(r.m,7);
+      r.ahead=ahead;
+      r.covered=(r.v+ahead.sets)>=r.land[0];
+    });
+    var missing=flagged.filter(function(r){return !r.covered;});
+    var scheduled=flagged.filter(function(r){return r.covered;});
+    if(!flagged.length){
+      naHost.innerHTML='<div class="card" style="border:1px solid #5eead440"><div style="font-size:12px;font-weight:700;color:#5eead4">\u2713 Every muscle is at or above its minimum this week</div></div>';
+    } else {
+      var h='';
+      if(missing.length){
+        h+='<div class="card" style="border:1px solid #f8717140">'
+          +'<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">\u26A0\uFE0F Needs Attention \u2014 below MEV, nothing scheduled</div>'
+          +'<div style="font-size:11px;color:#ccc">'+missing.map(function(r){return r.m+' ('+r.v.toFixed(1)+'/'+r.land[0]+')';}).join(' \u00b7 ')+'</div>'
+          +'<div style="font-size:10px;color:#888;margin-top:6px">Nothing in the next 7 days covers '+(missing.length>1?'these':'this')+' \u2014 add 2\u20133 direct sets before adding volume anywhere else</div>'
+          +'</div>';
+      }
+      if(scheduled.length){
+        h+='<div class="card" style="border:1px solid #fbbf2440">'
+          +'<div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:6px">\u23F1 Below MEV \u2014 but already on the calendar</div>'
+          +scheduled.map(function(r){
+            var a=r.ahead;
+            var dayTxt=a.days.map(function(d){return DS_DAYLABEL[d]||d;}).join(' + ');
+            return '<div style="font-size:11px;color:#ccc;margin-bottom:5px">'
+              +'<b>'+r.m+'</b> '+r.v.toFixed(1)+'/'+r.land[0]
+              +' <span style="color:#888">\u2192 '+(r.v+a.sets).toFixed(1)+' once '+dayTxt+' '+(a.days.length>1?'are':'is')+' done</span>'
+              +'<div style="font-size:10px;color:#666;margin-top:1px">'+a.moves.join(', ')+'</div></div>';
+          }).join('')
+          +'<div style="font-size:10px;color:#888;margin-top:4px">No action needed \u2014 do not add sets on top of these, just run the sessions as programmed.</div>'
+          +'</div>';
+      }
+      naHost.innerHTML=h;
+    }
   }
 
   var activeVol = rollingVol;
