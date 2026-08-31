@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v106 — 2026-08-30";
+var APP_BUILD = "v107 — 2026-08-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -299,10 +299,12 @@ function intakeDaysDetail(windowDays){
     var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
     return d.foods.reduce(function(a,f){return a+(+f.cal||0);},0)>0;
   }).sort().map(function(k){
-    var cal=appData[k].foods.reduce(function(a,f){return a+(+f.cal||0);},0);
+    var foods=appData[k].foods;
+    var cal=foods.reduce(function(a,f){return a+(+f.cal||0);},0);
+    var pro=Math.round(foods.reduce(function(a,f){return a+(+f.protein||0);},0));
     var floor=tdeeDayFloor(k);
-    return {key:k, cal:Math.round(cal), goal:calGoalForKey(k), floor:floor,
-            complete:cal>=floor, items:appData[k].foods.length};
+    return {key:k, cal:Math.round(cal), protein:pro, goal:calGoalForKey(k), floor:floor,
+            complete:cal>=floor, items:foods.length};
   });
 }
 function measuredTDEE(windowDays){
@@ -664,9 +666,20 @@ function intakeAverages(days){
   return {days:days, n:full.length, nPartial:rows.length-full.length, logged:rows.length,
     cal:Math.round(mean(cals)), calMed:Math.round(median(cals)),
     protein:Math.round(mean(pro)), proteinMed:Math.round(median(pro)),
-    // how many complete days actually cleared the protein target
-    proHit:full.filter(function(r){return r.protein>=GOALS.protein;}).length};
+    // Protein target scoring. 170g is an approximation, not a cliff edge, so a
+    // day at 168 is functionally a hit. But only forgiving the low side quietly
+    // redefines the goal as 165, so near misses are counted and shown separately
+    // rather than folded into the hit count.
+    proHit:full.filter(function(r){return r.protein>=GOALS.protein;}).length,
+    proNear:full.filter(function(r){
+      return r.protein < GOALS.protein && r.protein >= (GOALS.protein-PROTEIN_BAND);
+    }).length,
+    proBand:PROTEIN_BAND};
 }
+// A day this close to the protein target is functionally on target. Kept small
+// on purpose: wide enough that 168 isn't scored a failure, narrow enough that it
+// cannot drift into a de facto lower goal.
+var PROTEIN_BAND = 5;
 var STAT_AVG_WINDOW = 14; // days: dashboard averages reflect recent adherence, not lifetime
 function statAverages(){
   var allDays = Object.keys(appData).filter(function(k){
@@ -761,12 +774,22 @@ function tdeeDayListHtml(r,forceCount){
     var col=d.complete?'#9a9d8c':'#fb923c';
     h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
      +'<span style="color:#777">'+d.key.slice(5)+'</span>'
-     +'<span style="color:'+col+'">'+d.cal+' kcal <span style="color:#555">/ '+d.goal+'</span>'
-     +(d.complete?'':' \u00b7 partial')+'</span></div>';
+     +'<span style="color:'+col+';text-align:right">'+d.cal+' kcal <span style="color:#555">/ '+d.goal+'</span>'
+     +(d.complete?'':' \u00b7 partial')
+     +'<br>'+dsProteinDayTag(d.protein)+'</span></div>';
   });
   h+='</div>';
   if(r.nPartial) h+='<div style="margin-top:6px;font-size:11px;color:#666;line-height:1.4">Days marked partial fell under 60% of their own target and were left out of the median \u2014 an abandoned log is missing data, not a fasting day.</div>';
   return h;
+}
+// Scores one day's protein against the target and its band, so a near miss reads
+// as a near miss rather than silently passing or silently failing.
+function dsProteinDayTag(p){
+  if(p==null) return '';
+  var goal=GOALS.protein;
+  if(p>=goal) return '<span style="font-size:10px;color:#5eead4">'+p+'g protein \u2713</span>';
+  if(p>=goal-PROTEIN_BAND) return '<span style="font-size:10px;color:#fbbf24">'+p+'g protein \u00b7 '+(goal-p)+'g short</span>';
+  return '<span style="font-size:10px;color:#777">'+p+'g protein <span style="color:#555">/ '+goal+'</span></span>';
 }
 // Surfaces the joint log only when there is something in it.
 function renderPainSummary(){
@@ -800,7 +823,8 @@ function renderIntakeAverages(){
       +'<div style="margin-top:5px"><b style="color:#fbbf24;font-size:16px">'+a.cal+'</b> <span style="color:#666;font-size:10px">kcal avg</span></div>'
       +'<div style="color:#555;font-size:10px">median '+a.calMed+'</div>'
       +'<div style="margin-top:6px"><b style="color:'+pcol+';font-size:16px">'+a.protein+'g</b> <span style="color:#666;font-size:10px">protein avg</span></div>'
-      +'<div style="color:#555;font-size:10px">median '+a.proteinMed+'g \u00b7 hit target '+a.proHit+'/'+a.n+'</div>'
+      +'<div style="color:#555;font-size:10px">median '+a.proteinMed+'g \u00b7 hit '+a.proHit+'/'+a.n
+      +(a.proNear?' <span style="color:#fbbf24">(+'+a.proNear+' within '+a.proBand+'g)</span>':'')+'</div>'
       +'<div style="color:#555;font-size:10px;margin-top:4px">'+a.n+' complete'+(a.nPartial?' \u00b7 '+a.nPartial+' partial':'')+'</div>'
       +'</div>';
   }
