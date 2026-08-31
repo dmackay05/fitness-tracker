@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v98 — 2026-08-28";
+var APP_BUILD = "v101 — 2026-08-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -140,7 +140,7 @@ var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
 var STEP_CADENCE = parseInt(store.get('ft_cadence')) || 105; // steps/min, calibrate from your phone's health app
 var USER_AGE = parseInt(store.get('ft_age')) || 0; // used only to estimate max HR if Max HR isn't set directly
 var USER_MAXHR = parseInt(store.get('ft_maxhr')) || 0; // if unset, estimated as 220-age (Tanaka formula would be more accurate but 220-age is the common default)
-function dsEstMaxHR(){ if(USER_MAXHR>0) return USER_MAXHR; if(USER_AGE>0) return 220-USER_AGE; return null; }
+function dsEstMaxHR(){ if(USER_MAXHR>0) return USER_MAXHR; if(USER_AGE>0) return Math.round(208-(0.7*USER_AGE)); return null; }
 // Zone 2 = ~60-70% of max HR (Seiler/aerobic-base literature). Returns null if no max HR available.
 function dsHrZone(avgHr){
   var mx=dsEstMaxHR(); if(!mx||!avgHr) return null;
@@ -269,6 +269,40 @@ function getLatestWeight(){
 // All baked-in calorie estimates were calibrated at 240 lbs (plan starting weight).
 // calAdj() rescales them to the latest logged body weight so burn estimates track fat loss.
 var CAL_REF_WEIGHT = 240;
+// ── MEASURED TDEE ────────────────────────────────────────────────────────
+// Every calorie target in this app is a prediction. This is the one place the
+// prediction gets checked against reality: over a long enough window,
+// avg intake - (lb change x 3500 / days) is actual maintenance. Short windows are
+// dominated by water weight, so this stays hidden until there is enough data.
+var TDEE_WINDOW_DAYS=28, TDEE_MIN_INTAKE_DAYS=14, TDEE_MIN_SPAN=14, KCAL_PER_LB=3500;
+function measuredTDEE(windowDays){
+  var days=windowDays||TDEE_WINDOW_DAYS;
+  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD), endKey=todayKey();
+  // Only days with food actually logged. A blank day is missing data, not a
+  // zero-calorie day; averaging zeros in would fabricate an enormous deficit.
+  var iDays=Object.keys(appData).filter(function(k){
+    if(k<startKey||k>endKey) return false;
+    var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
+    return d.foods.reduce(function(a,f){return a+(+f.cal||0);},0)>0;
+  }).sort();
+  if(iDays.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'needs '+TDEE_MIN_INTAKE_DAYS+' days of logged intake in the last '+days+' \u2014 you have '+iDays.length};
+  var avgIntake=iDays.reduce(function(a,k){
+    return a+appData[k].foods.reduce(function(t,f){return t+(+f.cal||0);},0);},0)/iDays.length;
+  var pts=weightSeries().filter(function(p){return p.key>=startKey&&p.key<=endKey;});
+  if(pts.length<4) return {ok:false,reason:'needs 4 weigh-ins in the last '+days+' days \u2014 you have '+pts.length};
+  var span=Math.round((new Date(pts[pts.length-1].key+'T00:00:00')-new Date(pts[0].key+'T00:00:00'))/86400000);
+  if(span<TDEE_MIN_SPAN) return {ok:false,reason:'weigh-ins only span '+span+' days, needs '+TDEE_MIN_SPAN};
+  // Average the first and last few weigh-ins so one bloated morning at either
+  // end cannot swing the whole estimate.
+  var k=Math.max(2,Math.min(5,Math.floor(pts.length/2)));
+  var head=pts.slice(0,k).reduce(function(a,p){return a+p.w;},0)/k;
+  var tail=pts.slice(-k).reduce(function(a,p){return a+p.w;},0)/k;
+  var lbChange=tail-head;
+  var tdee=avgIntake-((lbChange*KCAL_PER_LB)/span);
+  return {ok:true,tdee:Math.round(tdee),avgIntake:Math.round(avgIntake),lbChange:lbChange,
+          span:span,nIntake:iDays.length,nWeights:pts.length,lbPerWeek:(lbChange/span)*7};
+}
 function calScale(){ var w = parseFloat(getLatestWeight()); return (w > 0) ? (w / CAL_REF_WEIGHT) : 1; }
 function calAdj(c){ return Math.round((+c || 0) * calScale()); }
 function getWeekKeys(){ var a=[]; for(var i=6;i>=0;i--){var d=new Date();d.setDate(d.getDate()-i);a.push(localDateKey(d));} return a; }
@@ -374,7 +408,7 @@ function fetchOverloadCache(){
 }
 // ── LOAD + MERGE FROM SHEET (sheet is source of truth on open/refresh) ───
 function fetchSheet(onRows){
-  if(!SHEETS_URL){ onRows(null,false); return; }
+  if(!SHEETS_URL){ setTimeout(function(){ onRows(null,false); },0); return; }
   var done = false;
   function finish(rows, ok){ if(done) return; done=true; onRows(rows,ok); }
 
@@ -541,10 +575,41 @@ function renderHeader(){
   var hn=document.getElementById("hname"); if(hn) hn.textContent=(USER_NAME?USER_NAME:"Athlete")+" 💪";
 }
 
+// ── ROLLING BODY-WEIGHT AVERAGE ──────────────────────────────────────────
+// Daily scale weight swings 2-3 lbs on water, sodium, glycogen and gut contents
+// alone. During recomposition the trailing mean is the only scale number worth
+// reading; waist tape and photos still outrank it.
+function weightSeries(){
+  return Object.keys(appData).filter(function(k){
+    var w=appData[k]&&appData[k].weight; return w!=null&&w!=='';
+  }).sort().map(function(k){ return {key:k,w:parseFloat(appData[k].weight)}; })
+   .filter(function(p){ return isFinite(p.w)&&p.w>0; });
+}
+function weightAvgWindow(days,endKey){
+  var pts=weightSeries(); if(!pts.length) return null;
+  var end=endKey||todayKey();
+  var startD=new Date(end+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD);
+  var win=pts.filter(function(p){ return p.key>=startKey&&p.key<=end; });
+  if(!win.length) return null;
+  return {avg:win.reduce(function(a,p){return a+p.w;},0)/win.length, n:win.length};
+}
+// Week-over-week change between two adjacent trailing windows.
+function weightTrendDelta(days){
+  var now=weightAvgWindow(days); if(!now) return null;
+  var pe=new Date(todayKey()+'T00:00:00'); pe.setDate(pe.getDate()-days);
+  var prev=weightAvgWindow(days,localDateKey(pe));
+  if(!prev||now.n<2||prev.n<2) return {avg:now.avg,n:now.n,delta:null};
+  return {avg:now.avg,n:now.n,delta:now.avg-prev.avg,prevAvg:prev.avg};
+}
+var STAT_AVG_WINDOW = 14; // days: dashboard averages reflect recent adherence, not lifetime
 function statAverages(){
-  var days = Object.keys(appData).filter(function(k){
+  var allDays = Object.keys(appData).filter(function(k){
     var d=appData[k]; return d&&d.foods&&d.foods.reduce(function(a,f){return a+(+f.cal||0);},0)>0;
   }).sort();
+  // "Days Logged" stays lifetime; the calorie/protein averages use a trailing window
+  // so a strong recent stretch isn't diluted by months of older data.
+  var days = allDays.slice(-STAT_AVG_WINDOW);
   var n=days.length;
   var avgCal=0, avgProt=0;
   if(n){
@@ -554,7 +619,7 @@ function statAverages(){
   var wk = Object.keys(appData).filter(function(k){return appData[k]&&appData[k].weight;}).sort();
   var lost = wk.length>=1 ? (appData[wk[0]].weight - appData[wk[wk.length-1]].weight) : 0;
   if(wk.length && (START_WEIGHT - appData[wk[wk.length-1]].weight) > lost) lost = START_WEIGHT - appData[wk[wk.length-1]].weight;
-  return {n:n, avgCal:avgCal, avgProt:avgProt, lost:lost};
+  return {n:allDays.length, avgCal:avgCal, avgProt:avgProt, lost:lost, avgWindow:n};
 }
 
 /* ===== Weigh-in day reminder ===== */
@@ -577,10 +642,56 @@ function renderWeighinBanner(){
   el.innerHTML = '<div class="weighin-nudge"><div class="weighin-nudge-text">\u2696\ufe0f <b>Weigh-in day</b> \u2014 same conditions as always: morning, after bathroom, before eating.</div><button class="weighin-nudge-btn" onclick="jumpToWeighIn()">Log Now</button></div>';
 }
 
+// Trailing 7-day scale average, shown beside the raw number it should outrank.
+function renderWeightTrend(){
+  var el=document.getElementById("dash-weight-trend"); if(!el) return;
+  var t=weightTrendDelta(7);
+  if(!t||t.n<2){ el.innerHTML='<span style="color:#666">A 7-day average appears here once there are a few more weigh-ins \u2014 it reads far cleaner than any single morning.</span>'; return; }
+  var h='<b style="color:#a78bfa;font-size:15px">'+t.avg.toFixed(1)+' lbs</b> <span style="color:#888">7-day average ('+t.n+' weigh-ins)</span>';
+  if(t.delta!=null){
+    var d=t.delta, dn=Math.abs(d).toFixed(1);
+    var col=d<-0.1?'#5eead4':(d>0.1?'#fbbf24':'#888');
+    h+='<div style="margin-top:3px;color:'+col+'">'+(d<-0.1?('down '+dn+' lbs'):(d>0.1?('up '+dn+' lbs'):'Flat'))+' vs the previous 7 days</div>';
+    if(d>=-0.1&&d<=0.1) h+='<div style="margin-top:2px;color:#666;line-height:1.4">A flat average during recomposition is expected \u2014 fat lost and muscle gained cancel out. Waist tape and photos are the tiebreaker.</div>';
+  }
+  el.innerHTML=h;
+}
+// Measured maintenance from intake vs weight change. Hidden until it can be trusted.
+function renderTdeePanel(){
+  var el=document.getElementById("dash-tdee"); if(!el) return;
+  var r=measuredTDEE();
+  if(!r.ok){ el.innerHTML='<div style="color:#666;line-height:1.45">Measured maintenance calories appear here once there is enough data \u2014 '+r.reason+'.</div>'; return; }
+  var target=GOALS.cal, gap=r.tdee-target;
+  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>'
+   +'<div style="color:#888;margin-top:3px;line-height:1.45">From '+r.nIntake+' logged days and '+r.nWeights+' weigh-ins across '+r.span+' days: averaging '+r.avgIntake+' kcal while trending '
+   +(r.lbChange<0?'down ':(r.lbChange>0?'up ':'flat at '))+Math.abs(r.lbPerWeek).toFixed(2)+' lbs/week.</div>';
+  if(gap>0) h+='<div style="margin-top:5px;color:#5eead4;line-height:1.45">Today\'s target of '+target+' sits about '+gap+' kcal under that \u2014 roughly '+(gap*7/3500).toFixed(2)+' lbs/week of predicted loss.</div>';
+  else h+='<div style="margin-top:5px;color:#fbbf24;line-height:1.45">Today\'s target of '+target+' is at or above measured maintenance. If loss has stalled, this is the first number to look at.</div>';
+  h+='<div style="margin-top:5px;color:#666;line-height:1.4">An estimate built on the 3500 kcal/lb convention and on how honestly intake got logged. A direction, not a dose.</div>';
+  el.innerHTML=h;
+}
+// Surfaces the joint log only when there is something in it.
+function renderPainSummary(){
+  var el=document.getElementById("dash-pain"); if(!el) return;
+  var rp=dsPainReport(90), sites=Object.keys(rp);
+  if(!sites.length){ el.innerHTML=''; el.style.display='none'; return; }
+  el.style.display='block';
+  sites.sort(function(a,b){return rp[b].n-rp[a].n;});
+  var h='<div class="card-h" style="margin-bottom:8px">\u26A0 Joint Log \u00b7 last 90 days</div>';
+  sites.slice(0,6).forEach(function(site){
+    var r=rp[site], col=r.max>=3?'#ff6b6b':(r.max===2?'#fbbf24':'#9a9d8c');
+    var top=Object.keys(r.moves).sort(function(a,b){return r.moves[b]-r.moves[a];})[0];
+    h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid #222;font-size:12px">'
+     +'<span style="color:'+col+';font-weight:600">'+site+'</span>'
+     +'<span style="color:#777;text-align:right">'+r.n+'\u00d7 \u00b7 worst '+DS_PAIN_LVL[r.max]+'<br><span style="font-size:10px">most often: '+dsMoveName(top)+'</span></span></div>';
+  });
+  h+='<button onclick="dsCopyPainReport()" style="margin-top:10px;width:100%;background:none;border:1px solid #3a3a3a;color:#aaa;border-radius:9px;padding:9px;font-size:12px;cursor:pointer">Copy full log for a PT visit</button>';
+  el.innerHTML=h;
+}
 function renderDash(){
   renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
-  var t=getTotals(), burned=getBurned(), net=t.cal-burned, netRem=GOALS.cal-t.cal;
+  var t=getTotals(), burned=getBurned(), netRem=GOALS.cal-t.cal;
   var netEl=document.getElementById("net-cal"); netEl.textContent=t.cal;
   netEl.style.color = t.cal>GOALS.cal?"#ff6b6b":"#5eead4";
   document.getElementById("eaten-lbl").textContent="🍽 "+t.cal+" eaten";
@@ -626,6 +737,7 @@ function renderDash(){
   document.getElementById("dash-water-bar").style.width=Math.min((oz/WATER_GOAL)*100,100)+"%";
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
+  renderWeightTrend(); renderTdeePanel(); renderPainSummary();
 
   // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
   // rolling 7-day kept as a secondary reference line since it reads differently mid-week.
@@ -2909,6 +3021,15 @@ var DS_DEMOS={
     '<path d="M58 100 Q100 120 146 96" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
     '<circle cx="54" cy="98" r="7" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
     '</svg>';},
+  pullover:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="124" x2="175" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="96" y1="124" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="150" y1="124" x2="168" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="120" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="-55 96 118;35 96 118;-55 96 118" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
+    '<line x1="96" y1="118" x2="96" y2="66" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="96" cy="58" r="9" fill="none" stroke="#4ec98a" stroke-width="4"/></g>'+
+    '</svg>';},
   plank:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
     '<line x1="40" y1="124" x2="170" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
     '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
@@ -3616,8 +3737,8 @@ var DS_DEMOS={
     '</svg>';}
 };
 
-var DS_DEMOMAP={"mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "curl", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "thu-russian": "russiantwist", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
-var DS_DEMOCAP={"backwalk": "short steps backward, land on the ball of the foot", "tibraise": "heels elevated, weight back, lift the toes", "kneeraise": "lying flat, drive one knee to the chest, slow return", "dip": "comfortable depth only — nowhere near shoulder-below-elbow", "extrot": "elbow pinned to the side — only the forearm rotates", "trap3": "arm at a 30° angle from the body — raise along that line", "nordic": "ankles locked, lower slowly, catch yourself early", "pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar", "tgu": "weight locked overhead the whole way — roll to elbow, to hand, to standing", "birddog": "opposite arm and leg extend — flat back, no rocking", "sideplank": "hips stacked and lifted — reach the top arm under, then back to vertical", "wristecc": "forearm supported — lower the weight slowly, use the other hand to lift it back", "hipthrust": "shoulders on the couch — hips sink low, then drive up to a flat tabletop", "ballrow": "chest on the ball — row the handle up, lower back stays out of it", "seated": "sit tall, eyes soft — breathe low into the belly", "downdog": "hips to the sky, long spine — pedal the heels", "fold": "hinge and hang heavy — soft knees, let the head go", "cobra": "press the chest forward and up — hips stay grounded", "savasana": "flat on your back, everything releases — just breathe"};
+var DS_DEMOMAP={"mon-slamskull": "triceps", "thu-ballpullover": "pullover", "pu-warm-thread": "tspinetwist", "pu-warm-scappush": "highplank", "pu-warm-pullapart": "fly", "pu-scaprow": "row", "bwl-legadd": "side-leg-ext", "mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "curl", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "thu-russian": "russiantwist", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
+var DS_DEMOCAP={"backwalk": "short steps backward, land on the ball of the foot", "tibraise": "heels elevated, weight back, lift the toes", "kneeraise": "lying flat, drive one knee to the chest, slow return", "dip": "comfortable depth only — nowhere near shoulder-below-elbow", "extrot": "elbow pinned to the side — only the forearm rotates", "trap3": "arm at a 30° angle from the body — raise along that line", "nordic": "ankles locked, lower slowly, catch yourself early", "pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar", "tgu": "weight locked overhead the whole way — roll to elbow, to hand, to standing", "birddog": "opposite arm and leg extend — flat back, no rocking", "sideplank": "hips stacked and lifted — reach the top arm under, then back to vertical", "pullover": "arms stay straight \u2014 sweep the ball from overhead to over the chest, ribs down", "wristecc": "forearm supported — lower the weight slowly, use the other hand to lift it back", "hipthrust": "shoulders on the couch — hips sink low, then drive up to a flat tabletop", "ballrow": "chest on the ball — row the handle up, lower back stays out of it", "seated": "sit tall, eyes soft — breathe low into the belly", "downdog": "hips to the sky, long spine — pedal the heels", "fold": "hinge and hang heavy — soft knees, let the head go", "cobra": "press the chest forward and up — hips stay grounded", "savasana": "flat on your back, everything releases — just breathe"};
 var DS_VARIANT_SETUPS={
   "mon-pushup::1": "Stand facing a wall, arms straight out at chest height, feet a couple feet back. Lean your weight into your hands, then press back to standing.",
   "mon-pushup::2": "Hands on a sturdy counter or desk edge, feet back so your body forms a straight line. Lower your chest toward the edge, then press back up.",
@@ -3676,7 +3797,7 @@ var DS_VARIANT_SETUPS={
   "sat-walk::1": "Load a backpack with 15–25 lbs and wear it high and tight against your back, chest proud. Walk at your normal recovery pace — the load adds training stimulus without needing to walk faster.",
   "sun-walk::1": "Load a backpack with a lighter 10–15 lbs and wear it high and tight against your back. Keep the pace easy and nose-breathing — this stays a recovery walk, just with a lighter load than Saturday's version.",
 };
-var DS_SETUPS={"warmup-armcircle": "Stand with feet shoulder-width. Small arm circles forward 20s, backward 20s, then big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction.", "warmup-hipflow-9": "Hold a wall or chair for balance. Front-to-back leg swings 10/leg, side-to-side swings 10/leg. Finish with 90/90 hip switches or slow hip circles, 30s each direction.", "warmup-hipflow-7": "Hold a wall or chair for balance. Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches 8/side and slow hip circles 30s each direction.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "post-walk": "After the session: a brisk 30-min walk. Easy, unhurried pace.", "post-ride": "An easy 20-min spin, conversational pace. Compression sleeve on.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the 10 lb dumbbell at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Neighborhood hills naturally push this into vigorous heart rate zones most of the ride — that's the real effort level, not a sign of overdoing it. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
+var DS_SETUPS={"warmup-armcircle": "Stand with feet shoulder-width. Small arm circles forward 20s, backward 20s, then big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction.", "warmup-hipflow-9": "Hold a wall or chair for balance. Front-to-back leg swings 10/leg, side-to-side swings 10/leg. Finish with 90/90 hip switches or slow hip circles, 30s each direction.", "warmup-hipflow-7": "Hold a wall or chair for balance. Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches 8/side and slow hip circles 30s each direction.", "warmup-kbhalo": "Halo: hold the KB by the horns at chest height, circle slowly around your head, close to the skull, core braced, hips still. Around-the-World: hold by the handle, pass hand to hand in a wide circle around your waist, reverse direction halfway.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-ohp": "Stand on the tube, handles at the shoulders; press straight to the ceiling, ribs down, no low-back arch.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "post-walk": "After the session: a brisk 30-min walk. Easy, unhurried pace.", "post-ride": "An easy 20-min spin, conversational pace. Compression sleeve on.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-rdl": "Stand on the tube, soft knees; push the hips straight back, handles tracing down the thighs, flat back.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-tgu": "KB in one hand, arm locked overhead; rise from lying to standing one step at a time, eyes on the bell.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Stand on the tube, palms facing each other, thumbs up; curl up with the upper arms still.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "thu-russian": "Sit, lean back about 45 degrees, feet up; hold the 10 lb dumbbell at your chest and rotate it side to side from the ribcage.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "tue-tib": "Stand with your back against a wall, heels a few inches out from it or up on a low block, and let your weight settle back into the wall. Keeping the heels planted, pull your toes up toward your shins as far as they will go, pause one second at the top, then lower slowly over 2\u20133 seconds.", "fri-tib": "Same as Tuesday, two sets instead of three: back to the wall, weight settled back, toes up, pause, slow lower.", "fri-add": "Lie on your side with hips stacked square. Cross the top leg over and plant that foot in front of the bottom knee, or rest the top shin on a yoga block. Keeping the bottom leg straight with toes pointing forward, lift it toward the ceiling from the inner thigh, pause, and lower slowly. Do not let the pelvis roll backward \u2014 that is what turns this into SI joint irritation instead of adductor work. Switch legs between sets.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Neighborhood hills naturally push this into vigorous heart rate zones most of the ride — that's the real effort level, not a sign of overdoing it. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
 
 /* ============================ ROUTINES (every day) ============================ */
 var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'8 min · every day',
@@ -3885,7 +4006,6 @@ var DS_SESSIONS={
         variants:[{name:'DB Kickbacks',equip:'2× 10 lb dumbbells',rx:'3×12/arm',cue:'Hinge forward, upper arm locked parallel to the floor — extend back and squeeze 1 sec at lockout',demo:'triceps'},{name:'DB Overhead Triceps Extension',equip:'1\u00d7 10 lb dumbbell (both hands) or 2\u00d7 2 lb',rx:'3\u00d712\u201315',cue:'Hold the DB overhead with both hands, upper arms vertical and close to your ears \u2014 lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn\u2019t arch. Start light \u2014 stop if you feel any pull on the inside of the elbow.',demo:'triceps'}]},
       {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3,variants:[{name:'Single-Leg Calf Raise',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cue:'One heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top — unilateral load builds strength faster than bilateral once bodyweight gets easy',demo:'calf'}]},
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors, good swap on days the SI joint feels touchy',demo:'hollow'}]},
-      dsCore('mon-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
@@ -3902,6 +4022,7 @@ var DS_SESSIONS={
       {id:'tue-pallof',name:'Banded Pallof Press',demo:'pallof',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',log:'setsreps',sets:3,variants:[{name:'Kneeling Pallof Press',equip:'Tube 10–20 lb, mid anchor',rx:'3×10/side',cue:'Same anchor and press, but from tall-kneeling — takes the legs out of the equation so it is pure anti-rotation core, and it is gentler on the SI joint than the standing version',demo:'pallof'}]},
       {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
       {id:'tue-step',name:'Step-Up',demo:'stepup',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",log:'setsreps',sets:3,variants:[{name:'Banded Reverse Lunge',equip:'Tube 20–30 lb',rx:'3×10/side',cue:'Step back, drop the knee, drive through the front heel — easier to balance than a step-up, same unilateral quad work',demo:'splitsquat'}]},
+      {id:'tue-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'3\u00d715\u201320',cal:12,cue:'Back to the wall, weight settled back \u2014 lift the toes as high as they go, 1-sec squeeze, slow lower. Stop when you lose range, not when it burns.',log:'setsreps',sets:3},
       {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]},
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
 
@@ -3931,8 +4052,6 @@ var DS_SESSIONS={
         variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — much less pull on the low back/hip flexors',demo:'hollow'}]},
       {id:'wed-bike',name:'Slow Bicycle Crunch',demo:'bicycle',slot:'Core',target:'Obliques',equip:'Bodyweight',rx:'2×8/side',cal:18,cue:'Rotate from the ribcage — 2 full seconds each way',log:'setsreps',sets:2,
         variants:[{name:'Heel Taps',equip:'Bodyweight',rx:'2×10/side',cue:'Knees bent, feet up, lower back flat — tap one heel to the floor at a time, no rotation, no crunch-up',demo:'legraise'}]},
-      {id:'wed-legraise',name:'Leg Raise — slow descent',demo:'legraise',slot:'Core',target:'Lower Abs',equip:'Bodyweight',rx:'2×8',cal:18,cue:'3 seconds down — low back stays flat the whole time',log:'setsreps',sets:2,
-        variants:[{name:'Bent-Knee Leg Lower',equip:'Bodyweight',rx:'2×8',cue:'Same slow 3-count lower, but knees bent to 90° — shorter lever means far less low-back strain',demo:'legraise'}]},
       {id:'wed-tgu',name:'Turkish Get-Up',slot:'Full Body',target:'Core · Shoulder Stability',equip:'8 lb kettlebell',rx:'2×3/side',cal:30,cue:'Eye stays on the weight the whole time — slow, one step at a time',demo:'tgu',log:'setsreps',sets:2,
         variants:[{name:'Half Get-Up',equip:'8 lb kettlebell',rx:'2×4/side',cue:'Same setup, but only rise to your propped-up elbow and back down — skip the full stand. Same shoulder stability work, much lower coordination demand',demo:'tgu'}]},
       {id:'wed-slam',name:'Ball Slam',demo:'slam',slot:'Power',target:'Full Body',equip:'10 lb slam ball',rx:'3×10',cal:35,cue:'Full reach overhead first — drive the ball through the floor',log:'setsreps',sets:3,
@@ -3965,7 +4084,6 @@ var DS_SESSIONS={
       {id:'mon-slamskull',name:'Slam Ball Skull Crusher (supine)',slot:'Push · Triceps',target:'Triceps',equip:'Slam ball',rx:'3×6–8',cal:20,cue:'⚠️ Elbow + control flag — lie on your back, arms straight up holding the ball overhead. Bend only the elbows to lower the ball toward your forehead, then press back to lockout. Use your lightest ball, stop the set the moment you feel any elbow pull, and check in on elbow status the next day before adding reps.',log:'setsreps',sets:3,variants:[{name:'Banded Overhead Triceps Extension',equip:'Tube 10–20 lb, anchored underfoot',rx:'3×10–12',cue:'Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Lower elbow shear than the skull crusher, easier to stop the instant the elbow complains',demo:'triceps'}]},
       {id:'thu-ballpullover',name:'Straight-Arm Ball Pullover',slot:'Pull · Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'3×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:3,variants:[{name:'Banded Straight-Arm Pulldown',equip:'Tube 20–30 lb, anchored high',rx:'3×12–15',cue:'Anchor overhead, arms straight out in front — sweep both arms down to your thighs keeping elbows soft, control the return. Same lat/serratus target with less loading on the shoulder end-range than the ball pullover',demo:'fly'}]},
       {id:'thu-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — much less pull on the low back/hip flexors',demo:'hollow'}]},
-      dsCore('thu-bike','Bicycle Crunch','1×12 total (alternating)',20,'Rotate from the ribcage — slow, 2 sec each side'),
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
       dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing. Keep the range small if you feel anything near the SI joint; this is a rotational load like the Friday woodchop.'),
       DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
@@ -3989,6 +4107,8 @@ var DS_SESSIONS={
         mistakes:['Rounding the lower back — keep it flat. If you can’t, don’t go as deep.','Bending the knees too much — this is a hip hinge, not a squat.','Going too heavy too soon — start light, your hamstrings and lower back need time to adapt.'],
         variants:[{name:'Stability Ball Hamstring Bridge',equip:'Stability ball',rx:'3×12–15',cue:'Heels on the ball, hips bridged up — no spinal loading at all, pure hamstring/glute posterior chain work if the Good Morning feels like too much load on the back',demo:'hipthrust'}]},
       {id:'fri-nordic',name:'Stability Ball Leg Curl',slot:'Knee Flexion',target:'Hamstrings',equip:'Stability ball',rx:'3×10–12',cal:30,cue:'Hips stay up the whole set — curl the ball in, roll out over a slow 3-count',demo:'ballcurl',log:'setsreps',sets:3,variants:[{name:'Single-Leg Ball Curl',equip:'Stability ball',rx:'3\u00d76\u20138/leg',cue:'One heel on the ball \u2014 hips level, slow 3-count roll-out',demo:'ballcurl'}]},
+      {id:'fri-add',name:'Side-Lying Adductor Raise',demo:'side-leg-ext',slot:'Adductors',target:'Adductors \u00b7 Inner Thigh',equip:'Bodyweight',rx:'3\u00d712\u201315/leg',cal:14,cue:'Bottom leg lifts, top leg parked out of the way. Hips stay stacked square \u2014 if the pelvis rolls back, shorten the range. Gentler on the SI joint than a Copenhagen plank.',log:'setsreps',sets:3},
+      {id:'fri-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'2\u00d715\u201320',cal:8,cue:'Second shin session of the week, lighter than Tuesday. Toes up, pause, slow lower.',log:'setsreps',sets:2},
       {id:'fri-calf',name:'Single-Leg Calf Raise',demo:'calf',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'4×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Bilateral swap that takes balance out of the equation on a fatigued Friday',demo:'calf'}]},
       {id:'fri-obliques',name:'Obliques / Rotation',demo:'woodchop',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives. Stop short of any pinch near the SI joint — rotation under load is a higher-demand pattern for it.',log:'setsreps',sets:3,
         variants:[{name:'Slow Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern, far less rotational force on the SI joint',demo:'pallof'}]},
@@ -4574,6 +4694,71 @@ function dsFatigueCheck(refKey){
 }
 
 var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};}
+// ── JOINT / PAIN LOG ─────────────────────────────────────────────────────
+// Kept in local storage rather than the Sheets payload, because the Apps Script
+// column schema would have to change to carry it. Shape: {dateKey:{exId:{lvl,site}}}
+// lvl 1 = niggle, 2 = sore, 3 = sharp / stop.
+var DS_PAIN={}; try{ DS_PAIN=JSON.parse(store.get("ds_pain")||"{}"); }catch(e){ DS_PAIN={}; }
+var DS_PAIN_SITES=['R elbow','R shoulder','R SI joint','L knee','Low back','Other'];
+var DS_PAIN_LVL=['','niggle','sore','sharp'];
+function dsPainSave(){ try{ store.set("ds_pain",JSON.stringify(DS_PAIN)); }catch(e){} }
+function dsPainGet(id,dateKey){ var d=DS_PAIN[dateKey||activeDate]; return (d&&d[id])||null; }
+function dsPainSet(id,lvl,site){
+  var k=activeDate; if(!DS_PAIN[k]) DS_PAIN[k]={};
+  if(!lvl){ delete DS_PAIN[k][id]; if(!Object.keys(DS_PAIN[k]).length) delete DS_PAIN[k]; }
+  else DS_PAIN[k][id]={lvl:lvl,site:site||(DS_PAIN[k][id]&&DS_PAIN[k][id].site)||''};
+  dsPainSave(); dsRender();
+}
+function dsPainToggleLvl(id,lvl){
+  var cur=dsPainGet(id);
+  dsPainSet(id,(cur&&cur.lvl===lvl)?0:lvl,cur&&cur.site);
+}
+function dsPainSetSite(id,site){ var cur=dsPainGet(id); dsPainSet(id,(cur&&cur.lvl)||1,site); }
+function dsPainToggleOpen(id){
+  var st=dsItemState(id); st._painOpen=!st._painOpen; dsRender();
+}
+// Rolls the log up by site so it can be handed to a PT as a real history.
+function dsPainReport(days){
+  var out={}, cutoff=new Date(); cutoff.setDate(cutoff.getDate()-(days||90));
+  var cutKey=localDateKey(cutoff);
+  Object.keys(DS_PAIN).sort().forEach(function(dk){
+    if(dk<cutKey) return;
+    Object.keys(DS_PAIN[dk]).forEach(function(id){
+      var e=DS_PAIN[dk][id], site=e.site||'Unspecified';
+      if(!out[site]) out[site]={n:0,max:0,first:dk,last:dk,moves:{}};
+      var r=out[site]; r.n++; r.max=Math.max(r.max,e.lvl); r.last=dk;
+      if(dk<r.first) r.first=dk;
+      r.moves[id]=(r.moves[id]||0)+1;
+    });
+  });
+  return out;
+}
+function dsPainReportText(days){
+  var rep=dsPainReport(days||90), sites=Object.keys(rep);
+  if(!sites.length) return 'No joint or pain entries logged yet.';
+  var lines=['Joint / pain log \u2014 last '+(days||90)+' days',''];
+  sites.sort(function(a,b){return rep[b].n-rep[a].n;}).forEach(function(site){
+    var r=rep[site];
+    var top=Object.keys(r.moves).sort(function(a,b){return r.moves[b]-r.moves[a];}).slice(0,4);
+    lines.push(site+' \u2014 '+r.n+' entries, worst: '+DS_PAIN_LVL[r.max]+', '+r.first+' to '+r.last);
+    lines.push('   most often during: '+top.map(function(t){return dsMoveName(t)+' ('+r.moves[t]+')';}).join(', '));
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+function dsMoveName(id){
+  var found=null;
+  DS_ORDER.forEach(function(sk){
+    var S=DS_SESSIONS[sk]; if(!S||!S.moves)return;
+    S.moves.forEach(function(m){ if(m.id===id&&!found) found=m.name; });
+  });
+  return found||id;
+}
+function dsCopyPainReport(){
+  var txt=dsPainReportText(90);
+  try{ navigator.clipboard.writeText(txt); alert('Joint log copied \u2014 paste it anywhere.'); }
+  catch(e){ alert(txt); }
+}
 var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){DS_SWAPS={};}
 // One-time defaults: neutral-grip curl (left wrist pop) + Bird Dog for Dead Bug (right SI joint pop).
 // Only applied if the user hasn't already made a swap choice for that exercise, and only once ever.
@@ -5237,13 +5422,16 @@ var MUSCLE_KEYWORDS=[
   ['glute','Glutes'],['hip abduct','Glutes'],['abductor','Glutes'],['sumo','Glutes'],
   ['quad','Quads'],['split squat','Quads'],['squat','Quads'],['lunge','Quads'],
   ['calv','Calves'],
+  ['tibialis','Shins'],['shin','Shins'],['dorsiflex','Shins'],
+  ['adductor','Adductors'],['inner thigh','Adductors'],['groin','Adductors'],
   ['oblique','Core'],['anti-rot','Core'],['core','Core'],['woodchop','Core'],['plank','Core'],['dead bug','Core']
 ];
 // Menno-style approximate weekly volume landmarks (working sets/week): [MEV, MAV-high]
 var MUSCLE_LANDMARKS={
   Chest:[8,20],Back:[10,22],Shoulders:[8,20],'Rear Delts':[8,20],Traps:[6,16],
   Biceps:[6,20],Triceps:[6,20],Forearms:[4,16],
-  Quads:[8,20],Hamstrings:[6,18],Glutes:[6,18],Calves:[8,20],Core:[6,20]
+  Quads:[8,20],Hamstrings:[6,18],Glutes:[6,18],Calves:[8,20],
+  Adductors:[4,12],Shins:[4,12],Core:[6,20]
 };
 function dsMuscleVolBandRowsHtml(v){
   return DS_MV_ORDER.map(function(m){
@@ -5441,7 +5629,9 @@ var DS_MUSCLE_CHIPS=[
   {label:'Biceps',q:'biceps?'},
   {label:'Triceps',q:'triceps?'},
   {label:'Core',q:'core'},
-  {label:'Calves',q:'calves'}
+  {label:'Calves',q:'calves'},
+  {label:'Shins',q:'shins?'},
+  {label:'Adductors',q:'adductors?'}
 ];
 function dsChipLabelFor(q){
   for(var i=0;i<DS_MUSCLE_CHIPS.length;i++){ if(DS_MUSCLE_CHIPS[i].q===q) return DS_MUSCLE_CHIPS[i].label; }
@@ -5477,11 +5667,20 @@ function dsItemMatchesSearch(rawItem,q){
   if(!q)return true;
   var item=dsViewOf(rawItem);
   if(DS_CHIP_MODE){
-    // Muscle-group chips: match the target field only, on whole word boundaries,
-    // so e.g. the Lats chip won't hit "flat back" or "bilateral", and the
-    // Shoulders chip won't pull in Rear-Delts-only or Chest-only items.
+    // Muscle-group chips: match on whole word boundaries, so e.g. the Lats chip
+    // won't hit "flat back" or "bilateral", and the Shoulders chip won't pull in
+    // Rear-Delts-only or Chest-only items.
     var cre; try{ cre=new RegExp('\\b'+q+'\\b','i'); }catch(e){ return false; }
-    return !!(item.target && cre.test(String(item.target)));
+    if(item.target && cre.test(String(item.target))) return true;
+    // Fallback: the target field is a headline, not a full muscle list. Compound
+    // presses and pulls train secondary movers that never show up there, so also
+    // check DS_MV, which is the actual muscle attribution used for volume.
+    try{
+      var mvid=(rawItem&&rawItem.id)||item.id;
+      var mv=(typeof DS_MV!=='undefined')&&DS_MV&&DS_MV[mvid];
+      if(mv){ for(var mk in mv){ if(mv[mk]>0 && cre.test(mk)) return true; } }
+    }catch(e){}
+    return false;
   }
   var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ return false; }
   var fields=[item.name,item.target,item.slot,item.equip,item.cue];
@@ -5589,7 +5788,32 @@ function dsRenderItem(rawItem,idx){
   } else {
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
+  h+=dsPainRow(item.id);
   h+='</div></div>'; return h;
+}
+// Two taps: level, then site. Collapsed to one line until something is flagged.
+function dsPainRow(id){
+  var st=dsItemState(id), cur=dsPainGet(id), open=st._painOpen||!!cur;
+  var col=cur?(cur.lvl>=3?'#ff6b6b':(cur.lvl===2?'#fbbf24':'#9a9d8c')):'#666';
+  var h='<div class="ds-painwrap" style="margin-top:10px;border-top:1px solid #2a2a2a;padding-top:8px">';
+  if(!open) return h+'<div onclick="dsPainToggleOpen(\''+id+'\')" style="font-size:11px;color:#666;cursor:pointer">\u2295 Flag joint pain</div></div>';
+  h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="ds-lbl" style="color:'+col+'">Pain</span>';
+  for(var l=1;l<=3;l++){
+    var on=cur&&cur.lvl===l;
+    h+='<span onclick="dsPainToggleLvl(\''+id+'\','+l+')" style="cursor:pointer;font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid '+(on?col:'#3a3a3a')+';color:'+(on?col:'#888')+';'+(on?'font-weight:700':'')+'">'+DS_PAIN_LVL[l]+'</span>';
+  }
+  if(cur) h+='<span onclick="dsPainSet(\''+id+'\',0)" style="cursor:pointer;font-size:11px;color:#666;margin-left:2px">clear</span>';
+  h+='</div>';
+  if(cur){
+    h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
+    DS_PAIN_SITES.forEach(function(site){
+      var on=cur.site===site;
+      h+='<span onclick="dsPainSetSite(\''+id+'\',\''+site+'\')" style="cursor:pointer;font-size:10px;padding:3px 8px;border-radius:7px;border:1px solid '+(on?'var(--accent)':'#333')+';color:'+(on?'var(--accent)':'#777')+'">'+site+'</span>';
+    });
+    h+='</div>';
+    if(cur.lvl>=3) h+='<div style="font-size:11px;color:#ff6b6b;margin-top:6px;line-height:1.4">Sharp pain means stop this movement today, not push through it. Log it and swap the exercise.</div>';
+  }
+  return h+'</div>';
 }
 var DS_COLLAPSE={}; try{ DS_COLLAPSE=JSON.parse(store.get("ds_collapse")||"{}"); }catch(e){ DS_COLLAPSE={}; }
 function dsSaveCollapse(){ try{ store.set("ds_collapse", JSON.stringify(DS_COLLAPSE)); }catch(e){} }
@@ -6024,12 +6248,40 @@ var DS_MV_QUICKADD={
   'Jump Squats (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5,'Calves':.5}},
   'Ball Slams (3 sets)':{sets:3,muscles:{'Core':.5}}
 };
-var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Quads','Glutes','Hamstrings','Calves','Core'];
+var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Quads','Glutes','Hamstrings','Adductors','Calves','Shins','Core'];
 var DS_MV={
   'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-ohp':{'Shoulders':1,'Triceps':.5},
   'mon-pullapart':{'Rear Delts':1,'Back':.5},
   'mon-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
+  /* --- v99: these were logging real working sets but contributing zero muscle
+     volume, because they had no DS_MV entry. The bodyweight leg circuit and the
+     pull-up ladder were the biggest gaps. --- */
+  'mon-standbandpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
+  'mon-slamskull':{'Triceps':1},
+  'thu-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
+  'pu-hang':{'Back':.5},
+  'pu-scaprow':{'Back':1,'Rear Delts':.5,'Biceps':.5},
+  'pu-aussie':{'Back':1,'Biceps':.5,'Rear Delts':.5,'Core':.5},
+  'pu-jackknife':{'Back':1,'Biceps':.5},
+  'pu-jacktop':{'Back':.5,'Biceps':.5},
+  'pu-bandtop':{'Back':.5,'Biceps':.5},
+  'pu-bodyweight':{'Back':1,'Biceps':1,'Core':.5},
+  'atg-tibraise':{'Shins':1},
+  'tue-tib':{'Shins':1},
+  'fri-tib':{'Shins':1},
+  'fri-add':{'Adductors':1},
+  'atg-hipflexor':{'Core':1,'Quads':.5},
+  'atg-extrot':{'Shoulders':1,'Rear Delts':.5},
+  'atg-trap3':{'Shoulders':1,'Back':.5},
+  'bwl-squat':{'Quads':1,'Glutes':1,'Core':.5},
+  'bwl-revlunge':{'Quads':1,'Glutes':1,'Hamstrings':.5},
+  'bwl-slhinge':{'Hamstrings':1,'Glutes':1,'Core':.5},
+  'bwl-curtsy':{'Glutes':1,'Quads':.5},
+  'bwl-slthrust':{'Glutes':1,'Hamstrings':.5},
+  'bwl-legabd':{'Glutes':1},
+  'bwl-legadd':{'Adductors':1},
+  'bwl-liftoff':{'Glutes':1,'Hamstrings':.5,'Quads':.5},
   'mon-curl':{'Biceps':1},
   'mon-tri':{'Triceps':1},
   'mon-inclinepress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
@@ -6039,6 +6291,7 @@ var DS_MV={
   'fri-goblet':{'Quads':1,'Glutes':.5},
   'tue-rdl':{'Hamstrings':1,'Glutes':.5},
   'tue-lat':{'Glutes':1},
+  'atg-backwalk':{'Quads':.5,'Shins':.5},
   'tue-bridge':{'Glutes':1,'Hamstrings':.5},
   'tue-ballcurl':{'Hamstrings':1,'Glutes':.5},
   'tue-pallof':{'Core':1},
@@ -6054,7 +6307,7 @@ var DS_MV={
   'thu-tri':{'Triceps':1},
   'thu-hollow':{'Core':1},
   'fri-bulg':{'Quads':1,'Glutes':.5},
-  'fri-sumo':{'Glutes':1,'Quads':.5},
+  'fri-sumo':{'Glutes':1,'Quads':.5,'Adductors':.5},
   'fri-slrdl':{'Hamstrings':1,'Glutes':.5},
   'fri-goodmorning':{'Hamstrings':1,'Glutes':.5,'Back':.5},
   'fri-nordic':{'Hamstrings':1,'Glutes':.5},
@@ -6098,11 +6351,8 @@ var DS_MV={
   'wed-slam':{'Core':.5},
   'wed-rotslam':{'Core':1},
   'wed-bike':{'Core':1},
-  'wed-legraise':{'Core':1},
   'mon-legraise':{'Core':1},
   'thu-legraise':{'Core':1},
-  'mon-bike':{'Core':1},
-  'thu-bike':{'Core':1},
   'thu-russian':{'Core':1},
   'wed-hollow':{'Core':1}
 };
