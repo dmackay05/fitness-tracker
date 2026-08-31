@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v102 — 2026-08-30";
+var APP_BUILD = "v103 — 2026-08-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -638,6 +638,35 @@ function weightTrendDelta(days){
   if(!prev||now.n<2||prev.n<2) return {avg:now.avg,n:now.n,delta:null};
   return {avg:now.avg,n:now.n,delta:now.avg-prev.avg,prevAvg:prev.avg};
 }
+// ── INTAKE AVERAGES OVER A WINDOW ────────────────────────────────────────
+// Reuses the same completeness rule as the maintenance card: a day logged well
+// under its own target is an abandoned log, not a fasting day, so it is reported
+// separately rather than averaged in. Median is shown alongside the mean because
+// a few partial days skew a mean badly and a median barely at all.
+function intakeAverages(days){
+  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD), endKey=todayKey();
+  var rows=Object.keys(appData).filter(function(k){
+    if(k<startKey||k>endKey) return false;
+    var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
+    return d.foods.reduce(function(a,f){return a+(+f.cal||0);},0)>0;
+  }).sort().map(function(k){
+    var f=appData[k].foods;
+    return {key:k,
+      cal:f.reduce(function(a,x){return a+(+x.cal||0);},0),
+      protein:f.reduce(function(a,x){return a+(+x.protein||0);},0),
+      floor:(typeof tdeeDayFloor==='function')?tdeeDayFloor(k):1000};
+  });
+  var full=rows.filter(function(r){return r.cal>=r.floor;});
+  if(!full.length) return {days:days,n:0,nPartial:rows.length,logged:rows.length};
+  var cals=full.map(function(r){return r.cal;}), pro=full.map(function(r){return r.protein;});
+  var mean=function(a){return a.reduce(function(x,y){return x+y;},0)/a.length;};
+  return {days:days, n:full.length, nPartial:rows.length-full.length, logged:rows.length,
+    cal:Math.round(mean(cals)), calMed:Math.round(median(cals)),
+    protein:Math.round(mean(pro)), proteinMed:Math.round(median(pro)),
+    // how many complete days actually cleared the protein target
+    proHit:full.filter(function(r){return r.protein>=GOALS.protein;}).length};
+}
 var STAT_AVG_WINDOW = 14; // days: dashboard averages reflect recent adherence, not lifetime
 function statAverages(){
   var allDays = Object.keys(appData).filter(function(k){
@@ -757,6 +786,35 @@ function renderPainSummary(){
   h+='<button onclick="dsCopyPainReport()" style="margin-top:10px;width:100%;background:none;border:1px solid #3a3a3a;color:#aaa;border-radius:9px;padding:9px;font-size:12px;cursor:pointer">Copy full log for a PT visit</button>';
   el.innerHTML=h;
 }
+// Weekly and monthly intake side by side, so drift shows up as a difference
+// between the two columns rather than needing to be remembered.
+function renderIntakeAverages(){
+  var el=document.getElementById("dash-intake-avgs"); if(!el) return;
+  var w=intakeAverages(7), m=intakeAverages(30);
+  if(!w.n && !m.n){ el.innerHTML='<span style="color:#666">Log a few days of food and 7- and 30-day averages will appear here.</span>'; return; }
+  function col(a,label){
+    if(!a.n) return '<div style="flex:1"><div style="font-size:10px;color:#666;letter-spacing:.5px">'+label+'</div><div style="color:#555;margin-top:4px">no complete days</div></div>';
+    var pcol=a.protein>=GOALS.protein?'#5eead4':(a.protein>=GOALS.protein*0.85?'#fbbf24':'#fb923c');
+    return '<div style="flex:1">'
+      +'<div style="font-size:10px;color:#666;letter-spacing:.5px">'+label+'</div>'
+      +'<div style="margin-top:5px"><b style="color:#fbbf24;font-size:16px">'+a.cal+'</b> <span style="color:#666;font-size:10px">kcal avg</span></div>'
+      +'<div style="color:#555;font-size:10px">median '+a.calMed+'</div>'
+      +'<div style="margin-top:6px"><b style="color:'+pcol+';font-size:16px">'+a.protein+'g</b> <span style="color:#666;font-size:10px">protein avg</span></div>'
+      +'<div style="color:#555;font-size:10px">median '+a.proteinMed+'g \u00b7 hit target '+a.proHit+'/'+a.n+'</div>'
+      +'<div style="color:#555;font-size:10px;margin-top:4px">'+a.n+' complete'+(a.nPartial?' \u00b7 '+a.nPartial+' partial':'')+'</div>'
+      +'</div>';
+  }
+  var h='<div style="display:flex;gap:14px">'+col(w,'LAST 7 DAYS')+col(m,'LAST 30 DAYS')+'</div>';
+  // The comparison between windows is the part worth reading.
+  if(w.n>=3 && m.n>=7){
+    var dc=w.cal-m.cal, dp=w.protein-m.protein, notes=[];
+    if(Math.abs(dc)>=100) notes.push('Calories this week are running '+Math.abs(dc)+' '+(dc>0?'above':'below')+' the monthly average.');
+    if(Math.abs(dp)>=10) notes.push('Protein is '+Math.abs(dp)+'g '+(dp>0?'higher':'lower')+' than the month.');
+    if(m.protein<GOALS.protein) notes.push('The 30-day protein average sits '+(GOALS.protein-m.protein)+'g under your '+GOALS.protein+'g target \u2014 the single most useful number here to move.');
+    if(notes.length) h+='<div style="margin-top:10px;color:#888;line-height:1.45;border-top:1px solid #222;padding-top:8px">'+notes.join(' ')+'</div>';
+  }
+  el.innerHTML=h;
+}
 function renderDash(){
   renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
@@ -806,7 +864,7 @@ function renderDash(){
   document.getElementById("dash-water-bar").style.width=Math.min((oz/WATER_GOAL)*100,100)+"%";
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
-  renderWeightTrend(); renderTdeePanel(); renderPainSummary();
+  renderIntakeAverages(); renderWeightTrend(); renderTdeePanel(); renderPainSummary();
 
   // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
   // rolling 7-day kept as a secondary reference line since it reads differently mid-week.

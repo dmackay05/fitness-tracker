@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=32">
+<link rel="stylesheet" href="styles.css?v=33">
 </head>
 <body>
 
@@ -170,16 +170,19 @@
       <div class="dash-strip" id="dash-averages"></div>
 
       <div class="card">
-        <div class="card-title">Weight Trend</div>
-        <div id="dash-weight-trend" style="font-size:12px;line-height:1.5"></div>
+        <div class="card-title">Intake Averages</div>
+        <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
       </div>
 
       <div class="card">
-        <div class="card-title">Measured Maintenance</div>
-        <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
+        <div class="card-title">Macros</div>
+        <div class="radials" id="radials"></div>
+        <div class="hint-box" id="protein-hint" style="display:none"></div>
+        <div class="hint-box" id="burned-note" style="opacity:.75;font-size:12px;"></div>
       </div>
 
-      <div class="card" id="dash-pain" style="display:none"></div>
+      <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
+
 
       <div class="card">
         <div class="card-title" id="cal-title">Today's Calories</div>
@@ -228,13 +231,17 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Macros</div>
-        <div class="radials" id="radials"></div>
-        <div class="hint-box" id="protein-hint" style="display:none"></div>
-        <div class="hint-box" id="burned-note" style="opacity:.75;font-size:12px;"></div>
+        <div class="card-title">Weight Trend</div>
+        <div id="dash-weight-trend" style="font-size:12px;line-height:1.5"></div>
       </div>
 
-      <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
+      <div class="card">
+        <div class="card-title">Measured Maintenance</div>
+        <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
+      </div>
+
+      <div class="card" id="dash-pain" style="display:none"></div>
+
 
       <div class="card">
         <div class="card-title">📅 This Week</div>
@@ -1033,6 +1040,6 @@
   </div>
 </div>
 
-<script src="app.js?v=196"></script>
+<script src="app.js?v=197"></script>
 </body>
 </html>
