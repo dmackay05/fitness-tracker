@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v101 — 2026-08-30";
+var APP_BUILD = "v102 — 2026-08-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -275,20 +275,49 @@ var CAL_REF_WEIGHT = 240;
 // avg intake - (lb change x 3500 / days) is actual maintenance. Short windows are
 // dominated by water weight, so this stays hidden until there is enough data.
 var TDEE_WINDOW_DAYS=28, TDEE_MIN_INTAKE_DAYS=14, TDEE_MIN_SPAN=14, KCAL_PER_LB=3500;
+// A day logged well below its own target is far more likely to be a log that got
+// abandoned mid-afternoon than a day of genuine near-fasting. Counting those at
+// face value is what drags a mean intake down and fakes a huge deficit.
+var TDEE_PARTIAL_FRAC=0.6;   // under 60% of that day's goal = treat as incomplete
+var TDEE_PARTIAL_FLOOR=1000; // ...but never flag anything at or above this
+function tdeeDayFloor(dateKey){
+  var goal=calGoalForKey(dateKey)||2050;
+  return Math.min(TDEE_PARTIAL_FLOOR, Math.round(goal*TDEE_PARTIAL_FRAC));
+}
+function median(arr){
+  if(!arr.length) return 0;
+  var a=arr.slice().sort(function(x,y){return x-y;}), m=Math.floor(a.length/2);
+  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
+}
+// Every logged day in the window, with its total and whether it looks complete.
+function intakeDaysDetail(windowDays){
+  var days=windowDays||TDEE_WINDOW_DAYS;
+  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD), endKey=todayKey();
+  return Object.keys(appData).filter(function(k){
+    if(k<startKey||k>endKey) return false;
+    var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
+    return d.foods.reduce(function(a,f){return a+(+f.cal||0);},0)>0;
+  }).sort().map(function(k){
+    var cal=appData[k].foods.reduce(function(a,f){return a+(+f.cal||0);},0);
+    var floor=tdeeDayFloor(k);
+    return {key:k, cal:Math.round(cal), goal:calGoalForKey(k), floor:floor,
+            complete:cal>=floor, items:appData[k].foods.length};
+  });
+}
 function measuredTDEE(windowDays){
   var days=windowDays||TDEE_WINDOW_DAYS;
   var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
   var startKey=localDateKey(startD), endKey=todayKey();
-  // Only days with food actually logged. A blank day is missing data, not a
-  // zero-calorie day; averaging zeros in would fabricate an enormous deficit.
-  var iDays=Object.keys(appData).filter(function(k){
-    if(k<startKey||k>endKey) return false;
-    var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
-    return d.foods.reduce(function(a,f){return a+(+f.cal||0);},0)>0;
-  }).sort();
-  if(iDays.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'needs '+TDEE_MIN_INTAKE_DAYS+' days of logged intake in the last '+days+' \u2014 you have '+iDays.length};
-  var avgIntake=iDays.reduce(function(a,k){
-    return a+appData[k].foods.reduce(function(t,f){return t+(+f.cal||0);},0);},0)/iDays.length;
+  var all=intakeDaysDetail(days);
+  if(all.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'needs '+TDEE_MIN_INTAKE_DAYS+' days of logged intake in the last '+days+' \u2014 you have '+all.length};
+  var full=all.filter(function(d){return d.complete;});
+  var partial=all.filter(function(d){return !d.complete;});
+  if(full.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'only '+full.length+' of '+all.length+' logged days look complete; needs '+TDEE_MIN_INTAKE_DAYS,
+    partial:partial, all:all};
+  var cals=full.map(function(d){return d.cal;});
+  var meanIntake=cals.reduce(function(a,c){return a+c;},0)/cals.length;
+  var medIntake=median(cals);
   var pts=weightSeries().filter(function(p){return p.key>=startKey&&p.key<=endKey;});
   if(pts.length<4) return {ok:false,reason:'needs 4 weigh-ins in the last '+days+' days \u2014 you have '+pts.length};
   var span=Math.round((new Date(pts[pts.length-1].key+'T00:00:00')-new Date(pts[0].key+'T00:00:00'))/86400000);
@@ -299,9 +328,16 @@ function measuredTDEE(windowDays){
   var head=pts.slice(0,k).reduce(function(a,p){return a+p.w;},0)/k;
   var tail=pts.slice(-k).reduce(function(a,p){return a+p.w;},0)/k;
   var lbChange=tail-head;
-  var tdee=avgIntake-((lbChange*KCAL_PER_LB)/span);
-  return {ok:true,tdee:Math.round(tdee),avgIntake:Math.round(avgIntake),lbChange:lbChange,
-          span:span,nIntake:iDays.length,nWeights:pts.length,lbPerWeek:(lbChange/span)*7};
+  var dailyBalance=(lbChange*KCAL_PER_LB)/span;   // negative when losing
+  // Median is the headline: the failure mode here is a handful of abandoned logs,
+  // which is a one-sided outlier problem the median barely notices.
+  return {ok:true,
+    tdee:Math.round(medIntake-dailyBalance),
+    tdeeMean:Math.round(meanIntake-dailyBalance),
+    medIntake:Math.round(medIntake), avgIntake:Math.round(meanIntake),
+    lbChange:lbChange, span:span, nIntake:full.length, nPartial:partial.length,
+    nWeights:pts.length, lbPerWeek:(lbChange/span)*7,
+    all:all, partial:partial, full:full};
 }
 function calScale(){ var w = parseFloat(getLatestWeight()); return (w > 0) ? (w / CAL_REF_WEIGHT) : 1; }
 function calAdj(c){ return Math.round((+c || 0) * calScale()); }
@@ -660,15 +696,48 @@ function renderWeightTrend(){
 function renderTdeePanel(){
   var el=document.getElementById("dash-tdee"); if(!el) return;
   var r=measuredTDEE();
-  if(!r.ok){ el.innerHTML='<div style="color:#666;line-height:1.45">Measured maintenance calories appear here once there is enough data \u2014 '+r.reason+'.</div>'; return; }
+  if(!r.ok){
+    var h0='<div style="color:#666;line-height:1.45">Measured maintenance appears here once there is enough data \u2014 '+r.reason+'.</div>';
+    if(r.all&&r.all.length) h0+=tdeeDayListHtml(r,true);
+    el.innerHTML=h0; return;
+  }
   var target=GOALS.cal, gap=r.tdee-target;
+  var spread=Math.abs(r.tdee-r.tdeeMean);
   var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>'
-   +'<div style="color:#888;margin-top:3px;line-height:1.45">From '+r.nIntake+' logged days and '+r.nWeights+' weigh-ins across '+r.span+' days: averaging '+r.avgIntake+' kcal while trending '
+   +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
+   +(r.nPartial?(', with '+r.nPartial+' partial '+(r.nPartial===1?'day':'days')+' set aside'):'')
+   +'. Across '+r.span+' days and '+r.nWeights+' weigh-ins you trended '
    +(r.lbChange<0?'down ':(r.lbChange>0?'up ':'flat at '))+Math.abs(r.lbPerWeek).toFixed(2)+' lbs/week.</div>';
-  if(gap>0) h+='<div style="margin-top:5px;color:#5eead4;line-height:1.45">Today\'s target of '+target+' sits about '+gap+' kcal under that \u2014 roughly '+(gap*7/3500).toFixed(2)+' lbs/week of predicted loss.</div>';
-  else h+='<div style="margin-top:5px;color:#fbbf24;line-height:1.45">Today\'s target of '+target+' is at or above measured maintenance. If loss has stalled, this is the first number to look at.</div>';
-  h+='<div style="margin-top:5px;color:#666;line-height:1.4">An estimate built on the 3500 kcal/lb convention and on how honestly intake got logged. A direction, not a dose.</div>';
+  // When mean and median disagree, the spread is itself the finding.
+  h+='<div style="color:#777;margin-top:4px;line-height:1.45">Mean-based estimate: '+r.tdeeMean+' kcal'
+   +(spread>=100?' \u2014 a '+Math.round(spread)+' kcal gap, which means a few low days are still skewing the average. Trust the median.'
+                :' \u2014 within '+Math.round(spread)+' kcal of the median, so the logging looks consistent.')+'</div>';
+  if(gap>0) h+='<div style="margin-top:6px;color:#5eead4;line-height:1.45">Today\'s target of '+target+' sits about '+gap+' kcal under that \u2014 roughly '+(gap*7/3500).toFixed(2)+' lbs/week of predicted loss.</div>';
+  else h+='<div style="margin-top:6px;color:#fbbf24;line-height:1.45">Today\'s target of '+target+' is at or above measured maintenance. If loss has stalled, this is the first number to look at.</div>';
+  if(r.tdee<1900) h+='<div style="margin-top:6px;color:#fb923c;line-height:1.45">This lands below a plausible resting rate for your size, which usually means calories are going unlogged rather than unburned \u2014 cooking oil and estimated dinner portions are the usual pair.</div>';
+  h+=tdeeDayListHtml(r,false);
+  h+='<div style="margin-top:6px;color:#666;line-height:1.4">An estimate built on the 3500 kcal/lb convention and on how completely intake got logged. A direction, not a dose.</div>';
   el.innerHTML=h;
+}
+// Collapsible day-by-day intake so a suspicious average can actually be audited.
+var TDEE_LIST_OPEN=false;
+function tdeeToggleList(){ TDEE_LIST_OPEN=!TDEE_LIST_OPEN; renderTdeePanel(); }
+function tdeeDayListHtml(r,forceCount){
+  var all=r.all||[]; if(!all.length) return '';
+  var h='<div onclick="tdeeToggleList()" style="margin-top:8px;font-size:11px;color:#5eead4;cursor:pointer">'
+   +(TDEE_LIST_OPEN?'\u25B4 Hide':'\u25BE Show')+' the '+all.length+' logged days</div>';
+  if(!TDEE_LIST_OPEN) return h;
+  h+='<div style="margin-top:6px;max-height:260px;overflow-y:auto">';
+  all.forEach(function(d){
+    var col=d.complete?'#9a9d8c':'#fb923c';
+    h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
+     +'<span style="color:#777">'+d.key.slice(5)+'</span>'
+     +'<span style="color:'+col+'">'+d.cal+' kcal <span style="color:#555">/ '+d.goal+'</span>'
+     +(d.complete?'':' \u00b7 partial')+'</span></div>';
+  });
+  h+='</div>';
+  if(r.nPartial) h+='<div style="margin-top:6px;font-size:11px;color:#666;line-height:1.4">Days marked partial fell under 60% of their own target and were left out of the median \u2014 an abandoned log is missing data, not a fasting day.</div>';
+  return h;
 }
 // Surfaces the joint log only when there is something in it.
 function renderPainSummary(){
