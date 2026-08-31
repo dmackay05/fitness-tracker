@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v104 — 2026-08-30";
+var APP_BUILD = "v106 — 2026-08-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4312,12 +4312,101 @@ function dsValidateCustomPlan(obj){
     }
   }
   if(!touched) return "No recognized day keys found (mon/tue/wed/thu/fri/sat/sun).";
+  // IDs key every logged set, so a collision silently cross-wires two exercises'
+  // history. Reject the file and name the offender rather than fail quietly.
+  var seen={}, dupes=[];
+  DS_PLAN_DAYS.forEach(function(d){
+    var sess=obj[d]; if(!sess||!Array.isArray(sess.moves)) return;
+    sess.moves.forEach(function(m){
+      if(!m||!m.id) return;
+      if(seen[m.id] && dupes.indexOf(m.id)<0) dupes.push(m.id+' (in '+seen[m.id]+' and '+d+')');
+      else if(!seen[m.id]) seen[m.id]=d;
+    });
+  });
+  if(dupes.length) return "Duplicate exercise id"+(dupes.length>1?"s":"")+": "+dupes.join(', ')+". Every id must be unique across the whole plan.";
+  // Optional "mv" block: exercise id -> {Muscle: weight}. Without it the Volume
+  // tab has nothing to attribute the new exercises to.
+  if(obj.mv!=null){
+    if(typeof obj.mv!=='object' || Array.isArray(obj.mv)) return "\"mv\" must be an object mapping exercise ids to muscles.";
+    // DS_MV_ORDER is declared later in the file; at load time it is still
+    // undefined, so skip the muscle-name check then and run it on user import.
+    var _order=(typeof DS_MV_ORDER!=='undefined')?DS_MV_ORDER:null;
+    for(var id in obj.mv){
+      if(!seen[id]) return "\"mv\" refers to \""+id+"\", which isn't an exercise in this plan.";
+      var w=obj.mv[id];
+      if(!w || typeof w!=='object') return "\"mv\" entry for \""+id+"\" must be an object like {\"Chest\":1}.";
+      for(var mus in w){
+        if(_order && _order.indexOf(mus)===-1) return "\"mv\" entry for \""+id+"\" uses unknown muscle \""+mus+"\". Valid: "+_order.join(', ')+".";
+        if(!(w[mus]>0 && w[mus]<=1)) return "\"mv\" weight for \""+id+"\" / \""+mus+"\" must be between 0 and 1 (1 = direct, 0.5 = secondary).";
+      }
+    }
+  }
+  if(obj.replace!=null && typeof obj.replace!=='boolean') return "\"replace\" must be true or false.";
+  if(obj.setups!=null && (typeof obj.setups!=='object'||Array.isArray(obj.setups))) return "\"setups\" must be an object mapping exercise ids to setup text.";
+  if(obj.demos!=null && (typeof obj.demos!=='object'||Array.isArray(obj.demos))) return "\"demos\" must be an object mapping exercise ids to demo names.";
   return null; // valid
 }
+// A day the plan omits keeps whichever session was built in, which is right for
+// tweaking one's own plan and wrong for handing the app to someone else \u2014 they
+// would inherit stray days that have nothing to do with their programming.
+// "replace": true swaps those days for an explicit rest day instead.
+function dsRestDaySession(d){
+  return {title:'Rest Day', sub:'No session programmed', accent:'var(--green)',
+    moves:[{id:'plan-rest-'+d, name:'Rest', slot:'Recovery', target:'Recovery',
+      equip:'None', rx:'\u2014', cal:0, log:'done',
+      cue:'No session scheduled for this day in the current plan.'}]};
+}
+function dsPlanIsReplaceMode(){
+  var raw=dsCustomPlanRaw(); if(!raw) return false;
+  try{ return JSON.parse(raw).replace===true; }catch(e){ return false; }
+}
 function dsApplyCustomPlan(obj){
+  var replace = obj.replace===true;
   DS_PLAN_DAYS.forEach(function(d){
     if(obj[d] && Array.isArray(obj[d].moves)) DS_SESSIONS[d]=obj[d];
+    else if(replace) DS_SESSIONS[d]=dsRestDaySession(d);
   });
+  // Muscle attribution: without this the Volume tab shows zero for every
+  // imported exercise, since it reads DS_MV rather than the target text.
+  if(obj.mv && typeof DS_MV!=='undefined') for(var id in obj.mv) DS_MV[id]=obj.mv[id];
+  if(obj.setups && typeof DS_SETUPS!=='undefined') for(var sid in obj.setups) DS_SETUPS[sid]=obj.setups[sid];
+  if(obj.demos && typeof DS_DEMOMAP!=='undefined' && typeof DS_DEMOS!=='undefined') for(var did in obj.demos){
+    // Only accept demo keys that actually exist, so a typo renders no figure
+    // rather than breaking the card.
+    if(DS_DEMOS[obj.demos[did]]) DS_DEMOMAP[did]=obj.demos[did];
+  }
+}
+// Writes out the currently active plan as a starting template, so a new person
+// edits a working file instead of building the shape from scratch.
+function dsExportPlanTemplate(){
+  var out={};
+  DS_PLAN_DAYS.forEach(function(d){
+    var S=DS_SESSIONS[d]; if(!S) return;
+    out[d]={title:S.title, sub:S.sub||'', accent:S.accent||'var(--accent)',
+      moves:(S.moves||[]).map(function(m){
+        var o={id:m.id,name:m.name,rx:m.rx||'',log:m.log||'done'};
+        if(m.slot)o.slot=m.slot; if(m.target)o.target=m.target;
+        if(m.equip)o.equip=m.equip; if(m.cal!=null)o.cal=m.cal; if(m.cue)o.cue=m.cue;
+        if(m.sets)o.sets=m.sets; if(m.secs)o.secs=m.secs;
+        if(m.perMin)o.perMin=m.perMin; if(m.defMin)o.defMin=m.defMin;
+        return o;
+      })};
+  });
+  var mv={};
+  DS_PLAN_DAYS.forEach(function(d){
+    var S=DS_SESSIONS[d]; if(!S) return;
+    (S.moves||[]).forEach(function(m){ if(DS_MV[m.id]) mv[m.id]=DS_MV[m.id]; });
+  });
+  out.mv=mv;
+  out.replace=dsPlanIsReplaceMode();
+  var txt=JSON.stringify(out,null,2);
+  try{
+    var blob=new Blob([txt],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='plan-template.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Template downloaded \u2014 edit it and import it back');
+  }catch(e){ toast('Could not export the template'); }
 }
 (function dsLoadCustomPlanOnInit(){
   var raw=dsCustomPlanRaw(); if(!raw) return;
@@ -4346,13 +4435,36 @@ function dsImportPlanFile(input){
   reader.readAsText(file);
   input.value="";
 }
+// Lets the mode be flipped after import without editing the file by hand.
+function dsTogglePlanReplace(){
+  var raw=dsCustomPlanRaw();
+  if(!raw){ toast('Import a plan first'); return; }
+  var obj; try{ obj=JSON.parse(raw); }catch(e){ toast('Stored plan is not valid JSON'); return; }
+  obj.replace = !(obj.replace===true);
+  try{ store.set('ds_custom_plan', JSON.stringify(obj)); }catch(e){}
+  toast(obj.replace ? 'Missing days will be rest days \u2014 reloading\u2026'
+                    : 'Missing days will use the built-in plan \u2014 reloading\u2026');
+  setTimeout(function(){ location.reload(); }, 700);
+}
 function dsResetCustomPlan(){
   try{ store.set('ds_custom_plan',''); }catch(e){}
   toast("Reverted to the default plan \u2014 reloading\u2026");
   setTimeout(function(){ location.reload(); }, 700);
 }
 function dsCustomPlanStatus(){
-  return dsCustomPlanRaw() ? "Custom plan active" : "Using default plan";
+  var raw=dsCustomPlanRaw(); if(!raw) return "Using default plan";
+  try{
+    var o=JSON.parse(raw);
+    var days=DS_PLAN_DAYS.filter(function(d){return o[d];});
+    var n=days.reduce(function(a,d){return a+(o[d].moves||[]).length;},0);
+    var missing=DS_PLAN_DAYS.filter(function(d){return !o[d];});
+    var modeTxt = missing.length
+      ? (o.replace===true
+          ? " \u00b7 "+missing.length+" missing day"+(missing.length===1?"":"s")+" set to Rest"
+          : " \u00b7 "+missing.length+" missing day"+(missing.length===1?"":"s")+" using the built-in plan")
+      : " \u00b7 all 7 days defined";
+    return "Custom plan active \u2014 "+days.length+" day"+(days.length===1?"":"s")+", "+n+" exercises"+(o.mv?", muscle map included":", NO muscle map (Volume tab will be empty)")+modeTxt;
+  }catch(e){ return "Custom plan active"; }
 }
 
 var DS_WEEKMAP=['sun','mon','tue','wed','thu','fri','sat'];
@@ -6536,6 +6648,19 @@ var DS_MV={
   'thu-russian':{'Core':1},
   'wed-hollow':{'Core':1}
 };
+
+// The custom-plan loader runs earlier in the file, before DS_MV/DS_SETUPS exist,
+// so its muscle map and setup text are applied here on a second pass.
+(function dsReapplyCustomPlanTables(){
+  var raw=(typeof dsCustomPlanRaw==='function')?dsCustomPlanRaw():"";
+  if(!raw) return;
+  try{
+    var obj=JSON.parse(raw);
+    if(obj.mv) for(var id in obj.mv) DS_MV[id]=obj.mv[id];
+    if(obj.setups) for(var sid in obj.setups) DS_SETUPS[sid]=obj.setups[sid];
+    if(obj.demos) for(var did in obj.demos){ if(DS_DEMOS[obj.demos[did]]) DS_DEMOMAP[did]=obj.demos[did]; }
+  }catch(e){ console.warn('Custom plan tables could not be applied.'); }
+})();
 var DS_MV_NAMEIDX=null;
 function dsMVNameIdx(){
   if(DS_MV_NAMEIDX) return DS_MV_NAMEIDX;

@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=34">
+<link rel="stylesheet" href="styles.css?v=36">
 </head>
 <body>
 
@@ -798,6 +798,9 @@
         <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
         <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()">⬆ Import Plan (JSON)</button>
         <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
+        <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
+        <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
+        <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
@@ -1040,6 +1043,6 @@
   </div>
 </div>
 
-<script src="app.js?v=198"></script>
+<script src="app.js?v=200"></script>
 </body>
 </html>
