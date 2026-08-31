@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v108 — 2026-08-31";
+var APP_BUILD = "v109 — 2026-08-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5940,6 +5940,7 @@ var DS_MUSCLE_CHIPS=[
   {label:'Biceps',q:'biceps?'},
   {label:'Triceps',q:'triceps?'},
   {label:'Core',q:'core'},
+  {label:'Forearms',q:'forearms?'},
   {label:'Calves',q:'calves'},
   {label:'Shins',q:'shins?'},
   {label:'Adductors',q:'adductors?'}
@@ -6414,11 +6415,15 @@ function dsToggleFinisher(){ var sk=dsSessionKey(activeDate); DS_FINISHER_ON[sk]
 function dsFocusBlock(sk){
   function pick(list,ids){ return list.filter(function(m){return ids.indexOf(m.id)>=0;}); }
   var atgTrio=pick(DS_ATG.moves,["atg-tibraise","atg-extrot","atg-trap3"]);
+  // Three of the seven elbow moves, not all: the loaded eccentric, the isometric
+  // fallback for sore days, and forearm rotation. The nerve glide and ROM drills
+  // stay available in Mobility for when they're wanted.
+  var elbowBlock=pick(DS_MOBILITY.moves,["mob-elbow","mob-elbowiso","mob-elbowrot"]);
   var map={
-    mon:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])),blurb:"Today's one accessory block. Pull-ups are your active goal and the biggest muscle-builder in the accessory pile — this plus the session is a complete day."},
+    mon:{title:"Focus: Pull-Up Progression + Elbow",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])).concat(elbowBlock),blurb:"Pull-ups are your active goal and the biggest muscle-builder in the accessory pile. The elbow work rides along on upper days because that is when grip and elbow load is highest \u2014 eccentrics are the piece with the best evidence for tendinopathy, so do them even when the elbow feels fine."},
     tue:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Today's one accessory block: tibialis, rotator cuff, lower traps. Ten minutes of structural work — this plus the session is a complete day."},
     wed:{title:"Focus: Squat Hold + Hips + Playground",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090","mob-clam"]).concat(pick(DS_PULLUP.moves,["pu-hang","pu-scap"])),blurb:"Low-load day, so the focus is your squat hold progression and hip work, plus a light extra playground pull-up session. This plus your walk/yoga is a complete day."},
-    thu:{title:"Focus: Pull-Up Progression",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])),blurb:"Second pull-up day of the week. This plus the session is a complete day."},
+    thu:{title:"Focus: Pull-Up Progression + Elbow",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])).concat(elbowBlock),blurb:"Second pull-up day of the week, with the second elbow session. On a flare-up day swap the eccentrics for the isometric hold \u2014 isometrics load the tendon without the lengthening that irritates it."},
     fri:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Second structural day: tibialis, rotator cuff, lower traps. This plus the session is a complete day."},
     sat:null,
     sun:{title:"Focus: Squat Hold + Playground",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold"]).concat(pick(DS_PULLUP.moves,["pu-hang","pu-scap"])),blurb:"Rest day — squat hold plus a light extra playground pull-up session to keep both streaks alive. Nothing else required."}
@@ -6559,7 +6564,7 @@ var DS_MV_QUICKADD={
   'Jump Squats (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5,'Calves':.5}},
   'Ball Slams (3 sets)':{sets:3,muscles:{'Core':.5}}
 };
-var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Quads','Glutes','Hamstrings','Adductors','Calves','Shins','Core'];
+var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Forearms','Quads','Glutes','Hamstrings','Adductors','Calves','Shins','Core'];
 var DS_MV={
   'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-ohp':{'Shoulders':1,'Triceps':.5},
@@ -6578,6 +6583,23 @@ var DS_MV={
   'pu-jacktop':{'Back':.5,'Biceps':.5},
   'pu-bandtop':{'Back':.5,'Biceps':.5},
   'pu-bodyweight':{'Back':1,'Biceps':1,'Core':.5},
+  // Forearm/grip attribution. Hangs, rows and curls load the flexor-pronator mass
+  // heavily — the exact tissue involved in medial epicondylitis — and none of it
+  // was being counted anywhere.
+  // Rehab sets at 2 lb are tendon-loading work, not hypertrophy volume, so they
+  // count as indirect. Weighting them 1.0 pushed the weekly total past MAV and
+  // would have made a healthy rehab dose look like overtraining.
+  'mob-elbow':{'Forearms':0.5},
+  'mob-elbowiso':{'Forearms':0.5},
+  'mob-elbowrot':{'Forearms':0.5},
+  'mob-elbowgrip':{'Forearms':0.5},
+  'mob-elbowradial':{'Forearms':0.5},
+  'thu-hammer':{'Biceps':1,'Forearms':0.5},
+  'mon-row':{'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Forearms':0.5},
+  'pu-hang':{'Back':0.5,'Forearms':1},
+  'pu-scaprow':{'Back':1,'Rear Delts':0.5,'Biceps':0.5,'Forearms':0.5},
+  'pu-aussie':{'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Core':0.5,'Forearms':0.5},
+  'pu-bodyweight':{'Back':1,'Biceps':1,'Core':0.5,'Forearms':0.5},
   'atg-tibraise':{'Shins':1},
   'tue-tib':{'Shins':1},
   'fri-tib':{'Shins':1},
