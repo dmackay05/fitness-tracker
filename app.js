@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v107 — 2026-08-31";
+var APP_BUILD = "v108 — 2026-08-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4157,8 +4157,7 @@ var DS_SESSIONS={
         variants:[{name:'DB Kickbacks',equip:'2× 10 lb dumbbells',rx:'3×12/arm',cue:'Hinge forward, upper arm locked parallel to the floor — extend back and squeeze 1 sec at lockout',demo:'triceps'},{name:'DB Overhead Triceps Extension',equip:'1\u00d7 10 lb dumbbell (both hands) or 2\u00d7 2 lb',rx:'3\u00d712\u201315',cue:'Hold the DB overhead with both hands, upper arms vertical and close to your ears \u2014 lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn\u2019t arch. Start light \u2014 stop if you feel any pull on the inside of the elbow.',demo:'triceps'}]},
       {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3,variants:[{name:'Single-Leg Calf Raise',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cue:'One heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top — unilateral load builds strength faster than bilateral once bodyweight gets easy',demo:'calf'}]},
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors, good swap on days the SI joint feels touchy',demo:'hollow'}]},
-      dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
-      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
+      dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down')]},
 
   tue:{title:'Lower Body Push',sub:'Quads · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,
@@ -4174,8 +4173,7 @@ var DS_SESSIONS={
       {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
       {id:'tue-step',name:'Step-Up',demo:'stepup',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",log:'setsreps',sets:3,variants:[{name:'Banded Reverse Lunge',equip:'Tube 20–30 lb',rx:'3×10/side',cue:'Step back, drop the knee, drive through the front heel — easier to balance than a step-up, same unilateral quad work',demo:'splitsquat'}]},
       {id:'tue-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'3\u00d715\u201320',cal:12,cue:'Back to the wall, weight settled back \u2014 lift the toes as high as they go, 1-sec squeeze, slow lower. Stop when you lose range, not when it burns.',log:'setsreps',sets:3},
-      {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]},
-      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
+      {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]}]},
 
   wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
     moves:[
@@ -4216,8 +4214,7 @@ var DS_SESSIONS={
       {id:'wed-fin-slrdl',name:'Single-Leg RDL Reach (bodyweight)',slot:'Finisher · Hamstrings',target:'Hamstrings · Balance',equip:'Bodyweight',rx:'3×8/leg',cal:15,cue:'Hinge at the hip and reach toward the floor, planted knee soft — flat back the whole way down',demo:'slrdl',log:'setsreps',sets:3,
         setup:'Stand on one leg with a soft bend in the knee. Hinge forward at the hips, letting the free leg extend straight back for balance, and reach toward the floor with the opposite hand. Keep your back flat — stop the descent wherever your hamstring or balance limits you. Slow and controlled beats going deep.'},
       {id:'wed-fin-wallsit',name:'Wall Sit',slot:'Finisher · Quads (isometric)',target:'Quads',equip:'Bodyweight + wall',rx:'2×30–45s',cal:12,cue:'Back flat against the wall, knees near 90° — no spinal loading, just hold and breathe',demo:'squat',log:'time',secs:30,
-        setup:'Slide your back down a wall until your knees are bent to roughly 90 degrees, thighs close to parallel with the floor. Hold, keeping your back flat against the wall and breathing steadily. Zero impact and zero spinal load — a good pick specifically because it\'s easy on the SI joint while still building quad endurance.'},
-      DS_WALK30]},
+        setup:'Slide your back down a wall until your knees are bent to roughly 90 degrees, thighs close to parallel with the floor. Hold, keeping your back flat against the wall and breathing steadily. Zero impact and zero spinal load — a good pick specifically because it\'s easy on the SI joint while still building quad endurance.'}]},
 
   thu:{title:'Upper Body B',sub:'Push · Pull alternating — Chest · Back · Arms',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_KBHALO,
@@ -4236,8 +4233,7 @@ var DS_SESSIONS={
       {id:'thu-ballpullover',name:'Straight-Arm Ball Pullover',slot:'Pull · Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'3×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:3,variants:[{name:'Banded Straight-Arm Pulldown',equip:'Tube 20–30 lb, anchored high',rx:'3×12–15',cue:'Anchor overhead, arms straight out in front — sweep both arms down to your thighs keeping elbows soft, control the return. Same lat/serratus target with less loading on the shoulder end-range than the ball pullover',demo:'fly'}]},
       {id:'thu-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — much less pull on the low back/hip flexors',demo:'hollow'}]},
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down'),
-      dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing. Keep the range small if you feel anything near the SI joint; this is a rotational load like the Friday woodchop.'),
-      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
+      dsCore('thu-russian','Russian Twist','1×10/side',20,'Rotate the ribcage — slow and controlled, not a swing. Keep the range small if you feel anything near the SI joint; this is a rotational load like the Friday woodchop.')]},
 
   fri:{title:'Lower Body Pull',sub:'Hamstrings · Glutes · Lower Back',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,
@@ -4266,8 +4262,7 @@ var DS_SESSIONS={
       {id:'fri-deadbug',name:'Dead Bug',demo:'deadbug',slot:'Anti-Extension',target:'Core · SI Joint',equip:'Bodyweight or ball',rx:'3×8/side',cal:20,cue:'Low back glued to the floor — if it lifts, you\'ve gone too far',log:'setsreps',sets:3,
         variants:[{name:'Heel Tap + Block Anchor (SI-safe)',equip:'Yoga block',rx:'3×8/side',cue:'Bend the moving knee to 90° and only tap the heel down — don\'t extend the leg straight. Pin a yoga block between the OTHER knee and hand, pressing knee-into-hand the whole set to lock the pelvis still. Full exhale through the mouth as you tap down. Stop 2–3" before the point where the SI joint usually pops, and only expand that range as it stays quiet week over week.',demo:'deadbug'},
           {name:'Bird Dog',equip:'Bodyweight · mat',rx:'3×8/side',cue:'Opposite arm and leg extend — flat back, zero rocking. Swap in if Dead Bug pops your SI joint',demo:'birddog'}]},
-      {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]},
-      DS_WALK30,DS_RIDE20,DS_ACTIVEREST]},
+      {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]}]},
 
   sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost',accent:'var(--blue)',
     moves:[
