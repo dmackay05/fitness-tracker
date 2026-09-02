@@ -94,7 +94,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v109 — 2026-08-31";
+var APP_BUILD = "v110 — 2026-09-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2899,7 +2899,14 @@ function dsFlowPaintBar(){
 }
 function dsFlowBarHtml(sk){
   if(sk!=='wed') return '';
-  var n=dsFlowActiveIds().length;
+  if(dsDayIsCustom('wed')) return '';   // imported plan owns Wednesday
+  var _fids=dsFlowActiveIds();
+  // Belt and braces: the sequences are hard-coded pose IDs. If any of them no
+  // longer resolve to a real item, the flow would run through blank names, so
+  // don't offer it at all.
+  for(var _fi=0;_fi<_fids.length;_fi++){ if(!dsRawItem(_fids[_fi])) return ''; }
+  var n=_fids.length;
+  if(!n) return '';
   var _seqLabel=DS_FLOW_SEQ_LABELS[dsFlowSeqIndex(activeDate)];
   if(!DS_FLOW.active){
     return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
@@ -4121,7 +4128,7 @@ var DS_SATHEAT_MOVES=[
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
 var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
 function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsRender(); }
-function dsSessOf(sk){ if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate])return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
+function dsSessOf(sk){ if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
 
 var DS_SESSIONS={
   mon:{title:'Upper Body A',sub:'Push · Pull alternating — Chest · Back · Shoulders',accent:'var(--accent)',
@@ -4378,6 +4385,19 @@ function dsRestDaySession(d){
 function dsPlanIsReplaceMode(){
   var raw=dsCustomPlanRaw(); if(!raw) return false;
   try{ return JSON.parse(raw).replace===true; }catch(e){ return false; }
+}
+// True when an imported plan owns this weekday — either it supplies its own
+// moves for that day, or replace mode blanked the day out. Built-in extras
+// that assume the default programming (Saturday heat-swap circuit, Wednesday
+// guided yoga flow) must not render on a day the imported plan has taken over,
+// or a borrowed install shows controls for a session that isn't there.
+function dsDayIsCustom(sk){
+  var raw=dsCustomPlanRaw(); if(!raw) return false;
+  try{
+    var o=JSON.parse(raw);
+    if(o[sk] && Array.isArray(o[sk].moves)) return true;
+    return o.replace===true;
+  }catch(e){ return false; }
 }
 function dsApplyCustomPlan(obj){
   var replace = obj.replace===true;
@@ -6805,7 +6825,7 @@ function dsRender(){
     var _estFull=dsEstMin(_allMoves), _estNow=dsEstMin(_moves), _tcOn=DS_TIME_CRUNCH;
     var _tcBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleTimeCrunch()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_tcOn?'#e8c98a':'#ffffff1a')+';background:'+(_tcOn?'#e8c98a18':'transparent')+';color:'+(_tcOn?'#e8c98a':'#888')+';">'+(_tcOn?'\u26A1 Time Crunch ON \u2014 compounds only \u00b7 ~'+_estNow+' min  (tap for full)':'\u26A1 Time Crunch \u2014 full session ~'+_estFull+' min  (tap to trim)')+'</button></div>';
     var _satHeatBtn='';
-    if(sk==='sat'){
+    if(sk==='sat'&&!dsDayIsCustom('sat')){
       var _hot=!!DS_SAT_HEAT_ON[activeDate];
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
