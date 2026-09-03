@@ -62,10 +62,13 @@ var PRESET_FOODS = [
   {name:"ON Gold Standard Whey (1 scoop)",cal:120,protein:24,carbs:3,fat:1,fiber:0},
   {name:"Chia Seeds (1 tbsp)",cal:60,protein:2,carbs:5,fat:4,fiber:5},
   {name:"Chickpeas (1 cup)",cal:270,protein:15,carbs:45,fat:4,fiber:12.5},
-  {name:"Raspberries (1 cup)",cal:65,protein:1,carbs:15,fat:1,fiber:8},
-  {name:"Apple with skin (medium)",cal:95,protein:0,carbs:25,fat:0,fiber:4.5},
+  {name:"Raspberries (1 cup)",cal:65,protein:1,carbs:15,fat:1,fiber:8,note:"High fiber, lowest sugar of common berries — best pick for blood sugar management."},
+  {name:"Apple with skin (medium)",cal:95,protein:0,carbs:25,fat:0,fiber:4.5,note:"Slow-digesting fiber (skin-on) and portable — good grab-and-go snack."},
   {name:"Broccoli (1 cup cooked)",cal:55,protein:4,carbs:11,fat:0,fiber:5},
-  {name:"Sweet Potato with skin (medium)",cal:115,protein:2,carbs:27,fat:0,fiber:4}
+  {name:"Sweet Potato with skin (medium)",cal:115,protein:2,carbs:27,fat:0,fiber:4},
+  {name:"Blueberries (1 cup)",cal:85,protein:1,carbs:21,fat:0.5,fiber:3.5,note:"Highest anthocyanin content — best pick for reducing inflammation. MIND diet staple."},
+  {name:"Strawberries (1 cup)",cal:50,protein:1,carbs:12,fat:0.5,fiber:3,note:"Lowest calorie density of common fruits — good for volume/satiety per calorie."},
+  {name:"Banana (medium)",cal:105,protein:1,carbs:27,fat:0,fiber:3,note:"Fast-digesting carbs — best eaten right before a ride or lift for quick energy."}
 ];
 
 var SUPPS = []; // loaded from store after the storage layer is defined (see config block)
@@ -94,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v110 — 2026-09-02";
+var APP_BUILD = "v111 — 2026-09-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -976,7 +979,7 @@ function populateFoodDropdown(){
   dd.innerHTML='<option value="">— Select a food —</option>'+
     PRESET_FOODS.map(function(f,i){return '<option value="'+i+'">'+f.name+' · '+f.cal+' kcal · '+f.protein+'g P</option>';}).join("");
   dd.onchange=function(){ var f=PRESET_FOODS[dd.value];
-    document.getElementById("dropdown-preview").textContent=f?(f.cal+" kcal · "+f.protein+"g protein · "+f.carbs+"g carbs · "+f.fat+"g fat"):""; };
+    document.getElementById("dropdown-preview").textContent=f?(f.cal+" kcal · "+f.protein+"g protein · "+f.carbs+"g carbs · "+f.fat+"g fat"+(f.note?" — "+f.note:"")):""; };
 }
 function addDropdownFood(){
   var dd=document.getElementById("food-dropdown"); if(dd.value==="") return;
@@ -5340,6 +5343,27 @@ var MEAL_IDEAS = [
     desc:"Hard-boiled eggs, batch-prepped Sunday alongside the egg muffins. The fastest grab-and-go protein in the house."},
 ];
 
+var FRUIT_TIPS = [
+  {name:"Raspberries", tip:"Best for managing blood sugar — highest fiber, lowest sugar of common fruits.", emoji:"🍇"},
+  {name:"Blueberries", tip:"Best for reducing inflammation — highest anthocyanin content, MIND diet staple.", emoji:"🫐"},
+  {name:"Strawberries", tip:"Best for managing overall calorie intake — lowest calorie density of common fruits.", emoji:"🍓"},
+  {name:"Apples", tip:"Best convenient, slow-digesting, portable snack — eat the skin for the fiber.", emoji:"🍎"},
+  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"}
+];
+function fruitTipOfDay(){
+  var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
+  return FRUIT_TIPS[doy % FRUIT_TIPS.length];
+}
+function renderFruitGuide(){
+  var el=document.getElementById("mi-fruit-guide"); if(!el) return;
+  var t=fruitTipOfDay();
+  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Fruit Tip of the Day</div>'+
+    '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
+    '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all fruit picks</summary>'+
+    '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
+    FRUIT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
+    '</div></details>';
+}
 function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
 function miToggleFav(id){
   var f=miFavs(); var i=f.indexOf(id);
@@ -5393,6 +5417,7 @@ function miRender(){
 function miOpen(){
   document.getElementById("mi-overlay").style.display="flex";
   document.getElementById("mi-overlay").scrollTop=0;
+  renderFruitGuide();
   miRender();
 }
 function miClose(){
