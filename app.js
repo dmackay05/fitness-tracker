@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v111 — 2026-09-02";
+var APP_BUILD = "v112 — 2026-09-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -947,6 +947,7 @@ function switchTab(id){
   if(id==="today" && typeof renderToday==="function") renderToday();
   if(id==="log" && typeof ldInit==="function") ldInit();
   if(id==="volume" && typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume();
+  if(id==="meals" && typeof renderMealsTab==="function") renderMealsTab();
   document.querySelector(".content").scrollTop=0;
 }
 var _lastSheetPull = 0;
@@ -5354,8 +5355,8 @@ function fruitTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
   return FRUIT_TIPS[doy % FRUIT_TIPS.length];
 }
-function renderFruitGuide(){
-  var el=document.getElementById("mi-fruit-guide"); if(!el) return;
+function renderFruitGuide(targetId){
+  var el=document.getElementById(targetId||"meals-fruit-guide"); if(!el) return;
   var t=fruitTipOfDay();
   el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Fruit Tip of the Day</div>'+
     '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
@@ -5378,14 +5379,15 @@ function miToggleFilter(tag){
   if(i>=0) MI_ACTIVE_FILTERS.splice(i,1); else MI_ACTIVE_FILTERS.push(tag);
   miRender();
 }
-function miRenderFilters(){
-  document.getElementById("mi-filters").innerHTML = MI_FILTERS.map(function(t){
+function miRenderFilters(targetId){
+  var el=document.getElementById(targetId||"meals-filters"); if(!el) return;
+  el.innerHTML = MI_FILTERS.map(function(t){
     var on=MI_ACTIVE_FILTERS.indexOf(t)>=0;
     return '<span class="tag" style="cursor:pointer;background:'+(on?"#4ade8022":"#88888816")+';color:'+(on?"#4ade80":"#aaa")+';border:1px solid '+(on?"#4ade8055":"#88888830")+'" onclick="miToggleFilter(\''+t+'\')">'+t+(on?" ✓":"")+'</span>';
   }).join(" ");
 }
 function miRender(){
-  miRenderFilters();
+  miRenderFilters("meals-filters");
   var favs=miFavs();
   var list=MEAL_IDEAS.filter(function(m){
     if(!MI_ACTIVE_FILTERS.length) return true;
@@ -5412,16 +5414,12 @@ function miRender(){
   if(snacks.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Snacks &amp; Sides</div>'+snacks.map(card).join("");
   if(dinners.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Dinner</div>'+dinners.map(card).join("");
   if(!list.length) html = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">No meals match those filters — try removing one.</div>';
-  document.getElementById("mi-list").innerHTML = html;
+  document.getElementById("meals-list").innerHTML = html;
 }
-function miOpen(){
-  document.getElementById("mi-overlay").style.display="flex";
-  document.getElementById("mi-overlay").scrollTop=0;
-  renderFruitGuide();
+function miOpen(){ switchTab("meals"); }
+function renderMealsTab(){
+  renderFruitGuide("meals-fruit-guide");
   miRender();
-}
-function miClose(){
-  document.getElementById("mi-overlay").style.display="none";
 }
 
 // ── MY PLAN ───────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=41">
+<link rel="stylesheet" href="styles.css?v=42">
 </head>
 <body>
 
@@ -65,6 +65,7 @@
     <button class="tab-btn" data-tab="volume"><span class="tab-icon">📊</span>Volume</button>
     <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
+    <button class="tab-btn" data-tab="meals"><span class="tab-icon">🍽</span>Meals</button>
   </div>
 
   <div class="content">
@@ -277,6 +278,18 @@
       <div id="dash-protein-meal"></div>
     </div>
 
+    <!-- ════════ MEALS ════════ -->
+    <div class="panel" id="panel-meals">
+      <div class="ds-eyebrow">Meal Ideas &amp; Fruit Guide</div>
+      <div class="card" id="meals-fruit-guide"></div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:8px">Filter</div>
+        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Tap to toggle. Combine filters to narrow down.</div>
+        <div id="meals-filters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div style="margin-top:14px" id="meals-list"></div>
+    </div>
+
     <!-- ════════ LOG ════════ -->
     <div class="panel" id="panel-log">
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('log')"><span id="refresh-icon-log">↻</span> Refresh</button></div>
@@ -303,7 +316,7 @@
           <div class="rlbl" style="margin-top:0">🥚 Protein staples — tap to log</div>
           <button class="bo bfull" onclick="addUsualDay()" style="margin-bottom:8px;border-color:#fbbf2455;color:#fbbf24">☀️ Log my usual day — eggs + shake + yogurt + cottage cheese (≈810 cal · 95g protein)</button>
           <div id="qa-staples" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-          <button class="bo bfull" onclick="miOpen()" style="margin-bottom:10px;border-color:#4ade8055;color:#4ade80">🍽 Browse Meal Ideas</button>
+          <button class="bo bfull" onclick="switchTab('meals')" style="margin-bottom:10px;border-color:#4ade8055;color:#4ade80">🍽 Browse Meal Ideas (Meals tab)</button>
           <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
           <div id="qa-fav-wrap" style="display:none">
             <div class="rlbl" style="margin-top:0">★ Favorites</div>
@@ -881,28 +894,6 @@
   </div>
 </div>
 
-<!-- MEAL IDEAS OVERLAY -->
-<div id="mi-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
-  <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
-    <button class="bs" onclick="miClose()">✕ Close</button>
-    <div style="font-size:15px;font-weight:800;color:#f0f0f0">🍽 Meal Ideas</div>
-    <div style="width:60px"></div>
-  </div>
-  <div style="padding:18px;max-width:520px;margin:0 auto;width:100%">
-
-    <div class="card" id="mi-fruit-guide"></div>
-
-    <div class="card">
-      <div class="card-title" style="margin-bottom:8px">Filter</div>
-      <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Tap to toggle. Combine filters to narrow down.</div>
-      <div id="mi-filters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    </div>
-
-    <div style="margin-top:14px" id="mi-list"></div>
-
-  </div>
-</div>
-
 <!-- MY PLAN OVERLAY -->
 <div id="plan-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
   <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
@@ -1045,6 +1036,6 @@
   </div>
 </div>
 
-<script src="app.js?v=205"></script>
+<script src="app.js?v=206"></script>
 </body>
 </html>
