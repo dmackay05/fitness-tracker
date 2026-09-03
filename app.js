@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v112 — 2026-09-03";
+var APP_BUILD = "v113 — 2026-09-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5342,6 +5342,30 @@ var MEAL_IDEAS = [
     desc:"Eggs baked in a muffin tin with cheese and diced veggies, batch-prepped Sunday. Kid-sized, grab-and-go protein."},
   {id:"m34", meal:"snack",  name:"Boiled eggs", protein:"~6g/egg", tags:["fish-free","quick","family","kid-friendly"],
     desc:"Hard-boiled eggs, batch-prepped Sunday alongside the egg muffins. The fastest grab-and-go protein in the house."},
+  {id:"m35", meal:"breakfast", name:"Overnight oats (your usual)", protein:"~15g", tags:["fish-free","quick","produce","family","kid-friendly"],
+    desc:"Oats, chia, flax, banana — about 13g fiber. Add a handful of blueberries or raspberries on top instead of extra honey to keep sugar in check."},
+  {id:"m36", meal:"breakfast", name:"Blueberry banana oatmeal bowl", protein:"~12g", tags:["fish-free","quick","produce","family","kid-friendly"],
+    desc:"Rolled oats cooked in milk, topped with blueberries, sliced banana, and a spoon of Greek yogurt stirred in for extra protein. Mild and sweet enough for picky eaters."},
+  {id:"m37", meal:"breakfast", name:"Veggie &amp; egg scramble", protein:"~20g", tags:["fish-free","quick","produce","family","kid-friendly"],
+    desc:"Eggs scrambled with diced spinach, tomato, and bell pepper, cheese melted in at the end. Serve the veggies on the side for anyone who wants theirs plain."},
+  {id:"m38", meal:"breakfast", name:"Apple cinnamon baked oatmeal", protein:"~10g", tags:["fish-free","produce","family","kid-friendly"],
+    desc:"Oats, diced apple, cinnamon, and eggs baked in one dish — make Sunday, cut into squares, reheat all week. Naturally sweet, no added sugar needed."},
+  {id:"m39", meal:"breakfast", name:"Savory oatmeal with egg &amp; spinach", protein:"~18g", tags:["fish-free","quick","produce","solo"],
+    desc:"Steel-cut oats cooked savory (no fruit), topped with a fried or soft-boiled egg and wilted spinach, a little parmesan on top. A break from sweet breakfasts."},
+  {id:"m40", meal:"lunch", name:"Strawberry spinach salad with chicken", protein:"~38g", tags:["fish-free","produce","solo"],
+    desc:"Spinach, sliced strawberries, grilled chicken, walnuts, and a light vinaigrette. Bright, fast lunch that uses up berries before they turn."},
+  {id:"m41", meal:"lunch", name:"Roasted veggie &amp; quinoa bowl", protein:"~20g", tags:["fish-free","produce","solo"],
+    desc:"Quinoa, roasted broccoli, sweet potato, and chickpeas, olive oil and lemon dressing. Add leftover chicken to push protein higher if you want a fuller lunch."},
+  {id:"m42", meal:"dinner", name:"Chicken &amp; vegetable soup with sweet potato", protein:"~34g", tags:["fish-free","family","kid-friendly"],
+    desc:"Chicken, sweet potato, carrots, celery, spinach stirred in at the end. Mild broth-based dinner that's easy to portion for picky eaters — just fish out the veg they skip."},
+  {id:"m43", meal:"dinner", name:"Veggie-loaded beef chili", protein:"~38g", tags:["fish-free","family"],
+    desc:"Ground beef chili with extra bell pepper, zucchini, and carrot diced small and cooked down into the sauce — added vegetables without changing the texture much for picky eaters."},
+  {id:"m44", meal:"snack", name:"Raspberry chia pudding", protein:"~8g", tags:["fish-free","quick","produce","solo"],
+    desc:"Chia seeds soaked overnight in milk, topped with raspberries. Make-ahead, high fiber, good blood-sugar-friendly snack or light breakfast."},
+  {id:"m45", meal:"snack", name:"Banana berry 'nice cream'", protein:"~4g", tags:["fish-free","quick","produce","family","kid-friendly"],
+    desc:"Frozen banana blended until creamy, blueberries or strawberries blended in. Tastes like soft-serve — an easy way to get the family excited about fruit."},
+  {id:"m46", meal:"snack", name:"Veggie sticks with Greek yogurt dip", protein:"~10g", tags:["fish-free","quick","produce","family","kid-friendly"],
+    desc:"Carrots, cucumber, bell pepper strips with a Greek yogurt ranch or herb dip. Higher protein than a standard veggie plate, still easy for picky eaters to pick around."},
 ];
 
 var FRUIT_TIPS = [
@@ -5393,6 +5417,7 @@ function miRender(){
     if(!MI_ACTIVE_FILTERS.length) return true;
     return MI_ACTIVE_FILTERS.every(function(t){ return m.tags.indexOf(t)>=0; });
   });
+  var breakfasts=list.filter(function(m){return m.meal==="breakfast";});
   var lunches=list.filter(function(m){return m.meal==="lunch";});
   var snacks=list.filter(function(m){return m.meal==="snack";});
   var dinners=list.filter(function(m){return m.meal==="dinner";});
@@ -5410,7 +5435,8 @@ function miRender(){
       '</div></div>';
   }
   var html="";
-  if(lunches.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:4px 0 8px">Lunch</div>'+lunches.map(card).join("");
+  if(breakfasts.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:4px 0 8px">Breakfast</div>'+breakfasts.map(card).join("");
+  if(lunches.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Lunch</div>'+lunches.map(card).join("");
   if(snacks.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Snacks &amp; Sides</div>'+snacks.map(card).join("");
   if(dinners.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Dinner</div>'+dinners.map(card).join("");
   if(!list.length) html = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">No meals match those filters — try removing one.</div>';
