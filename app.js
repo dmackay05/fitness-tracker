@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v113 — 2026-09-03";
+var APP_BUILD = "v114 — 2026-09-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5369,11 +5369,26 @@ var MEAL_IDEAS = [
 ];
 
 var FRUIT_TIPS = [
-  {name:"Raspberries", tip:"Best for managing blood sugar — highest fiber, lowest sugar of common fruits.", emoji:"🍇"},
-  {name:"Blueberries", tip:"Best for reducing inflammation — highest anthocyanin content, MIND diet staple.", emoji:"🫐"},
-  {name:"Strawberries", tip:"Best for managing overall calorie intake — lowest calorie density of common fruits.", emoji:"🍓"},
-  {name:"Apples", tip:"Best convenient, slow-digesting, portable snack — eat the skin for the fiber.", emoji:"🍎"},
-  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"}
+  {name:"Raspberries", tip:"Best for managing blood sugar — highest fiber, lowest sugar of common fruits.", emoji:"🍇", cat:"fruit"},
+  {name:"Blueberries", tip:"Best for reducing inflammation — highest anthocyanin content, MIND diet staple.", emoji:"🫐", cat:"fruit"},
+  {name:"Strawberries", tip:"Best for managing overall calorie intake — lowest calorie density of common fruits.", emoji:"🍓", cat:"fruit"},
+  {name:"Apples", tip:"Best convenient, slow-digesting, portable snack — eat the skin for the fiber.", emoji:"🍎", cat:"fruit"},
+  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌", cat:"fruit"},
+  {name:"Oranges", tip:"Best for vitamin C and hydration — high water content, whole fruit beats juice for fiber.", emoji:"🍊", cat:"fruit"},
+  {name:"Grapes", tip:"Good energy snack, but portion-sensitive — easy to overeat since they're low-effort to keep popping.", emoji:"🍇", cat:"fruit"},
+  {name:"Kiwi", tip:"Best for sleep support — some evidence it improves sleep onset and quality, try it as an evening snack.", emoji:"🥝", cat:"fruit"},
+  {name:"Avocado", tip:"Best fruit for healthy fats — supports the Mediterranean-style plant fat targets, great on toast or in a salad.", emoji:"🥑", cat:"fruit"},
+  {name:"Pomegranate", tip:"Best for polyphenols — strong antioxidant profile, arils are easy to toss on yogurt or salads.", emoji:"🍒", cat:"fruit"},
+  {name:"Spinach", tip:"Best leafy green for the MIND diet — high in folate and lutein, cooks down small so it's easy to add anywhere.", emoji:"🥬", cat:"veg"},
+  {name:"Broccoli", tip:"Best for fiber-per-calorie — also a strong source of vitamin K and C, roasts well with olive oil.", emoji:"🥦", cat:"veg"},
+  {name:"Bell Peppers", tip:"Best raw veggie for vitamin C — actually higher C content than most citrus, great in a picky-eater veggie tray.", emoji:"🫑", cat:"veg"},
+  {name:"Carrots", tip:"Best convenient snack veggie — beta-carotene supports eye health, pairs well with a Greek yogurt dip for extra protein.", emoji:"🥕", cat:"veg"},
+  {name:"Sweet Potatoes", tip:"Best slow-digesting starch swap — more fiber and micronutrients than white potato, solid post-lift carb source.", emoji:"🍠", cat:"veg"},
+  {name:"Tomatoes", tip:"Best for lycopene — cooking actually increases lycopene availability, so sauces count as much as fresh.", emoji:"🍅", cat:"veg"},
+  {name:"Cucumber", tip:"Best low-calorie volume food — mostly water, good for bulking out a meal without adding much to the calorie total.", emoji:"🥒", cat:"veg"},
+  {name:"Brussels Sprouts", tip:"Best cruciferous option for DASH — roasted at high heat with a little oil, they read more like a treat than a chore.", emoji:"🥬", cat:"veg"},
+  {name:"Beets", tip:"Best for nitrates — some evidence they support blood pressure and endurance performance, good pre-ride food.", emoji:"🍠", cat:"veg"},
+  {name:"Cauliflower", tip:"Best low-carb bulk veggie — versatile enough to sub for rice or potato when you want the volume without the starch.", emoji:"🥦", cat:"veg"}
 ];
 function fruitTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
@@ -5382,11 +5397,17 @@ function fruitTipOfDay(){
 function renderFruitGuide(targetId){
   var el=document.getElementById(targetId||"meals-fruit-guide"); if(!el) return;
   var t=fruitTipOfDay();
-  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Fruit Tip of the Day</div>'+
+  var fruits=FRUIT_TIPS.filter(function(f){return f.cat==="fruit";});
+  var veggies=FRUIT_TIPS.filter(function(f){return f.cat==="veg";});
+  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Produce Tip of the Day</div>'+
     '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
     '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all fruit picks</summary>'+
     '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
-    FRUIT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
+    fruits.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
+    '</div></details>'+
+    '<details style="margin-top:6px"><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all veggie picks</summary>'+
+    '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
+    veggies.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
 function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
