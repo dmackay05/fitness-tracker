@@ -58,7 +58,8 @@ var DAILY_HEADERS = [
   "Fish Oil","Simvastatin","Foods","Exercises",
   "Fiber (g)","Net Carbs (g)",   // v2: appended at the end so existing columns never shift
   "Biceps (in)",                 // v3: appended at the end, same reasoning
-  "Resting HR (bpm)","BP Systolic (mmHg)","BP Diastolic (mmHg)"  // v4: appended at the end, same reasoning
+  "Resting HR (bpm)","BP Systolic (mmHg)","BP Diastolic (mmHg)",  // v4: appended at the end, same reasoning
+  "Body Fat (%)","Muscle (lbs)","Body Water (%)","Bone Mass (lbs)"  // v5: appended at the end, same reasoning
 ];
 
 
@@ -171,13 +172,19 @@ function processDailyData(ss, data) {
 
 
 
+    var bc = d.bodyComp || {};
+
     // Skip completely empty days
     var hasData = realFoods.length > 0
       || (d.weight  && parseFloat(d.weight)  > 0)
       || (d.waterOz && parseFloat(d.waterOz) > 0)
       || realExs.length > 0
       || hasWellnessData(d.wellness)
-      || hasMeasurementData(d.measurements);
+      || hasMeasurementData(d.measurements)
+      || (bc.bodyFat != null && bc.bodyFat !== "")
+      || (bc.muscle  != null && bc.muscle  !== "")
+      || (bc.water   != null && bc.water   !== "")
+      || (bc.bone    != null && bc.bone    !== "");
     if (!hasData) return;
 
 
@@ -266,6 +273,12 @@ function processDailyData(ss, data) {
     row.push(rhrAvg);
     row.push(bpSysAvg);
     row.push(bpDiaAvg);
+
+    // v5: Body Comp (Body Fat / Muscle / Water / Bone), appended at the end (same reasoning)
+    row.push(bc.bodyFat != null ? bc.bodyFat : "");
+    row.push(bc.muscle  != null ? bc.muscle  : "");
+    row.push(bc.water   != null ? bc.water   : "");
+    row.push(bc.bone    != null ? bc.bone    : "");
 
 
 

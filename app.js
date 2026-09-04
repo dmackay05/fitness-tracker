@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v114 — 2026-09-04";
+var APP_BUILD = "v115 — 2026-09-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -494,8 +494,13 @@ function rowToDay(row){
       } : undefined
     },
     supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
-    measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""}
+    measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""},
+    bodyComp:{}
   };
+  if(row["Body Fat (%)"]!==undefined && row["Body Fat (%)"]!=="") remote.bodyComp.bodyFat=parseFloat(row["Body Fat (%)"]);
+  if(row["Muscle (lbs)"]!==undefined && row["Muscle (lbs)"]!=="") remote.bodyComp.muscle=parseFloat(row["Muscle (lbs)"]);
+  if(row["Body Water (%)"]!==undefined && row["Body Water (%)"]!=="") remote.bodyComp.water=parseFloat(row["Body Water (%)"]);
+  if(row["Bone Mass (lbs)"]!==undefined && row["Bone Mass (lbs)"]!=="") remote.bodyComp.bone=parseFloat(row["Bone Mass (lbs)"]);
   if(row["Foods"]) row["Foods"].split(",").forEach(function(f){ f=f.trim(); if(!f) return;
     var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?(?:\|t(\d{13}))?(?:\|m(Breakfast|Lunch|Dinner|Snack))?)?\)$/);
     if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:(m[7]||"sheet_"+f)}; if(m[6]) _pf.fiber=parseFloat(m[6]); if(m[8]) _pf.mealTag=m[8]; remote.foods.push(_pf); }
@@ -556,9 +561,9 @@ function mergeDay(key,remote){
     appData[key]=remote; return; }
   if(!local.weight && remote.weight) local.weight=remote.weight;
   if(!local.waterOz && remote.waterOz) local.waterOz=remote.waterOz;
-  ["wellness","supplements","measurements"].forEach(function(grp){
+  ["wellness","supplements","measurements","bodyComp"].forEach(function(grp){
     if(remote[grp]){ local[grp]=local[grp]||{};
-      Object.keys(remote[grp]).forEach(function(k){ if(!local[grp][k] && remote[grp][k]) local[grp][k]=remote[grp][k]; }); }
+      Object.keys(remote[grp]).forEach(function(k){ if(local[grp][k]==null && remote[grp][k]!=null) local[grp][k]=remote[grp][k]; }); }
   });
   local.exercises=dsMergeExercises(local.exercises,remote.exercises,local.exTombs);
   appData[key]=local;
