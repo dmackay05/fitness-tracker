@@ -208,11 +208,14 @@ function processDailyData(ss, data) {
     var exStr = realExs.map(function(e) {
       var nm = ((e.name||"")+"").replace(/,/g, " ").replace(/[|@]/g, "");
       var base = nm + " (" + (e.calories || 0) + " cal";
+      var detailParts = [];
       if (e.sets && e.reps) {
         var l = ((e.load||"")+"").replace(/[)\|,@]/g, "");
         var r = ((e.reps||"")+"").replace(/,/g, "/").replace(/[)\|@]/g, "");
-        base += "|" + e.sets + "x" + r + (l ? ("@"+l) : "");
+        detailParts.push(e.sets + "x" + r + (l ? ("@"+l) : ""));
       }
+      if (e.avgHR) detailParts.push("hr" + e.avgHR + (e.peakHR ? ("-" + e.peakHR) : ""));
+      if (detailParts.length) base += "|" + detailParts.join("|");
       return base + ")";
     }).join(", ");
 

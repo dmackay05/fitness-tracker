@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v116 — 2026-09-04";
+var APP_BUILD = "v119 — 2026-09-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -530,7 +530,14 @@ function rowToDay(row){
         return;
       }
       var ex={name:m[1].trim(),calories:parseInt(m[2]),type:"logged",id:"sheet_n_"+m[1].trim().toLowerCase()};
-      if(m[3]){ var dm=m[3].match(/^(\d+)x([^@]+)(?:@(.+))?$/); if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim().replace(/,/g,"/"); ex.load=(dm[3]||"").trim(); } }
+      if(m[3]){
+        m[3].split("|").forEach(function(seg){
+          var dm=seg.match(/^(\d+)x([^@]+)(?:@(.+))?$/);
+          if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim().replace(/,/g,"/"); ex.load=(dm[3]||"").trim(); return; }
+          var hm=seg.match(/^hr(\d+)(?:-(\d+))?$/);
+          if(hm){ ex.avgHR=parseInt(hm[1]); if(hm[2]) ex.peakHR=parseInt(hm[2]); }
+        });
+      }
       remote.exercises.push(ex);
     }
     var buf="";
@@ -4223,7 +4230,8 @@ var DS_SESSIONS={
       {id:'tue-pallof',name:'Banded Pallof Press',demo:'pallof',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',log:'setsreps',sets:3,variants:[{name:'Kneeling Pallof Press',equip:'Tube 10–20 lb, mid anchor',rx:'3×10/side',cue:'Same anchor and press, but from tall-kneeling — takes the legs out of the equation so it is pure anti-rotation core, and it is gentler on the SI joint than the standing version',demo:'pallof'}]},
       {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
       {id:'tue-step',name:'Step-Up',demo:'stepup',slot:'Unilateral',target:'Quads · Balance',equip:'Chair or step',rx:'3×10/side',cal:30,cue:"Drive through the front heel only — don't push off the back foot",log:'setsreps',sets:3,variants:[{name:'Banded Reverse Lunge',equip:'Tube 20–30 lb',rx:'3×10/side',cue:'Step back, drop the knee, drive through the front heel — easier to balance than a step-up, same unilateral quad work',demo:'splitsquat'}]},
-      {id:'tue-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'3\u00d715\u201320',cal:12,cue:'Back to the wall, weight settled back \u2014 lift the toes as high as they go, 1-sec squeeze, slow lower. Stop when you lose range, not when it burns.',log:'setsreps',sets:3},
+      {id:'tue-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'3\u00d715\u201320',cal:12,cue:'Back to the wall, weight settled back \u2014 lift the toes as high as they go, 1-sec squeeze, slow lower. Stop when you lose range, not when it burns.',log:'setsreps',sets:3,
+        variants:[{name:'Banded Tib Raise',equip:'Tube band, light',rx:'3\u00d715\u201320',cue:'Loop the band around a low anchor and your forefoot \u2014 pull the toes up against the band tension, slow release. Same muscle, different stimulus than the wall version',demo:'tibraise'}]},
       {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]}]},
 
   wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
@@ -4259,13 +4267,17 @@ var DS_SESSIONS={
       {id:'wed-rotslam',name:'Rotational Slam',demo:'slam',slot:'Power',target:'Obliques',equip:'10 lb slam ball',rx:'3×8/side',cal:30,cue:'Hips lead the rotation — arms just guide it',log:'setsreps',sets:3,
         variants:[{name:'Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern as the slam, no ballistic force at all',demo:'pallof'}]},
       {id:'wed-fin-splitsquat',name:'Bodyweight Bulgarian Split Squat',slot:'Finisher · Quads',target:'Quads · Balance',equip:'Bodyweight (chair/couch)',rx:'3×10/leg',cal:20,cue:'Rear foot elevated on a couch or chair — front heel drives through the floor, torso stays tall',demo:'splitsquat',log:'setsreps',sets:3,
-        setup:'No band needed here — this is a light finisher, not a heavy set. Stand about 2 feet in front of a couch or chair, rear foot up on it (laces down). Lower slowly until your front thigh is close to parallel, then drive back up through the front heel. Keep it controlled; this is about closing a volume gap, not adding fatigue.'},
+        setup:'No band needed here — this is a light finisher, not a heavy set. Stand about 2 feet in front of a couch or chair, rear foot up on it (laces down). Lower slowly until your front thigh is close to parallel, then drive back up through the front heel. Keep it controlled; this is about closing a volume gap, not adding fatigue.',
+        variants:[{name:'Step-Up',equip:'Step or low bench',rx:'3×10/leg',cue:'Step fully onto the bench, drive through the lead heel to stand tall, control the descent back down — same quad/balance pattern, no rear-foot elevation needed',demo:'stepup'}]},
       {id:'wed-fin-glutebridge',name:'Single-Leg Glute Bridge',slot:'Finisher · Hamstrings/Glutes',target:'Hamstrings · Glutes',equip:'Bodyweight',rx:'3×10/leg',cal:15,cue:'Drive through the planted heel, hips stay square — squeeze 2 seconds at the top',demo:'bridge',log:'setsreps',sets:3,
-        setup:'Lie on your back, one foot flat on the floor, the other leg extended straight up or held at 90°. Push through the planted heel to lift your hips until your body forms a straight line knee to shoulder. Keep both hips level — no rotating toward the lifted leg.'},
+        setup:'Lie on your back, one foot flat on the floor, the other leg extended straight up or held at 90°. Push through the planted heel to lift your hips until your body forms a straight line knee to shoulder. Keep both hips level — no rotating toward the lifted leg.',
+        variants:[{name:'Elevated Hip Thrust',equip:'Couch or bench (shoulders elevated)',rx:'3×10',cue:'Shoulders on the edge of a couch, feet flat, drive hips up to full extension and squeeze — bilateral version, more range of motion than the floor bridge',demo:'hipthrust'}]},
       {id:'wed-fin-slrdl',name:'Single-Leg RDL Reach (bodyweight)',slot:'Finisher · Hamstrings',target:'Hamstrings · Balance',equip:'Bodyweight',rx:'3×8/leg',cal:15,cue:'Hinge at the hip and reach toward the floor, planted knee soft — flat back the whole way down',demo:'slrdl',log:'setsreps',sets:3,
-        setup:'Stand on one leg with a soft bend in the knee. Hinge forward at the hips, letting the free leg extend straight back for balance, and reach toward the floor with the opposite hand. Keep your back flat — stop the descent wherever your hamstring or balance limits you. Slow and controlled beats going deep.'},
+        setup:'Stand on one leg with a soft bend in the knee. Hinge forward at the hips, letting the free leg extend straight back for balance, and reach toward the floor with the opposite hand. Keep your back flat — stop the descent wherever your hamstring or balance limits you. Slow and controlled beats going deep.',
+        variants:[{name:'Curtsy Lunge',equip:'Bodyweight',rx:'3×10/leg',cue:'Step one leg back and across behind the other, bend both knees toward a low lunge, drive back to standing — same balance/hamstring demand, different plane of motion',demo:'sidelunge'}]},
       {id:'wed-fin-wallsit',name:'Wall Sit',slot:'Finisher · Quads (isometric)',target:'Quads',equip:'Bodyweight + wall',rx:'2×30–45s',cal:12,cue:'Back flat against the wall, knees near 90° — no spinal loading, just hold and breathe',demo:'squat',log:'time',secs:30,
-        setup:'Slide your back down a wall until your knees are bent to roughly 90 degrees, thighs close to parallel with the floor. Hold, keeping your back flat against the wall and breathing steadily. Zero impact and zero spinal load — a good pick specifically because it\'s easy on the SI joint while still building quad endurance.'}]},
+        setup:'Slide your back down a wall until your knees are bent to roughly 90 degrees, thighs close to parallel with the floor. Hold, keeping your back flat against the wall and breathing steadily. Zero impact and zero spinal load — a good pick specifically because it\'s easy on the SI joint while still building quad endurance.',
+        variants:[{name:'Goblet Wall Sit',equip:'10 lb dumbbell, held at chest',rx:'2×20–30s',cue:'Same wall sit position, dumbbell held close to the chest for extra load — shorter hold since the added weight raises the demand fast',demo:'squat'}]}]},
 
   thu:{title:'Upper Body B',sub:'Push · Pull alternating — Chest · Back · Arms',accent:'var(--accent)',
     moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_KBHALO,
@@ -4305,8 +4317,10 @@ var DS_SESSIONS={
         mistakes:['Rounding the lower back — keep it flat. If you can’t, don’t go as deep.','Bending the knees too much — this is a hip hinge, not a squat.','Going too heavy too soon — start light, your hamstrings and lower back need time to adapt.'],
         variants:[{name:'Stability Ball Hamstring Bridge',equip:'Stability ball',rx:'3×12–15',cue:'Heels on the ball, hips bridged up — no spinal loading at all, pure hamstring/glute posterior chain work if the Good Morning feels like too much load on the back',demo:'hipthrust'}]},
       {id:'fri-nordic',name:'Stability Ball Leg Curl',slot:'Knee Flexion',target:'Hamstrings',equip:'Stability ball',rx:'3×10–12',cal:30,cue:'Hips stay up the whole set — curl the ball in, roll out over a slow 3-count',demo:'ballcurl',log:'setsreps',sets:3,variants:[{name:'Single-Leg Ball Curl',equip:'Stability ball',rx:'3\u00d76\u20138/leg',cue:'One heel on the ball \u2014 hips level, slow 3-count roll-out',demo:'ballcurl'}]},
-      {id:'fri-add',name:'Side-Lying Adductor Raise',demo:'side-leg-ext',slot:'Adductors',target:'Adductors \u00b7 Inner Thigh',equip:'Bodyweight',rx:'3\u00d712\u201315/leg',cal:14,cue:'Bottom leg lifts, top leg parked out of the way. Hips stay stacked square \u2014 if the pelvis rolls back, shorten the range. Gentler on the SI joint than a Copenhagen plank.',log:'setsreps',sets:3},
-      {id:'fri-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'2\u00d715\u201320',cal:8,cue:'Second shin session of the week, lighter than Tuesday. Toes up, pause, slow lower.',log:'setsreps',sets:2},
+      {id:'fri-add',name:'Side-Lying Adductor Raise',demo:'side-leg-ext',slot:'Adductors',target:'Adductors \u00b7 Inner Thigh',equip:'Bodyweight',rx:'3\u00d712\u201315/leg',cal:14,cue:'Bottom leg lifts, top leg parked out of the way. Hips stay stacked square \u2014 if the pelvis rolls back, shorten the range. Gentler on the SI joint than a Copenhagen plank.',log:'setsreps',sets:3,
+        variants:[{name:'Band Adductor Squeeze',equip:'Mini loop band',rx:'3\u00d715\u201320',cue:'Seated or standing, band looped around the ankles/knees \u2014 squeeze the legs together against the band, slow release. Same target, no floor position needed',demo:'side-leg-ext'}]},
+      {id:'fri-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'2\u00d715\u201320',cal:8,cue:'Second shin session of the week, lighter than Tuesday. Toes up, pause, slow lower.',log:'setsreps',sets:2,
+        variants:[{name:'Banded Tib Raise',equip:'Tube band, light',rx:'2\u00d715\u201320',cue:'Same banded version as Tuesday \u2014 loop around a low anchor and the forefoot, pull toes up against tension',demo:'tibraise'}]},
       {id:'fri-calf',name:'Single-Leg Calf Raise',demo:'calf',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'4×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Bilateral swap that takes balance out of the equation on a fatigued Friday',demo:'calf'}]},
       {id:'fri-obliques',name:'Obliques / Rotation',demo:'woodchop',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives. Stop short of any pinch near the SI joint — rotation under load is a higher-demand pattern for it.',log:'setsreps',sets:3,
         variants:[{name:'Slow Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern, far less rotational force on the SI joint',demo:'pallof'}]},
@@ -6682,6 +6696,14 @@ var DS_MV={
   /* --- v99: these were logging real working sets but contributing zero muscle
      volume, because they had no DS_MV entry. The bodyweight leg circuit and the
      pull-up ladder were the biggest gaps. --- */
+  /* --- v117: same bug as v99 — the Wednesday finisher block (bodyweight split
+     squat, glute bridge, single-leg RDL reach, wall sit) logs real working sets
+     but had no DS_MV entry, so none of it counted toward weekly Quads/
+     Hamstrings/Glutes volume. --- */
+  'wed-fin-splitsquat':{'Quads':1,'Glutes':.5},
+  'wed-fin-glutebridge':{'Hamstrings':1,'Glutes':1},
+  'wed-fin-slrdl':{'Hamstrings':1,'Glutes':.5},
+  'wed-fin-wallsit':{'Quads':.5},
   'mon-standbandpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-slamskull':{'Triceps':1},
   'thu-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
