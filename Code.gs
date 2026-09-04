@@ -59,7 +59,8 @@ var DAILY_HEADERS = [
   "Fiber (g)","Net Carbs (g)",   // v2: appended at the end so existing columns never shift
   "Biceps (in)",                 // v3: appended at the end, same reasoning
   "Resting HR (bpm)","BP Systolic (mmHg)","BP Diastolic (mmHg)",  // v4: appended at the end, same reasoning
-  "Body Fat (%)","Muscle (lbs)","Body Water (%)","Bone Mass (lbs)"  // v5: appended at the end, same reasoning
+  "Body Fat (%)","Muscle (lbs)","Body Water (%)","Bone Mass (lbs)",  // v5: appended at the end, same reasoning
+  "Habits Completed"  // v6: appended at the end, same reasoning
 ];
 
 
@@ -173,6 +174,7 @@ function processDailyData(ss, data) {
 
 
     var bc = d.bodyComp || {};
+    var habitsDone = Object.keys(d.habits || {}).filter(function(k){ return d.habits[k]; });
 
     // Skip completely empty days
     var hasData = realFoods.length > 0
@@ -184,7 +186,8 @@ function processDailyData(ss, data) {
       || (bc.bodyFat != null && bc.bodyFat !== "")
       || (bc.muscle  != null && bc.muscle  !== "")
       || (bc.water   != null && bc.water   !== "")
-      || (bc.bone    != null && bc.bone    !== "");
+      || (bc.bone    != null && bc.bone    !== "")
+      || habitsDone.length > 0;
     if (!hasData) return;
 
 
@@ -279,6 +282,9 @@ function processDailyData(ss, data) {
     row.push(bc.muscle  != null ? bc.muscle  : "");
     row.push(bc.water   != null ? bc.water   : "");
     row.push(bc.bone    != null ? bc.bone    : "");
+
+    // v6: Habits Completed, appended at the end (same reasoning) — comma-joined habit names
+    row.push(habitsDone.join(", "));
 
 
 

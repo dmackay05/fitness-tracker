@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v115 — 2026-09-04";
+var APP_BUILD = "v116 — 2026-09-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -245,6 +245,7 @@ try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; 
     if(changed){ store.set("ft_data",JSON.stringify(appData)); }
   }catch(e){}
 })();
+try{ migrateHabitsToNameKeys(); }catch(e){}
 var activeDate = todayKey();
 var wellnessRatings = {sleepQ:0, energy:0, mood:0, medClarity:0};
 var medType = "";
@@ -495,12 +496,14 @@ function rowToDay(row){
     },
     supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""},
-    bodyComp:{}
+    bodyComp:{},
+    habits:{}
   };
   if(row["Body Fat (%)"]!==undefined && row["Body Fat (%)"]!=="") remote.bodyComp.bodyFat=parseFloat(row["Body Fat (%)"]);
   if(row["Muscle (lbs)"]!==undefined && row["Muscle (lbs)"]!=="") remote.bodyComp.muscle=parseFloat(row["Muscle (lbs)"]);
   if(row["Body Water (%)"]!==undefined && row["Body Water (%)"]!=="") remote.bodyComp.water=parseFloat(row["Body Water (%)"]);
   if(row["Bone Mass (lbs)"]!==undefined && row["Bone Mass (lbs)"]!=="") remote.bodyComp.bone=parseFloat(row["Bone Mass (lbs)"]);
+  if(row["Habits Completed"]) String(row["Habits Completed"]).split(",").forEach(function(n){ n=n.trim(); if(n) remote.habits[n]=true; });
   if(row["Foods"]) row["Foods"].split(",").forEach(function(f){ f=f.trim(); if(!f) return;
     var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?(?:\|t(\d{13}))?(?:\|m(Breakfast|Lunch|Dinner|Snack))?)?\)$/);
     if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:(m[7]||"sheet_"+f)}; if(m[6]) _pf.fiber=parseFloat(m[6]); if(m[8]) _pf.mealTag=m[8]; remote.foods.push(_pf); }
@@ -561,7 +564,7 @@ function mergeDay(key,remote){
     appData[key]=remote; return; }
   if(!local.weight && remote.weight) local.weight=remote.weight;
   if(!local.waterOz && remote.waterOz) local.waterOz=remote.waterOz;
-  ["wellness","supplements","measurements","bodyComp"].forEach(function(grp){
+  ["wellness","supplements","measurements","bodyComp","habits"].forEach(function(grp){
     if(remote[grp]){ local[grp]=local[grp]||{};
       Object.keys(remote[grp]).forEach(function(k){ if(local[grp][k]==null && remote[grp][k]!=null) local[grp][k]=remote[grp][k]; }); }
   });
@@ -2411,11 +2414,31 @@ function showLastHint(name,elId){
 }
 // ── BATCH D: DAILY HABITS + STREAKS ─────────────────────────────────────
 function loadHabits(){ try{ var a=JSON.parse(store.get("ft_habits")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
-function toggleHabit(id){ var d=getDay(); d.habits=d.habits||{}; d.habits[id]=!d.habits[id]; saveDay(d); renderHabits(); }
-function habitStreak(id){
+// One-time migration: old d.habits objects were keyed by a local random habit id,
+// which never survives a cache clear/device swap and can't be synced (Code.gs never
+// sees the id->name mapping). Re-key by habit NAME so completion is self-describing
+// and can round-trip through the "Habits Completed" sheet column like everything else.
+function migrateHabitsToNameKeys(){
+  var defs=loadHabits(); if(!defs.length) return;
+  var idToName={}; defs.forEach(function(h){ if(h.id&&h.name) idToName[h.id]=h.name; });
+  var changed=false;
+  Object.keys(appData).forEach(function(k){
+    var d=appData[k]; if(!d||!d.habits) return;
+    var out={}, any=false;
+    Object.keys(d.habits).forEach(function(key){
+      if(!d.habits[key]) return;
+      var name = idToName[key] || key; // already a name (post-migration) falls through unchanged
+      out[name]=true; any=true;
+    });
+    if(any || Object.keys(d.habits).length){ d.habits=out; changed=true; }
+  });
+  if(changed){ try{ store.set("ft_data",JSON.stringify(appData)); }catch(e){} }
+}
+function toggleHabit(name){ var d=getDay(); d.habits=d.habits||{}; d.habits[name]=!d.habits[name]; saveDay(d); renderHabits(); }
+function habitStreak(name){
   var streak=0, d=new Date(), todK=todayKey();
-  if(!(appData[todK]&&appData[todK].habits&&appData[todK].habits[id])) d.setDate(d.getDate()-1);
-  for(var guard=0; guard<400; guard++){ var k=localDateKey(d); if(appData[k]&&appData[k].habits&&appData[k].habits[id]){ streak++; d.setDate(d.getDate()-1); } else break; }
+  if(!(appData[todK]&&appData[todK].habits&&appData[todK].habits[name])) d.setDate(d.getDate()-1);
+  for(var guard=0; guard<400; guard++){ var k=localDateKey(d); if(appData[k]&&appData[k].habits&&appData[k].habits[name]){ streak++; d.setDate(d.getDate()-1); } else break; }
   return streak;
 }
 function renderHabits(){
@@ -2424,8 +2447,8 @@ function renderHabits(){
   if(!habits.length){ el.innerHTML='<div class="empty" style="padding:8px 0">Add daily habits in Settings \u2699 (e.g. Yoga, glute activation, wrist eccentrics).</div>'; return; }
   var hb=getDay().habits||{};
   el.innerHTML=habits.map(function(h){
-    var on=!!hb[h.id], st=habitStreak(h.id);
-    return '<div class="row" style="cursor:pointer" onclick="toggleHabit(\''+h.id+'\')"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'+
+    var on=!!hb[h.name], st=habitStreak(h.name);
+    return '<div class="row" style="cursor:pointer" onclick="toggleHabit(\''+h.name.replace(/'/g,"\\'")+'\')"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'+
       '<span style="font-size:18px">'+(on?"\u2705":"\u2b1c")+'</span>'+
       '<span class="row-name" style="'+(on?"":"color:#aaa")+'">'+escH(h.name)+'</span></div>'+
       (st>0?'<span class="tag" style="background:#fb923c22;color:#fb923c;border:1px solid #fb923c44">\ud83d\udd25 '+st+'</span>':'')+'</div>';
