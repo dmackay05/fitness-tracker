@@ -392,6 +392,21 @@
           <input type="text" id="ex-load" placeholder="Load (e.g. 30lb band)" style="grid-column:span 2"/>
         </div>
         <div id="ex-last-hint" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:6px;min-height:14px"></div>
+        <div style="border-top:1px solid #2a2a45;margin-top:14px;padding-top:12px">
+          <div class="rlbl" style="margin-top:0">🚶 Log Cardio (any duration, no GPS)</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <select id="cardio-type" onchange="updateCardioHint()" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none">
+              <option value="walk">Walk (~4.3 kcal/min)</option>
+              <option value="ruck">Rucked Walk (~6.2 kcal/min)</option>
+              <option value="ride">Bike Ride (~4.5 kcal/min)</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="walk-min" placeholder="Minutes" style="flex:1;margin-bottom:0"/>
+            <button class="bp" onclick="logCustomWalk()">+ Log</button>
+          </div>
+          <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:6px" id="cardio-hint">~4.3 kcal/min · e.g. 40 min ≈ 170 kcal</div>
+        </div>
       </div>
       <div class="card"><div class="card-title">🔥 Today's Exercise Log <span id="burned-lbl2" style="float:right;font-weight:400;color:#888;font-size:11px"></span></div><div id="ex-log"><div class="empty">No workouts logged yet</div></div></div>
 
@@ -1037,6 +1052,6 @@
   </div>
 </div>
 
-<script src="app.js?v=214"></script>
+<script src="app.js?v=216"></script>
 </body>
 </html>

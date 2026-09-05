@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v120 — 2026-09-04";
+var APP_BUILD = "v122 — 2026-09-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1080,6 +1080,25 @@ function addDropdownEx(){
   _attachExDetail(ex,"ex-sets","ex-reps","ex-load");
   dsAddEx(day,ex);
   saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; document.getElementById("ex-last-hint").textContent=""; _clearExDetail("ex-sets","ex-reps","ex-load"); renderAll();
+}
+var CARDIO_RATES={walk:{perMin:4.3,label:"Walk"},ruck:{perMin:6.2,label:"Rucked Walk"},ride:{perMin:4.5,label:"Bike Ride"}};
+function updateCardioHint(){
+  var t=document.getElementById("cardio-type"); if(!t) return;
+  var r=CARDIO_RATES[t.value]||CARDIO_RATES.walk;
+  var hint=document.getElementById("cardio-hint");
+  if(hint) hint.textContent="~"+r.perMin+" kcal/min · e.g. 40 min ≈ "+Math.round(r.perMin*40)+" kcal";
+}
+function logCustomWalk(){
+  var minEl=document.getElementById("walk-min"); var min=+minEl.value||0;
+  if(min<=0){ toast("Enter minutes first"); return; }
+  var tEl=document.getElementById("cardio-type");
+  var r=CARDIO_RATES[tEl?tEl.value:"walk"]||CARDIO_RATES.walk;
+  var cal=Math.round(min*r.perMin);
+  var day=getDay();
+  var ex={name:r.label+" — "+min+" min",calories:cal,type:"cardio",id:Date.now().toString(),reps:min+" min"};
+  dsAddEx(day,ex);
+  saveDay(day); minEl.value=""; renderAll();
+  toast("Logged "+min+" min "+r.label.toLowerCase()+" · "+cal+" kcal");
 }
 function addCustomEx(){
   var n=document.getElementById("ce-name").value.trim(), c=+document.getElementById("ce-cal").value||0;
