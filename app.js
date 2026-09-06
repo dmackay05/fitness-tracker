@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v122 — 2026-09-04";
+var APP_BUILD = "v123 — 2026-09-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -155,6 +155,39 @@ function dsHrZone(avgHr){
   return {zone:'Zone 5',pct:pct};
 }
 var STEP_GOAL = parseInt(store.get('ft_step_goal')) || 10000;
+
+// ── DELOAD WEEK — manual toggle, auto-expires after 7 days ─────────────
+var DELOAD_START = store.get('ft_deload_start') || null;
+function dsDeloadDaysElapsed(){
+  if(!DELOAD_START) return 0;
+  var ms = Date.now() - keyToDate(DELOAD_START).getTime();
+  return Math.floor(ms/86400000);
+}
+function dsDeloadActive(){ return !!DELOAD_START && dsDeloadDaysElapsed() < 7; }
+function dsDeloadDaysLeft(){ return dsDeloadActive() ? (7 - dsDeloadDaysElapsed()) : 0; }
+function dsSetDeload(on){
+  if(on){ DELOAD_START = todayKey(); store.set('ft_deload_start', DELOAD_START); }
+  else { DELOAD_START = null; store.remove('ft_deload_start'); }
+  try{ renderAll(); }catch(e){}
+  dsRenderDeloadUI();
+}
+// Effective step goal — cut ~35% during deload (matches ~30k/wk vs ~45k/wk target)
+function effStepGoal(){
+  if(!dsDeloadActive()) return STEP_GOAL;
+  return Math.round((STEP_GOAL*0.65)/500)*500;
+}
+function dsRenderDeloadUI(){
+  var badge = document.getElementById('ds-deload-badge');
+  var toggle = document.getElementById('ds-deload-toggle');
+  var preview = document.getElementById('ds-deload-preview');
+  var active = dsDeloadActive();
+  if(toggle) toggle.checked = active;
+  if(preview) preview.textContent = active
+    ? ("Active — day "+(dsDeloadDaysElapsed()+1)+" of 7. Step goal: "+effStepGoal()+" (was "+STEP_GOAL+"). Cut lift load ~30-40%, skip deep stretch-position lifts, easy/flat rides only, keep yoga daily.")
+    : "Off. Turning this on drops your step goal ~35% for 7 days and flags a lighter week across lifts and rides.";
+  if(badge) badge.style.display = active ? "" : "none";
+  if(badge) badge.textContent = "⏸ Deload — day "+(dsDeloadDaysElapsed()+1)+"/7";
+}
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
 var TREND_METRICS=[
   {key:"weight",  label:"Weight",   unit:"lbs", dir:"lower",   color:"#a78bfa", goal:function(){return GOAL_WEIGHT||0;}, get:function(d){return (d.weight!=null&&d.weight!=="")?d.weight:null;}},
@@ -193,7 +226,7 @@ var TREND_METRICS=[
     var s=d.meditation.reduce(function(a,x){return a+(+x.mins||0);},0);
     return s>0?s:null;
   }},
-  {key:"steps",   label:"Steps",     unit:"",    dir:"higher",  color:"#22c55e", goal:function(){return STEP_GOAL||10000;}, get:function(d){return (d.wellness&&d.wellness.steps>0)?d.wellness.steps:null;}}
+  {key:"steps",   label:"Steps",     unit:"",    dir:"higher",  color:"#22c55e", goal:function(){return effStepGoal()||10000;}, get:function(d){return (d.wellness&&d.wellness.steps>0)?d.wellness.steps:null;}}
 ];
 
 // EXERCISES, PRESET_FOODS, SUPPS injected just above this block (data.js)
@@ -617,7 +650,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -1365,7 +1398,7 @@ function renderWellness(){
   document.getElementById("rhr-in").value="";
   document.getElementById("bp-sys-in").value="";
   document.getElementById("bp-dia-in").value="";
-  var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/STEP_GOAL)*100,100)+"%";
+  var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/effStepGoal())*100,100)+"%";
   ["sleepQ","energy","mood"].forEach(function(f){
     var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
     document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
@@ -2057,7 +2090,7 @@ function dsRenderVarRotatePreview(){
   if(sample.length) out+='<br>This week, e.g.: '+sample.join(' · ');
   host.innerHTML=out;
 }
-function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 

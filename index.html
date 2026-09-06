@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=50">
+<link rel="stylesheet" href="styles.css?v=51">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-deload-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -841,6 +841,15 @@
         <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
+      <div class="te-section-hdr">⏸️ Deload Week</div>
+      <div class="card">
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Deload week active</span>
+          <input type="checkbox" id="ds-deload-toggle" onchange="dsSetDeload(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-deload-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
       <div class="te-section-hdr">🔁 Session Rotation</div>
       <div class="card">
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
@@ -1052,6 +1061,6 @@
   </div>
 </div>
 
-<script src="app.js?v=216"></script>
+<script src="app.js?v=217"></script>
 </body>
 </html>
