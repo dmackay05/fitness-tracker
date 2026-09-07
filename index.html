@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=52">
+<link rel="stylesheet" href="styles.css?v=53">
 </head>
 <body>
 
@@ -101,6 +101,7 @@
         <div style="display:flex;gap:8px;margin-bottom:14px">
           <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
           <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
+          <div class="eff-btn" id="trk-run" onclick="setTrackActivity('run')">🏃 Run</div>
           <div class="eff-btn" id="trk-ruck" onclick="setTrackActivity('ruck')">🎒 Ruck</div>
         </div>
         <input type="number" id="trk-ruck-lb" placeholder="pack weight (lb)" style="display:none;width:100%;margin-bottom:14px;font-size:13px;padding:9px"/>
@@ -397,6 +398,7 @@
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
             <select id="cardio-type" onchange="updateCardioHint()" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none">
               <option value="walk">Walk (~4.3 kcal/min)</option>
+              <option value="run">Run (~10.5 kcal/min)</option>
               <option value="ruck">Rucked Walk (~6.2 kcal/min)</option>
               <option value="ride">Bike Ride (~4.5 kcal/min)</option>
             </select>
@@ -1061,6 +1063,6 @@
   </div>
 </div>
 
-<script src="app.js?v=218"></script>
+<script src="app.js?v=219"></script>
 </body>
 </html>

@@ -4,6 +4,8 @@ var EXERCISES = [
   {name:"Mountain Bike Ride (30 min)",calories:275,type:"cardio"},
   {name:"Jump Rope (15 min)",calories:180,type:"cardio"},
   {name:"Walk (30 min)",calories:130,type:"cardio"},
+  {name:"Run/Walk Intervals (20 min)",calories:200,type:"cardio"},
+  {name:"Easy Run (20 min)",calories:210,type:"cardio"},
   {name:"Day 1 - Upper Push/Pull (bands)",calories:220,type:"strength"},
   {name:"Day 2 - Lower + Core (bands)",calories:240,type:"strength"},
   {name:"Day 3 - Upper Hypertrophy (bands)",calories:210,type:"strength"},
@@ -97,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v124 — 2026-09-06";
+var APP_BUILD = "v125 — 2026-09-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1114,7 +1116,7 @@ function addDropdownEx(){
   dsAddEx(day,ex);
   saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; document.getElementById("ex-last-hint").textContent=""; _clearExDetail("ex-sets","ex-reps","ex-load"); renderAll();
 }
-var CARDIO_RATES={walk:{perMin:4.3,label:"Walk"},ruck:{perMin:6.2,label:"Rucked Walk"},ride:{perMin:4.5,label:"Bike Ride"}};
+var CARDIO_RATES={walk:{perMin:4.3,label:"Walk"},ruck:{perMin:6.2,label:"Rucked Walk"},ride:{perMin:4.5,label:"Bike Ride"},run:{perMin:10.5,label:"Run"}};
 function updateCardioHint(){
   var t=document.getElementById("cardio-type"); if(!t) return;
   var r=CARDIO_RATES[t.value]||CARDIO_RATES.walk;
@@ -1539,11 +1541,11 @@ function trkTryRestore(){
     trk.active=true; trk.paused=true; // always resume paused — GPS watch needs a fresh user tap to reacquire cleanly
     trk.activity=s.activity||"ride"; trk.elapsedMs=(s.elapsedMs||0)+(s.paused?0:(Date.now()-(s.startTs||Date.now())));
     trk.distM=s.distM||0; trk.lastPt=s.lastPt||null; trk.startTs=Date.now(); trk.ruckLb=s.ruckLb||0;
-    var rideBtn=document.getElementById("trk-ride"), walkBtn=document.getElementById("trk-walk"), ruckBtn=document.getElementById("trk-ruck");
-    if(rideBtn&&walkBtn&&ruckBtn){ rideBtn.classList.toggle("sel",trk.activity==="ride"); walkBtn.classList.toggle("sel",trk.activity==="walk"); ruckBtn.classList.toggle("sel",trk.activity==="ruck"); }
-    var distEl=document.getElementById("trk-dist"); if(distEl) distEl.style.color = trk.activity==="ride" ? "#fb923c" : (trk.activity==="ruck" ? "#c4b5fd" : "#5eead4");
+    var rideBtn=document.getElementById("trk-ride"), walkBtn=document.getElementById("trk-walk"), ruckBtn=document.getElementById("trk-ruck"), runBtn=document.getElementById("trk-run");
+    if(rideBtn&&walkBtn&&ruckBtn){ rideBtn.classList.toggle("sel",trk.activity==="ride"); walkBtn.classList.toggle("sel",trk.activity==="walk"); ruckBtn.classList.toggle("sel",trk.activity==="ruck"); if(runBtn) runBtn.classList.toggle("sel",trk.activity==="run"); }
+    var distEl=document.getElementById("trk-dist"); if(distEl) distEl.style.color = trk.activity==="ride" ? "#fb923c" : (trk.activity==="ruck" ? "#c4b5fd" : (trk.activity==="run" ? "#f472b6" : "#5eead4"));
     var ruckLbEl=document.getElementById("trk-ruck-lb"); if(ruckLbEl){ ruckLbEl.style.display = trk.activity==="ruck" ? "block" : "none"; if(trk.ruckLb) ruckLbEl.value=trk.ruckLb; }
-    var ivlPanelR=document.getElementById('ivl-panel'); if(ivlPanelR) ivlPanelR.style.display = (trk.activity==="ride"||trk.activity==="walk") ? "block" : "none";
+    var ivlPanelR=document.getElementById('ivl-panel'); if(ivlPanelR) ivlPanelR.style.display = (trk.activity==="ride"||trk.activity==="walk"||trk.activity==="run") ? "block" : "none";
     var startBtn=document.getElementById("trk-start"), pauseBtn=document.getElementById("trk-pause"), finishBtn=document.getElementById("trk-finish");
     if(startBtn) startBtn.style.display="none";
     if(pauseBtn){ pauseBtn.style.display="block"; pauseBtn.textContent="Resume"; }
@@ -1559,11 +1561,12 @@ function setTrackActivity(a){
   document.getElementById("trk-ride").classList.toggle("sel",a==="ride");
   document.getElementById("trk-walk").classList.toggle("sel",a==="walk");
   var ruckBtn=document.getElementById("trk-ruck"); if(ruckBtn) ruckBtn.classList.toggle("sel",a==="ruck");
-  document.getElementById("trk-dist").style.color = a==="ride" ? "#fb923c" : (a==="ruck" ? "#c4b5fd" : "#5eead4");
+  var runBtn=document.getElementById("trk-run"); if(runBtn) runBtn.classList.toggle("sel",a==="run");
+  document.getElementById("trk-dist").style.color = a==="ride" ? "#fb923c" : (a==="ruck" ? "#c4b5fd" : (a==="run" ? "#f472b6" : "#5eead4"));
   var ruckLbEl=document.getElementById("trk-ruck-lb"); if(ruckLbEl) ruckLbEl.style.display = a==="ruck" ? "block" : "none";
-  // Intervals apply to rides and plain walks (steady pace is the point of a ruck, so skip there)
-  var ivlPanel=document.getElementById('ivl-panel'); if(ivlPanel) ivlPanel.style.display = (a==="ride"||a==="walk") ? "block" : "none";
-  var ivlHint=document.getElementById('ivl-hint'); if(ivlHint) ivlHint.textContent = a==="walk" ? "Great for interval walking — try 1:00 push / 1:30 ease" : "Optional push/ease surges";
+  // Intervals apply to rides, plain walks, and runs (steady pace is the point of a ruck, so skip there)
+  var ivlPanel=document.getElementById('ivl-panel'); if(ivlPanel) ivlPanel.style.display = (a==="ride"||a==="walk"||a==="run") ? "block" : "none";
+  var ivlHint=document.getElementById('ivl-hint'); if(ivlHint) ivlHint.textContent = a==="walk" ? "Great for interval walking — try 1:00 push / 1:30 ease" : (a==="run" ? "Run/walk intervals — try 1:00 push / 2:00 ease while building up" : "Optional push/ease surges");
   if(a==="ruck"){ ivlOff(); }
 }
 // ── RIDE INTERVALS (push/ease surge intervals layered on top of GPS tracking) ──
@@ -1579,7 +1582,7 @@ function ivlSetPreset(key){
   ivl.work=p.work; ivl.rest=p.rest; ivl.rounds=p.rounds; ivl.label=p.label; ivl.on=true; ivl.started=false;
   document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
   var btn=document.getElementById('ivl-preset-'+key); if(btn){btn.style.border='1px solid #fb923c';btn.style.background='#fb923c18';btn.style.color='#fb923c';}
-  if(trk.active && (trk.activity==='ride'||trk.activity==='walk') && !trk.paused) ivlBegin();
+  if(trk.active && (trk.activity==='ride'||trk.activity==='walk'||trk.activity==='run') && !trk.paused) ivlBegin();
   ivlRenderStatus();
 }
 function ivlSetCustom(){
@@ -1589,7 +1592,7 @@ function ivlSetCustom(){
   if(w<=0||r<=0||n<=0){ return; }
   ivl.work=w; ivl.rest=r; ivl.rounds=n; ivl.label=w+'s push / '+r+'s ease \u00d7 '+n; ivl.on=true; ivl.started=false;
   document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
-  if(trk.active && (trk.activity==='ride'||trk.activity==='walk') && !trk.paused) ivlBegin();
+  if(trk.active && (trk.activity==='ride'||trk.activity==='walk'||trk.activity==='run') && !trk.paused) ivlBegin();
   ivlRenderStatus();
 }
 function ivlOff(){
@@ -1673,7 +1676,7 @@ function trkStart(){
   trkReqWake();
   trk.watchId=navigator.geolocation.watchPosition(trkOnPos, trkOnErr, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
   trk.ticker=setInterval(trkTick,1000); trkTick();
-  if((trk.activity==='ride'||trk.activity==='walk') && ivl.on) ivlBegin(); else { ivl.phase=null; }
+  if((trk.activity==='ride'||trk.activity==='walk'||trk.activity==='run') && ivl.on) ivlBegin(); else { ivl.phase=null; }
   trkPersist();
 }
 function trkOnErr(e){
@@ -1689,7 +1692,7 @@ function trkOnPos(p){
     var d=_hav(trk.lastPt,pt);
     var dt=Math.max((pt.t-trk.lastPt.t)/1000,0.5);
     var spd=d/dt; // m/s
-    var cap   = trk.activity==="ride" ? 25 : 6;   // ~56mph ride / ~13mph walk-jog ceiling
+    var cap   = trk.activity==="ride" ? 25 : (trk.activity==="run" ? 8.5 : 6);   // ~56mph ride / ~19mph sprint ceiling / ~13mph walk ceiling
     var floor = trk.activity==="ride" ? 3 : 1;    // min meters per fix to count as real movement
     if(d>=floor && spd<=cap){ trk.distM+=d; trk.lastPt=pt; }   // real movement
     else if(spd>cap){ /* implausible jump — drop point, keep anchor */ }
@@ -1752,7 +1755,7 @@ function trkFinish(){
   trkCommit(miles,dur,"GPS tracked"+ivlNote,null,ivlData);
   trkReset();
   ivlOff();
-  var _lbl=trk.activity==="ride"?"ride":(trk.activity==="ruck"?"ruck":"walk");
+  var _lbl=trk.activity==="ride"?"ride":(trk.activity==="ruck"?"ruck":(trk.activity==="run"?"run":"walk"));
   trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+_lbl,"#5eead4");
   trk._finishing=false;
 }
@@ -1767,8 +1770,8 @@ function trkSaveManual(){
   document.getElementById("trk-m-miles").value=""; document.getElementById("trk-m-min").value="";
   var hrEl=document.getElementById("trk-m-hr"); if(hrEl) hrEl.value="";
   var zoneMsg="";
-  if(avgHr && trk.activity==="ride"){ var z=dsHrZone(avgHr); if(z) zoneMsg=" \u2014 "+z.zone+" ("+Math.round(z.pct)+"% max HR)"; }
-  var _lbl=trk.activity==="ride"?"ride":(trk.activity==="ruck"?"ruck":"walk");
+  if(avgHr && (trk.activity==="ride"||trk.activity==="run")){ var z=dsHrZone(avgHr); if(z) zoneMsg=" \u2014 "+z.zone+" ("+Math.round(z.pct)+"% max HR)"; }
+  var _lbl=trk.activity==="ride"?"ride":(trk.activity==="ruck"?"ruck":(trk.activity==="run"?"run":"walk"));
   trkStatus("✓ Saved "+miles.toFixed(2)+" mi "+_lbl+" (manual)"+zoneMsg,"#5eead4");
 }
 function trkCommit(miles,dur,source,avgHr,intervals){
@@ -1791,6 +1794,23 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     dsAddEx(day,{name:"Rucked Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"")+(lb?" · "+lb+" lb":""),calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min",load:lb?(lb+" lb"):""});
     if(miles>0 || dur>0){
       var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE*0.92) : Math.round(miles*STEP_CADENCE*20*0.92); // rucking cadence runs slightly slower under load
+      day.wellness=day.wellness||{};
+      day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
+      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
+    }
+  } else if(trk.activity==="run"){
+    // ~10.5 cal/min baseline jog pace; scale up modestly with pace once distance+duration are both known
+    var cals = dur ? calAdj(dur*10.5) : calAdj(miles*115);
+    var runMin = dur>0 ? dur : Math.round(miles*11); // fallback est. (~11 min/mi easy jog) if only distance was logged
+    var nm = "Run — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"");
+    if(avgHr){ var z=dsHrZone(avgHr); if(z) nm += " \u2014 "+z.zone; }
+    if(intervals) nm += " \u00b7 Run/walk: "+intervals.label+" ("+intervals.roundsDone+"/"+intervals.rounds+")";
+    var runEx={name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:runMin+" min"};
+    if(avgHr) runEx.avgHr=avgHr;
+    dsAddEx(day,runEx);
+    if(miles>0 || dur>0){
+      // running cadence runs faster than walking, ~1.15x steps/min at an easy jog
+      var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE*1.15) : Math.round(miles*STEP_CADENCE*11*1.15);
       day.wellness=day.wellness||{};
       day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
       var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
