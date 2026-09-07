@@ -97,7 +97,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v123 — 2026-09-06";
+var APP_BUILD = "v124 — 2026-09-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5235,6 +5235,12 @@ function dsItemState(id){ var d=dsDayState();
     }
     if(ex && !ex.partial) d[id].manualDone=true;
     if(!ex || ex.partial){ d[id]._reps=dsProgTarget(id); }
+    // Deload: pre-fill the load field with ~70% of last session's numeric weight,
+    // but only if nothing has already been seeded/entered for this item today.
+    if(!d[id]._load){
+      var deloadLoad=dsDeloadSuggestedLoad(id);
+      if(deloadLoad!=null) d[id]._load=deloadLoad;
+    }
   }
   if(!d[id].sets)d[id].sets=[];
   return d[id];
@@ -6108,6 +6114,31 @@ function dsSuggestNext(item,lt){
   }
   return null;
 }
+// Parse a numeric weight out of a load string like "35" or "35 lb" or "band 2".
+// Returns null if the load isn't a plain number (band names, bodyweight, etc. are left alone).
+function dsParseNumericLoad(loadStr){
+  if(loadStr==null) return null;
+  var s=String(loadStr).trim();
+  var m=s.match(/^(\d+(?:\.\d+)?)/);
+  if(!m) return null;
+  // bail on band-style labels that happen to start with a digit range like "2-3"
+  if(/[a-zA-Z]/.test(s.replace(m[1],''))===false || /lb|kg|#/.test(s)) return parseFloat(m[1]);
+  // plain number with no unit/letters at all (most common case in this app)
+  if(/^\d+(?:\.\d+)?$/.test(s)) return parseFloat(m[1]);
+  return null;
+}
+// During deload, suggest a load ~30% lighter than the most recent logged numeric weight
+// for this exercise. Returns a display string (e.g. "24.5") or null if no usable history
+// or the exercise isn't load-based (bands/bodyweight names aren't touched).
+function dsDeloadSuggestedLoad(id){
+  if(!dsDeloadActive()) return null;
+  var hist=dsHistoryN(id,1);
+  if(!hist.length) return null;
+  var last=dsParseNumericLoad(hist[hist.length-1].load);
+  if(last==null) return null;
+  var suggested=Math.round((last*0.7)*2)/2; // round to nearest 0.5
+  return String(suggested);
+}
 function dsMMSS(s){var m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
 function dsDots(id,target){var st=dsItemState(id);var done=st.sets.length;var n=Math.max(target,done);var h='';for(var i=0;i<n;i++){h+='<span class="ds-dot '+(i<done?'on':'')+'"></span>';}return h;}
 
@@ -6249,7 +6280,8 @@ function dsRenderItem(rawItem,idx){
     if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
       h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB Program updated: target now '+_prog.reps+' reps (was '+_prog.prevReps+'), based on your trend</div>';
     }
-    var loadFld = dsWantsLoad(item) ? '<input class="ds-wt" id="ds-load-'+item.id+'" placeholder="band / lb" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">' : '';
+    var _deloadFill = dsDeloadActive() && st._load && !st._loadTouched;
+    var loadFld = dsWantsLoad(item) ? '<input class="ds-wt'+(_deloadFill?' ds-wt-deload':'')+'" id="ds-load-'+item.id+'" placeholder="band / lb" title="'+(_deloadFill?'Suggested \u2014 ~30% below last session for deload week':'')+'" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">' : '';
     if(dsIsUnilateral(item)){
       h+='<div class="ds-logrow"><span class="ds-lbl">L</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-repsL-'+item.id+'" value="'+(st._repsL||10)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'L\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'L\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',1)">+</button></div>'
         +'<span class="ds-lbl" style="margin-left:8px">R</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-repsR-'+item.id+'" value="'+(st._repsR||10)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'R\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'R\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',1)">+</button></div>'
@@ -7084,7 +7116,7 @@ function dsMinInput(id,perMin){ var el=document.getElementById('ds-min-'+id); if
 function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var el=document.getElementById('ds-min-'+id); if(el)el.value=st.mins||raw.defMin||30; }
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
 function dsIsUnilateral(item){ return /\/side|\/leg/i.test(item.rx||''); }
-function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;dsSaveUI();} }
+function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;st._loadTouched=true;dsSaveUI();} }
 var DS_AUTOREG_REP_CEIL=20; // above this, stop adding bodyweight/band reps and suggest upping the load instead
 function dsAutoregulate(id){
   var st=dsItemState(id);
