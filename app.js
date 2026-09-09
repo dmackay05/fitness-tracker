@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v126 — 2026-09-08";
+var APP_BUILD = "v127 — 2026-09-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -915,6 +915,7 @@ function renderDash(){
     {value:Math.round(t.protein),max:GOALS.protein,color:"#5eead4",label:"Protein",unit:"g"},
     {value:Math.round(t.carbs),max:GOALS.carbs,color:"#a78bfa",label:"Carbs",unit:"g"},
     {value:Math.round(t.fat),max:GOALS.fat,color:"#fbbf24",label:"Fat",unit:"g"},
+    {value:Math.round(t.fiber),max:GOALS.fiber,color:"#4ade80",label:"Fiber",unit:"g"},
     {value:burned,max:GOALS.burned,color:"#fb923c",label:"Burned",unit:""}
   ]);
   var pr=GOALS.protein-Math.round(t.protein), hint=document.getElementById("protein-hint");
