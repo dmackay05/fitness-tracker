@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v128 — 2026-09-09";
+var APP_BUILD = "v129 — 2026-09-09";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -487,22 +487,26 @@ function fetchOverloadCache(){
 }
 // ── LOAD + MERGE FROM SHEET (sheet is source of truth on open/refresh) ───
 function fetchSheet(onRows){
-  if(!SHEETS_URL){ setTimeout(function(){ onRows(null,false); },0); return; }
+  if(!SHEETS_URL){ setTimeout(function(){ onRows(null,false,"no-url"); },0); return; }
   var done = false;
-  function finish(rows, ok){ if(done) return; done=true; onRows(rows,ok); }
+  function finish(rows, ok, why){ if(done) return; done=true; onRows(rows,ok,why); }
 
   // Timeout after 8 seconds regardless
-  var timeout = setTimeout(function(){ finish(null,false); }, 8000);
+  var timeout = setTimeout(function(){ finish(null,false,"timeout (8s, both fetch and JSONP fallback never resolved)"); }, 8000);
 
   fetch(SHEETS_URL+"?nocache="+Date.now())
-    .then(function(r){return r.json();})
+    .then(function(r){
+      if(!r.ok){ var e=new Error("HTTP "+r.status); e._httpStatus=r.status; throw e; }
+      return r.json();
+    })
     .then(function(rows){ clearTimeout(timeout); finish(rows,true); })
-    .catch(function(){
+    .catch(function(err){
+      var fetchErr = (err && err.message) ? err.message : String(err);
       // JSONP fallback
       var cb="ftCb_"+Date.now();
       window[cb]=function(rows){ clearTimeout(timeout); delete window[cb]; finish(rows,true); };
       var s=document.createElement("script");
-      s.onerror=function(){ delete window[cb]; finish(null,false); };
+      s.onerror=function(){ delete window[cb]; finish(null,false,"fetch failed (\""+fetchErr+"\") and JSONP <script> also failed to load"); };
       s.src=SHEETS_URL+"?callback="+cb+"&nocache="+Date.now();
       document.head.appendChild(s);
     });
@@ -1024,7 +1028,7 @@ function doRefresh(which){
   var icon=document.getElementById("refresh-icon-"+which);
   if(icon){ icon.style.transition="transform .6s ease"; icon.style.transform="rotate(360deg)";
     setTimeout(function(){icon.style.transition="none";icon.style.transform="rotate(0)";},650); }
-  fetchSheet(function(rows,ok){ if(ok&&rows) mergeRows(rows); renderAll(); });
+  fetchSheet(function(rows,ok,why){ if(ok&&rows){ mergeRows(rows); toast("✓ Synced"); } else if(typeof toast==="function"){ toast("Sync failed: "+(why||"unknown")); } renderAll(); });
 }
 
 // ── LOG: FOOD ───────────────────────────────────────────────────────────
@@ -2631,10 +2635,18 @@ if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL 
 if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
 fetchOverloadCache();
 _lastSheetPull=Date.now();
-fetchSheet(function(rows,ok){
-  if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets \u00b7 "+APP_BUILD;_bn.style.color="#4ade80";} }
-  else { renderAll(); if(_bn && SHEETS_URL){ _bn.textContent="Offline — using local data \u00b7 "+APP_BUILD; _bn.style.color="#f87171"; } }
-  if(_bn && SHEETS_URL) setTimeout(function(){ _bn.style.display="none"; },2200);
+fetchSheet(function(rows,ok,why){
+  if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets \u00b7 "+APP_BUILD;_bn.style.color="#4ade80"; _bn.onclick=function(){_bn.style.display="none";};} }
+  else {
+    renderAll();
+    if(_bn && SHEETS_URL){
+      _bn.textContent="Offline — using local data \u00b7 "+APP_BUILD+" — tap for details";
+      _bn.style.color="#f87171";
+      _bn.onclick=function(){ alert("Sync failure reason:\n\n"+(why||"unknown")+"\n\nURL: "+SHEETS_URL); };
+    }
+  }
+  // Only auto-hide on success; keep the failure banner up (and tappable) so the reason is readable
+  if(_bn && SHEETS_URL && ok) setTimeout(function(){ _bn.style.display="none"; },2200);
 });
 
 // ── PERIODIC BACKGROUND SYNC (every 3 minutes) ──────────────────────────
