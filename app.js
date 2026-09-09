@@ -41,36 +41,36 @@ var EXERCISES = [
 ];
 
 var PRESET_FOODS = [
-  {name:"3 Boiled Eggs",cal:210,protein:18,carbs:0,fat:15,fiber:0},
-  {name:"Greek Yogurt (1 cup)",cal:130,protein:18,carbs:9,fat:0,fiber:0},
-  {name:"Whey Protein Shake",cal:160,protein:27,carbs:6,fat:3,fiber:0},
-  {name:"Cottage Cheese (1 cup)",cal:200,protein:25,carbs:8,fat:4,fiber:0},
-  {name:"Chicken Breast (6 oz)",cal:275,protein:52,carbs:0,fat:6,fiber:0},
-  {name:"Salmon Fillet (6 oz)",cal:350,protein:40,carbs:0,fat:20,fiber:0},
-  {name:"Ground Turkey 93% (6 oz)",cal:220,protein:42,carbs:0,fat:6,fiber:0},
-  {name:"Quinoa (1 cup cooked)",cal:220,protein:8,carbs:40,fat:4,fiber:5},
-  {name:"Brown Rice (1 cup cooked)",cal:215,protein:5,carbs:45,fat:2,fiber:3.5},
-  {name:"Black Beans (1 cup)",cal:225,protein:15,carbs:40,fat:1,fiber:15},
-  {name:"Almonds (1 oz)",cal:165,protein:6,carbs:6,fat:14,fiber:3.5},
-  {name:"Walnuts (1 oz)",cal:185,protein:4,carbs:4,fat:18,fiber:2},
-  {name:"Whole Grain Toast (1 slice)",cal:80,protein:4,carbs:15,fat:1,fiber:2},
-  {name:"Avocado (half)",cal:120,protein:1,carbs:6,fat:11,fiber:5},
-  {name:"Super Smoothie (Clovis Farms)",cal:180,protein:6,carbs:34,fat:3,fiber:3},
-  {name:"Olive Oil (1 tbsp)",cal:120,protein:0,carbs:0,fat:14,fiber:0},
-  {name:"Feta Cheese (1 oz)",cal:75,protein:4,carbs:1,fat:6,fiber:0},
-  {name:"Shrimp (6 oz)",cal:165,protein:36,carbs:0,fat:2,fiber:0},
-  {name:"Lentils cooked (1 cup)",cal:230,protein:18,carbs:40,fat:1,fiber:16},
-  {name:"Pork Tenderloin (6 oz)",cal:200,protein:40,carbs:0,fat:4,fiber:0},
-  {name:"ON Gold Standard Whey (1 scoop)",cal:120,protein:24,carbs:3,fat:1,fiber:0},
-  {name:"Chia Seeds (1 tbsp)",cal:60,protein:2,carbs:5,fat:4,fiber:5},
-  {name:"Chickpeas (1 cup)",cal:270,protein:15,carbs:45,fat:4,fiber:12.5},
-  {name:"Raspberries (1 cup)",cal:65,protein:1,carbs:15,fat:1,fiber:8,note:"High fiber, lowest sugar of common berries — best pick for blood sugar management."},
-  {name:"Apple with skin (medium)",cal:95,protein:0,carbs:25,fat:0,fiber:4.5,note:"Slow-digesting fiber (skin-on) and portable — good grab-and-go snack."},
-  {name:"Broccoli (1 cup cooked)",cal:55,protein:4,carbs:11,fat:0,fiber:5},
-  {name:"Sweet Potato with skin (medium)",cal:115,protein:2,carbs:27,fat:0,fiber:4},
-  {name:"Blueberries (1 cup)",cal:85,protein:1,carbs:21,fat:0.5,fiber:3.5,note:"Highest anthocyanin content — best pick for reducing inflammation. MIND diet staple."},
-  {name:"Strawberries (1 cup)",cal:50,protein:1,carbs:12,fat:0.5,fiber:3,note:"Lowest calorie density of common fruits — good for volume/satiety per calorie."},
-  {name:"Banana (medium)",cal:105,protein:1,carbs:27,fat:0,fiber:3,note:"Fast-digesting carbs — best eaten right before a ride or lift for quick energy."}
+  {name:"3 Boiled Eggs",cal:210,protein:18,carbs:0,fat:15,fiber:0,sodium:190},
+  {name:"Greek Yogurt (1 cup)",cal:130,protein:18,carbs:9,fat:0,fiber:0,sodium:80},
+  {name:"Whey Protein Shake",cal:160,protein:27,carbs:6,fat:3,fiber:0,sodium:130},
+  {name:"Cottage Cheese (1 cup)",cal:200,protein:25,carbs:8,fat:4,fiber:0,sodium:900},
+  {name:"Chicken Breast (6 oz)",cal:275,protein:52,carbs:0,fat:6,fiber:0,sodium:130},
+  {name:"Salmon Fillet (6 oz)",cal:350,protein:40,carbs:0,fat:20,fiber:0,sodium:130},
+  {name:"Ground Turkey 93% (6 oz)",cal:220,protein:42,carbs:0,fat:6,fiber:0,sodium:150},
+  {name:"Quinoa (1 cup cooked)",cal:220,protein:8,carbs:40,fat:4,fiber:5,sodium:15},
+  {name:"Brown Rice (1 cup cooked)",cal:215,protein:5,carbs:45,fat:2,fiber:3.5,sodium:10},
+  {name:"Black Beans (1 cup)",cal:225,protein:15,carbs:40,fat:1,fiber:15,sodium:400,note:"Sodium assumes canned; rinse canned beans to cut it by roughly a third, or use dried/unsalted for near-zero."},
+  {name:"Almonds (1 oz)",cal:165,protein:6,carbs:6,fat:14,fiber:3.5,sodium:0},
+  {name:"Walnuts (1 oz)",cal:185,protein:4,carbs:4,fat:18,fiber:2,sodium:0},
+  {name:"Whole Grain Toast (1 slice)",cal:80,protein:4,carbs:15,fat:1,fiber:2,sodium:150},
+  {name:"Avocado (half)",cal:120,protein:1,carbs:6,fat:11,fiber:5,sodium:5},
+  {name:"Super Smoothie (Clovis Farms)",cal:180,protein:6,carbs:34,fat:3,fiber:3,sodium:0},
+  {name:"Olive Oil (1 tbsp)",cal:120,protein:0,carbs:0,fat:14,fiber:0,sodium:0},
+  {name:"Feta Cheese (1 oz)",cal:75,protein:4,carbs:1,fat:6,fiber:0,sodium:310},
+  {name:"Shrimp (6 oz)",cal:165,protein:36,carbs:0,fat:2,fiber:0,sodium:200},
+  {name:"Lentils cooked (1 cup)",cal:230,protein:18,carbs:40,fat:1,fiber:16,sodium:5},
+  {name:"Pork Tenderloin (6 oz)",cal:200,protein:40,carbs:0,fat:4,fiber:0,sodium:110},
+  {name:"ON Gold Standard Whey (1 scoop)",cal:120,protein:24,carbs:3,fat:1,fiber:0,sodium:130},
+  {name:"Chia Seeds (1 tbsp)",cal:60,protein:2,carbs:5,fat:4,fiber:5,sodium:0},
+  {name:"Chickpeas (1 cup)",cal:270,protein:15,carbs:45,fat:4,fiber:12.5,sodium:350,note:"Sodium assumes canned; rinse to cut it, or use dried/unsalted for near-zero."},
+  {name:"Raspberries (1 cup)",cal:65,protein:1,carbs:15,fat:1,fiber:8,sodium:0,note:"High fiber, lowest sugar of common berries — best pick for blood sugar management."},
+  {name:"Apple with skin (medium)",cal:95,protein:0,carbs:25,fat:0,fiber:4.5,sodium:0,note:"Slow-digesting fiber (skin-on) and portable — good grab-and-go snack."},
+  {name:"Broccoli (1 cup cooked)",cal:55,protein:4,carbs:11,fat:0,fiber:5,sodium:30},
+  {name:"Sweet Potato with skin (medium)",cal:115,protein:2,carbs:27,fat:0,fiber:4,sodium:40},
+  {name:"Blueberries (1 cup)",cal:85,protein:1,carbs:21,fat:0.5,fiber:3.5,sodium:0,note:"Highest anthocyanin content — best pick for reducing inflammation. MIND diet staple."},
+  {name:"Strawberries (1 cup)",cal:50,protein:1,carbs:12,fat:0.5,fiber:3,sodium:0,note:"Lowest calorie density of common fruits — good for volume/satiety per calorie."},
+  {name:"Banana (medium)",cal:105,protein:1,carbs:27,fat:0,fiber:3,sodium:0,note:"Fast-digesting carbs — best eaten right before a ride or lift for quick energy."}
 ];
 
 var SUPPS = []; // loaded from store after the storage layer is defined (see config block)
@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v127 — 2026-09-08";
+var APP_BUILD = "v128 — 2026-09-09";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -116,6 +116,7 @@ var GOALS = {
   carbs:   parseInt(store.get('ft_carbs'))   || 200,
   fat:     parseInt(store.get('ft_fat'))     || 65,
   fiber:   parseInt(store.get('ft_fiber'))   || 30,
+  sodium:  parseInt(store.get('ft_sodium'))  || 2300,
   burned:  parseInt(store.get('ft_burned'))  || 400
 };
 
@@ -202,6 +203,7 @@ var TREND_METRICS=[
   {key:"cal",     label:"Calories", unit:"kcal",dir:"neutral", color:"#5eead4", goal:function(){return GOALS.calActive||GOALS.cal||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.cal||0);},0):null;}},
   {key:"protein", label:"Protein",  unit:"g",   dir:"higher",  color:"#fbbf24", goal:function(){return GOALS.protein||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.protein||0);},0):null;}},
   {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
+  {key:"sodium",  label:"Sodium",   unit:"mg",  dir:"lower",   color:"#f472b6", goal:function(){return GOALS.sodium||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.sodium||0);},0);return s>0?Math.round(s):null;}},
   {key:"burned",  label:"Burned",   unit:"kcal",dir:"higher",  color:"#fb923c", goal:function(){return GOALS.burned||0;}, get:function(d){return (d.exercises&&d.exercises.length)?d.exercises.reduce(function(a,x){return a+(+x.calories||0);},0):null;}},
   {key:"water",   label:"Water",    unit:"oz",  dir:"higher",  color:"#38bdf8", goal:function(){return WATER_GOAL||0;}, get:function(d){return (d.waterOz>0)?d.waterOz:null;}},
   {key:"traintime", label:"Time Trained", unit:"min", dir:"neutral", color:"#cfe84f", get:function(d){return (d.exercises&&d.exercises.length)?Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60):null;}},
@@ -297,8 +299,8 @@ function getDay(key){
 }
 function getTotals(){
   return getDay().foods.reduce(function(a,x){
-    return {cal:a.cal+(+x.cal||0),protein:a.protein+(+x.protein||0),carbs:a.carbs+(+x.carbs||0),fat:a.fat+(+x.fat||0),fiber:a.fiber+(+x.fiber||0)};
-  },{cal:0,protein:0,carbs:0,fat:0,fiber:0});
+    return {cal:a.cal+(+x.cal||0),protein:a.protein+(+x.protein||0),carbs:a.carbs+(+x.carbs||0),fat:a.fat+(+x.fat||0),fiber:a.fiber+(+x.fiber||0),sodium:a.sodium+(+x.sodium||0)};
+  },{cal:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
 }
 function getBurned(){ return getDay().exercises.reduce(function(a,e){return a+(+e.calories||0);},0); }
 function getLatestWeight(){
@@ -540,8 +542,8 @@ function rowToDay(row){
   if(row["Bone Mass (lbs)"]!==undefined && row["Bone Mass (lbs)"]!=="") remote.bodyComp.bone=parseFloat(row["Bone Mass (lbs)"]);
   if(row["Habits Completed"]) String(row["Habits Completed"]).split(",").forEach(function(n){ n=n.trim(); if(n) remote.habits[n]=true; });
   if(row["Foods"]) row["Foods"].split(",").forEach(function(f){ f=f.trim(); if(!f) return;
-    var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?(?:\|t(\d{13}))?(?:\|m(Breakfast|Lunch|Dinner|Snack))?)?\)$/);
-    if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:(m[7]||"sheet_"+f)}; if(m[6]) _pf.fiber=parseFloat(m[6]); if(m[8]) _pf.mealTag=m[8]; remote.foods.push(_pf); }
+    var m=f.match(/^(.+)\((\d+(?:\.\d+)?)\s*kcal(?:\|(\d+(?:\.\d+)?)p\|(\d+(?:\.\d+)?)c\|(\d+(?:\.\d+)?)f(?:\|(\d+(?:\.\d+)?)fb)?(?:\|(\d+(?:\.\d+)?)na)?(?:\|t(\d{13}))?(?:\|m(Breakfast|Lunch|Dinner|Snack))?)?\)$/);
+    if(m){ var _pf={name:m[1].trim(),cal:parseFloat(m[2]),protein:m[3]?parseFloat(m[3]):0,carbs:m[4]?parseFloat(m[4]):0,fat:m[5]?parseFloat(m[5]):0,id:(m[8]||"sheet_"+f)}; if(m[6]) _pf.fiber=parseFloat(m[6]); if(m[7]) _pf.sodium=parseFloat(m[7]); if(m[9]) _pf.mealTag=m[9]; remote.foods.push(_pf); }
     else remote.foods.push({name:f,cal:0,protein:0,carbs:0,fat:0,id:"sheet_"+f}); });
   if(row["Exercises"]){
     // Split on commas, but re-join fragments until parentheses balance —
@@ -1043,11 +1045,13 @@ function addCustomFood(){
   var n=document.getElementById("cf-name").value.trim(), c=+document.getElementById("cf-cal").value||0;
   if(!n||!c) return;
   var _cfb=+document.getElementById("cf-fiber").value||0;
+  var _cfn=+document.getElementById("cf-sodium").value||0;
   var _cfo={name:n,cal:c,protein:+document.getElementById("cf-protein").value||0,
     carbs:+document.getElementById("cf-carbs").value||0,fat:+document.getElementById("cf-fat").value||0};
   if(_cfb) _cfo.fiber=_cfb;
+  if(_cfn) _cfo.sodium=_cfn;
   addFoodObj(_cfo);
-  ["cf-name","cf-cal","cf-protein","cf-carbs","cf-fat","cf-fiber"].forEach(function(i){document.getElementById(i).value="";});
+  ["cf-name","cf-cal","cf-protein","cf-carbs","cf-fat","cf-fiber","cf-sodium"].forEach(function(i){document.getElementById(i).value="";});
 }
 function removeFood(id){ var day=getDay(); day.foods=day.foods.filter(function(f){return f.id!=id;}); saveDay(day); renderAll(); }
 var editingFoodId=null;
@@ -1060,6 +1064,7 @@ function editFood(id){
   document.getElementById("ef-carbs").value=(f.carbs||0);
   document.getElementById("ef-fat").value=(f.fat||0);
   document.getElementById("ef-fiber").value=(f.fiber||"");
+  document.getElementById("ef-sodium").value=(f.sodium||"");
   document.getElementById("food-edit-modal").style.display="flex";
 }
 function closeFoodEdit(){ editingFoodId=null; document.getElementById("food-edit-modal").style.display="none"; }
@@ -1074,6 +1079,7 @@ function saveFoodEdit(){
   f.carbs=+document.getElementById("ef-carbs").value||0;
   f.fat=+document.getElementById("ef-fat").value||0;
   var _fb=+document.getElementById("ef-fiber").value||0; if(_fb) f.fiber=_fb; else delete f.fiber;
+  var _fn=+document.getElementById("ef-sodium").value||0; if(_fn) f.sodium=_fn; else delete f.sodium;
   saveDay(day); closeFoodEdit(); renderAll();
 }
 function renderFoodLog(){
@@ -1081,14 +1087,15 @@ function renderFoodLog(){
   document.getElementById("log-title").textContent=isToday()?"Today's Food Log":prettyDate(activeDate)+" Food";
   el.innerHTML = (!day.foods.length)?'<div class="empty">Nothing logged yet</div>':
     day.foods.map(function(f){return '<details class="log-row"><summary class="log-row-sum"><span class="log-row-name">'+f.name+'</span>'+
-      '<span class="log-row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+'</span></summary>'+
+      '<span class="log-row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+(+f.sodium?' · '+Math.round(f.sodium)+'mg Na':'')+'</span></summary>'+
       '<div class="log-row-actions"><button onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="font-size:20px;line-height:1;padding:4px 12px;border-radius:8px;background:'+(isFavObj(f)?"#fbbf2422":"transparent")+';border:1px solid '+(isFavObj(f)?"#fbbf24":"#3a3a58")+';color:'+(isFavObj(f)?"#fbbf24":"#6b6b80")+'">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
       '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></details>';}).join("");
   var t=getTotals();
   document.getElementById("macro-bars").innerHTML=[
     {l:"Calories",v:t.cal,g:GOALS.cal,c:"#5eead4",u:""},{l:"Protein",v:Math.round(t.protein),g:GOALS.protein,c:"#a78bfa",u:"g"},
     {l:"Carbs",v:Math.round(t.carbs),g:GOALS.carbs,c:"#fbbf24",u:"g"},{l:"Fat",v:Math.round(t.fat),g:GOALS.fat,c:"#fb923c",u:"g"},
-    {l:"Fiber",v:Math.round(t.fiber*10)/10,g:GOALS.fiber,c:"#4ade80",u:"g",hi:true}
+    {l:"Fiber",v:Math.round(t.fiber*10)/10,g:GOALS.fiber,c:"#4ade80",u:"g",hi:true},
+    {l:"Sodium",v:Math.round(t.sodium),g:GOALS.sodium,c:"#f472b6",u:"mg"}
   ].map(function(m){return '<div class="mrow"><div class="mlrow"><span>'+m.l+'</span><span>'+m.v+m.u+' / '+m.g+m.u+'</span></div>'+
     '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g&&!m.hi?"#ff6b6b":m.c)+'"></div></div></div>';}).join("")+
     '<div style="font-size:10px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g (carbs − fiber)</div>';
@@ -1884,7 +1891,7 @@ function saveHealthSettings(){
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
   var gw=parseFloat(g("ft-goal-weight"))||0; store.set("ft_goal_weight",gw||""); GOAL_WEIGHT=gw;
   [["cal-rest","calRest"],["cal-recovery","calRecovery"],["cal-active","calActive"],["cal-ride","calRide"]].forEach(function(pair){ var v=parseInt(g("ft-"+pair[0]))||0; if(v>0){ store.set("ft_"+pair[0].replace("-","_"),v); GOALS[pair[1]]=v; } });
-  ["protein","carbs","fat","fiber","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
+  ["protein","carbs","fat","fiber","sodium","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
   var w=parseInt(g("ft-water"))||0; if(w>0){ store.set("ft_water",w); WATER_GOAL=w; }
   var am=parseInt(g("ft-activity"))||0; if(am>0){ store.set("ft_activity_goal",am); ACTIVITY_GOAL=am; }
   var sg=parseInt(g("ft-step-goal"))||0; if(sg>0){ store.set("ft_step_goal",sg); STEP_GOAL=sg; }
@@ -1921,7 +1928,7 @@ function initHealthSettings(){
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal-rest", GOALS.calRest); setv("ft-cal-recovery", GOALS.calRecovery); setv("ft-cal-active", GOALS.calActive); setv("ft-cal-ride", GOALS.calRide); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
-  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-step-goal", STEP_GOAL); setv("ft-cadence", STEP_CADENCE); setv("ft-age", USER_AGE||""); setv("ft-maxhr", USER_MAXHR||"");
+  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-sodium", GOALS.sodium); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-step-goal", STEP_GOAL); setv("ft-cadence", STEP_CADENCE); setv("ft-age", USER_AGE||""); setv("ft-maxhr", USER_MAXHR||"");
   var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
@@ -2224,7 +2231,7 @@ function dsMealTagSet(tag){
   if(el){ Array.prototype.forEach.call(el.children, function(btn){ btn.classList.toggle("on", btn.getAttribute("data-tag")===tag); }); }
 }
 function _foodKey(f){ return (f.name||"").toLowerCase().trim()+"|"+(+f.cal||0); }
-function _foodCopy(f){ var o={name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; if(+f.fiber) o.fiber=+f.fiber; if(f.fdcId) o.fdcId=f.fdcId; if(+f.grams) o.grams=+f.grams; return o; }
+function _foodCopy(f){ var o={name:f.name,cal:+f.cal||0,protein:+f.protein||0,carbs:+f.carbs||0,fat:+f.fat||0}; if(+f.fiber) o.fiber=+f.fiber; if(+f.sodium) o.sodium=+f.sodium; if(f.fdcId) o.fdcId=f.fdcId; if(+f.grams) o.grams=+f.grams; return o; }
 function isFavObj(f){ var k=_foodKey(f); return loadFav().some(function(x){return _foodKey(x)===k;}); }
 function addFoodObj(f){ var day=getDay(); var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); o.mealTag=dsMealTagGet(); day.foods.push(o); saveDay(day); renderAll(); }
 
@@ -2712,8 +2719,8 @@ function usdaRemoveCached(){
 // Same nutrient mapping as the Python target_nutrients; handles both the
 // Search schema (nutrientName/value) and Details schema (nutrient.name/amount)
 function usdaExtract(foodNutrients){
-  var p={cal:0,protein:0,fat:0,carbs:0,fiber:0}, gotKcal=false, atwater=0;
-  var map={"Protein":"protein","Total lipid (fat)":"fat","Carbohydrate, by difference":"carbs","Fiber, total dietary":"fiber"};
+  var p={cal:0,protein:0,fat:0,carbs:0,fiber:0,sodium:0}, gotKcal=false, atwater=0;
+  var map={"Protein":"protein","Total lipid (fat)":"fat","Carbohydrate, by difference":"carbs","Fiber, total dietary":"fiber","Sodium, Na":"sodium"};
   (foodNutrients||[]).forEach(function(item){
     var ni=item.nutrient||{};
     var name=ni.name||item.nutrientName||"";
@@ -2728,7 +2735,7 @@ function usdaExtract(foodNutrients){
 }
 function usdaScale(per100,grams){
   var s=grams/100.0, r=function(n){return Math.round(n*10)/10;};
-  return {cal:r(per100.cal*s),protein:r(per100.protein*s),fat:r(per100.fat*s),carbs:r(per100.carbs*s),fiber:r(per100.fiber*s)};
+  return {cal:r(per100.cal*s),protein:r(per100.protein*s),fat:r(per100.fat*s),carbs:r(per100.carbs*s),fiber:r(per100.fiber*s),sodium:r(per100.sodium*s)};
 }
 function _uEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function _uR1(n){ return (Math.round((+n||0)*10)/10).toString().replace(/\.0$/,""); }
@@ -2774,10 +2781,11 @@ function usdaPick(i){
 function usdaSetG(g){ document.getElementById("usda-grams").value=g; usdaPreview(); }
 function usdaPreview(){
   var g=parseFloat(document.getElementById("usda-grams").value)||0;
-  var p=_usdaSel?usdaScale(_usdaSel.per100,g):{cal:0,protein:0,fat:0,carbs:0,fiber:0};
+  var p=_usdaSel?usdaScale(_usdaSel.per100,g):{cal:0,protein:0,fat:0,carbs:0,fiber:0,sodium:0};
   document.getElementById("usda-pv-cal").textContent=Math.round(p.cal)+" kcal";
   document.getElementById("usda-pv-macros").textContent="P "+_uR1(p.protein)+"g · C "+_uR1(p.carbs)+"g · F "+_uR1(p.fat)+"g";
   document.getElementById("usda-pv-fiber").textContent=p.fiber?("Fiber "+_uR1(p.fiber)+"g · Net carbs "+_uR1(Math.max(0,p.carbs-p.fiber))+"g"):"";
+  var _pvNa=document.getElementById("usda-pv-sodium"); if(_pvNa) _pvNa.textContent=p.sodium?("Sodium "+Math.round(p.sodium)+"mg"):"";
 }
 function usdaClose(){ document.getElementById("usda-modal").style.display="none"; _usdaSel=null; }
 function usdaLog(){
@@ -2788,7 +2796,7 @@ function usdaLog(){
   // Strip commas/pipes from USDA names — the sheet's Foods column is
   // comma-joined and pipe-delimited, so they'd corrupt the round-trip.
   var clean=_usdaSel.name.replace(/\s*,\s*/g," ").replace(/\|/g," ").trim();
-  addFoodObj({ name:clean+" ("+_uR1(g)+"g)", cal:p.cal, protein:p.protein, carbs:p.carbs, fat:p.fat, fiber:p.fiber, grams:g, fdcId:_usdaSel.fdcId });
+  addFoodObj({ name:clean+" ("+_uR1(g)+"g)", cal:p.cal, protein:p.protein, carbs:p.carbs, fat:p.fat, fiber:p.fiber, sodium:p.sodium, grams:g, fdcId:_usdaSel.fdcId });
   // Cache for My USDA Foods + remember this portion
   var key=_usdaSel.cacheKey||usdaCacheKey(_usdaSel.fdcId,clean);
   USDA_CACHE[key]={ name:clean, fdcId:_usdaSel.fdcId||"", per100:_usdaSel.per100, lastGrams:g, t:Date.now() };
@@ -6556,7 +6564,7 @@ function dsBuildFoodExportText(key){
     return label+" ("+key+")\nNo food logged yet.";
   }
   var groups = {}; DS_FOOD_EXPORT_ORDER.forEach(function(w){ groups[w] = []; });
-  var totals = {cal:0, protein:0, carbs:0, fat:0, fiber:0};
+  var totals = {cal:0, protein:0, carbs:0, fat:0, fiber:0, sodium:0};
   foods.forEach(function(f){
     var win;
     if(f.mealTag && groups.hasOwnProperty(f.mealTag)){
@@ -6570,7 +6578,7 @@ function dsBuildFoodExportText(key){
     if(!groups[win]) groups[win]=[];
     groups[win].push(f);
     totals.cal += (+f.cal||0); totals.protein += (+f.protein||0);
-    totals.carbs += (+f.carbs||0); totals.fat += (+f.fat||0); totals.fiber += (+f.fiber||0);
+    totals.carbs += (+f.carbs||0); totals.fat += (+f.fat||0); totals.fiber += (+f.fiber||0); totals.sodium += (+f.sodium||0);
   });
   var lines = [];
   lines.push(label+" \u2014 Food Log ("+key+")");
@@ -6585,13 +6593,14 @@ function dsBuildFoodExportText(key){
       wCal+=(+f.cal||0); wP+=(+f.protein||0); wC+=(+f.carbs||0); wF+=(+f.fat||0);
       var bits = [Math.round(+f.cal||0)+" kcal", Math.round(+f.protein||0)+"g P", Math.round(+f.carbs||0)+"g C", Math.round(+f.fat||0)+"g F"];
       if(+f.fiber) bits.push(Math.round(+f.fiber)+"g Fb");
+      if(+f.sodium) bits.push(Math.round(+f.sodium)+"mg Na");
       lines.push("\u2022 "+f.name+" \u2014 "+bits.join(" \u00b7 "));
     });
     lines.push("  Subtotal: "+Math.round(wCal)+" kcal \u00b7 "+Math.round(wP)+"g P \u00b7 "+Math.round(wC)+"g C \u00b7 "+Math.round(wF)+"g F");
     lines.push("");
   });
   lines.push("DAILY TOTAL:");
-  lines.push(Math.round(totals.cal)+" kcal \u00b7 "+Math.round(totals.protein)+"g protein \u00b7 "+Math.round(totals.carbs)+"g carbs \u00b7 "+Math.round(totals.fat)+"g fat"+(totals.fiber?(" \u00b7 "+Math.round(totals.fiber)+"g fiber"):""));
+  lines.push(Math.round(totals.cal)+" kcal \u00b7 "+Math.round(totals.protein)+"g protein \u00b7 "+Math.round(totals.carbs)+"g carbs \u00b7 "+Math.round(totals.fat)+"g fat"+(totals.fiber?(" \u00b7 "+Math.round(totals.fiber)+"g fiber"):"")+(totals.sodium?(" \u00b7 "+Math.round(totals.sodium)+"mg sodium"):""));
   return lines.join("\n");
 }
 function dsShowFoodExport(){

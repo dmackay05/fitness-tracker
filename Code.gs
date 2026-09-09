@@ -15,9 +15,13 @@
 //   • Foods column now carries fiber when present: Name (240 kcal|3p|13c|22f|10.1fb)
 //     Old-format entries are unaffected; the app parses both.
 //   • New "Food Detail" sheet: one row per logged food (Date, Food, Grams,
-//     FDC ID, Calories, Protein, Carbs, Fat, Fiber, Net Carbs) — flat and
-//     typed for Tableau / pandas. Rows are replaced per-date on each push,
+//     FDC ID, Calories, Protein, Carbs, Fat, Fiber, Net Carbs, Sodium) — flat
+//     and typed for Tableau / pandas. Rows are replaced per-date on each push,
 //     matching the upsert philosophy of the other sheets.
+//
+// v7 CHANGES:
+//   • Foods column may also carry sodium: Name (240 kcal|3p|13c|22f|10.1fb|450na)
+//   • New "Sodium (mg)" daily column, appended at the end.
 //
 // v3 CHANGES (Biceps measurement):
 //   • Added "Biceps (in)" to Daily Log and Measurements headers, appended
@@ -60,7 +64,8 @@ var DAILY_HEADERS = [
   "Biceps (in)",                 // v3: appended at the end, same reasoning
   "Resting HR (bpm)","BP Systolic (mmHg)","BP Diastolic (mmHg)",  // v4: appended at the end, same reasoning
   "Body Fat (%)","Muscle (lbs)","Body Water (%)","Bone Mass (lbs)",  // v5: appended at the end, same reasoning
-  "Habits Completed"  // v6: appended at the end, same reasoning
+  "Habits Completed",  // v6: appended at the end, same reasoning
+  "Sodium (mg)"         // v7: appended at the end, same reasoning
 ];
 
 
@@ -72,7 +77,7 @@ var WORKOUT_HEADERS  = ["Date","Exercises Completed","Exercise Count"];
 var OVERLOAD_HEADERS = ["Row Key","Exercise ID","Exercise","Date","Band / Weight","Reps","Sets","RIR"];
 var LAB_HEADERS      = ["Date","A1c (%)","HDL (mg/dL)","LDL (mg/dL)","Triglycerides (mg/dL)","Notes"];
 var FOOD_DETAIL_HEADERS = ["Date","Food","Grams","FDC ID","Calories",
-                          "Protein (g)","Carbs (g)","Fat (g)","Fiber (g)","Net Carbs (g)"];
+                          "Protein (g)","Carbs (g)","Fat (g)","Fiber (g)","Net Carbs (g)","Sodium (mg)"];
 
 
 
@@ -289,6 +294,10 @@ function processDailyData(ss, data) {
     // v6: Habits Completed, appended at the end (same reasoning) — comma-joined habit names
     row.push(habitsDone.join(", "));
 
+    // v7: Sodium, appended at the end (same reasoning)
+    var sodiumSum = realFoods.reduce(function(a, f) { return a + (parseFloat(f.sodium) || 0); }, 0);
+    row.push(sodiumSum > 0 ? Math.round(sodiumSum) : "");
+
 
 
 
@@ -339,6 +348,8 @@ function foodToStr_(f) {
         + Math.round(f.fat     || 0) + "f";
   var fb = parseFloat(f.fiber) || 0;
   if (fb > 0) s += "|" + (Math.round(fb * 10) / 10) + "fb";
+  var na = parseFloat(f.sodium) || 0;
+  if (na > 0) s += "|" + Math.round(na) + "na";
   var tsMatch = String(f.id || "").match(/^(\d{13})/);
   if (tsMatch) s += "|t" + tsMatch[1];
   if (f.mealTag && /^(Breakfast|Lunch|Dinner|Snack)$/.test(f.mealTag)) s += "|m" + f.mealTag;
@@ -383,14 +394,16 @@ function writeFoodDetail_(ss, data) {
         var m = String(f.name).match(/\((\d+(?:\.\d+)?)g\)/);
         if (m) grams = parseFloat(m[1]);
       }
-      var carbs = parseFloat(f.carbs) || 0;
-      var fiber = parseFloat(f.fiber) || 0;
+      var carbs  = parseFloat(f.carbs)  || 0;
+      var fiber  = parseFloat(f.fiber)  || 0;
+      var sodium = parseFloat(f.sodium) || 0;
       fresh.push([
         dateKey, f.name || "", grams || "", f.fdcId || "",
         Math.round(parseFloat(f.cal) || 0),
         round1_(f.protein), round1_(carbs), round1_(f.fat),
         fiber ? round1_(fiber) : "",
-        fiber ? round1_(Math.max(0, carbs - fiber)) : ""
+        fiber ? round1_(Math.max(0, carbs - fiber)) : "",
+        sodium ? Math.round(sodium) : ""
       ]);
     });
   });
