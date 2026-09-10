@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v132 — 2026-09-09";
+var APP_BUILD = "v133 — 2026-09-09";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -112,6 +112,7 @@ var GOALS = {
   calActive:   parseInt(store.get('ft_cal_active'))   || 2250,
   calRide:     parseInt(store.get('ft_cal_ride'))      || 2350,
   calRecovery: parseInt(store.get('ft_cal_recovery'))  || 2200,
+  calMaint:    parseInt(store.get('ft_cal_maint'))     || 2600,
   protein: parseInt(store.get('ft_protein')) || 170,
   carbs:   parseInt(store.get('ft_carbs'))   || 200,
   fat:     parseInt(store.get('ft_fat'))     || 65,
@@ -129,6 +130,7 @@ function dayTypeForKey(dateKey){
   return DAY_TYPE_MAP[d.getDay()] || "active";
 }
 function calGoalForKey(dateKey){
+  if(dsMaintActive()) return GOALS.calMaint||2600;
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return GOALS.calRest;
   if(t==="ride") return GOALS.calRide;
@@ -136,6 +138,7 @@ function calGoalForKey(dateKey){
   return GOALS.calActive;
 }
 function calGoalLabelForKey(dateKey){
+  if(dsMaintActive()) return "Maintenance week";
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return "Rest day";
   if(t==="ride") return "Ride day";
@@ -190,6 +193,36 @@ function dsRenderDeloadUI(){
     : "Off. Turning this on drops your step goal ~35% for 7 days and flags a lighter week across lifts and rides.";
   if(badge) badge.style.display = active ? "" : "none";
   if(badge) badge.textContent = "⏸ Deload — day "+(dsDeloadDaysElapsed()+1)+"/7";
+}
+
+// ── MAINTENANCE WEEK — manual toggle, auto-expires after 7 days ─────────────
+// Recomp break: one week at measured maintenance every 4-6 weeks to counter
+// adaptive thermogenesis and let training intensity/recovery catch up.
+var MAINT_START = store.get('ft_maint_start') || null;
+function dsMaintDaysElapsed(){
+  if(!MAINT_START) return 0;
+  var ms = Date.now() - keyToDate(MAINT_START).getTime();
+  return Math.floor(ms/86400000);
+}
+function dsMaintActive(){ return !!MAINT_START && dsMaintDaysElapsed() < 7; }
+function dsMaintDaysLeft(){ return dsMaintActive() ? (7 - dsMaintDaysElapsed()) : 0; }
+function dsSetMaint(on){
+  if(on){ MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START); }
+  else { MAINT_START = null; store.remove('ft_maint_start'); }
+  try{ renderAll(); }catch(e){}
+  dsRenderMaintUI();
+}
+function dsRenderMaintUI(){
+  var badge = document.getElementById('ds-maint-badge');
+  var toggle = document.getElementById('ds-maint-toggle');
+  var preview = document.getElementById('ds-maint-preview');
+  var active = dsMaintActive();
+  if(toggle) toggle.checked = active;
+  if(preview) preview.textContent = active
+    ? ("Active — day "+(dsMaintDaysElapsed()+1)+" of 7. Calorie target: "+(GOALS.calMaint||2600)+" every day this week (was periodized "+GOALS.calRest+"–"+GOALS.calRide+"). Keep protein at 170g+ or a bit higher. Train as normal.")
+    : "Off. Turning this on sets every day's calorie target to your measured maintenance ("+(GOALS.calMaint||2600)+") for 7 days, then auto-reverts to your normal periodized targets.";
+  if(badge) badge.style.display = active ? "" : "none";
+  if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1)+"/7";
 }
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
 var TREND_METRICS=[
@@ -658,7 +691,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -2122,7 +2155,7 @@ function dsRenderVarRotatePreview(){
   if(sample.length) out+='<br>This week, e.g.: '+sample.join(' · ');
   host.innerHTML=out;
 }
-function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
