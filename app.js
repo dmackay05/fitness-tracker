@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v133 — 2026-09-09";
+var APP_BUILD = "v134 — 2026-09-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4434,10 +4434,16 @@ var DS_SESSIONS={
       {id:'wed-rotslam',name:'Rotational Slam',demo:'slam',slot:'Power (bonus) · Obliques',target:'Obliques',equip:'10 lb slam ball',rx:'3×8/side',cal:30,cue:'Hips lead the rotation — arms just guide it. Moved from Wednesday — more dynamic than the static Pallof rotation above',log:'setsreps',sets:3,
         variants:[{name:'Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern as the slam, no ballistic force at all',demo:'pallof'}]}]},
 
-  sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost',accent:'var(--blue)',
+  sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost — or swap in the Growth Circuit below',accent:'var(--blue)',
     moves:[
       {id:'sat-ride',name:'Mountain Bike Ride',demo:'ride',slot:'Cardio',target:'Vigorous aerobic effort',equip:'Roadmaster · compression sleeve',rx:'30–60 min',cal:0,cue:'Neighborhood hills push this into vigorous zone most of the ride — that\'s expected, not a sign you\'re overdoing it. Wear the compression sleeve.',log:'cardio',perMin:4.5,defMin:43,variants:[{name:'Interval Ride',equip:'Roadmaster · compression sleeve',rx:'30–45 min · 1 min hard / 1–2 min easy, repeat',perMin:6.3,defMin:35,cue:'Push a hard, standing-effort pace for 1 min, then settle back to conversational for the recovery. Repeat for most of the ride. This is HIIT on equipment you already have — no impact, and it edges out steady-state for visceral fat loss.',demo:'ride'}]},
-      {id:'sat-walk',name:'Optional Recovery Walk',demo:'walk',slot:'Cardio',target:'NEAT',equip:'Outdoors',rx:'20–30 min',cal:0,cue:'Loose and easy — protect the joints, keep moving',log:'cardio',perMin:4.3,defMin:30,variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'20–30 min',perMin:6.2,defMin:30,cue:'Pack high and tight, chest proud — recovery pace with a load beats a fast unloaded shuffle',demo:'ruck'}]}]},
+      {id:'sat-walk',name:'Optional Recovery Walk',demo:'walk',slot:'Cardio',target:'NEAT',equip:'Outdoors',rx:'20–30 min',cal:0,cue:'Loose and easy — protect the joints, keep moving',log:'cardio',perMin:4.3,defMin:30,variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'20–30 min',perMin:6.2,defMin:30,cue:'Pack high and tight, chest proud — recovery pace with a load beats a fast unloaded shuffle',demo:'ruck'}]},
+      {id:'sat-growth-row',name:'Bent-Over Row (Growth Circuit)',slot:'Optional Swap · Pull',target:'Back · Biceps',equip:'Tube — stack to your working failure load',rx:'3×8–15 to true failure',cal:35,cue:'Optional Saturday swap for the ride — pick this session when you want a pure growth day instead of cardio. Hinge forward, elbows drive to your back pockets, pause-and-squeeze at the top, control the negative. Push every set to a real failure point, not a round number.',demo:'row',log:'setsreps',sets:3},
+      {id:'sat-growth-pulldown',name:'Lats / Pulldown (Growth Circuit)',slot:'Optional Swap · Pull',target:'Lats · Back',equip:'Tube — stack to your working failure load',rx:'3×8–15 to true failure',cal:35,cue:'Vertical pulling angle — different lat emphasis than the row above. Elbows to back pockets, chest up, slight lean back.',demo:'pulldown',log:'setsreps',sets:3},
+      {id:'sat-growth-ohp',name:'Overhead Press (Growth Circuit)',slot:'Optional Swap · Push',target:'Shoulders',equip:'Tube — ramp fully before working sets',rx:'3×8–12 to true failure',cal:35,cue:'Ramp with 2 light/medium sets first — prime the shoulder before chasing failure given the shoulder history. Press straight to the ceiling, no low-back arch.',demo:'press',log:'setsreps',sets:3},
+      {id:'sat-growth-pushup',name:'Banded Push-ups (Growth Circuit)',slot:'Optional Swap · Push',target:'Chest · Triceps',equip:'Heaviest band/anchor combo that keeps good form',rx:'3×8–15 to true failure',cal:35,cue:'Chest to floor, elbows 45° back, drive up explosively. Use the Super Band across the back for real added load if bodyweight is easy.',demo:'pushup',log:'setsreps',sets:3},
+      {id:'sat-growth-curl',name:'Bicep Curl (Growth Circuit)',slot:'Optional Swap · Biceps',target:'Biceps',equip:'Tube — stack toward your tested failure load',rx:'3×8–15 to true failure',cal:25,cue:'Upper arms glued to your sides. Log the exact band stack (e.g. "50+40") so failure-rep data stays comparable session to session.',demo:'curl',log:'setsreps',sets:3},
+      {id:'sat-growth-tri',name:'Triceps Pushdown (Growth Circuit)',slot:'Optional Swap · Triceps',target:'Triceps',equip:'Tube — stack toward your tested failure load',rx:'3×8–15 to true failure',cal:25,cue:'Elbows pinned to ribs, only forearms move. Same failure-testing approach as the curl above — log the exact stack.',demo:'triceps',log:'setsreps',sets:3}]},
 
   sun:{title:'Sunday Recovery',sub:'Active recovery · Walk + Gentle Flow',accent:'var(--green)',
     moves:[
