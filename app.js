@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v139 — 2026-09-13";
+var APP_BUILD = "v140 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1012,6 +1012,7 @@ function renderDash(){
   renderTrends();
   renderTrackSummary();
   dsRenderProteinMeal();
+  try{ if(typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume(); }catch(e){}
 }
 function renderRadials(items){
   var SIZE=72;
@@ -1036,7 +1037,7 @@ function switchTab(id){
   if(id==="yoga" && typeof renderPoses==="function") renderPoses();
   if(id==="today" && typeof renderToday==="function") renderToday();
   if(id==="log" && typeof ldInit==="function") ldInit();
-  if(id==="volume" && typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume();
+  if(id==="dash" && typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume();
   if(id==="meals" && typeof renderMealsTab==="function") renderMealsTab();
   document.querySelector(".content").scrollTop=0;
 }

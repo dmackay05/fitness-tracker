@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=64">
+<link rel="stylesheet" href="styles.css?v=65">
 </head>
 <body>
 
@@ -62,19 +62,12 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="dash"><span class="tab-icon">◈</span>Dashboard</button>
     <button class="tab-btn" data-tab="log"><span class="tab-icon">✎</span>Log</button>
-    <button class="tab-btn" data-tab="volume"><span class="tab-icon">📊</span>Volume</button>
     <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
     <button class="tab-btn" data-tab="meals"><span class="tab-icon">🍽</span>Meals</button>
   </div>
 
   <div class="content">
-
-<div class="panel" id="panel-volume">
-  <div class="ds-eyebrow">Weekly Volume &amp; Training Load</div>
-  <div id="volume-needs-attention"></div>
-  <div id="volume-tab-host"></div>
-</div>
 
 <div class="panel" id="panel-today">
   <div class="ds-eyebrow" id="ds-eyebrow">Today</div>
@@ -167,25 +160,12 @@
     <div class="panel active" id="panel-dash">
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('dash')"><span id="refresh-icon-dash">↻</span> Refresh</button></div>
 
+      <!-- Alerts -->
       <div id="weighin-banner"></div>
-
       <div class="dash-strip" id="dash-averages"></div>
+      <div class="card" id="dash-pain" style="display:none"></div>
 
-      <div class="card">
-        <div class="card-title">Intake Averages</div>
-        <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Macros</div>
-        <div class="radials" id="radials"></div>
-        <div class="hint-box" id="protein-hint" style="display:none"></div>
-        <div class="hint-box" id="burned-note" style="opacity:.75;font-size:12px;"></div>
-      </div>
-
-      <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
-
-
+      <!-- Nutrition -->
       <div class="card">
         <div class="card-title" id="cal-title">Today's Calories</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px">
@@ -211,6 +191,21 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="card-title">Macros</div>
+        <div class="radials" id="radials"></div>
+        <div class="hint-box" id="protein-hint" style="display:none"></div>
+        <div class="hint-box" id="burned-note" style="opacity:.75;font-size:12px;"></div>
+      </div>
+
+      <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
+
+      <div id="dash-protein-meal"></div>
+
+      <div class="card">
+        <div class="card-title">Intake Averages</div>
+        <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
+      </div>
 
       <div class="card">
         <div class="card-title" style="color:#38bdf8">💧 Water</div>
@@ -221,6 +216,9 @@
         <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
       </div>
 
+      <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+
+      <!-- Training -->
       <div class="card">
         <div class="card-title" style="color:#fb923c">🏃 Weekly Activity</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
@@ -233,21 +231,14 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Weight Trend</div>
-        <div id="dash-weight-trend" style="font-size:12px;line-height:1.5"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Measured Maintenance</div>
-        <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
-      </div>
-
-      <div class="card" id="dash-pain" style="display:none"></div>
-
-
-      <div class="card">
         <div class="card-title">📅 This Week</div>
         <div id="week-summary"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Weekly Volume &amp; Training Load</div>
+        <div id="volume-needs-attention"></div>
+        <div id="volume-tab-host"></div>
       </div>
 
       <div class="card">
@@ -255,12 +246,7 @@
         <div id="dash-distance" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
       </div>
 
-      <div class="card">
-        <div class="card-title">📈 Trends</div>
-        <div id="trend-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-        <div id="trend-chart"></div>
-      </div>
-
+      <!-- Body / Trends -->
       <div class="card">
         <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div class="card-title" style="margin-bottom:0">Weight</div>
@@ -274,9 +260,21 @@
         <div style="font-size:10px;color:#555;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
       </div>
 
-      <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+      <div class="card">
+        <div class="card-title">Weight Trend</div>
+        <div id="dash-weight-trend" style="font-size:12px;line-height:1.5"></div>
+      </div>
 
-      <div id="dash-protein-meal"></div>
+      <div class="card">
+        <div class="card-title">Measured Maintenance</div>
+        <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📈 Trends</div>
+        <div id="trend-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div id="trend-chart"></div>
+      </div>
     </div>
 
     <!-- ════════ MEALS ════════ -->
@@ -1074,6 +1072,6 @@
   </div>
 </div>
 
-<script src="app.js?v=233"></script>
+<script src="app.js?v=234"></script>
 </body>
 </html>
