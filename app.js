@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v151 — 2026-09-13";
+var APP_BUILD = "v152 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5000,10 +5000,6 @@ var MEAL_IDEAS = [
     desc:"Roasted pork tenderloin, roasted sweet potatoes, steamed broccoli. Simple, mild flavors that work for the whole table."},
   {id:"m9",  meal:"dinner", name:"Lentil &amp; chicken soup", protein:"~36g", tags:["fish-free","family","quick"],
     desc:"Chicken, lentils, vegetables, whole grain bread on the side. Good cold-weather rotation option, easy to stretch for leftovers."},
-  {id:"m10", meal:"dinner", name:"Baked salmon, quinoa &amp; asparagus", protein:"~44g", tags:["fish","solo"],
-    desc:"For when you're up for fish on your own plate: salmon, quinoa, roasted asparagus, lemon-olive oil drizzle. Not a family favorite — make a fish-free side dish for everyone else, or save this one for a night you're eating solo."},
-  {id:"m11", meal:"dinner", name:"Shrimp &amp; white bean skillet", protein:"~38g", tags:["fish","solo","quick"],
-    desc:"Shrimp cooks fast and tastes milder than most fish — garlic, tomatoes, white beans, crusty bread. Good low-commitment omega-3 dinner, but treat it as a solo or just-the-two-of-you option rather than a family meal."},
   {id:"m12", meal:"dinner", name:"Seared tuna steak, white beans &amp; greens", protein:"~40g", tags:["fish","solo","quick"],
     desc:"Fresh tuna steak (not canned) seared a few minutes per side, white beans and greens on the side in olive oil. Milder and meatier than salmon if you're more tolerant of tuna than other fish — worth testing as a solo dinner."},
   {id:"m13", meal:"snack",  name:"Greek yogurt &amp; berry bowl", protein:"~18g", tags:["fish-free","quick","produce","family"],
@@ -5026,8 +5022,6 @@ var MEAL_IDEAS = [
     desc:"Hard-boiled eggs mashed with Greek yogurt and mustard instead of mayo, on whole grain bread. Eggs are a safe bet across the board."},
   {id:"m22", meal:"lunch",  name:"Chicken Caesar pasta salad", protein:"~32g", tags:["fish-free","family","kid-friendly"],
     desc:"Bowtie pasta, chicken breast, parmesan, a light Caesar dressing, with romaine served on the side so picky eaters can skip the greens."},
-  {id:"m23", meal:"dinner", name:"Baked tilapia with lemon rice", protein:"~36g", tags:["fish","family","kid-friendly"],
-    desc:"Tilapia baked in olive oil with lemon, served over rice with steamed broccoli. A milder fish that's already tested well with the family."},
   {id:"m24", meal:"dinner", name:"Chicken &amp; veggie skewers", protein:"~38g", tags:["fish-free","family","kid-friendly"],
     desc:"Cubed chicken, peppers, and zucchini on skewers, grilled or oven-roasted, served with rice. Pull a few pieces off plain for picky eaters."},
   {id:"m25", meal:"dinner", name:"One-pot chicken &amp; rice", protein:"~34g", tags:["fish-free","family","kid-friendly"],
