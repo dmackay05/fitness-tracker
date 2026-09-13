@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v144 — 2026-09-13";
+var APP_BUILD = "v145 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6952,6 +6952,12 @@ var DS_MV={
   'thu-legraise':{'Core':1},
   'wed-hollow':{'Core':1}
 };
+  DS_MV['sat-growth-row']={'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Forearms':0.5};
+  DS_MV['sat-growth-pulldown']={'Back':1,'Biceps':.7,'Forearms':.5};
+  DS_MV['sat-growth-ohp']={'Shoulders':1,'Triceps':.5};
+  DS_MV['sat-growth-pushup']={'Chest':1,'Triceps':.5,'Shoulders':.5};
+  DS_MV['sat-growth-curl']={'Biceps':1,'Forearms':.3};
+  DS_MV['sat-growth-tri']={'Triceps':1,'Forearms':.3};
 
 // The custom-plan loader runs earlier in the file, before DS_MV/DS_SETUPS exist,
 // so its muscle map and setup text are applied here on a second pass.
