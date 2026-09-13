@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v137 — 2026-09-13";
+var APP_BUILD = "v139 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6865,7 +6865,6 @@ var DS_MV={
   'mob-elbowrot':{'Forearms':0.5},
   'mob-elbowgrip':{'Forearms':0.5},
   'mob-elbowradial':{'Forearms':0.5},
-  'thu-hammer':{'Biceps':1,'Forearms':0.5},
   'mon-row':{'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Forearms':0.5},
   'pu-hang':{'Back':0.5,'Forearms':1},
   'pu-scaprow':{'Back':1,'Rear Delts':0.5,'Biceps':0.5,'Forearms':0.5},
@@ -6886,14 +6885,14 @@ var DS_MV={
   'bwl-legabd':{'Glutes':1},
   'bwl-legadd':{'Adductors':1},
   'bwl-liftoff':{'Glutes':1,'Hamstrings':.5,'Quads':.5},
-  'mon-curl':{'Biceps':1},
-  'mon-tri':{'Triceps':1},
+  'mon-curl':{'Biceps':1,'Forearms':.3},
+  'mon-tri':{'Triceps':1,'Forearms':.3},
   'mon-inclinepress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-calf':{'Calves':1},
   'mon-hollow':{'Core':1},
   'tue-squat':{'Quads':1,'Glutes':.5},
   'fri-goblet':{'Quads':1,'Glutes':.5},
-  'tue-rdl':{'Hamstrings':1,'Glutes':.5},
+  'tue-rdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
   'tue-lat':{'Glutes':1},
   'atg-backwalk':{'Quads':.5,'Shins':.5},
   'tue-bridge':{'Glutes':1,'Hamstrings':.5},
@@ -6904,15 +6903,15 @@ var DS_MV={
   'tue-step':{'Quads':1,'Glutes':.5},
   'thu-chest':{'Chest':1},
   'thu-facepull':{'Rear Delts':1,'Back':.5},
-  'thu-lat':{'Back':1,'Biceps':.5},
+  'thu-lat':{'Back':1,'Biceps':.5,'Forearms':.5},
   'thu-lateral':{'Shoulders':1},
-  'thu-hammer':{'Biceps':1},
+  'thu-hammer':{'Biceps':1,'Forearms':0.5},
   'thu-inclinecurl':{'Biceps':1},
-  'thu-tri':{'Triceps':1},
+  'thu-tri':{'Triceps':1,'Forearms':.3},
   'thu-hollow':{'Core':1},
   'fri-bulg':{'Quads':1,'Glutes':.5},
   'fri-sumo':{'Glutes':1,'Quads':.5,'Adductors':.5},
-  'fri-slrdl':{'Hamstrings':1,'Glutes':.5},
+  'fri-slrdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
   'fri-goodmorning':{'Hamstrings':1,'Glutes':.5,'Back':.5},
   'fri-nordic':{'Hamstrings':1,'Glutes':.5},
   'fri-calf':{'Calves':1},
