@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v145 — 2026-09-13";
+var APP_BUILD = "v149 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -170,7 +170,6 @@ function dsDeloadDaysElapsed(){
   return Math.floor(ms/86400000);
 }
 function dsDeloadActive(){ return !!DELOAD_START && dsDeloadDaysElapsed() < 7; }
-function dsDeloadDaysLeft(){ return dsDeloadActive() ? (7 - dsDeloadDaysElapsed()) : 0; }
 function dsSetDeload(on){
   if(on){ DELOAD_START = todayKey(); store.set('ft_deload_start', DELOAD_START); }
   else { DELOAD_START = null; store.remove('ft_deload_start'); }
@@ -205,7 +204,6 @@ function dsMaintDaysElapsed(){
   return Math.floor(ms/86400000);
 }
 function dsMaintActive(){ return !!MAINT_START && dsMaintDaysElapsed() < 7; }
-function dsMaintDaysLeft(){ return dsMaintActive() ? (7 - dsMaintDaysElapsed()) : 0; }
 function dsSetMaint(on){
   if(on){ MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START); }
   else { MAINT_START = null; store.remove('ft_maint_start'); }
@@ -1180,47 +1178,6 @@ function logCustomWalk(){
   dsAddEx(day,ex);
   saveDay(day); minEl.value=""; renderAll();
   toast("Logged "+min+" min "+r.label.toLowerCase()+" · "+cal+" kcal");
-}
-function addCustomEx(){
-  var n=document.getElementById("ce-name").value.trim(), c=+document.getElementById("ce-cal").value||0;
-  if(!n) return;
-  var day=getDay(); var ex={name:n,calories:c,type:"custom",id:Date.now().toString()};
-  _attachExDetail(ex,"ce-sets","ce-reps","ce-load");
-  dsAddEx(day,ex);
-  saveDay(day); document.getElementById("ce-name").value=""; document.getElementById("ce-cal").value=""; document.getElementById("ce-last-hint").textContent=""; _clearExDetail("ce-sets","ce-reps","ce-load"); renderAll();
-}
-function loadCeFavs(){ try{ var a=JSON.parse(store.get("ce_fav_ex")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
-function saveCeFavs(a){ store.set("ce_fav_ex", JSON.stringify(a)); }
-function renderCeFavSelect(){
-  var sel=document.getElementById("ce-fav-select"); if(!sel) return;
-  var favs=loadCeFavs();
-  sel.innerHTML='<option value="">\u2605 Favorites \u2014 pick one to reuse\u2026</option>'+favs.map(function(f,i){
-    return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal'+(f.reps?(' \u00b7 '+escH(f.reps)):'')+'</option>';
-  }).join("");
-}
-function saveCeFav(){
-  var n=(document.getElementById("ce-name").value||"").trim();
-  var c=+document.getElementById("ce-cal").value||0;
-  if(!n){ toast("Enter an exercise name first"); return; }
-  var sets=(document.getElementById("ce-sets").value||"").trim();
-  var reps=(document.getElementById("ce-reps").value||"").trim();
-  var load=(document.getElementById("ce-load").value||"").trim();
-  var favs=loadCeFavs();
-  var key=n.toLowerCase();
-  favs=favs.filter(function(f){return f.name.toLowerCase()!==key;});
-  favs.unshift({name:n,cal:c,sets:sets,reps:reps,load:load});
-  if(favs.length>20) favs=favs.slice(0,20);
-  saveCeFavs(favs); renderCeFavSelect(); toast("\u2605 Saved \""+n+"\" as a favorite");
-}
-function loadCeFav(idx){
-  if(idx==="") return;
-  var f=loadCeFavs()[+idx]; if(!f) return;
-  document.getElementById("ce-name").value=f.name||"";
-  document.getElementById("ce-cal").value=f.cal||"";
-  document.getElementById("ce-sets").value=f.sets||"";
-  document.getElementById("ce-reps").value=f.reps||"";
-  document.getElementById("ce-load").value=f.load||"";
-  showLastHint(f.name,"ce-last-hint");
 }
 var LD_DEFAULTS={food:"qa",ex:"dropdown",track:"water"};
 function ldSwitch(group,tab){
@@ -2436,7 +2393,6 @@ function _chip(label,onclick,delClick){
 function renderQuickAdd(){
   var stWrap=document.getElementById("qa-staples");
   if(stWrap)stWrap.innerHTML=FT_STAPLES.map(function(f,i){return _chip(f.emoji+" "+escH(f.name)+" \u00b7 "+f.protein+"g P","addStaple("+i+")");}).join("");
-  if(typeof renderCeFavSelect==="function") renderCeFavSelect();
   var favWrap=document.getElementById("qa-fav-wrap"); if(!favWrap) return;
   var recWrap=document.getElementById("qa-recent-wrap");
   var fav=loadFav();
@@ -2581,7 +2537,6 @@ function renderHabits(){
 }
 function _habitRow(h){ h=h||{}; return '<div class="ft-habit-row" style="display:flex;gap:6px;margin-bottom:8px;align-items:center"><input class="ft-habit-name" placeholder="Habit (e.g. Yoga 20 min)" value="'+escH(h.name||"")+'" style="margin-bottom:0;flex:1"/><button class="bd" onclick="removeHabitRow(this)" style="padding:8px 10px">\u2715</button></div>'; }
 function renderHabitEditor(){ var el=document.getElementById("ft-habits"); if(!el) return; var hs=loadHabits(); if(!hs.length) hs=[{name:""}]; el.innerHTML=hs.map(_habitRow).join(""); }
-function addHabitRow(){ var el=document.getElementById("ft-habits"); if(!el) return; var d=document.createElement("div"); d.innerHTML=_habitRow({}); el.appendChild(d.firstChild); }
 function removeHabitRow(btn){ var r=btn.closest(".ft-habit-row"); if(r) r.remove(); }
 function collectHabitsFromEditor(){
   var existing=loadHabits(), out=[];
@@ -5031,13 +4986,21 @@ var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"t
  {id:"pu-bodyweight",name:"10. Bodyweight Pull-ups",rx:"3\u00d75 strict",cal:20,demo:"pullband",log:"setsreps",sets:3,target:"Full pulling chain",equip:"Monkey bars",cue:"Full dead hang to chin-over-bar, no kipping or leg swing \u2014 strict reps only. Same grip cue: pull down and slightly inward, like snapping a twig",setup:"No band, no assist \u2014 full strict pull-ups from a dead hang to chin over the bar. Milestone: 5 strict bodyweight reps \u00d7 3 sets. This is the top of the ladder \u2014 next stop is adding weight."}
 ]};
 function dsSetRir(id,v){ var st=dsItemState(id); st._rir=(st._rir===v?null:v); dsSaveUI(); dsRender(); }
-function dsBlockWeek(){ try{ var s=store.get("ds_start"); if(!s){ s=todayKey(); store.set("ds_start",s); } var a=new Date(s+"T12:00:00"), b=new Date(activeDate+"T12:00:00"); var w=Math.floor((b-a)/(7*86400000)); return w<0?0:w; }catch(e){ return 0; } }
 // ── REACTIVE DELOAD: check actual recovery signals, not a fixed week count ──
 function dsRirValue(raw){
   if(raw==null||raw==='') return null;
   var parts=(''+raw).split('/').map(function(x){return x==='4+'?4:parseFloat(x);}).filter(function(x){return !isNaN(x);});
   if(!parts.length) return null;
   return parts.reduce(function(a,b){return a+b;},0)/parts.length;
+}
+// Effort is now logged as one of three buckets (0/1/3, see ds-rirrow UI) rather than
+// a 5-point RIR scale, since precise mid-range RIR estimates are unreliable.
+// This maps a numeric value (including averages across multiple sets) back to a label.
+function dsRirLabel(v){
+  if(v==null) return '';
+  if(v<=0.5) return 'Failure';
+  if(v<=1.5) return 'Near failure';
+  return 'Had more left';
 }
 function dsWindowAvg(endKey,daysBack,offsetDays,picker){
   var end=keyToDate(endKey); var vals=[];
@@ -5103,6 +5066,10 @@ function dsFatigueCheck(refKey){
   var reasons=[];
   var rirThis=dsWeekRirAvg(refKey,0), rirPrev=dsWeekRirAvg(refKey,7);
   var rirThisW=dsWeekRirAvgWeighted(refKey,0);
+  // 0.4 threshold on a 0-3 effort scale (~13% of the full range) — same proportional
+  // sensitivity applied to the RHR and sleep thresholds below. Of the three fatigue
+  // signals here, this one is the most directly tied to what you actually logged,
+  // so it's the highest-confidence of the three.
   if(rirThis!=null && rirPrev!=null && rirThis<rirPrev-0.4){
     reasons.push('RIR trending down this week ('+rirThis.toFixed(1)+' vs '+rirPrev.toFixed(1)+' last week)');
   }
@@ -5124,12 +5091,23 @@ function dsFatigueCheck(refKey){
     }
     reasons.push(detail);
   }
+  // RHR threshold: literature on resting-HR as an overtraining marker is genuinely mixed —
+  // several studies find no reliable correlation at all, and normal day-to-day RHR noise
+  // is commonly cited around 3-4 bpm. Where a threshold is cited, it's usually 5+ bpm on
+  // raw daily readings. We're comparing 7-day rolling averages (already smoothed vs a single
+  // day), so 4 bpm is used as a middle ground — tighter than the daily-reading literature
+  // number since averaging reduces noise, but not as tight as the old 2.5 bpm, which sat
+  // inside normal day-to-day variation and would have false-flagged routinely.
+  // Treat this signal as lower-confidence than the RIR one above.
   var rhrThis=dsWeekRhrAvg(refKey,7,0), rhrBase=dsWeekRhrAvg(refKey,14,7);
-  if(rhrThis!=null && rhrBase!=null && rhrThis>=rhrBase+2.5){
+  if(rhrThis!=null && rhrBase!=null && rhrThis>=rhrBase+4){
     reasons.push('Resting HR up '+(rhrThis-rhrBase).toFixed(1)+' bpm vs your 2-week baseline');
   }
+  // Sleep quality is a coarse 1-5 self-rating, so a 0.5-point average shift is well within
+  // normal noise for that scale (about the same proportional move as the RIR threshold
+  // above, scaled to a 1-5 range would be ~0.75). Using 0.75 instead of the old 0.5.
   var sqThis=dsWeekSleepQAvg(refKey,3,0), sqPrev=dsWeekSleepQAvg(refKey,3,3);
-  if(sqThis!=null && sqPrev!=null && sqThis<sqPrev-0.5){
+  if(sqThis!=null && sqPrev!=null && sqThis<sqPrev-0.75){
     reasons.push('Sleep quality dipping the last few days');
   }
   return {flag:reasons.length>0, reasons:reasons};
@@ -5608,7 +5586,6 @@ function miRender(){
   if(!list.length) html = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">No meals match those filters — try removing one.</div>';
   document.getElementById("meals-list").innerHTML = html;
 }
-function miOpen(){ switchTab("meals"); }
 function renderMealsTab(){
   renderFruitGuide("meals-fruit-guide");
   miRender();
@@ -5682,13 +5659,6 @@ function planRender(){
   var html='<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.08em">'+escH(PLAN_CONFIG.subtitle||"")+'</div><div style="font-size:19px;font-weight:800;color:#f0f0f0;margin-top:4px">'+escH(PLAN_CONFIG.title||"My Plan")+'</div></div>';
   html += (PLAN_CONFIG.sections||[]).map(planRenderSection).join("");
   document.getElementById("plan-content").innerHTML = html;
-}
-function planOpen(){
-  document.getElementById("plan-overlay").style.display="flex";
-  document.getElementById("plan-overlay").scrollTop=0;
-  if(PLAN_LOADED){ planRender(); return; }
-  document.getElementById("plan-content").innerHTML = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">Loading plan\u2026</div>';
-  planLoad(function(){ planRender(); });
 }
 function planClose(){
   document.getElementById("plan-overlay").style.display="none";
@@ -5919,12 +5889,23 @@ var MUSCLE_KEYWORDS=[
   ['adductor','Adductors'],['inner thigh','Adductors'],['groin','Adductors'],
   ['oblique','Core'],['anti-rot','Core'],['core','Core'],['woodchop','Core'],['plank','Core'],['dead bug','Core']
 ];
-// Menno-style approximate weekly volume landmarks (working sets/week): [MEV, MAV-high]
+// Approximate weekly volume landmarks (working sets/week): [MEV, MAV-high].
+// Broadly consistent with commonly-published RP ranges (MEV ~8-12, MRV ~20-25 for
+// large muscle groups) for the standard groups below — Chest, Back, Shoulders,
+// Biceps, Triceps, Quads, Hamstrings, Glutes, Calves. Adductors and Shins were
+// removed from tracking entirely: RP doesn't publish landmarks for either, so
+// there was no real MEV/MAV to check volume against — the old entries were
+// unsourced guesses dressed up as data. The exercises themselves (tibialis
+// raises, adductor work) are still in the program; they just no longer count
+// toward a muscle-group volume total that doesn't exist.
+// Per RP's own framework, these numbers are meant to be a starting point that gets
+// recalibrated against your actual recovery over time — not a fixed ground truth,
+// so don't read the "in range" color-coding as more certain than it is.
 var MUSCLE_LANDMARKS={
   Chest:[8,20],Back:[10,22],Shoulders:[8,20],'Rear Delts':[8,20],Traps:[6,16],
   Biceps:[6,20],Triceps:[6,20],Forearms:[4,16],
   Quads:[8,20],Hamstrings:[6,18],Glutes:[6,18],Calves:[8,20],
-  Adductors:[4,12],Shins:[4,12],Core:[6,20]
+  Core:[6,20]
 };
 function dsMuscleVolBandRowsHtml(v){
   return DS_MV_ORDER.map(function(m){
@@ -5956,21 +5937,6 @@ function dsMuscleTagsFromTarget(target){
   });
   return Object.keys(byM).map(function(m){return {muscle:m,weight:byM[m]};});
 }
-function dsFindExerciseTarget(rawId){
-  var item=dsMasterLookup(rawId);
-  if(item) return item.target||'';
-  for(var dk in DS_USERMOVES){
-    var arr=DS_USERMOVES[dk]||[];
-    for(var i=0;i<arr.length;i++){ if(arr[i].id===rawId) return arr[i].target||''; }
-  }
-  return '';
-}
-function dsWeekMondayKey(refKey){
-  var d0=keyToDate(refKey||activeDate);
-  var dow=d0.getDay(); var offset=(dow===0)?-6:(1-dow);
-  var mon=new Date(d0); mon.setDate(mon.getDate()+offset);
-  return localDateKey(mon);
-}
 // A muscle can read below MEV simply because the sets that cover it are
 // scheduled later in the week and have not been performed yet. Telling someone
 // to "add 2-3 sets" in that case makes them double up on volume that is already
@@ -6000,23 +5966,6 @@ function dsWeeklyMuscleVolume(mode){
   // mode: 'rolling' (default, trailing 7 days) or 'calendar' (Mon-Sun this week)
   var keys = (mode==='calendar') ? dsMVDateKeysCalendarWeek() : dsMVDateKeysRolling();
   return dsMVWeek(keys);
-}
-function dsFreqRowsHtml(freq,vol){
-  vol=vol||{};
-  return DS_MV_ORDER.map(function(m){
-    var n=freq[m]||0;
-    var land=MUSCLE_LANDMARKS[m]||[8,20];
-    var v=vol[m]||0;
-    var volLow = v < land[0]; // volume itself below MEV — this is the only case worth a warning color
-    var color = n===0?'#f87171':((n===1&&volLow)?'#fbbf24':'#5eead4');
-    var lbl = n+'x this week';
-    var note = (n===1&&!volLow) ? ' \\u00b7 volume\\u2019s covered' : '';
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      +'<div style="width:78px;font-size:11px;color:#ccc;flex:0 0 auto">'+m+'</div>'
-      +'<div style="flex:1;height:8px;background:#ffffff10;border-radius:4px;overflow:hidden"><div style="width:'+Math.min(n/3*100,100)+'%;height:100%;background:'+color+'"></div></div>'
-      +'<div style="width:110px;text-align:right;font-size:11px;color:'+color+';font-weight:700;flex:0 0 auto">'+lbl+note+'</div>'
-      +'</div>';
-  }).join('');
 }
 function dsProteinMealRowsHtml(pm){
   var total=DS_MEAL_WINDOWS.reduce(function(s,w){return s+(pm[w.label]||0);},0);
@@ -6137,9 +6086,9 @@ function dsSuggestNext(item,lt){
   }
   var avgRir=dsParseLastRir(lt), avgReps=dsParseLastReps(lt);
   if(avgRir!=null){
-    if(avgRir>=3.5){
-      return hasLoad?'\u26A1 Last set felt easy (4+ RIR) \u2014 move up a band or add weight':'\u26A1 Last set felt easy (4+ RIR) \u2014 add 1\u20132 reps or slow the tempo';
-    } else if(avgRir>=2){
+    if(avgRir>=2.5){
+      return hasLoad?'\u26A1 Last set felt easy \u2014 move up a band or add weight':'\u26A1 Last set felt easy \u2014 add 1\u20132 reps or slow the tempo';
+    } else if(avgRir>=1.5){
       return '\u2713 Solid effort last time \u2014 try +1\u20132 reps at the same load';
     } else if(avgRir>=0.5){
       return '\u2192 You were close to failure \u2014 hold this load, focus on clean reps';
@@ -6166,8 +6115,10 @@ function dsParseNumericLoad(loadStr){
   return null;
 }
 // During deload, suggest a load ~30% lighter than the most recent logged numeric weight
-// for this exercise. Returns a display string (e.g. "24.5") or null if no usable history
-// or the exercise isn't load-based (bands/bodyweight names aren't touched).
+// for this exercise. 30% sits within the commonly-cited 20-30% volume/load reduction
+// range for a deload week, so this one's reasonably well-grounded, unlike some of the
+// other constants in this file. Returns a display string (e.g. "24.5") or null if no
+// usable history or the exercise isn't load-based (bands/bodyweight names aren't touched).
 function dsDeloadSuggestedLoad(id){
   if(!dsDeloadActive()) return null;
   var hist=dsHistoryN(id,1);
@@ -6258,16 +6209,6 @@ function dsItemMatchesSearch(rawItem,q){
   }
   return false;
 }
-function dsSearchOtherDays(q,skipSk){
-  var hits=[];
-  DS_ORDER.forEach(function(sk){
-    if(sk===skipSk)return;
-    var SS=DS_SESSIONS[sk]; if(!SS)return;
-    var found=SS.moves.some(function(it){return dsItemMatchesSearch(it,q);});
-    if(found)hits.push(sk);
-  });
-  return hits;
-}
 
 function dsRenderItem(rawItem,idx){
   var item=dsViewOf(rawItem); var st=dsItemState(item.id); var done=dsComplete(item.id);
@@ -6311,7 +6252,7 @@ function dsRenderItem(rawItem,idx){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+(lt.rir>=4?'4+':lt.rir)+' RIR'):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
@@ -6328,7 +6269,11 @@ function dsRenderItem(rawItem,idx){
     } else {
       h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
     }
-    h+='<div class="ds-rirrow"><span class="ds-lbl">RIR</span>';for(var _r=0;_r<=4;_r++){h+='<span class="ds-rirchip'+(st._rir===_r?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+_r+')">'+(_r===4?'4+':_r)+'</span>';}h+='</div>';
+    h+='<div class="ds-rirrow"><span class="ds-lbl">Effort</span>';
+    [[0,'Failure'],[1,'Near failure'],[3,'Had more left']].forEach(function(pair){
+      h+='<span class="ds-rirchip'+(st._rir===pair[0]?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+pair[0]+')">'+pair[1]+'</span>';
+    });
+    h+='</div>';
     h+='<div class="ds-actionrow" style="display:flex;gap:6px;align-items:center;margin-top:8px">'
       +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
       +(st.sets.length?'<button class="ds-undobtn" onclick="dsUndoSet(\''+item.id+'\')" title="Remove last set" style="flex:0 0 auto;border:1px solid #444;background:none;color:#aaa;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">\u21B6</button>':'')
@@ -6627,7 +6572,6 @@ function dsShowFoodExport(){
 
 /* ── Weekly Activity Minutes (rolling 7-day, all logged activity types) ── */
 var ACTIVITY_GOAL = parseInt(store.get('ft_activity_goal')) || 300;
-function setActivityGoal(v){ ACTIVITY_GOAL = parseInt(v)||300; store.set('ft_activity_goal', ACTIVITY_GOAL); renderDash(); }
 function dsWeeklyActivityMinutes(endKey){
   endKey = endKey || utahTodayKey();
   var totalMin = 0;
@@ -6687,7 +6631,6 @@ function dsFocusBlock(sk){
   return map[sk]||null;
 }
 var DS_MORE_OPEN=false;
-function dsToggleMore(){ DS_MORE_OPEN=!DS_MORE_OPEN; dsRender(); }
 function dsRenderExtras(){
   var html=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
@@ -6764,41 +6707,6 @@ function dsProteinByMealToday(dayKey){
   });
   return out;
 }
-/* ===== Training Frequency per Muscle (Schoenfeld et al. — frequency ≥2x/week
-   outperforms the same weekly volume crammed into one session) =====
-   Counts DISTINCT DAYS in the rolling 7-day window where a muscle received
-   DIRECT work (DS_MV weight===1) — assisted/indirect volume doesn't count
-   toward frequency, since it's a much smaller stimulus for that muscle. */
-function dsMuscleFrequencyWeek(){
-  var keys=dsMVDateKeysRolling();
-  var hitDays={}; DS_MV_ORDER.forEach(function(m){hitDays[m]=0;});
-  for(var d=0;d<keys.length;d++){
-    var key=keys[d];
-    var ui=DS_UI[key]||{};
-    var sessCount={};
-    try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){
-      var eid=e.id?String(e.id):"";
-      if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid])sessCount[xid]=n1; return; }
-      if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
-        if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid])sessCount[mid]=n2; return; } }
-    }); } }catch(e){}
-    var cloudDay=DS_CLOUD_VOL[key]||{};
-    var hitToday={};
-    Object.keys(DS_MV).forEach(function(id){
-      var st=ui[id];
-      var localN=(st&&st.sets)?st.sets.length:0;
-      var syncedN=sessCount[id]||0;
-      var cloudN=cloudDay[id]||0;
-      var n=Math.max(localN,syncedN,cloudN);
-      if(!n)return;
-      var map=DS_MV[id];
-      Object.keys(map).forEach(function(mu){ if(map[mu]===1) hitToday[mu]=true; });
-    });
-    Object.keys(hitToday).forEach(function(mu){ hitDays[mu]=(hitDays[mu]||0)+1; });
-  }
-  return hitDays;
-}
-
 var DS_MV_QUICKADD={
   'Turkish Get-Up (KB)':{sets:2,muscles:{'Core':.5,'Shoulders':.5}},
   'Step-Ups (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5}},
@@ -6820,7 +6728,7 @@ var DS_MV_QUICKADD={
   'Jump Squats (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5,'Calves':.5}},
   'Ball Slams (3 sets)':{sets:3,muscles:{'Core':.5}}
 };
-var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Forearms','Quads','Glutes','Hamstrings','Adductors','Calves','Shins','Core'];
+var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Forearms','Quads','Glutes','Hamstrings','Calves','Core'];
 var DS_MV={
   'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-ohp':{'Shoulders':1,'Triceps':.5},
@@ -6865,10 +6773,6 @@ var DS_MV={
   'pu-scaprow':{'Back':1,'Rear Delts':0.5,'Biceps':0.5,'Forearms':0.5},
   'pu-aussie':{'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Core':0.5,'Forearms':0.5},
   'pu-bodyweight':{'Back':1,'Biceps':1,'Core':0.5,'Forearms':0.5},
-  'atg-tibraise':{'Shins':1},
-  'tue-tib':{'Shins':1},
-  'fri-tib':{'Shins':1},
-  'fri-add':{'Adductors':1},
   'atg-hipflexor':{'Core':1,'Quads':.5},
   'atg-extrot':{'Shoulders':1,'Rear Delts':.5},
   'atg-trap3':{'Shoulders':1,'Back':.5},
@@ -6878,7 +6782,6 @@ var DS_MV={
   'bwl-curtsy':{'Glutes':1,'Quads':.5},
   'bwl-slthrust':{'Glutes':1,'Hamstrings':.5},
   'bwl-legabd':{'Glutes':1},
-  'bwl-legadd':{'Adductors':1},
   'bwl-liftoff':{'Glutes':1,'Hamstrings':.5,'Quads':.5},
   'mon-curl':{'Biceps':1,'Forearms':.3},
   'mon-tri':{'Triceps':1,'Forearms':.3},
@@ -6889,7 +6792,7 @@ var DS_MV={
   'fri-goblet':{'Quads':1,'Glutes':.5},
   'tue-rdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
   'tue-lat':{'Glutes':1},
-  'atg-backwalk':{'Quads':.5,'Shins':.5},
+  'atg-backwalk':{'Quads':.5},
   'tue-bridge':{'Glutes':1,'Hamstrings':.5},
   'tue-ballcurl':{'Hamstrings':1,'Glutes':.5},
   'tue-pallof':{'Core':1},
@@ -6905,7 +6808,7 @@ var DS_MV={
   'thu-tri':{'Triceps':1,'Forearms':.3},
   'thu-hollow':{'Core':1},
   'fri-bulg':{'Quads':1,'Glutes':.5},
-  'fri-sumo':{'Glutes':1,'Quads':.5,'Adductors':.5},
+  'fri-sumo':{'Glutes':1,'Quads':.5},
   'fri-slrdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
   'fri-goodmorning':{'Hamstrings':1,'Glutes':.5,'Back':.5},
   'fri-nordic':{'Hamstrings':1,'Glutes':.5},
@@ -6992,24 +6895,6 @@ function dsMVDateKeysRolling(){
   var out=[]; var now=new Date();
   for(var d=0;d<7;d++){ var dt=new Date(now); dt.setDate(now.getDate()-d); out.push(localDateKey(dt)); }
   return out;
-}
-// Zone 2 minutes this week — sums ride duration for rides with a logged avgHr
-// that falls in the ~60-70% max-HR band. Rides without an avgHr logged aren't
-// counted either way (we don't know their zone), so this is a floor, not a
-// complete picture, until HR is logged consistently.
-function dsIntervalStatsWeek(){
-  var keys=dsMVDateKeysRolling();
-  var sessions=0, roundsDone=0, roundsTotal=0, pushMins=0, lastLabel='';
-  keys.forEach(function(key){
-    var day=appData[key]; if(!day||!day.rides) return;
-    day.rides.forEach(function(r){
-      if(!r.intervals) return;
-      sessions++; roundsDone+=(+r.intervals.roundsDone||0); roundsTotal+=(+r.intervals.rounds||0);
-      pushMins+=((+r.intervals.roundsDone||0)*(+r.intervals.work||0))/60;
-      lastLabel=r.intervals.label||lastLabel;
-    });
-  });
-  return {sessions:sessions, roundsDone:roundsDone, roundsTotal:roundsTotal, pushMins:Math.round(pushMins), lastLabel:lastLabel};
 }
 function dsMVDateKeysCalendarWeek(){
   // Monday..Sunday of the current calendar week — "did this week hit its targets"
@@ -9690,470 +9575,6 @@ renderPoses();;
 /* ═══════ block boundary ═══════ */
 
 if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('service-worker.js').catch(function(){}); }); };
-
-/* ═══════ block boundary ═══════ */
-
-// ── WALK TIMER ──
-  var walkTotal = 1200;
-  var walkRunning = false;
-  var walkPaused = false;
-  var walkStartedAt = null;       // real timestamp when started
-  var walkPausedAt = null;        // real timestamp when paused
-  var walkElapsedBefore = 0;      // seconds elapsed before latest pause
-  var walkIntervalId = null;
-  var WALK_CAL_PER_SEC = 175 / 1800;
-
-  function setWalkDuration(btn, secs) {
-    walkTotal = secs;
-    document.querySelectorAll('.walk-dur-btn').forEach(b => {
-      b.style.background = '#2a2a2a'; b.style.borderColor = '#666'; b.style.color = '#ccc';
-    });
-    btn.style.background = '#86efac'; btn.style.borderColor = '#86efac'; btn.style.color = '#0f0f0f';
-    walkReset();
-  }
-
-  function walkElapsed() {
-    if (!walkStartedAt) return walkElapsedBefore;
-    return walkElapsedBefore + Math.floor((Date.now() - walkStartedAt) / 1000);
-  }
-
-  function walkStart() {
-    if (walkRunning && !walkPaused) return;
-    if (!walkRunning) { walkElapsedBefore = 0; }
-    walkRunning = true;
-    walkPaused = false;
-    walkStartedAt = Date.now();
-    document.getElementById('walk-start-btn').textContent = 'WALKING...';
-    document.getElementById('walk-start-btn').style.opacity = '0.5';
-    document.getElementById('walk-pause-btn').disabled = false;
-    clearInterval(walkIntervalId);
-    walkIntervalId = setInterval(walkTick, 500);
-  }
-
-  function walkTick() {
-    var elapsed = walkElapsed();
-    var remaining = Math.max(0, walkTotal - elapsed);
-    var mins = Math.floor(remaining / 60);
-    var secs = remaining % 60;
-    var display = document.getElementById('walk-display');
-    display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-    document.getElementById('walk-bar').style.width = (remaining / walkTotal * 100) + '%';
-    var urgent = remaining <= 60;
-    display.style.color = urgent ? '#e05555' : '#86efac';
-    document.getElementById('walk-bar').style.background = urgent ? '#e05555' : '#86efac';
-    var cals = calAdj(elapsed * WALK_CAL_PER_SEC);
-    if (cals > 0) document.getElementById('walk-cal-display').textContent = '🔥 ~' + cals + ' calories burned';
-    if (remaining <= 0) {
-      clearInterval(walkIntervalId); walkRunning = false;
-      display.textContent = 'DONE!'; display.style.color = '#86efac';
-      document.getElementById('walk-cal-display').textContent = '🎉 Great walk! ~' + calAdj(walkTotal * WALK_CAL_PER_SEC) + ' cal burned';
-      document.getElementById('walk-start-btn').textContent = 'START WALK';
-      document.getElementById('walk-start-btn').style.opacity = '1';
-      beepDone();
-    }
-  }
-
-  function walkPause() {
-    if (!walkRunning) return;
-    walkPaused = !walkPaused;
-    if (walkPaused) {
-      walkElapsedBefore = walkElapsed();
-      walkStartedAt = null;
-      clearInterval(walkIntervalId);
-    } else {
-      walkStartedAt = Date.now();
-      walkIntervalId = setInterval(walkTick, 500);
-    }
-    document.getElementById('walk-pause-btn').textContent = walkPaused ? '▶' : '⏸';
-  }
-
-  function walkReset() {
-    clearInterval(walkIntervalId);
-    walkRunning = false; walkPaused = false;
-    walkStartedAt = null; walkElapsedBefore = 0;
-    var mins = Math.floor(walkTotal / 60);
-    document.getElementById('walk-display').textContent = mins + ':00';
-    document.getElementById('walk-display').style.color = '#86efac';
-    document.getElementById('walk-bar').style.width = '100%';
-    document.getElementById('walk-bar').style.background = '#86efac';
-    document.getElementById('walk-cal-display').textContent = '';
-    document.getElementById('walk-start-btn').textContent = 'START WALK';
-    document.getElementById('walk-start-btn').style.opacity = '1';
-    document.getElementById('walk-pause-btn').textContent = '⏸';
-    document.getElementById('walk-pause-btn').disabled = true;
-  }
-
-  // ── RIDE TIMER ──
-  var rideTotal = 1200;
-  var rideRunning = false;
-  var ridePaused = false;
-  var rideStartedAt = null;
-  var ridePausedElapsed = 0;
-  var rideIntervalId = null;
-  var intervalsOn = false;
-  var intervalPhase = 'push';
-  var PUSH_SECS = 120;
-  var REST_SECS = 180;
-  var intervalPhaseStart = null;  // real timestamp when current interval phase started
-
-  function setRideDuration(btn, secs) {
-    rideTotal = secs;
-    document.querySelectorAll('.ride-dur-btn').forEach(b => {
-      b.style.background = '#2a2a2a'; b.style.borderColor = '#666'; b.style.color = '#ccc';
-    });
-    btn.style.background = 'var(--accent)'; btn.style.borderColor = 'var(--accent)'; btn.style.color = '#0f0f0f';
-    rideReset();
-  }
-
-  function rideElapsed() {
-    if (!rideStartedAt) return ridePausedElapsed;
-    return ridePausedElapsed + Math.floor((Date.now() - rideStartedAt) / 1000);
-  }
-
-  function rideStart() {
-    if (rideRunning && !ridePaused) return;
-    if (!rideRunning) { ridePausedElapsed = 0; }
-    rideRunning = true; ridePaused = false;
-    rideStartedAt = Date.now();
-    if (intervalsOn && !intervalPhaseStart) {
-      intervalPhase = 'push';
-      intervalPhaseStart = Date.now();
-    }
-    document.getElementById('ride-start-btn').textContent = 'RIDING...';
-    document.getElementById('ride-start-btn').style.opacity = '0.5';
-    document.getElementById('ride-pause-btn').disabled = false;
-    clearInterval(rideIntervalId);
-    rideIntervalId = setInterval(rideTick, 500);
-  }
-
-  function rideTick() {
-    var elapsed = rideElapsed();
-    var remaining = Math.max(0, rideTotal - elapsed);
-    updateRideDisplay(remaining);
-
-    if (intervalsOn && intervalPhaseStart) {
-      var phaseElapsed = Math.floor((Date.now() - intervalPhaseStart) / 1000);
-      var phaseDur = intervalPhase === 'push' ? PUSH_SECS : REST_SECS;
-      var phaseRemaining = Math.max(0, phaseDur - phaseElapsed);
-      if (phaseRemaining <= 0) {
-        intervalPhase = intervalPhase === 'push' ? 'rest' : 'push';
-        intervalPhaseStart = Date.now();
-        phaseRemaining = intervalPhase === 'push' ? PUSH_SECS : REST_SECS;
-        beepOnce();
-      }
-      var pm = Math.floor(phaseRemaining / 60);
-      var ps = phaseRemaining % 60;
-      var label = intervalPhase === 'push' ? '🔥 PUSH HARD' : '😮‍💨 RECOVER';
-      document.getElementById('ride-phase-label').textContent = label + ' — ' + pm + ':' + (ps < 10 ? '0' : '') + ps;
-      document.getElementById('ride-phase-label').style.color = intervalPhase === 'push' ? 'var(--accent)' : '#7dd3fc';
-    }
-
-    if (remaining <= 0) {
-      clearInterval(rideIntervalId); rideRunning = false;
-      document.getElementById('ride-display').textContent = 'DONE!';
-      document.getElementById('ride-display').style.color = 'var(--accent)';
-      document.getElementById('ride-phase-label').textContent = '🎉 Great ride!';
-      document.getElementById('ride-phase-label').style.color = 'var(--accent)';
-      document.getElementById('ride-start-btn').textContent = 'START RIDE';
-      document.getElementById('ride-start-btn').style.opacity = '1';
-      beepDone();
-      rideCrossLog(elapsed);
-    }
-  }
-
-  // This standalone ride timer is a countdown display only — it doesn't
-  // otherwise touch day.exercises. Cross-log actual ride time on completion
-  // so it counts toward Weekly Activity / trained-time instead of being lost.
-  function rideCrossLog(elapsedSecs) {
-    try {
-      var mins = Math.round(elapsedSecs / 60);
-      if (mins < 1) return;
-      var d = new Date();
-      var dk = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-      var ftData = JSON.parse(store.get("ft_data") || "{}");
-      if (!ftData[dk]) ftData[dk] = {foods:[],exercises:[],weight:null,waterOz:0,wellness:{},supplements:{}};
-      if (!ftData[dk].exercises) ftData[dk].exercises = [];
-      var label = "Bike Ride (" + mins + " min)";
-      // Dedup by type+day, not exact-minute name match: a GPS-tracked ride
-      // logged elsewhere (e.g. "Bike Ride (19 min)") would not string-match
-      // this timer's "Bike Ride (20 min)" and both would persist, double-
-      // counting burned calories. Any existing bike-ride entry today blocks
-      // this auto-log instead.
-      var already = ftData[dk].exercises.some(function(x){ return x.type==="cardio" && /^Bike Ride/.test(x.name||""); });
-      if (!already) {
-        // sess_ prefix so dsMergeExercises' name-keyed merge (mkey) also
-        // recognizes this as the same real-world exercise during sync,
-        // instead of stacking as an unrelated raw-timestamp id.
-        ftData[dk].exercises.push({name:label, calories:calAdj(Math.round(mins*9.2)), type:"cardio", id:"sess_rideTimer_"+dk, actualSecs:elapsedSecs});
-        store.set("ft_data", JSON.stringify(ftData));
-        if (typeof appData !== "undefined") appData = ftData;
-        if (typeof renderAll === "function") renderAll();
-        if (typeof pushToSheets === "function") pushToSheets();
-      }
-    } catch(e) {}
-  }
-
-  function updateRideDisplay(remaining) {
-    var mins = Math.floor(remaining / 60);
-    var secs = remaining % 60;
-    var display = document.getElementById('ride-display');
-    display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-    document.getElementById('ride-bar').style.width = (remaining / rideTotal * 100) + '%';
-    var urgent = remaining <= 60;
-    display.style.color = urgent ? '#e05555' : 'var(--accent)';
-    document.getElementById('ride-bar').style.background = urgent ? '#e05555' : 'var(--accent)';
-  }
-
-  function ridePause() {
-    if (!rideRunning) return;
-    ridePaused = !ridePaused;
-    if (ridePaused) {
-      ridePausedElapsed = rideElapsed();
-      rideStartedAt = null;
-      clearInterval(rideIntervalId);
-    } else {
-      rideStartedAt = Date.now();
-      if (intervalsOn) intervalPhaseStart = Date.now();
-      rideIntervalId = setInterval(rideTick, 500);
-    }
-    document.getElementById('ride-pause-btn').textContent = ridePaused ? '▶' : '⏸';
-  }
-
-  function rideReset() {
-    clearInterval(rideIntervalId);
-    rideRunning = false; ridePaused = false;
-    rideStartedAt = null; ridePausedElapsed = 0;
-    intervalPhase = 'push'; intervalPhaseStart = null;
-    var mins = Math.floor(rideTotal / 60);
-    document.getElementById('ride-display').textContent = mins + ':00';
-    document.getElementById('ride-display').style.color = 'var(--accent)';
-    document.getElementById('ride-bar').style.width = '100%';
-    document.getElementById('ride-bar').style.background = 'var(--accent)';
-    document.getElementById('ride-phase-label').textContent = '';
-    document.getElementById('ride-start-btn').textContent = 'START RIDE';
-    document.getElementById('ride-start-btn').style.opacity = '1';
-    document.getElementById('ride-pause-btn').textContent = '⏸';
-    document.getElementById('ride-pause-btn').disabled = true;
-  }
-
-  function toggleIntervals() {
-    intervalsOn = !intervalsOn;
-    var toggle = document.getElementById('interval-toggle');
-    var knob = document.getElementById('interval-knob');
-    if (intervalsOn) {
-      toggle.style.background = 'var(--accent)'; toggle.style.borderColor = 'var(--accent)';
-      knob.style.left = '23px'; knob.style.background = '#0f0f0f';
-    } else {
-      toggle.style.background = '#2a2a2a'; toggle.style.borderColor = '#666';
-      knob.style.left = '3px'; knob.style.background = '#666';
-      document.getElementById('ride-phase-label').textContent = '';
-    }
-    if (rideRunning) rideReset();
-  }
-
-  function beepOnce() {
-    try {
-      var ctx = getAudioCtx();
-      function fire() {
-        var osc = ctx.createOscillator();
-        var gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 660;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.3);
-      }
-      if (ctx.state === 'suspended') { ctx.resume().then(fire).catch(function(){}); } else { fire(); }
-    } catch(e) {}
-  }
-  function showDay(index) {
-    document.querySelectorAll('.day-panel').forEach((p, i) => {
-      p.classList.toggle('active', i === index);
-    });
-    document.querySelectorAll('.day-nav .day-tab').forEach((t, i) => {
-      t.classList.toggle('active', i === index);
-    });
-  }
-
-  function toggle(card) {
-    card.classList.toggle('open');
-  }
-
-  function switchVar(btn, panelId) {
-    event.stopPropagation();
-    var cardBody = btn.closest('.card-body');
-    cardBody.querySelectorAll('.var-tab').forEach(t => t.classList.remove('active'));
-    cardBody.querySelectorAll('.var-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    cardBody.querySelector('#' + panelId).classList.add('active');
-  }
-
-  // ── SET TRACKER ──
-  function dotClick(dot) {
-    event.stopPropagation();
-    dot.classList.toggle('done');
-    var tracker = dot.closest('.set-tracker');
-    var dots = tracker.querySelectorAll('.set-dot');
-    var done = tracker.querySelectorAll('.set-dot.done').length;
-    var msg = tracker.querySelector('.set-complete-msg');
-    if (done === dots.length) {
-      msg.classList.add('show');
-    } else {
-      msg.classList.remove('show');
-    }
-    if (window.egOnDotChange) egOnDotChange(tracker);
-  }
-
-  function resetDots(btn) {
-    event.stopPropagation();
-    var tracker = btn.closest('.set-tracker');
-    tracker.querySelectorAll('.set-dot').forEach(d => d.classList.remove('done'));
-    tracker.querySelector('.set-complete-msg').classList.remove('show');
-    if (window.egOnDotChange) egOnDotChange(tracker);
-  }
-
-
-  // ── TIMER ──
-  var timerInterval = null;
-  var timerTotal = 0;
-  var timerRemaining = 0;
-  var timerPaused = false;
-
-  function tgStartTimer(seconds, name, label) {
-    // Only stop propagation when this actually came from a click gesture.
-    // dsLogSet() calls this programmatically after logging a set, where there
-    // is no `event` — referencing it bare threw and killed the rest timer.
-    try { if (typeof event !== 'undefined' && event && event.stopPropagation) event.stopPropagation(); } catch(e) {}
-    // Unlock/resume the shared AudioContext HERE, synchronously inside the tap
-    // gesture — the same pattern the yoga session uses. If we wait until the
-    // countdown naturally hits zero (async, no gesture), modern browsers may
-    // silently refuse to play the beep.
-    dsUnlockAudio();
-    // Short low cue so you get immediate audible confirmation that rest started.
-    // This fires inside the live gesture, so it is the most reliable beep we have.
-    beepRestStart();
-    clearInterval(timerInterval);
-    timerTotal = seconds;
-    timerRemaining = seconds;
-    timerPaused = false;
-
-    var widget = document.getElementById('timer-widget');
-    var display = document.getElementById('timer-display');
-    var bar = document.getElementById('timer-bar');
-    var lbl = document.getElementById('timer-label');
-    var nameEl = document.getElementById('timer-name');
-    var pauseBtn = document.getElementById('t-pause');
-
-    if (!widget || !display || !bar) { return; }
-    if (lbl) lbl.textContent = label || 'TIMER';
-    if (nameEl) nameEl.textContent = name || '';
-    widget.classList.add('active');
-    if (pauseBtn) pauseBtn.textContent = '⏸';
-    display.classList.remove('urgent');
-    bar.classList.remove('urgent');
-
-    updateTimerDisplay();
-
-    timerInterval = setInterval(function() {
-      if (!timerPaused) {
-        timerRemaining--;
-        updateTimerDisplay();
-        if (timerRemaining <= 0) {
-          clearInterval(timerInterval);
-          display.textContent = 'GO!';
-          display.classList.remove('urgent');
-          bar.style.width = '0%';
-          beepDone();
-          setTimeout(function() {
-            if (timerRemaining <= 0) closeTimer();
-          }, 2000);
-        }
-      }
-    }, 1000);
-  }
-
-  function updateTimerDisplay() {
-    var display = document.getElementById('timer-display');
-    var bar = document.getElementById('timer-bar');
-    if (!display || !bar) return;
-    var mins = Math.floor(timerRemaining / 60);
-    var secs = timerRemaining % 60;
-    display.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-    var pct = (timerRemaining / timerTotal) * 100;
-    bar.style.width = pct + '%';
-    var urgent = timerRemaining <= 10;
-    display.classList.toggle('urgent', urgent);
-    bar.classList.toggle('urgent', urgent);
-  }
-
-  function pauseTimer() {
-    timerPaused = !timerPaused;
-    var pb = document.getElementById('t-pause');
-    if (pb) pb.textContent = timerPaused ? '▶' : '⏸';
-  }
-
-  function restartTimer() {
-    timerRemaining = timerTotal;
-    timerPaused = false;
-    var pb = document.getElementById('t-pause');
-    if (pb) pb.textContent = '⏸';
-    var d = document.getElementById('timer-display');
-    var b = document.getElementById('timer-bar');
-    if (d) d.classList.remove('urgent');
-    if (b) b.classList.remove('urgent');
-    updateTimerDisplay();
-  }
-
-  function closeTimer() {
-    clearInterval(timerInterval);
-    var w = document.getElementById('timer-widget');
-    if (w) w.classList.remove('active');
-  }
-
-  function beepRestStart() {
-    try {
-      var ctx = getAudioCtx();
-      function fire() {
-        var osc = ctx.createOscillator();
-        var gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = 440;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0.25, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.18);
-      }
-      if (ctx.state === 'suspended') { ctx.resume().then(fire).catch(function(){}); } else { fire(); }
-    } catch(e) {}
-    try { if (navigator.vibrate) navigator.vibrate(40); } catch(e) {}
-  }
-
-  function beepDone() {
-    // Haptic fallback — fires even if the browser blocks audio entirely.
-    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch(e) {}
-    try {
-      var ctx = getAudioCtx();
-      function fire() {
-        [0, 0.15, 0.3].forEach(function(delay) {
-          var osc = ctx.createOscillator();
-          var gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = 880;
-          osc.type = 'sine';
-          gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
-          osc.start(ctx.currentTime + delay);
-          osc.stop(ctx.currentTime + delay + 0.25);
-        });
-      }
-      if (ctx.state === 'suspended') { ctx.resume().then(fire).catch(function(){}); } else { fire(); }
-    } catch(e) {}
-  };
 
 /* ═══════ block boundary ═══════ */
 
