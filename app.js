@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v140 — 2026-09-13";
+var APP_BUILD = "v141 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6054,7 +6054,6 @@ function dsRenderMuscleVolume(){
   var naHost=document.getElementById('volume-needs-attention');
   if(!host) return; // only rendered when the Volume tab exists/is visited
   var rollingVol=dsWeeklyMuscleVolume('rolling');
-  var freq=dsMuscleFrequencyWeek();
 
   // Needs Attention: muscles below MEV (red/'low'/'none') in the rolling 7-day view — most actionable list, shown first
   if(naHost){
@@ -6108,12 +6107,6 @@ function dsRenderMuscleVolume(){
     +'<div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px">Weekly Volume by Muscle</div>'
     +'<div style="font-size:10px;color:#888;margin-bottom:10px">'+activeLabel+' \u00b7 band = each muscle\u2019s own MEV\u2013MAV \u00b7 red = below \u00b7 teal = in range \u00b7 amber = above</div>'
     +dsMuscleVolBandRowsHtml(activeVol)
-    +'</div>'
-    +'<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Training Frequency by Muscle <span class="ds-mvhint" style="font-size:10px;color:#888;font-weight:400">direct sets only, last 7 days</span></summary>'
-    +'<div style="font-size:10px;color:#888;margin:8px 0 10px">Red = 0x this week \u00b7 amber = 1x AND below its weekly volume minimum \u00b7 teal = 2x+, or 1x with volume already covered</div>'
-    +dsFreqRowsHtml(freq,rollingVol)
-    +'</details>'
     +'</div>';
 }
 function dsSuggestNext(item,lt){
