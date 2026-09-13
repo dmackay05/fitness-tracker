@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=74">
+<link rel="stylesheet" href="styles.css?v=75">
 </head>
 <body>
 
@@ -304,56 +304,8 @@
           <button class="meal-tag-btn" data-tag="Snack" onclick="dsMealTagSet('Snack')">Snack</button>
         </div>
         <div class="ld-tabs" id="ld-food-tabs">
-          <button class="ld-tab" data-ldtab="qa" onclick="ldSwitch('food','qa')"><span class="ld-ic">⚡</span><span class="ld-lbl">Quick</span></button>
-          <button class="ld-tab" data-ldtab="preset" onclick="ldSwitch('food','preset')"><span class="ld-ic">📋</span><span class="ld-lbl">Preset</span></button>
-          <button class="ld-tab" data-ldtab="usda" onclick="ldSwitch('food','usda')"><span class="ld-ic">🔍</span><span class="ld-lbl">Search</span></button>
           <button class="ld-tab" data-ldtab="history" onclick="ldSwitch('food','history')"><span class="ld-ic">🕘</span><span class="ld-lbl">History</span></button>
           <button class="ld-tab" data-ldtab="custom" onclick="ldSwitch('food','custom')"><span class="ld-ic">✏️</span><span class="ld-lbl">Custom</span></button>
-        </div>
-        <div class="ld-pane" data-ldpane="qa">
-          <div class="ld-pane-hdr"><span class="ld-ic">⚡</span>Quick Add</div>
-          <div class="rlbl" style="margin-top:0">🥚 Protein staples — tap to log</div>
-          <button class="bo bfull" onclick="addUsualDay()" style="margin-bottom:8px;border-color:#fbbf2455;color:#fbbf24">☀️ Log my usual day — eggs + shake + yogurt + cottage cheese (≈810 cal · 95g protein)</button>
-          <div id="qa-staples" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-          <button class="bo bfull" onclick="switchTab('meals')" style="margin-bottom:10px;border-color:#4ade8055;color:#4ade80">🍽 Browse Meal Ideas (Meals tab)</button>
-          <button class="bs bfull" onclick="copyYesterday()" style="margin-bottom:12px">📋 Copy previous day's food</button>
-          <div id="qa-fav-wrap" style="display:none">
-            <div class="rlbl" style="margin-top:0">★ Favorites</div>
-            <select id="qa-fav-select" style="margin-bottom:6px" onchange="qaFavSelectChange(this)"><option value="">★ Favorites — pick one to add…</option></select>
-            <div style="text-align:right;margin-bottom:10px"><span onclick="qaManageFavs()" style="font-size:10px;color:#666;font-family:'DM Mono',monospace;cursor:pointer;text-decoration:underline">manage favorites</span></div>
-          </div>
-          <div id="qa-recent-wrap" style="display:none">
-            <div class="rlbl" style="margin-top:0">Recent</div>
-            <select id="qa-recent-select" style="margin-bottom:10px" onchange="if(this.value!==''){addRecentIdx(+this.value);this.value='';}"><option value="">🕘 Recent — pick one to add…</option></select>
-          </div>
-          <div class="rlbl" style="margin-top:0">🍱 Saved meals</div>
-          <div id="qa-meals" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
-          <div style="display:flex;gap:8px">
-            <input type="text" id="qa-meal-name" placeholder="Name today's foods as a meal" style="flex:1;margin-bottom:0"/>
-            <button class="bs" onclick="saveMealFromToday()">Save</button>
-          </div>
-        </div>
-        <div class="ld-pane" data-ldpane="preset">
-          <div class="ld-pane-hdr"><span class="ld-ic">📋</span>Preset</div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <select id="food-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select a food —</option></select>
-            <button class="bp" onclick="addDropdownFood()">+ Add</button>
-          </div>
-          <div id="dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
-        </div>
-        <div class="ld-pane" data-ldpane="usda">
-          <div class="ld-pane-hdr"><span class="ld-ic">🔍</span>Search</div>
-          <div id="usda-myfoods-wrap" style="display:none">
-            <div class="rlbl" style="margin-top:0">⚡ My USDA Foods — tap to log</div>
-            <div id="usda-myfoods" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <input type="text" id="usda-q" placeholder="e.g. greek yogurt nonfat" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')usdaSearch()"/>
-            <button class="bp" onclick="usdaSearch()">Go</button>
-            <button class="bs" onclick="usdaScanOpen()" style="padding:8px 10px;font-size:15px" title="Scan barcode">📷</button>
-          </div>
-          <div id="usda-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px"></div>
-          <div id="usda-results"></div>
         </div>
         <div class="ld-pane" data-ldpane="history">
           <div class="ld-pane-hdr"><span class="ld-ic">🕘</span>Food History</div>
@@ -380,21 +332,9 @@
       </div>
 
       <div class="card" style="padding-bottom:14px">
-        <div class="card-title" style="margin-bottom:10px">🏋️ Exercise</div>
+        <div class="card-title" style="margin-bottom:10px">🚶 Log Cardio (any duration, no GPS)</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <select id="ex-dropdown" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none"><option value="">— Select exercise —</option></select>
-          <button class="bp" onclick="addDropdownEx()">+ Add</button>
-        </div>
-        <div id="ex-dropdown-preview" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:8px"></div>
-        <div class="g2">
-          <input type="number" id="ex-sets" placeholder="Sets"/><input type="text" id="ex-reps" placeholder="Reps"/>
-          <input type="text" id="ex-load" placeholder="Load (e.g. 30lb band)" style="grid-column:span 2"/>
-        </div>
-        <div id="ex-last-hint" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:6px;min-height:14px"></div>
-        <div style="border-top:1px solid #2a2a45;margin-top:14px;padding-top:12px">
-          <div class="rlbl" style="margin-top:0">🚶 Log Cardio (any duration, no GPS)</div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <select id="cardio-type" onchange="updateCardioHint()" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none">
+          <select id="cardio-type" onchange="updateCardioHint()" style="flex:1;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px;outline:none;-webkit-appearance:none;appearance:none">
               <option value="walk">Walk (~4.3 kcal/min)</option>
               <option value="run">Run (~10.5 kcal/min)</option>
               <option value="ruck">Rucked Walk (~6.2 kcal/min)</option>
@@ -406,7 +346,6 @@
             <button class="bp" onclick="logCustomWalk()">+ Log</button>
           </div>
           <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:6px" id="cardio-hint">~4.3 kcal/min · e.g. 40 min ≈ 170 kcal</div>
-        </div>
       </div>
       <div class="card"><div class="card-title">🔥 Today's Exercise Log <span id="burned-lbl2" style="float:right;font-weight:400;color:#888;font-size:11px"></span></div><div id="ex-log"><div class="empty">No workouts logged yet</div></div></div>
 
@@ -681,55 +620,6 @@
   </div>
 </div>
 
-<div class="modal-bg" id="usda-modal" style="display:none">
-  <div class="modal-card">
-    <div class="card-title" id="usda-m-title">Log USDA Food</div>
-    <div id="usda-m-name" style="font-size:13px;font-weight:700;margin-bottom:2px;line-height:1.3"></div>
-    <div id="usda-m-sub" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:12px"></div>
-    <input type="number" id="usda-grams" placeholder="Weight (grams)" inputmode="decimal" oninput="usdaPreview()"/>
-    <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="bs" style="flex:1" onclick="usdaSetG(50)">50g</button>
-      <button class="bs" style="flex:1" onclick="usdaSetG(100)">100g</button>
-      <button class="bs" style="flex:1" onclick="usdaSetG(150)">150g</button>
-      <button class="bs" style="flex:1" onclick="usdaSetG(170)">6oz</button>
-      <button class="bs" style="flex:1" onclick="usdaSetG(227)">8oz</button>
-    </div>
-    <div style="background:#1a1a2e;border-radius:10px;padding:12px;margin-bottom:12px;font-family:'DM Mono',monospace">
-      <div id="usda-pv-cal" style="font-size:22px;font-weight:700;color:#5eead4">0 kcal</div>
-      <div id="usda-pv-macros" style="font-size:11px;color:#aaa;margin-top:6px">P 0g · C 0g · F 0g</div>
-      <div id="usda-pv-fiber" style="font-size:10px;color:#666;margin-top:3px"></div>
-      <div id="usda-pv-sodium" style="font-size:10px;color:#666;margin-top:3px"></div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <button class="bs" style="flex:1" onclick="usdaClose()">Cancel</button>
-      <button class="bp" style="flex:1" onclick="usdaLog()">+ Log It</button>
-    </div>
-    <div id="usda-m-remove" style="display:none;text-align:center;margin-top:10px"><button class="bd" style="font-size:10px" onclick="usdaRemoveCached()">Remove from My USDA Foods</button></div>
-  </div>
-</div>
-
-<!-- BARCODE SCANNER OVERLAY -->
-<div id="usda-scan-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9999;flex-direction:column">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px">
-    <button class="bs" onclick="usdaScanClose()">✕ Close</button>
-    <div style="font-size:12px;color:#5eead4;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase">Scan Barcode</div>
-    <div style="width:60px"></div>
-  </div>
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
-    <video id="usda-scan-video" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-      <div style="width:78%;max-width:340px;height:150px;border:2px solid #5eead4;border-radius:14px;box-shadow:0 0 0 2000px #0d0d1a88"></div>
-    </div>
-  </div>
-  <div style="padding:14px 18px 30px">
-    <div id="usda-scan-status" style="font-size:11px;color:#888;font-family:'DM Mono',monospace;text-align:center;min-height:16px;margin-bottom:10px">Point at the barcode…</div>
-    <div style="display:flex;gap:8px">
-      <input type="number" id="usda-scan-manual" placeholder="…or type the UPC digits" inputmode="numeric" style="flex:1;margin-bottom:0"/>
-      <button class="bp" onclick="usdaScanManual()">Look up</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-bg" id="ex-edit-modal" style="display:none">
   <div class="modal-card">
     <div class="card-title">Edit Exercise</div>
@@ -837,8 +727,6 @@
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
-        <div class="rlbl">USDA API Key (free at fdc.nal.usda.gov — blank uses DEMO_KEY, 30 req/hr)</div>
-        <input type="text" id="ft-usda-key" placeholder="DEMO_KEY" style="font-size:11px;margin-bottom:8px" />
         <div class="rlbl">PIN (optional, 4 digits)</div>
         <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
@@ -1072,6 +960,6 @@
   </div>
 </div>
 
-<script src="app.js?v=243"></script>
+<script src="app.js?v=244"></script>
 </body>
 </html>

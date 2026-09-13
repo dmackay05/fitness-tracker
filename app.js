@@ -1,77 +1,3 @@
-var EXERCISES = [
-  {name:"Mountain Bike Ride (60 min)",calories:550,type:"cardio"},
-  {name:"Mountain Bike Ride (45 min)",calories:420,type:"cardio"},
-  {name:"Mountain Bike Ride (30 min)",calories:275,type:"cardio"},
-  {name:"Jump Rope (15 min)",calories:180,type:"cardio"},
-  {name:"Walk (30 min)",calories:130,type:"cardio"},
-  {name:"Run/Walk Intervals (20 min)",calories:200,type:"cardio"},
-  {name:"Easy Run (20 min)",calories:210,type:"cardio"},
-  {name:"Day 1 - Upper Push/Pull (bands)",calories:220,type:"strength"},
-  {name:"Day 2 - Lower + Core (bands)",calories:240,type:"strength"},
-  {name:"Day 3 - Upper Hypertrophy (bands)",calories:210,type:"strength"},
-  {name:"Day 4 - Lower + Core Strength (bands)",calories:250,type:"strength"},
-  {name:"Warm-Up - Balance Board + Jump Rope + KB Halos (9 min)",calories:70,type:"cardio"},
-  {name:"Jump Squats (3 sets)",calories:45,type:"cardio"},
-  {name:"Ball Slams (3 sets)",calories:40,type:"cardio"},
-  {name:"Turkish Get-Up (KB)",calories:50,type:"strength"},
-  {name:"Step-Ups (3 sets)",calories:40,type:"strength"},
-  {name:"Stability Ball Leg Curl (3 sets)",calories:30,type:"strength"},
-  {name:"Squat to Press (3 sets)",calories:50,type:"strength"},
-  {name:"Goblet Squat (3-4 sets)",calories:40,type:"strength"},
-  {name:"Iso-Hold Bicep Curls (3 sets)",calories:25,type:"strength"},
-  {name:"Forward Fold Curls (3 sets)",calories:25,type:"strength"},
-  {name:"Tricep Kickbacks (3 sets)",calories:25,type:"strength"},
-  {name:"Narrow Rows (3 sets)",calories:30,type:"strength"},
-  {name:"Curl to Shoulder Press (3 sets)",calories:35,type:"strength"},
-  {name:"Front to Lateral Raise (3 sets)",calories:25,type:"strength"},
-  {name:"Curl to Cross Press (3 sets)",calories:30,type:"strength"},
-  {name:"Shoulder Press to Tricep Ext (3 sets)",calories:30,type:"strength"},
-  {name:"Deadlift to Alt Row (3 sets)",calories:40,type:"strength"},
-  {name:"Overhead Press (3 sets)",calories:35,type:"strength"},
-  {name:"Core Finisher - Hollow / Bicycle / Leg Raise",calories:35,type:"strength"},
-  {name:"Russian Twists (3 sets)",calories:25,type:"strength"},
-  {name:"Dead Hangs + Playground",calories:90,type:"mobility"},
-  {name:"Morning Mobility Routine",calories:40,type:"mobility"},
-  {name:"Evening Restorative Sequence",calories:30,type:"mobility"},
-  {name:"Yoga (10 min)",calories:25,type:"yoga"},
-  {name:"Yoga (20 min)",calories:50,type:"yoga"},
-  {name:"Yoga (30 min)",calories:75,type:"yoga"},
-  {name:"Yoga (45 min)",calories:110,type:"yoga"},
-  {name:"Yoga (60 min)",calories:145,type:"yoga"}
-];
-
-var PRESET_FOODS = [
-  {name:"3 Boiled Eggs",cal:210,protein:18,carbs:0,fat:15,fiber:0,sodium:190},
-  {name:"Greek Yogurt (1 cup)",cal:130,protein:18,carbs:9,fat:0,fiber:0,sodium:80},
-  {name:"Whey Protein Shake",cal:160,protein:27,carbs:6,fat:3,fiber:0,sodium:130},
-  {name:"Cottage Cheese (1 cup)",cal:200,protein:25,carbs:8,fat:4,fiber:0,sodium:900},
-  {name:"Chicken Breast (6 oz)",cal:275,protein:52,carbs:0,fat:6,fiber:0,sodium:130},
-  {name:"Salmon Fillet (6 oz)",cal:350,protein:40,carbs:0,fat:20,fiber:0,sodium:130},
-  {name:"Ground Turkey 93% (6 oz)",cal:220,protein:42,carbs:0,fat:6,fiber:0,sodium:150},
-  {name:"Quinoa (1 cup cooked)",cal:220,protein:8,carbs:40,fat:4,fiber:5,sodium:15},
-  {name:"Brown Rice (1 cup cooked)",cal:215,protein:5,carbs:45,fat:2,fiber:3.5,sodium:10},
-  {name:"Black Beans (1 cup)",cal:225,protein:15,carbs:40,fat:1,fiber:15,sodium:400,note:"Sodium assumes canned; rinse canned beans to cut it by roughly a third, or use dried/unsalted for near-zero."},
-  {name:"Almonds (1 oz)",cal:165,protein:6,carbs:6,fat:14,fiber:3.5,sodium:0},
-  {name:"Walnuts (1 oz)",cal:185,protein:4,carbs:4,fat:18,fiber:2,sodium:0},
-  {name:"Whole Grain Toast (1 slice)",cal:80,protein:4,carbs:15,fat:1,fiber:2,sodium:150},
-  {name:"Avocado (half)",cal:120,protein:1,carbs:6,fat:11,fiber:5,sodium:5},
-  {name:"Super Smoothie (Clovis Farms)",cal:180,protein:6,carbs:34,fat:3,fiber:3,sodium:0},
-  {name:"Olive Oil (1 tbsp)",cal:120,protein:0,carbs:0,fat:14,fiber:0,sodium:0},
-  {name:"Feta Cheese (1 oz)",cal:75,protein:4,carbs:1,fat:6,fiber:0,sodium:310},
-  {name:"Shrimp (6 oz)",cal:165,protein:36,carbs:0,fat:2,fiber:0,sodium:200},
-  {name:"Lentils cooked (1 cup)",cal:230,protein:18,carbs:40,fat:1,fiber:16,sodium:5},
-  {name:"Pork Tenderloin (6 oz)",cal:200,protein:40,carbs:0,fat:4,fiber:0,sodium:110},
-  {name:"ON Gold Standard Whey (1 scoop)",cal:120,protein:24,carbs:3,fat:1,fiber:0,sodium:130},
-  {name:"Chia Seeds (1 tbsp)",cal:60,protein:2,carbs:5,fat:4,fiber:5,sodium:0},
-  {name:"Chickpeas (1 cup)",cal:270,protein:15,carbs:45,fat:4,fiber:12.5,sodium:350,note:"Sodium assumes canned; rinse to cut it, or use dried/unsalted for near-zero."},
-  {name:"Raspberries (1 cup)",cal:65,protein:1,carbs:15,fat:1,fiber:8,sodium:0,note:"High fiber, lowest sugar of common berries — best pick for blood sugar management."},
-  {name:"Apple with skin (medium)",cal:95,protein:0,carbs:25,fat:0,fiber:4.5,sodium:0,note:"Slow-digesting fiber (skin-on) and portable — good grab-and-go snack."},
-  {name:"Broccoli (1 cup cooked)",cal:55,protein:4,carbs:11,fat:0,fiber:5,sodium:30},
-  {name:"Sweet Potato with skin (medium)",cal:115,protein:2,carbs:27,fat:0,fiber:4,sodium:40},
-  {name:"Blueberries (1 cup)",cal:85,protein:1,carbs:21,fat:0.5,fiber:3.5,sodium:0,note:"Highest anthocyanin content — best pick for reducing inflammation. MIND diet staple."},
-  {name:"Strawberries (1 cup)",cal:50,protein:1,carbs:12,fat:0.5,fiber:3,sodium:0,note:"Lowest calorie density of common fruits — good for volume/satiety per calorie."},
-  {name:"Banana (medium)",cal:105,protein:1,carbs:27,fat:0,fiber:3,sodium:0,note:"Fast-digesting carbs — best eaten right before a ride or lift for quick energy."}
-];
 
 var SUPPS = []; // loaded from store after the storage layer is defined (see config block)
 // ═══════════════════════════════════════════════════════════════════════
@@ -99,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v149 — 2026-09-13";
+var APP_BUILD = "v150 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -264,7 +190,7 @@ var TREND_METRICS=[
   {key:"steps",   label:"Steps",     unit:"",    dir:"higher",  color:"#22c55e", goal:function(){return effStepGoal()||10000;}, get:function(d){return (d.wellness&&d.wellness.steps>0)?d.wellness.steps:null;}}
 ];
 
-// EXERCISES, PRESET_FOODS, SUPPS injected just above this block (data.js)
+// SUPPS injected just above this block (data.js)
 
 // ── DATE (local time only) ──────────────────────────────────────────────
 function localDateKey(d){ d=d||new Date();
@@ -1064,19 +990,6 @@ function doRefresh(which){
 }
 
 // ── LOG: FOOD ───────────────────────────────────────────────────────────
-function populateFoodDropdown(){
-  var dd=document.getElementById("food-dropdown"); if(!dd) return;
-  dd.innerHTML='<option value="">— Select a food —</option>'+
-    PRESET_FOODS.map(function(f,i){return '<option value="'+i+'">'+f.name+' · '+f.cal+' kcal · '+f.protein+'g P</option>';}).join("");
-  dd.onchange=function(){ var f=PRESET_FOODS[dd.value];
-    document.getElementById("dropdown-preview").textContent=f?(f.cal+" kcal · "+f.protein+"g protein · "+f.carbs+"g carbs · "+f.fat+"g fat"+(f.note?" — "+f.note:"")):""; };
-}
-function addDropdownFood(){
-  var dd=document.getElementById("food-dropdown"); if(dd.value==="") return;
-  var f=PRESET_FOODS[dd.value];
-  addFoodObj({name:f.name,cal:f.cal,protein:f.protein,carbs:f.carbs,fat:f.fat});
-  dd.value=""; document.getElementById("dropdown-preview").textContent="";
-}
 function addCustomFood(){
   var n=document.getElementById("cf-name").value.trim(), c=+document.getElementById("cf-cal").value||0;
   if(!n||!c) return;
@@ -1137,29 +1050,6 @@ function renderFoodLog(){
     '<div style="font-size:10px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g (carbs − fiber)</div>';
 }
 
-// ── LOG: EXERCISE ───────────────────────────────────────────────────────
-function populateExDropdown(){
-  var dd=document.getElementById("ex-dropdown"); if(!dd) return;
-  var groups={cardio:"Cardio",strength:"Strength",mobility:"Mobility",yoga:"Yoga"};
-  var html='<option value="">— Select exercise —</option>';
-  Object.keys(groups).forEach(function(g){
-    html+='<optgroup label="'+groups[g]+'">';
-    EXERCISES.forEach(function(e,i){ if(e.type===g) html+='<option value="'+i+'">'+e.name+' · '+calAdj(e.calories)+' kcal</option>'; });
-    html+='</optgroup>';
-  });
-  dd.innerHTML=html;
-  dd.onchange=function(){ var e=EXERCISES[dd.value];
-    document.getElementById("ex-dropdown-preview").textContent=e?("🔥 "+calAdj(e.calories)+" kcal"):"";
-    showLastHint(e?e.name:"","ex-last-hint"); };
-}
-function addDropdownEx(){
-  var dd=document.getElementById("ex-dropdown"); if(dd.value===""){ toast("Pick an exercise from the list first"); return; }
-  var e=EXERCISES[dd.value], day=getDay();
-  var ex={name:e.name,calories:calAdj(e.calories),type:e.type,id:Date.now().toString()};
-  _attachExDetail(ex,"ex-sets","ex-reps","ex-load");
-  dsAddEx(day,ex);
-  saveDay(day); dd.value=""; document.getElementById("ex-dropdown-preview").textContent=""; document.getElementById("ex-last-hint").textContent=""; _clearExDetail("ex-sets","ex-reps","ex-load"); renderAll();
-}
 var CARDIO_RATES={walk:{perMin:4.3,label:"Walk"},ruck:{perMin:6.2,label:"Rucked Walk"},ride:{perMin:4.5,label:"Bike Ride"},run:{perMin:10.5,label:"Run"}};
 function updateCardioHint(){
   var t=document.getElementById("cardio-type"); if(!t) return;
@@ -1179,7 +1069,7 @@ function logCustomWalk(){
   saveDay(day); minEl.value=""; renderAll();
   toast("Logged "+min+" min "+r.label.toLowerCase()+" · "+cal+" kcal");
 }
-var LD_DEFAULTS={food:"qa",ex:"dropdown",track:"water"};
+var LD_DEFAULTS={food:"history",ex:"dropdown",track:"water"};
 function ldSwitch(group,tab){
   store.set("ld_tab_"+group, tab);
   var tabsWrap=document.getElementById("ld-"+group+"-tabs"); if(!tabsWrap) return;
@@ -1868,7 +1758,7 @@ document.addEventListener("visibilitychange",function(){
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderQuickAdd(); renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderWeightHistory(); renderSupps();
+  renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderWeightHistory(); renderSupps();
   document.getElementById("wt-input").value="";
   var _mt=dsMealTagGet(), _mtEl=document.getElementById("meal-tag-picker");
   if(_mtEl){ Array.prototype.forEach.call(_mtEl.children, function(btn){ btn.classList.toggle("on", btn.getAttribute("data-tag")===_mt); }); }
@@ -1881,7 +1771,6 @@ function saveHealthSettings(){
   var hn=document.getElementById("hname"); if(hn) hn.textContent=(nm?nm:"Athlete")+" 💪";
   var url=g("ft-sheets-url").trim(); store.set("ft_sheets_url",url); SHEETS_URL=url;
   var planUrl=g("ft-plan-url").trim(); store.set("ft_plan_url",planUrl); PLAN_URL=planUrl;
-  var uk=g("ft-usda-key").trim(); store.set("ft_usda_key",uk); USDA_KEY=uk||"DEMO_KEY";
   var pin=g("ft-pin-input").trim(); if(/^\d{4}$/.test(pin)){ store.set("ft_pin",pin); APP_PIN=pin; } else { store.set("ft_pin",""); APP_PIN=""; }
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
   var gw=parseFloat(g("ft-goal-weight"))||0; store.set("ft_goal_weight",gw||""); GOAL_WEIGHT=gw;
@@ -1918,7 +1807,6 @@ function initHealthSettings(){
   setv("ft-name-input", store.get("ft_name")||"");
   setv("ft-sheets-url", store.get("ft_sheets_url")||"");
   setv("ft-plan-url", store.get("ft_plan_url")||"");
-  setv("ft-usda-key", store.get("ft_usda_key")||"");
   setv("ft-pin-input", store.get("ft_pin")||"");
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
@@ -2028,8 +1916,6 @@ document.querySelectorAll(".rbtn[data-field]").forEach(function(btn){
   });
 });
 
-populateFoodDropdown();
-populateExDropdown();
 setTimeout(renderAll, 0);
 if(typeof ldInit==="function"){ try{ldInit();}catch(e){} }
 
@@ -2203,12 +2089,9 @@ function renderTrends(){
 }
 
 
-// ── BATCH B: FAST FOOD LOGGING (copy / recent / favorites / meals) ──────
-var _recentCache=[];
+// ── BATCH B: FAST FOOD LOGGING (favorites/history search) ──────
 function loadFav(){ try{ var a=JSON.parse(store.get("ft_fav_foods")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function saveFav(a){ store.set("ft_fav_foods", JSON.stringify(a)); }
-function loadMeals(){ try{ var a=JSON.parse(store.get("ft_meals")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
-function saveMeals(a){ store.set("ft_meals", JSON.stringify(a)); }
 // ── Explicit meal tag (Breakfast/Lunch/Dinner/Snack), independent of when you
 // happen to log — this is what the protein-by-meal graph trusts first, falling
 // back to a time-of-day guess only for entries logged before this existed.
@@ -2290,23 +2173,6 @@ function toggleFavById(id){
   if(i>=0){ fav.splice(i,1); toast("Removed from favorites"); } else { fav.push(_foodCopy(f)); toast("\u2605 Favorited"); }
   saveFav(fav); renderAll();
 }
-function addFav(i){ var f=loadFav()[i]; if(f){ addFoodObj(f); toast("Added "+f.name); } }
-function delFav(i){ var fav=loadFav(); fav.splice(i,1); saveFav(fav); renderQuickAdd(); }
-function addRecentIdx(i){ var f=_recentCache[i]; if(f){ addFoodObj(f); toast("Added "+f.name); } }
-function copyYesterday(){
-  var d=keyToDate(activeDate); d.setDate(d.getDate()-1); var yk=localDateKey(d);
-  var src=appData[yk]; if(!src||!src.foods||!src.foods.length){ toast("No food logged the day before"); return; }
-  var day=getDay(); src.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); if(f.mealTag) o.mealTag=f.mealTag; day.foods.push(o); });
-  saveDay(day); renderAll(); toast("Copied "+src.foods.length+" item"+(src.foods.length>1?"s":""));
-}
-function recentFoods(){
-  var keys=Object.keys(appData).sort().reverse(), seen={}, out=[], favKeys=loadFav().map(_foodKey);
-  for(var i=0;i<keys.length && out.length<10;i++){
-    var fs=(appData[keys[i]]&&appData[keys[i]].foods)||[];
-    for(var j=fs.length-1;j>=0;j--){ var fo=fs[j], k=_foodKey(fo); if(!fo.name||seen[k]||favKeys.indexOf(k)>=0) continue; seen[k]=1; out.push(_foodCopy(fo)); if(out.length>=10) break; }
-  }
-  return out;
-}
 // ── Food History Search: searches every logged day, not just the last 10 ──
 var _fhDebounce=null;
 var _fhCache={};
@@ -2355,71 +2221,6 @@ function fhAdd(i){
   var f=_fhCache[i]; if(!f) return;
   addFoodObj(f);
   toast("Added "+f.name);
-}
-/* ── Protein staples: one-tap logging for the standardized day ──────────── */
-var FT_STAPLES=[
-  {emoji:"\ud83e\udd5a",name:"3 boiled eggs",cal:210,protein:18,carbs:1,fat:15},
-  {emoji:"\ud83e\udd64",name:"Protein shake (whey + whole milk)",cal:330,protein:38,carbs:20,fat:11},
-  {emoji:"\ud83e\udd63",name:"Oikos Triple Zero",cal:90,protein:15,carbs:6,fat:0},
-  {emoji:"\ud83e\uddc0",name:"Cottage cheese (1 cup)",cal:180,protein:24,carbs:8,fat:5},
-  {emoji:"\ud83d\udc14",name:"Chicken breast (6 oz cooked)",cal:280,protein:52,carbs:0,fat:6},
-  {emoji:"\ud83d\udc1f",name:"Canned tuna (1 can, drained)",cal:120,protein:26,carbs:0,fat:1},
-  {emoji:"\ud83e\udd69",name:"Ground beef 90% (6 oz cooked)",cal:310,protein:44,carbs:0,fat:15},
-  {emoji:"\ud83c\udf5a",name:"Dinner sides (estimate)",cal:400,protein:8,carbs:50,fat:15}
-];
-function addStaple(i){ var f=FT_STAPLES[i]; if(f){ addFoodObj({name:f.name,cal:f.cal,protein:f.protein,carbs:f.carbs,fat:f.fat}); } }
-function addUsualDay(){
-  var day=getDay(); var _tags=['Breakfast','Snack','Snack','Snack'];
-  [0,1,2,3].forEach(function(i){ var f=FT_STAPLES[i]; var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*10000)+i; o.mealTag=_tags[i]; day.foods.push(o); });
-  saveDay(day); renderAll(); toast("Usual day logged \u2014 95g protein banked. Just add lunch + dinner protein.");
-}
-function saveMealFromToday(){
-  var el=document.getElementById("qa-meal-name"), name=(el.value||"").trim();
-  var foods=getDay().foods; if(!foods.length){ toast("Log some food first"); return; }
-  if(!name){ toast("Name the meal first"); return; }
-  var meals=loadMeals(); meals.push({name:name,foods:foods.map(_foodCopy)}); saveMeals(meals);
-  el.value=""; renderQuickAdd(); toast("Saved meal: "+name);
-}
-function addMeal(i){
-  var m=loadMeals()[i]; if(!m) return; var day=getDay(); var _tag=dsMealTagGet();
-  m.foods.forEach(function(f){ var o=_foodCopy(f); o.id=Date.now().toString()+Math.floor(Math.random()*1000); o.mealTag=_tag; day.foods.push(o); });
-  saveDay(day); renderAll(); toast("Added "+m.name);
-}
-function delMeal(i){ var meals=loadMeals(); meals.splice(i,1); saveMeals(meals); renderQuickAdd(); }
-function _chip(label,onclick,delClick){
-  var x=delClick?'<b onclick="event.stopPropagation();'+delClick+'" style="margin-left:7px;color:#ff6b6b;font-weight:700">\u2715</b>':'';
-  return '<span class="tag" style="cursor:pointer;background:#5eead416;color:#cfeee9;border:1px solid #5eead430;padding:6px 10px" onclick="'+onclick+'">'+label+x+'</span>';
-}
-function renderQuickAdd(){
-  var stWrap=document.getElementById("qa-staples");
-  if(stWrap)stWrap.innerHTML=FT_STAPLES.map(function(f,i){return _chip(f.emoji+" "+escH(f.name)+" \u00b7 "+f.protein+"g P","addStaple("+i+")");}).join("");
-  var favWrap=document.getElementById("qa-fav-wrap"); if(!favWrap) return;
-  var recWrap=document.getElementById("qa-recent-wrap");
-  var fav=loadFav();
-  if(fav.length){ favWrap.style.display="block";
-    var favSel=document.getElementById("qa-fav-select");
-    if(favSel) favSel.innerHTML='<option value="">\u2605 Favorites \u2014 pick one to add\u2026</option>'+fav.map(function(f,i){return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal</option>';}).join(""); }
-  else favWrap.style.display="none";
-  _recentCache=recentFoods();
-  if(_recentCache.length){ recWrap.style.display="block";
-    var recSel=document.getElementById("qa-recent-select");
-    if(recSel) recSel.innerHTML='<option value="">\ud83d\udd58 Recent \u2014 pick one to add\u2026</option>'+_recentCache.map(function(f,i){return '<option value="'+i+'">'+escH(f.name)+' \u00b7 '+f.cal+' cal</option>';}).join(""); }
-  else recWrap.style.display="none";
-  var meals=loadMeals();
-  document.getElementById("qa-meals").innerHTML = meals.length? meals.map(function(m,i){ var cal=m.foods.reduce(function(a,x){return a+(+x.cal||0);},0); return _chip("\ud83c\udf71 "+escH(m.name)+" \u00b7 "+cal,"addMeal("+i+")","delMeal("+i+")"); }).join("")
-    : '<span style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace">No saved meals yet \u2014 log foods, name them below, and Save.</span>';
-}
-function qaFavSelectChange(sel){
-  if(sel.value!==""){ addFav(+sel.value); sel.value=""; }
-}
-function qaManageFavs(){
-  var fav=loadFav();
-  if(!fav.length){ toast("No favorites yet"); return; }
-  var names=fav.map(function(f,i){return (i+1)+". "+f.name;}).join("\n");
-  var pick=prompt("Remove which favorite? Enter a number:\n\n"+names);
-  if(pick===null) return;
-  var idx=parseInt(pick)-1;
-  if(idx>=0 && idx<fav.length){ delFav(idx); toast("Removed "+fav[idx].name); }
 }
 function toast(msg){
   var t=document.getElementById("ft-toast");
@@ -2650,243 +2451,6 @@ setInterval(function(){
 // (backgrounded tab getting killed, screen lock causing a refresh, etc.)
 try{ trkTryRestore(); }catch(e){}
 
-// ══════════════════════════════════════════════════════════════════════
-// USDA FOOD SEARCH (FoodData Central) — ported from food_nutrition_info.py
-// Searches USDA, scales per-100g nutrients to a logged weight, and pushes
-// the result through addFoodObj() so it lands in the normal food log,
-// macro totals, and Google Sheets sync like any other entry.
-// ══════════════════════════════════════════════════════════════════════
-var USDA_KEY = store.get("ft_usda_key") || "DEMO_KEY";
-var USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
-var USDA_DETAILS_URL = "https://api.nal.usda.gov/fdc/v1/food/";
-var _usdaResults = [], _usdaSel = null;
-
-// ── MY USDA FOODS — per-100g cache + portion memory ─────────────────────
-// { key: {name, fdcId, per100:{cal,protein,fat,carbs,fiber}|null, lastGrams, t} }
-var USDA_CACHE = {};
-try { USDA_CACHE = JSON.parse(store.get("ft_usda_cache")||"{}")||{}; } catch(e){ USDA_CACHE={}; }
-// Seed with the original food_nutrition_info.py registry (per-100g fetched once on first use)
-(function(){
-  var seeds = {
-    "fdc_1102652":{name:"Avocado raw",                    fdcId:1102652},
-    "fdc_1103859":{name:"Yogurt Greek plain nonfat",      fdcId:1103859},
-    "fdc_1104523":{name:"Chicken breast meat only raw",   fdcId:1104523},
-    "fdc_1098179":{name:"Ground beef 93% lean raw",       fdcId:1098179},
-    "fdc_1102702":{name:"Blueberries raw",                fdcId:1102702}
-  };
-  Object.keys(seeds).forEach(function(k){ if(!USDA_CACHE[k]) USDA_CACHE[k]={name:seeds[k].name,fdcId:seeds[k].fdcId,per100:null,lastGrams:0,t:0}; });
-})();
-function saveUsdaCache(){ try{ store.set("ft_usda_cache", JSON.stringify(USDA_CACHE)); }catch(e){} }
-function usdaCacheKey(fdcId,name){ return fdcId ? "fdc_"+fdcId : "nm_"+String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"_").slice(0,40); }
-function renderUsdaMyFoods(){
-  var wrap=document.getElementById("usda-myfoods-wrap"), el=document.getElementById("usda-myfoods");
-  if(!wrap||!el) return;
-  var keys=Object.keys(USDA_CACHE).sort(function(a,b){ return (USDA_CACHE[b].t||0)-(USDA_CACHE[a].t||0); });
-  if(!keys.length){ wrap.style.display="none"; return; }
-  wrap.style.display="block";
-  el.innerHTML=keys.map(function(k){
-    var c=USDA_CACHE[k];
-    var short=c.name.length>26?c.name.slice(0,24)+"…":c.name;
-    return '<button class="bs" style="font-size:10px;text-transform:none;letter-spacing:0;padding:7px 11px;border-radius:16px" onclick="usdaOpenCached(\''+k+'\')">'+_uEsc(short)+(c.lastGrams?' <span style="color:#5eead4">'+_uR1(c.lastGrams)+'g</span>':'')+'</button>';
-  }).join("");
-}
-function usdaOpenCached(key){
-  var c=USDA_CACHE[key]; if(!c) return;
-  _usdaSel={ name:c.name, per100:c.per100, fdcId:c.fdcId, dataType:"cached", cacheKey:key };
-  document.getElementById("usda-m-name").textContent=c.name;
-  document.getElementById("usda-m-sub").textContent=(c.fdcId?"FDC "+c.fdcId+" · ":"")+"cached · per-100g baseline";
-  document.getElementById("usda-m-remove").style.display="block";
-  document.getElementById("usda-grams").value=c.lastGrams||"";
-  usdaPreview();
-  document.getElementById("usda-modal").style.display="flex";
-  if(!c.per100){ // seed entry — fetch details once, cache forever
-    document.getElementById("usda-m-sub").textContent="Fetching nutrients from USDA…";
-    fetch(USDA_DETAILS_URL+c.fdcId+"?api_key="+encodeURIComponent(USDA_KEY))
-      .then(function(r){ if(!r.ok) throw new Error("USDA "+r.status); return r.json(); })
-      .then(function(raw){
-        c.per100=usdaExtract(raw.foodNutrients); _usdaSel.per100=c.per100; saveUsdaCache();
-        document.getElementById("usda-m-sub").textContent="FDC "+c.fdcId+" · cached · per-100g baseline";
-        usdaPreview();
-      }).catch(function(e){ document.getElementById("usda-m-sub").textContent="⚠ "+e.message+" — check API key in Settings"; });
-  }
-  var inp=document.getElementById("usda-grams");
-  setTimeout(function(){ inp.focus(); if(inp.value) inp.select(); },150);
-}
-function usdaRemoveCached(){
-  if(_usdaSel&&_usdaSel.cacheKey){ delete USDA_CACHE[_usdaSel.cacheKey]; saveUsdaCache(); renderUsdaMyFoods(); }
-  usdaClose();
-}
-
-// Same nutrient mapping as the Python target_nutrients; handles both the
-// Search schema (nutrientName/value) and Details schema (nutrient.name/amount)
-function usdaExtract(foodNutrients){
-  var p={cal:0,protein:0,fat:0,carbs:0,fiber:0,sodium:0}, gotKcal=false, atwater=0;
-  var map={"Protein":"protein","Total lipid (fat)":"fat","Carbohydrate, by difference":"carbs","Fiber, total dietary":"fiber","Sodium, Na":"sodium"};
-  (foodNutrients||[]).forEach(function(item){
-    var ni=item.nutrient||{};
-    var name=ni.name||item.nutrientName||"";
-    var unit=(ni.unitName||item.unitName||"").toUpperCase();
-    var amt=(item.amount!=null)?item.amount:(item.value!=null?item.value:0);
-    if(name==="Energy"){ if(unit==="KCAL"){p.cal=amt;gotKcal=true;} }
-    else if(name==="Energy (Atwater General Factors)"&&unit==="KCAL"){ atwater=amt; }
-    else if(map[name]){ p[map[name]]=amt; }
-  });
-  if(!gotKcal&&atwater) p.cal=atwater;
-  return p;
-}
-function usdaScale(per100,grams){
-  var s=grams/100.0, r=function(n){return Math.round(n*10)/10;};
-  return {cal:r(per100.cal*s),protein:r(per100.protein*s),fat:r(per100.fat*s),carbs:r(per100.carbs*s),fiber:r(per100.fiber*s),sodium:r(per100.sodium*s)};
-}
-function _uEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-function _uR1(n){ return (Math.round((+n||0)*10)/10).toString().replace(/\.0$/,""); }
-
-function usdaSearch(){
-  var q=document.getElementById("usda-q").value.trim(); if(!q) return;
-  var st=document.getElementById("usda-status"), res=document.getElementById("usda-results");
-  st.textContent="Searching USDA…"; res.innerHTML="";
-  var url=USDA_SEARCH_URL+"?api_key="+encodeURIComponent(USDA_KEY)+"&query="+encodeURIComponent(q)+"&pageSize=12";
-  fetch(url).then(function(r){ if(!r.ok) throw new Error("USDA "+r.status); return r.json(); }).then(function(data){
-    var foods=data.foods||[];
-    // Foundation / SR Legacy first — canonical per-100g profiles; Branded after
-    var rank={"Foundation":0,"SR Legacy":1,"Survey (FNDDS)":2,"Branded":3};
-    foods.sort(function(a,b){ return (rank[a.dataType]!=null?rank[a.dataType]:9)-(rank[b.dataType]!=null?rank[b.dataType]:9); });
-    _usdaResults=foods;
-    st.textContent=foods.length?foods.length+" results — tap to log":"No results. Try a simpler term.";
-    res.innerHTML=foods.map(function(f,i){
-      var p=usdaExtract(f.foodNutrients);
-      return '<div class="row" onclick="usdaPick('+i+')" style="cursor:pointer">'
-        +'<div style="flex:1;min-width:0"><div class="row-name">'+_uEsc(f.description)+(f.brandOwner?' <span style="color:#888;font-weight:400">· '+_uEsc(f.brandOwner)+'</span>':'')+'</div>'
-        +'<div class="row-sub">per 100g · '+Math.round(p.cal)+' kcal · P '+_uR1(p.protein)+' · C '+_uR1(p.carbs)+' · F '+_uR1(p.fat)+'</div></div>'
-        +'<span class="tag" style="background:'+(f.dataType==="Branded"?"#a78bfa22;color:#a78bfa":"#5eead422;color:#5eead4")+'">'+_uEsc(f.dataType||"")+'</span></div>';
-    }).join("");
-  }).catch(function(e){
-    st.textContent="⚠ "+e.message+(USDA_KEY==="DEMO_KEY"?" — DEMO_KEY allows 30 req/hr; add a free key in Settings.":" — check your API key in Settings.");
-  });
-}
-function usdaPick(i){
-  var f=_usdaResults[i]; if(!f) return;
-  var key=usdaCacheKey(f.fdcId,f.description);
-  _usdaSel={ name:f.description, per100:usdaExtract(f.foodNutrients), fdcId:f.fdcId, dataType:f.dataType, cacheKey:key };
-  document.getElementById("usda-m-name").textContent=f.description+(f.brandOwner?" · "+f.brandOwner:"");
-  document.getElementById("usda-m-sub").textContent="FDC "+f.fdcId+" · "+(f.dataType||"")+" · per-100g baseline";
-  document.getElementById("usda-m-remove").style.display="none";
-  // Portion memory: prefill last-used grams if we've logged this food before
-  var prev=USDA_CACHE[key];
-  document.getElementById("usda-grams").value=(prev&&prev.lastGrams)?prev.lastGrams:"";
-  usdaPreview();
-  document.getElementById("usda-modal").style.display="flex";
-  var inp=document.getElementById("usda-grams");
-  setTimeout(function(){ inp.focus(); if(inp.value) inp.select(); },150);
-}
-function usdaSetG(g){ document.getElementById("usda-grams").value=g; usdaPreview(); }
-function usdaPreview(){
-  var g=parseFloat(document.getElementById("usda-grams").value)||0;
-  var p=_usdaSel?usdaScale(_usdaSel.per100,g):{cal:0,protein:0,fat:0,carbs:0,fiber:0,sodium:0};
-  document.getElementById("usda-pv-cal").textContent=Math.round(p.cal)+" kcal";
-  document.getElementById("usda-pv-macros").textContent="P "+_uR1(p.protein)+"g · C "+_uR1(p.carbs)+"g · F "+_uR1(p.fat)+"g";
-  document.getElementById("usda-pv-fiber").textContent=p.fiber?("Fiber "+_uR1(p.fiber)+"g · Net carbs "+_uR1(Math.max(0,p.carbs-p.fiber))+"g"):"";
-  var _pvNa=document.getElementById("usda-pv-sodium"); if(_pvNa) _pvNa.textContent=p.sodium?("Sodium "+Math.round(p.sodium)+"mg"):"";
-}
-function usdaClose(){ document.getElementById("usda-modal").style.display="none"; _usdaSel=null; }
-function usdaLog(){
-  var g=parseFloat(document.getElementById("usda-grams").value)||0;
-  if(!_usdaSel||!g){ toast("Enter a weight in grams"); return; }
-  if(!_usdaSel.per100){ toast("Still fetching nutrients — one sec"); return; }
-  var p=usdaScale(_usdaSel.per100,g);
-  // Strip commas/pipes from USDA names — the sheet's Foods column is
-  // comma-joined and pipe-delimited, so they'd corrupt the round-trip.
-  var clean=_usdaSel.name.replace(/\s*,\s*/g," ").replace(/\|/g," ").trim();
-  addFoodObj({ name:clean+" ("+_uR1(g)+"g)", cal:p.cal, protein:p.protein, carbs:p.carbs, fat:p.fat, fiber:p.fiber, sodium:p.sodium, grams:g, fdcId:_usdaSel.fdcId });
-  // Cache for My USDA Foods + remember this portion
-  var key=_usdaSel.cacheKey||usdaCacheKey(_usdaSel.fdcId,clean);
-  USDA_CACHE[key]={ name:clean, fdcId:_usdaSel.fdcId||"", per100:_usdaSel.per100, lastGrams:g, t:Date.now() };
-  saveUsdaCache(); renderUsdaMyFoods();
-  usdaClose();
-  toast("✓ Logged "+_uR1(g)+"g — "+Math.round(p.cal)+" kcal");
-}
-
-// ── BARCODE SCANNER — native BarcodeDetector (Android Chrome), ZXing fallback ──
-var _scanStream=null, _scanTimer=null, _zxReader=null;
-function usdaScanOpen(){
-  var ov=document.getElementById("usda-scan-overlay");
-  ov.style.display="flex";
-  document.getElementById("usda-scan-status").textContent="Starting camera…";
-  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})
-    .then(function(stream){
-      _scanStream=stream;
-      var v=document.getElementById("usda-scan-video");
-      v.srcObject=stream; v.play();
-      if("BarcodeDetector" in window){ _scanNative(v); }
-      else { _scanZxing(v); }
-    })
-    .catch(function(){
-      document.getElementById("usda-scan-status").textContent="Camera unavailable — type the UPC below instead.";
-    });
-}
-function _scanNative(video){
-  document.getElementById("usda-scan-status").textContent="Point at the barcode…";
-  var det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
-  _scanTimer=setInterval(function(){
-    if(video.readyState<2) return;
-    det.detect(video).then(function(codes){
-      if(codes&&codes.length){ usdaScanHit(codes[0].rawValue); }
-    }).catch(function(){});
-  },350);
-}
-function _scanZxing(video){
-  document.getElementById("usda-scan-status").textContent="Loading scanner…";
-  function start(){
-    try{
-      _zxReader=new ZXing.BrowserMultiFormatReader();
-      document.getElementById("usda-scan-status").textContent="Point at the barcode…";
-      _zxReader.decodeFromVideoElement(video,function(result){ if(result) usdaScanHit(result.getText()); });
-    }catch(e){ document.getElementById("usda-scan-status").textContent="Scanner failed — type the UPC below instead."; }
-  }
-  if(window.ZXing){ start(); return; }
-  var s=document.createElement("script");
-  s.src="https://cdnjs.cloudflare.com/ajax/libs/zxing-library/0.21.3/umd/index.min.js";
-  s.onload=start;
-  s.onerror=function(){ document.getElementById("usda-scan-status").textContent="Scanner library unavailable — type the UPC below instead."; };
-  document.head.appendChild(s);
-}
-function usdaScanClose(){
-  clearInterval(_scanTimer); _scanTimer=null;
-  if(_zxReader){ try{_zxReader.reset();}catch(e){} _zxReader=null; }
-  if(_scanStream){ _scanStream.getTracks().forEach(function(t){t.stop();}); _scanStream=null; }
-  document.getElementById("usda-scan-overlay").style.display="none";
-}
-function usdaScanManual(){
-  var code=document.getElementById("usda-scan-manual").value.trim();
-  if(code) usdaScanHit(code);
-}
-function usdaScanHit(code){
-  code=String(code).replace(/\D/g,""); if(!code) return;
-  usdaScanClose();
-  if(navigator.vibrate) navigator.vibrate(60);
-  var st=document.getElementById("usda-status");
-  st.textContent="Looking up UPC "+code+"…";
-  document.getElementById("usda-q").value=code;
-  var url=USDA_SEARCH_URL+"?api_key="+encodeURIComponent(USDA_KEY)+"&query="+encodeURIComponent(code)+"&dataType=Branded&pageSize=6";
-  fetch(url).then(function(r){ if(!r.ok) throw new Error("USDA "+r.status); return r.json(); }).then(function(data){
-    var foods=data.foods||[];
-    // Exact gtinUpc match first (UPC-A is the EAN-13 minus its leading zero)
-    var exact=foods.filter(function(f){ var g=String(f.gtinUpc||"").replace(/\D/g,""); return g===code||g==="0"+code||code==="0"+g; });
-    _usdaResults=exact.length?exact:foods;
-    if(!_usdaResults.length){ st.textContent="UPC not in USDA's branded database — try a name search."; return; }
-    st.textContent=_usdaResults.length+" match"+(_usdaResults.length>1?"es":"");
-    if(_usdaResults.length===1){ document.getElementById("usda-results").innerHTML=""; usdaPick(0); return; }
-    document.getElementById("usda-results").innerHTML=_usdaResults.map(function(f,i){
-      var p=usdaExtract(f.foodNutrients);
-      return '<div class="row" onclick="usdaPick('+i+')" style="cursor:pointer">'
-        +'<div style="flex:1;min-width:0"><div class="row-name">'+_uEsc(f.description)+(f.brandOwner?' <span style="color:#888;font-weight:400">· '+_uEsc(f.brandOwner)+'</span>':'')+'</div>'
-        +'<div class="row-sub">per 100g · '+Math.round(p.cal)+' kcal · P '+_uR1(p.protein)+' · C '+_uR1(p.carbs)+' · F '+_uR1(p.fat)+'</div></div>'
-        +'<span class="tag" style="background:#a78bfa22;color:#a78bfa">Branded</span></div>';
-    }).join("");
-  }).catch(function(e){ st.textContent="⚠ "+e.message; });
-}
-
-renderUsdaMyFoods();
 
 // ── WEDNESDAY YOGA ↔ TRACKER BRIDGE ─────────────────────────────────────
 // One tap in the Guide marks the yoga flow complete in eg_done (streak,
@@ -6707,27 +6271,6 @@ function dsProteinByMealToday(dayKey){
   });
   return out;
 }
-var DS_MV_QUICKADD={
-  'Turkish Get-Up (KB)':{sets:2,muscles:{'Core':.5,'Shoulders':.5}},
-  'Step-Ups (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5}},
-  'Stability Ball Leg Curl (3 sets)':{sets:3,muscles:{'Hamstrings':1,'Glutes':.5}},
-  'Squat to Press (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5,'Shoulders':.5,'Triceps':.5}},
-  'Goblet Squat (3-4 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5}},
-  'Iso-Hold Bicep Curls (3 sets)':{sets:3,muscles:{'Biceps':1}},
-  'Forward Fold Curls (3 sets)':{sets:3,muscles:{'Biceps':1}},
-  'Tricep Kickbacks (3 sets)':{sets:3,muscles:{'Triceps':1}},
-  'Narrow Rows (3 sets)':{sets:3,muscles:{'Back':1,'Biceps':.5,'Rear Delts':.5}},
-  'Curl to Shoulder Press (3 sets)':{sets:3,muscles:{'Biceps':1,'Shoulders':1,'Triceps':.5}},
-  'Front to Lateral Raise (3 sets)':{sets:3,muscles:{'Shoulders':1}},
-  'Curl to Cross Press (3 sets)':{sets:3,muscles:{'Biceps':1,'Chest':.5,'Triceps':.5}},
-  'Shoulder Press to Tricep Ext (3 sets)':{sets:3,muscles:{'Shoulders':1,'Triceps':1}},
-  'Deadlift to Alt Row (3 sets)':{sets:3,muscles:{'Hamstrings':1,'Glutes':.5,'Back':1,'Biceps':.5}},
-  'Overhead Press (3 sets)':{sets:3,muscles:{'Shoulders':1,'Triceps':.5}},
-  'Core Finisher - Hollow / Bicycle / Leg Raise':{sets:3,muscles:{'Core':1}},
-  'Russian Twists (3 sets)':{sets:3,muscles:{'Core':1}},
-  'Jump Squats (3 sets)':{sets:3,muscles:{'Quads':1,'Glutes':.5,'Calves':.5}},
-  'Ball Slams (3 sets)':{sets:3,muscles:{'Core':.5}}
-};
 var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Forearms','Quads','Glutes','Hamstrings','Calves','Core'];
 var DS_MV={
   'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
@@ -6915,7 +6458,6 @@ function dsMVWeek(dateKeys){
       if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid])sessCount[xid]=n1; return; }
       if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
         if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid])sessCount[mid]=n2; return; } }
-      var qa=DS_MV_QUICKADD[e.name]; if(qa){ Object.keys(qa.muscles).forEach(function(mu){ out[mu]+=qa.sets*qa.muscles[mu]; }); }
     }); } }catch(e){}
     var cloudDay=DS_CLOUD_VOL[key]||{};
     Object.keys(DS_MV).forEach(function(id){
