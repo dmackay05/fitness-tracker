@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v150 — 2026-09-13";
+var APP_BUILD = "v151 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9116,7 +9116,38 @@ renderPoses();;
 
 /* ═══════ block boundary ═══════ */
 
-if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('service-worker.js').catch(function(){}); }); };
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    // updateViaCache:'none' is the key fix here — without it, browsers are allowed
+    // to serve service-worker.js itself from ordinary HTTP cache, so a new
+    // CACHE_VERSION can go unnoticed indefinitely regardless of anything the app
+    // does. This forces every update check to actually hit the network for the
+    // worker script (still respects normal conditional GETs/ETags, just not a
+    // blind long-lived cache).
+    navigator.serviceWorker.register('service-worker.js', {updateViaCache:'none'}).then(function(reg){
+      // Ask the browser to check for a newer worker right away, rather than
+      // waiting on its own internal throttling (which can be up to 24h).
+      reg.update().catch(function(){});
+      // ...and again whenever the app is brought back to the foreground, since
+      // that's when a stale in-memory session is most likely to be sitting on
+      // an old build.
+      document.addEventListener('visibilitychange',function(){
+        if(document.visibilityState==='visible') reg.update().catch(function(){});
+      });
+    }).catch(function(){});
+
+    // Once a new worker actually takes control (post skipWaiting/clients.claim),
+    // the *already loaded* page is still running old JS in memory until it
+    // reloads. This closes that gap. The reloading guard prevents a loop if the
+    // controller changes more than once in one page life.
+    var _swReloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(_swReloaded) return;
+      _swReloaded=true;
+      window.location.reload();
+    });
+  });
+};
 
 /* ═══════ block boundary ═══════ */
 
