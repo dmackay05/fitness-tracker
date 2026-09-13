@@ -99,7 +99,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v141 — 2026-09-13";
+var APP_BUILD = "v142 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2174,8 +2174,8 @@ function renderWeekSummary(){
     if(hasFood||hasEx||hasW||(dd.waterOz>0)) logged++;
     if(hasFood){ var t=dd.foods.reduce(function(a,x){return {c:a.c+(+x.cal||0),p:a.p+(+x.protein||0),fb:a.fb+(+x.fiber||0)};},{c:0,p:0,fb:0}); calSum+=t.c; calDays++; protSum+=t.p; protDays++; if(t.fb>0){fibSum+=t.fb; fibDays++;} }
     if(dd.waterOz>0){ waterSum+=dd.waterOz; waterDays++; }
-    if(hasEx && dd.exercises.some(function(e){return e.type==="strength";})) strength++;
-    rides += (dd.rides?dd.rides.length:0);
+    if(hasEx && dd.exercises.some(function(e){return e.type==="strength" || (e.type==="session" && e.sets);})) strength++;
+    rides += Math.max(dd.rides?dd.rides.length:0, hasEx?dd.exercises.filter(function(e){return /ride/i.test(e.name||"");}).length:0);
   });
   if(!logged){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:12px 0">Nothing logged this week yet.</div>'; return; }
   function tile(val,label,color){ return '<div style="text-align:center;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:'+color+'">'+val+'</div><div style="font-size:9px;color:#888;font-family:\'DM Mono\',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+label+'</div></div>'; }
