@@ -38,6 +38,30 @@
 //     Weight and Waist already do. The app's own local history (individual
 //     timestamped readings, per-entry delete) still lives in local storage
 //     only — the sheet stores one average per day for trend-graph recovery.
+//
+// v8 CHANGES (two real bugs found during a manual audit):
+//   • Supplements: "Fish Oil" / "Simvastatin" were the only two supplements
+//     ever written, hardcoded from whenever this script was first set up —
+//     the app's actual supplement list has been fully custom (user-editable,
+//     any name/count) for a long time, so anything added since then was
+//     silently never reaching the sheet at all. Kept the old two columns
+//     untouched for backward compatibility, added a new "Supplements" column
+//     that lists every currently-checked supplement by its real name,
+//     resolved from a small id→name map (_suppNames) the app now sends
+//     alongside the daily payload. Also updated the read-back path so a
+//     restore-from-sheet recovers the full list, not just those first two.
+//   • Exercise type (cardio vs. yoga vs. strength) was never encoded into the
+//     "Exercises" column at all — so a GPS-tracked ride or a yoga session,
+//     once it round-tripped through a sync, came back from the sheet with no
+//     way to tell it apart from a regular strength set. That silently broke
+//     the app's cardio/yoga-specific 180-minute duration cap (vs. 15 min for
+//     everything else) on the Trends "Time Trained" metric for anything that
+//     had been through a sync. Exercises of type cardio/yoga now get a small
+//     |t:cardio or |t:yoga tag appended to their detail segment, and the app
+//     reads it back to restore the correct type. Rows written before this
+//     change won't retroactively gain a type — there's no way to recover
+//     information that was never written — but everything logged from here
+//     on survives the round trip correctly.
 // ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -65,7 +89,8 @@ var DAILY_HEADERS = [
   "Resting HR (bpm)","BP Systolic (mmHg)","BP Diastolic (mmHg)",  // v4: appended at the end, same reasoning
   "Body Fat (%)","Muscle (lbs)","Body Water (%)","Bone Mass (lbs)",  // v5: appended at the end, same reasoning
   "Habits Completed",  // v6: appended at the end, same reasoning
-  "Sodium (mg)"         // v7: appended at the end, same reasoning
+  "Sodium (mg)",        // v7: appended at the end, same reasoning
+  "Supplements"         // v8: appended at the end, same reasoning — see v8 note below
 ];
 
 
@@ -148,9 +173,14 @@ function doPost(e) {
 // ═══════════════════════════════════════════════════════════════════════════
 function processDailyData(ss, data) {
   var sheet   = getOrCreate(ss, SHEET_DAILY,   DAILY_HEADERS);
-  ensureHeaders_(sheet, DAILY_HEADERS);  // v2/v3: adds trailing new labels to existing sheets
+  ensureHeaders_(sheet, DAILY_HEADERS);  // v2/v3/v8: adds trailing new labels to existing sheets
   var msSheet = getOrCreate(ss, SHEET_MEASURE, MEASURE_HEADERS);
   ensureHeaders_(msSheet, MEASURE_HEADERS);  // v3: backfill Biceps label on existing Measurements sheets
+
+  // v8: id -> real name for whatever supplements are actually configured right
+  // now, sent alongside the daily payload (not a per-day field, so pull it out
+  // before the date-keyed loop below).
+  var suppNames = data._suppNames || {};
 
 
 
@@ -220,6 +250,10 @@ function processDailyData(ss, data) {
         detailParts.push(e.sets + "x" + r + (l ? ("@"+l) : ""));
       }
       if (e.avgHR) detailParts.push("hr" + e.avgHR + (e.peakHR ? ("-" + e.peakHR) : ""));
+      // v8: cardio/yoga type wasn't encoded at all before, so it silently
+      // reverted to a generic type once read back after a sync — see v8 note
+      // at the top of this file.
+      if (e.type === "cardio" || e.type === "yoga") detailParts.push("t:" + e.type);
       if (detailParts.length) base += "|" + detailParts.join("|");
       return base + ")";
     }).join(", ");
@@ -297,6 +331,14 @@ function processDailyData(ss, data) {
     // v7: Sodium, appended at the end (same reasoning)
     var sodiumSum = realFoods.reduce(function(a, f) { return a + (parseFloat(f.sodium) || 0); }, 0);
     row.push(sodiumSum > 0 ? Math.round(sodiumSum) : "");
+
+    // v8: Supplements, appended at the end (same reasoning) — every checked
+    // supplement by its real current name, not just the original hardcoded
+    // two. Falls back to the raw id if a name can't be resolved (e.g. old
+    // data logged before the app ever sent a name for it).
+    var suppsOn = Object.keys(sup).filter(function(k) { return sup[k]; })
+      .map(function(k) { return suppNames[k] || k; });
+    row.push(suppsOn.join(", "));
 
 
 

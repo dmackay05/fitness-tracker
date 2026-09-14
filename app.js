@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v162 — 2026-09-13";
+var APP_BUILD = "v163 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -349,7 +349,17 @@ function saveAll(){
 }
 function saveDay(day,key){ key=key||activeDate; appData[key]=day; saveAll(); }
 
-function buildFtPayload(){ return appData; }
+// v8 fix: supplements are fully user-configurable (SUPPS), but Code.gs only
+// ever had two hardcoded names to write to the sheet. This sends the current
+// id->name map alongside the daily data so Code.gs can resolve each day's
+// checked supplement ids to real names instead. _suppNames isn't a date key,
+// so Code.gs's date-pattern filter skips right over it when processing days.
+function buildFtPayload(){
+  var out={}; for(var k in appData){ if(appData.hasOwnProperty(k)) out[k]=appData[k]; }
+  var suppNames={}; (SUPPS||[]).forEach(function(s){ if(s&&s.id) suppNames[s.id]=s.name||s.id; });
+  out._suppNames=suppNames;
+  return out;
+}
 function buildWkPayload(){
   var rides=[];
   Object.keys(appData).forEach(function(k){
@@ -481,6 +491,24 @@ function _fetchSheetOnce(onRows){
       document.head.appendChild(s);
     });
 }
+// v8 fix: the sheet used to only ever store two hardcoded supplements
+// (fish-oil/simvastatin); it now also stores a comma-joined "Supplements"
+// column with every checked supplement's real name. This resolves that list
+// back to ids by matching against the currently-configured SUPPS, on top of
+// (not instead of) the old two columns, so older rows still restore correctly.
+function _parseSuppsFromSheet(row){
+  var out={"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"};
+  var listed=row["Supplements"];
+  if(listed){
+    var names=String(listed).split(",").map(function(s){return s.trim().toLowerCase();}).filter(Boolean);
+    names.forEach(function(nm){
+      var match=SUPPS.filter(function(s){return s&&s.name&&s.name.toLowerCase()===nm;})[0];
+      if(match) out[match.id]=true;
+      else out["n_"+nm]=true; // no config match (yet) — keep the name itself as a fallback id rather than lose it
+    });
+  }
+  return out;
+}
 function rowToDay(row){
   var remote={
     weight: row["Weight (lbs)"]?parseFloat(row["Weight (lbs)"]):null,
@@ -504,7 +532,7 @@ function rowToDay(row){
         dia: row["BP Diastolic (mmHg)"]?parseFloat(row["BP Diastolic (mmHg)"]):null
       } : undefined
     },
-    supplements:{"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"},
+    supplements:_parseSuppsFromSheet(row),
     measurements:{waist:row["Waist (in)"]||"",chest:row["Chest (in)"]||"",hips:row["Hips (in)"]||"",thighs:row["Thighs (in)"]||"",neck:row["Neck (in)"]||"",biceps:row["Biceps (in)"]||""},
     bodyComp:{},
     habits:{}
@@ -545,7 +573,13 @@ function rowToDay(row){
           var dm=seg.match(/^(\d+)x([^@]+)(?:@(.+))?$/);
           if(dm){ ex.sets=parseInt(dm[1]); ex.reps=dm[2].trim().replace(/,/g,"/"); ex.load=(dm[3]||"").trim(); return; }
           var hm=seg.match(/^hr(\d+)(?:-(\d+))?$/);
-          if(hm){ ex.avgHR=parseInt(hm[1]); if(hm[2]) ex.peakHR=parseInt(hm[2]); }
+          if(hm){ ex.avgHR=parseInt(hm[1]); if(hm[2]) ex.peakHR=parseInt(hm[2]); return; }
+          // v8 fix: restores the real type (cardio/yoga) once Code.gs actually
+          // encodes it — see the matching v8 note in Code.gs. Rows written
+          // before that fix won't have this tag and fall back to "logged",
+          // same as before; nothing to recover there, the info was never sent.
+          var tm=seg.match(/^t:(cardio|yoga)$/);
+          if(tm){ ex.type=tm[1]; }
         });
       }
       remote.exercises.push(ex);
