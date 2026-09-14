@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v158 — 2026-09-13";
+var APP_BUILD = "v159 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6484,7 +6484,6 @@ function dsRender(){
     } else { _note.style.display='none'; }
   }
   if(_q&&!_hasHit){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d across any day.</div>'; }
-  if(!_q)html+='<div class="card" style="text-align:center;cursor:pointer" onclick="switchTab(\'volume\')"><span style="font-size:12px;color:#5eead4;font-weight:700">📊 View Weekly Volume &amp; Training Load \u2192</span></div>';
   host.innerHTML=html; dsUpdateStats();
 }
 function renderToday(){ try{dsRender();}catch(e){} }
