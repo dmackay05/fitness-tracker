@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v159 — 2026-09-13";
+var APP_BUILD = "v160 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -225,7 +225,11 @@ try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; 
         if(/\(\d+\s*cal/.test(nm) && !/\)\s*$/.test(nm)){ changed=true; return; }
         if(e.reps!=null && String(e.reps).indexOf(",")!==-1){ e.reps=String(e.reps).replace(/,/g,"/"); changed=true; }
         var id=String((e&&e.id)||"");
-        var key=(id.indexOf("sess_")===0||id.indexOf("sheet_")===0)?("n_"+nm.toLowerCase()):(id||("n_"+nm.toLowerCase()));
+        // See the matching comment in dsMergeExercises' mkey() — cardio/yoga entries
+        // need name-based keying too, not just sess_/sheet_ ids, or a local GPS/yoga
+        // entry and its own sheet round-trip copy pass right through this dedup pass
+        // as if they were two different exercises.
+        var key=(id.indexOf("sess_")===0||id.indexOf("sheet_")===0||e.type==="cardio"||e.type==="yoga")?("n_"+nm.toLowerCase()):(id||("n_"+nm.toLowerCase()));
         if(byName[key]==null){ byName[key]=kept.length; kept.push(e); }
         else{
           var cur=kept[byName[key]];
@@ -609,9 +613,14 @@ function dsMergeExercises(localEx,remoteEx,tombs){
   if(!localEx.length)return remoteEx;
   // Session-logged exercises (sess_*) and sheet round-trips (sheet_*) describe the
   // same real-world exercise — key them by name so they merge instead of stacking.
+  // Cardio/yoga entries need the same treatment even though they're logged with a
+  // raw Date.now() id (GPS tracker, yoga session end): once that entry round-trips
+  // through the Google Sheet it comes back as a *different* id (sheet_n_<name>),
+  // so without this they'd fail to match their own local original and duplicate
+  // every time a sync pulled the sheet copy back down.
   function mkey(e){
     var id=String(e.id||"");
-    if(id.indexOf("sess_")===0||id.indexOf("sheet_")===0) return "n_"+String(e.name||"").toLowerCase().trim();
+    if(id.indexOf("sess_")===0||id.indexOf("sheet_")===0||e.type==="cardio"||e.type==="yoga") return "n_"+String(e.name||"").toLowerCase().trim();
     return id||("n_"+String(e.name||"").toLowerCase().trim());
   }
   function better(a,b){
