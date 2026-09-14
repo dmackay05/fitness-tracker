@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v152 — 2026-09-13";
+var APP_BUILD = "v155 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -443,7 +443,27 @@ function fetchOverloadCache(){
     });
 }
 // ── LOAD + MERGE FROM SHEET (sheet is source of truth on open/refresh) ───
-function fetchSheet(onRows){
+// Apps Script cold-starts can genuinely take a few seconds, and a single 8s
+// window (fetch + JSONP fallback, sequential) isn't always enough — without a
+// retry, that shows up to the user as "close and reopen the app a few times
+// until it happens to catch a fast response." This makes that retry automatic
+// and invisible instead: up to 3 attempts, 1.5s apart, before finally giving
+// up and showing the offline banner. Same public signature/behavior for every
+// existing caller — they only ever see the final outcome.
+function fetchSheet(onRows, _attempt){
+  _attempt = _attempt || 1;
+  var MAX_ATTEMPTS = 3;
+  if(!SHEETS_URL){ setTimeout(function(){ onRows(null,false,"no-url"); },0); return; }
+  _fetchSheetOnce(function(rows,ok,why){
+    if(ok){ onRows(rows,ok,why); return; }
+    if(_attempt < MAX_ATTEMPTS){
+      setTimeout(function(){ fetchSheet(onRows,_attempt+1); }, 1500);
+    } else {
+      onRows(rows,ok,why);
+    }
+  });
+}
+function _fetchSheetOnce(onRows){
   if(!SHEETS_URL){ setTimeout(function(){ onRows(null,false,"no-url"); },0); return; }
   var done = false;
   function finish(rows, ok, why){ if(done) return; done=true; onRows(rows,ok,why); }
@@ -3860,6 +3880,9 @@ var DS_SESSIONS={
         variants:[{name:'DB Kickbacks',equip:'2× 10 lb dumbbells',rx:'3×12/arm',cue:'Hinge forward, upper arm locked parallel to the floor — extend back and squeeze 1 sec at lockout',demo:'triceps'},{name:'DB Overhead Triceps Extension',equip:'1\u00d7 10 lb dumbbell (both hands) or 2\u00d7 2 lb',rx:'3\u00d712\u201315',cue:'Hold the DB overhead with both hands, upper arms vertical and close to your ears \u2014 lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn\u2019t arch. Start light \u2014 stop if you feel any pull on the inside of the elbow.',demo:'triceps'}]},
       {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3,variants:[{name:'Single-Leg Calf Raise',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cue:'One heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top — unilateral load builds strength faster than bilateral once bodyweight gets easy',demo:'calf'}]},
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors, good swap on days the SI joint feels touchy',demo:'hollow'}]},
+      {id:'mon-elbow',name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',rx:'3×15',cal:12,cue:'Slow on the lower — this is the rehab that actually works',demo:'wristecc',log:'setsreps',sets:3,
+        setup:'Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. 3×15, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer\'s elbow — do it even when the elbow feels fine.',
+        variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating',demo:'wristecc'}]},
       dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down')]},
 
   tue:{title:'Lower Body Push',sub:'Quads · Glutes · Core',accent:'var(--accent)',
@@ -3920,6 +3943,9 @@ var DS_SESSIONS={
       {id:'mon-slamskull',name:'Slam Ball Skull Crusher (supine)',slot:'Push · Triceps',target:'Triceps',equip:'Slam ball',rx:'3×6–8',cal:20,cue:'⚠️ Elbow + control flag — lie on your back, arms straight up holding the ball overhead. Bend only the elbows to lower the ball toward your forehead, then press back to lockout. Use your lightest ball, stop the set the moment you feel any elbow pull, and check in on elbow status the next day before adding reps.',log:'setsreps',sets:3,variants:[{name:'Banded Overhead Triceps Extension',equip:'Tube 10–20 lb, anchored underfoot',rx:'3×10–12',cue:'Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Lower elbow shear than the skull crusher, easier to stop the instant the elbow complains',demo:'triceps'}]},
       {id:'thu-ballpullover',name:'Straight-Arm Ball Pullover',slot:'Pull · Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'3×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:3,variants:[{name:'Banded Straight-Arm Pulldown',equip:'Tube 20–30 lb, anchored high',rx:'3×12–15',cue:'Anchor overhead, arms straight out in front — sweep both arms down to your thighs keeping elbows soft, control the return. Same lat/serratus target with less loading on the shoulder end-range than the ball pullover',demo:'fly'}]},
       {id:'thu-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — much less pull on the low back/hip flexors',demo:'hollow'}]},
+      {id:'thu-elbow',name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',rx:'3×15',cal:12,cue:'Slow on the lower — this is the rehab that actually works',demo:'wristecc',log:'setsreps',sets:3,
+        setup:'Second elbow session of the week. Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. 3×15. A mild ache through the forearm is fine; sharp pain means lighten it.',
+        variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating — isometrics load the tendon with less irritation',demo:'wristecc'}]},
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down')]},
 
   fri:{title:'Lower Body Pull',sub:'Hamstrings · Glutes · Lower Back',accent:'var(--accent)',
@@ -4872,8 +4898,8 @@ function dsStartTimer(id,secs){
 }
 
 function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves); if(DS_FINISHER_DAYS[sk]&&DS_HIIT_MAP[sk])items=items.concat(DS_HIIT_MAP[sk].moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
-/* Items that count toward the daily done/total bar: the session, custom set, and the day's Focus block only. Optional extras log normally but don't inflate the target. */
-function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var f=dsFocusBlock(sk); if(f)items=items.concat(f.moves); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
+/* Items that count toward the daily done/total bar: the session and custom set only. Optional extras log normally but don't inflate the target. */
+function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){
   var a=dsAllItems();
   for(var i=0;i<a.length;i++){ if(a[i].id===id)return a[i]; }
@@ -6169,25 +6195,6 @@ function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("d
 var DS_FINISHER_DAYS={mon:1,tue:1,thu:1,fri:1};
 var DS_FINISHER_ON={}; try{ DS_FINISHER_ON=JSON.parse(store.get("ds_fin_on")||"{}"); }catch(e){ DS_FINISHER_ON={}; }
 function dsToggleFinisher(){ var sk=dsSessionKey(activeDate); DS_FINISHER_ON[sk]=!DS_FINISHER_ON[sk]; try{ store.set("ds_fin_on", JSON.stringify(DS_FINISHER_ON)); }catch(e){} dsRender(); }
-/* ── Focus rotation (Tier 2): one small accessory block per day ─────────── */
-function dsFocusBlock(sk){
-  function pick(list,ids){ return list.filter(function(m){return ids.indexOf(m.id)>=0;}); }
-  var atgTrio=pick(DS_ATG.moves,["atg-tibraise","atg-extrot","atg-trap3"]);
-  // Three of the seven elbow moves, not all: the loaded eccentric, the isometric
-  // fallback for sore days, and forearm rotation. The nerve glide and ROM drills
-  // stay available in Mobility for when they're wanted.
-  var elbowBlock=pick(DS_MOBILITY.moves,["mob-elbow","mob-elbowiso","mob-elbowrot"]);
-  var map={
-    mon:{title:"Focus: Pull-Up Progression + Elbow",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])).concat(elbowBlock),blurb:"Pull-ups are your active goal and the biggest muscle-builder in the accessory pile. The elbow work rides along on upper days because that is when grip and elbow load is highest \u2014 eccentrics are the piece with the best evidence for tendinopathy, so do them even when the elbow feels fine."},
-    tue:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Today's one accessory block: tibialis, rotator cuff, lower traps. Ten minutes of structural work — this plus the session is a complete day."},
-    wed:{title:"Focus: Squat Hold + Hips + Playground",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold","mob-hip","mob-9090","mob-clam"]).concat(pick(DS_PULLUP.moves,["pu-hang","pu-scap"])),blurb:"Low-load day, so the focus is your squat hold progression and hip work, plus a light extra playground pull-up session. This plus your walk/yoga is a complete day."},
-    thu:{title:"Focus: Pull-Up Progression + Elbow",accent:DS_PULLUP.accent,moves:DS_PULLUP.moves.concat(pick(DS_MOBILITY.moves,["mob-wallwalk"])).concat(elbowBlock),blurb:"Second pull-up day of the week, with the second elbow session. On a flare-up day swap the eccentrics for the isometric hold \u2014 isometrics load the tendon without the lengthening that irritates it."},
-    fri:{title:"Focus: ATG Strength Trio",accent:DS_ATG.accent,moves:atgTrio,blurb:"Second structural day: tibialis, rotator cuff, lower traps. This plus the session is a complete day."},
-    sat:null,
-    sun:{title:"Focus: Squat Hold + Playground",accent:"#a78bfa",moves:pick(DS_MOBILITY.moves,["mob-squathold"]).concat(pick(DS_PULLUP.moves,["pu-hang","pu-scap"])),blurb:"Rest day — squat hold plus a light extra playground pull-up session to keep both streaks alive. Nothing else required."}
-  };
-  return map[sk]||null;
-}
 var DS_MORE_OPEN=false;
 function dsRenderExtras(){
   var html=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
@@ -6322,6 +6329,8 @@ var DS_MV={
   'bwl-liftoff':{'Glutes':1,'Hamstrings':.5,'Quads':.5},
   'mon-curl':{'Biceps':1,'Forearms':.3},
   'mon-tri':{'Triceps':1,'Forearms':.3},
+  'mon-elbow':{'Forearms':.5},
+  'thu-elbow':{'Forearms':.5},
   'mon-inclinepress':{'Chest':1,'Triceps':.7,'Shoulders':.5},
   'mon-calf':{'Calves':1},
   'mon-hollow':{'Core':1},
@@ -6530,8 +6539,6 @@ function dsRender(){
         +'<button onclick="dsUserAddToggle()" style="padding:10px 16px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#888;font-size:13px;cursor:pointer">Cancel</button>'
         +'</div></div>';
     }
-    var _focus=dsFocusBlock(sk);
-    if(_focus)html+=dsRenderSection(_focus.title,'',_focus.accent,_focus.moves,_focus.blurb);
     if(DS_FINISHER_DAYS[sk]){
       var _finOn=!!DS_FINISHER_ON[sk];
       html+='<div style="margin:18px 0 0;"><button onclick="dsToggleFinisher()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#ffffff1a')+';background:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent+'18':'#fb923c18'):'transparent')+';color:'+(_finOn?(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].accent:'#fb923c'):'#888')+';">'+(_finOn?'\u26A1 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' ON \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+' (tap to hide)':'\u26A1 + '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].title:'HIIT Finisher')+' \u2014 '+(DS_HIIT_MAP[sk]?DS_HIIT_MAP[sk].meta:'')+'')+'</button></div>';
