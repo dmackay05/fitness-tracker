@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v160 — 2026-09-13";
+var APP_BUILD = "v161 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -72,7 +72,6 @@ function calGoalLabelForKey(dateKey){
   return "Active/lift day";
 }
 var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
-var STEP_CADENCE = parseInt(store.get('ft_cadence')) || 105; // steps/min, calibrate from your phone's health app
 var USER_AGE = parseInt(store.get('ft_age')) || 0; // used only to estimate max HR if Max HR isn't set directly
 var USER_MAXHR = parseInt(store.get('ft_maxhr')) || 0; // if unset, estimated as 220-age (Tanaka formula would be more accurate but 220-age is the common default)
 function dsEstMaxHR(){ if(USER_MAXHR>0) return USER_MAXHR; if(USER_AGE>0) return Math.round(208-(0.7*USER_AGE)); return null; }
@@ -86,7 +85,6 @@ function dsHrZone(avgHr){
   if(pct<=90) return {zone:'Zone 4',pct:pct};
   return {zone:'Zone 5',pct:pct};
 }
-var STEP_GOAL = parseInt(store.get('ft_step_goal')) || 10000;
 
 // ── DELOAD WEEK — manual toggle, auto-expires after 7 days ─────────────
 var DELOAD_START = store.get('ft_deload_start') || null;
@@ -102,11 +100,6 @@ function dsSetDeload(on){
   try{ renderAll(); }catch(e){}
   dsRenderDeloadUI();
 }
-// Effective step goal — cut ~35% during deload (matches ~30k/wk vs ~45k/wk target)
-function effStepGoal(){
-  if(!dsDeloadActive()) return STEP_GOAL;
-  return Math.round((STEP_GOAL*0.65)/500)*500;
-}
 function dsRenderDeloadUI(){
   var badge = document.getElementById('ds-deload-badge');
   var toggle = document.getElementById('ds-deload-toggle');
@@ -114,8 +107,8 @@ function dsRenderDeloadUI(){
   var active = dsDeloadActive();
   if(toggle) toggle.checked = active;
   if(preview) preview.textContent = active
-    ? ("Active — day "+(dsDeloadDaysElapsed()+1)+" of 7. Step goal: "+effStepGoal()+" (was "+STEP_GOAL+"). Cut lift load ~30-40%, skip deep stretch-position lifts, easy/flat rides only, keep yoga daily.")
-    : "Off. Turning this on drops your step goal ~35% for 7 days and flags a lighter week across lifts and rides.";
+    ? ("Active — day "+(dsDeloadDaysElapsed()+1)+" of 7. Cut lift load ~30-40%, skip deep stretch-position lifts, easy/flat rides only, keep yoga daily.")
+    : "Off. Turning this on flags a lighter week across lifts and rides for 7 days.";
   if(badge) badge.style.display = active ? "" : "none";
   if(badge) badge.textContent = "⏸ Deload — day "+(dsDeloadDaysElapsed()+1)+"/7";
 }
@@ -168,9 +161,6 @@ var TREND_METRICS=[
   {key:"muscle",  label:"Muscle",    unit:"lbs",dir:"higher", color:"#facc15", get:function(d){return (d.bodyComp&&d.bodyComp.muscle!=null)?d.bodyComp.muscle:null;}},
   {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
   {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}},
-  {key:"restingHR", label:"Resting HR", unit:"bpm", dir:"lower", color:"#f87171", get:function(d){var r=_dayRhrReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.v;},0)/r.length);}},
-  {key:"bpSys", label:"BP Systolic", unit:"mmHg", dir:"lower", color:"#ef4444", get:function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.sys;},0)/r.length);}},
-  {key:"bpDia", label:"BP Diastolic", unit:"mmHg", dir:"lower", color:"#f97316", get:function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.dia;},0)/r.length);}},
   {key:"workoutHR", label:"Workout Avg HR", unit:"bpm", dir:"neutral", color:"#fb7185", get:function(d){
     if(!d.exercises||!d.exercises.length) return null;
     var vals=d.exercises.map(function(e){return e.avgHR;}).filter(function(v){return v!=null&&!isNaN(v);});
@@ -186,8 +176,7 @@ var TREND_METRICS=[
     if(!d.meditation||!d.meditation.length) return null;
     var s=d.meditation.reduce(function(a,x){return a+(+x.mins||0);},0);
     return s>0?s:null;
-  }},
-  {key:"steps",   label:"Steps",     unit:"",    dir:"higher",  color:"#22c55e", goal:function(){return effStepGoal()||10000;}, get:function(d){return (d.wellness&&d.wellness.steps>0)?d.wellness.steps:null;}}
+  }}
 ];
 
 // SUPPS injected just above this block (data.js)
@@ -502,7 +491,6 @@ function rowToDay(row){
       sleepQ:row["Sleep Quality (1-5)"]?parseFloat(row["Sleep Quality (1-5)"]):0,
       energy:row["Energy (1-5)"]?parseFloat(row["Energy (1-5)"]):0,
       mood:row["Mood (1-5)"]?parseFloat(row["Mood (1-5)"]):0,
-      steps:row["Steps"]?parseFloat(row["Steps"]):0,
       // v4 fix: these were being written to the sheet (Code.gs v4) but never
       // read back here, so any day rebuilt from a synced row silently lost
       // its RHR/BP data. Restored as legacy single-value fields — the sheet
@@ -1244,9 +1232,8 @@ function setMedType(el){ medType=el.dataset.type;
   document.querySelectorAll(".med-type-btn").forEach(function(b){b.classList.toggle("sel",b===el);}); }
 function saveWellness(){
   var d=getDay(); d.wellness=d.wellness||{};
-  var slEl=document.getElementById("sleep-hrs"), stEl=document.getElementById("steps-in");
+  var slEl=document.getElementById("sleep-hrs");
   if(slEl) d.wellness.sleepHours=parseFloat(slEl.value)||0;
-  if(stEl) d.wellness.steps=parseInt(stEl.value)||0;
   if(wellnessRatings.sleepQ) d.wellness.sleepQ=wellnessRatings.sleepQ;
   if(wellnessRatings.energy) d.wellness.energy=wellnessRatings.energy;
   if(wellnessRatings.mood) d.wellness.mood=wellnessRatings.mood;
@@ -1318,11 +1305,9 @@ function renderMedHistory(){
 function renderWellness(){
   var w=getDay().wellness||{};
   var slEl=document.getElementById("sleep-hrs"); if(slEl) slEl.value=w.sleepHours||"";
-  var stEl=document.getElementById("steps-in"); if(stEl) stEl.value=w.steps||"";
   document.getElementById("rhr-in").value="";
   document.getElementById("bp-sys-in").value="";
   document.getElementById("bp-dia-in").value="";
-  var sb=document.getElementById("steps-bar"); if(sb) sb.style.width=Math.min(((w.steps||0)/effStepGoal())*100,100)+"%";
   ["sleepQ","energy","mood"].forEach(function(f){
     var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
     document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
@@ -1360,19 +1345,7 @@ function renderBpHistory(){
       return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+(r.t?' · '+r.t:'')+'</div><div class="row-sub">'+r.sys+'/'+r.dia+' mmHg &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
     }).join("");
   }).join("")):'';
-  // Inline trend sparklines — same series the Dashboard "Trends" card uses for
-  // BP Systolic / BP Diastolic, shown right here instead of requiring a trip
-  // to the Dashboard and tapping the right chip to actually see them.
-  var sysSeries=_series(function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.sys;},0)/r.length);});
-  var diaSeries=_series(function(d){var r=_dayBpReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.dia;},0)/r.length);});
-  var sparkHtml='';
-  if(sysSeries.length>=2){
-    sparkHtml+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e1e35"><div style="font-size:10px;color:#888;margin-bottom:4px">Systolic trend ('+sysSeries.length+' days logged)</div>'+sparkSVG(sysSeries,{color:'#ef4444',h:70})+'</div>';
-    sparkHtml+='<div style="margin-top:6px"><div style="font-size:10px;color:#888;margin-bottom:4px">Diastolic trend</div>'+sparkSVG(diaSeries,{color:'#f97316',h:70})+'</div>';
-  } else if(todayReadings.length){
-    sparkHtml='<div style="font-size:10px;color:#666;margin-top:10px">Log on one more day to see a trend line here</div>';
-  }
-  el.innerHTML = todayHtml+pastHtml+sparkHtml;
+  el.innerHTML = todayHtml+pastHtml;
 }
 function rhrCategory(bpm){
   if(bpm<60)  return {label:"Athletic",color:"#4ade80"};
@@ -1395,14 +1368,7 @@ function renderRhrHistory(){
       return '<div class="row"><div class="row-name" style="font-size:11px">'+prettyDate(k)+(r.t?' · '+r.t:'')+'</div><div class="row-sub">'+r.v+' bpm &nbsp; <span style="color:'+c.color+';font-weight:600">'+c.label+'</span></div></div>';
     }).join("");
   }).join("")):'';
-  // Inline trend sparkline — same series the Dashboard "Trends" card uses for
-  // the Resting HR chip, shown right here so it doesn't require navigating
-  // away and tapping the right chip to actually see it.
-  var rhrSeries=_series(function(d){var r=_dayRhrReadings(d); if(!r.length) return null; return Math.round(r.reduce(function(a,x){return a+x.v;},0)/r.length);});
-  var sparkHtml = rhrSeries.length>=2
-    ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e1e35"><div style="font-size:10px;color:#888;margin-bottom:4px">Trend ('+rhrSeries.length+' days logged)</div>'+sparkSVG(rhrSeries,{color:'#f87171',h:80})+'</div>'
-    : (todayReadings.length ? '<div style="font-size:10px;color:#666;margin-top:10px">Log on one more day to see a trend line here</div>' : '');
-  el.innerHTML = todayHtml+pastHtml+sparkHtml;
+  el.innerHTML = todayHtml+pastHtml;
 }
 
 // ── LOG: MEASUREMENTS ───────────────────────────────────────────────────
@@ -1714,12 +1680,6 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     var cals = dur ? calAdj(dur*7.7*lbMult) : calAdj(miles*115*lbMult);
     var walkMin = dur>0 ? dur : Math.round(miles*22);
     dsAddEx(day,{name:"Rucked Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"")+(lb?" · "+lb+" lb":""),calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min",load:lb?(lb+" lb"):""});
-    if(miles>0 || dur>0){
-      var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE*0.92) : Math.round(miles*STEP_CADENCE*20*0.92); // rucking cadence runs slightly slower under load
-      day.wellness=day.wellness||{};
-      day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
-      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
-    }
   } else if(trk.activity==="run"){
     // ~10.5 cal/min baseline jog pace; scale up modestly with pace once distance+duration are both known
     var cals = dur ? calAdj(dur*10.5) : calAdj(miles*115);
@@ -1730,25 +1690,12 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     var runEx={name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:runMin+" min"};
     if(avgHr) runEx.avgHr=avgHr;
     dsAddEx(day,runEx);
-    if(miles>0 || dur>0){
-      // running cadence runs faster than walking, ~1.15x steps/min at an easy jog
-      var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE*1.15) : Math.round(miles*STEP_CADENCE*11*1.15);
-      day.wellness=day.wellness||{};
-      day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
-      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
-    }
   } else {
     var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
     var walkMin = dur>0 ? dur : Math.round(miles*20); // fallback est. if only distance was logged (manual, no duration)
     var nm = "Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"");
     if(intervals) nm += " \u00b7 Intervals: "+intervals.label+" ("+intervals.roundsDone+"/"+intervals.rounds+")";
     dsAddEx(day,{name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min"});
-    if(miles>0 || dur>0){
-      var estSteps = dur>0 ? Math.round(dur*STEP_CADENCE) : Math.round(miles*STEP_CADENCE*20);
-      day.wellness=day.wellness||{};
-      day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
-      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
-    }
   }
   saveDay(day); renderAll();
 }
@@ -1807,8 +1754,6 @@ function saveHealthSettings(){
   ["protein","carbs","fat","fiber","sodium","burned"].forEach(function(k){ var v=parseInt(g("ft-"+k))||0; if(v>0){ store.set("ft_"+k,v); GOALS[k]=v; } });
   var w=parseInt(g("ft-water"))||0; if(w>0){ store.set("ft_water",w); WATER_GOAL=w; }
   var am=parseInt(g("ft-activity"))||0; if(am>0){ store.set("ft_activity_goal",am); ACTIVITY_GOAL=am; }
-  var sg=parseInt(g("ft-step-goal"))||0; if(sg>0){ store.set("ft_step_goal",sg); STEP_GOAL=sg; }
-  var cd=parseInt(g("ft-cadence"))||0; if(cd>0){ store.set("ft_cadence",cd); STEP_CADENCE=cd; }
   var age=parseInt(g("ft-age"))||0; if(age>0){ store.set("ft_age",age); USER_AGE=age; }
   var mhr=parseInt(g("ft-maxhr"))||0; if(mhr>0){ store.set("ft_maxhr",mhr); USER_MAXHR=mhr; } else { store.set("ft_maxhr",""); USER_MAXHR=0; }
   var supps=[]; document.querySelectorAll(".ft-sup-inp").forEach(function(el,i){ if(el.value.trim()) supps.push({id:"s"+i,name:el.value.trim(),desc:"",emoji:"💊"}); });
@@ -1840,7 +1785,7 @@ function initHealthSettings(){
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
   setv("ft-cal-rest", GOALS.calRest); setv("ft-cal-recovery", GOALS.calRecovery); setv("ft-cal-active", GOALS.calActive); setv("ft-cal-ride", GOALS.calRide); setv("ft-protein", GOALS.protein); setv("ft-carbs", GOALS.carbs);
-  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-sodium", GOALS.sodium); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-step-goal", STEP_GOAL); setv("ft-cadence", STEP_CADENCE); setv("ft-age", USER_AGE||""); setv("ft-maxhr", USER_MAXHR||"");
+  setv("ft-fat", GOALS.fat); setv("ft-fiber", GOALS.fiber); setv("ft-sodium", GOALS.sodium); setv("ft-burned", GOALS.burned); setv("ft-water", WATER_GOAL); setv("ft-activity", ACTIVITY_GOAL); setv("ft-age", USER_AGE||""); setv("ft-maxhr", USER_MAXHR||"");
   var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
@@ -2110,9 +2055,9 @@ function renderTrends(){
   if(!avail.length){ if(chips) chips.innerHTML=""; chartEl.innerHTML='<div style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace;padding:8px 0">Log a metric at least twice (weight, waist, food, water\u2026) and your trend appears here.</div>'; return; }
   var sel=store.get("ft_trend_metric")||"weight";
   if(!avail.some(function(m){return m.key===sel;})) sel=avail[0].key;
-  if(chips) chips.innerHTML=avail.map(function(m){ var on=m.key===sel;
-    return '<span onclick="setTrendMetric(\''+m.key+'\')" style="cursor:pointer;font-size:11px;padding:5px 10px;border-radius:14px;font-family:\'DM Mono\',monospace;border:1px solid '+(on?m.color:"#2a2a45")+';background:'+(on?(m.color+"22"):"transparent")+';color:'+(on?m.color:"#888")+'">'+m.label+'</span>';
-  }).join("");
+  if(chips) chips.innerHTML='<select onchange="setTrendMetric(this.value)" style="width:100%;font-size:12px;padding:8px 10px;border-radius:10px;font-family:\'DM Mono\',monospace;border:1px solid #2a2a45;background:#14141f;color:#eee">'+
+    avail.map(function(m){ return '<option value="'+m.key+'"'+(m.key===sel?' selected':'')+'>'+m.label+'</option>'; }).join("")+
+    '</select>';
   var m=avail.filter(function(x){return x.key===sel;})[0];
   chartEl.innerHTML=_trendHdr(m.label.toUpperCase(), m._s, m.unit, m.dir)+sparkSVG(m._s,{color:m.color, goal:(m.goal?m.goal():0)});
 }
@@ -5351,24 +5296,12 @@ function dsLogComplete(item){ if(!item)return; var day=getDay(), sid="sess_"+ite
   else if(st.mins){ ex.reps=st.mins+" min"; }
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   else if(item.log==="cardio" && st.mins){ ex.actualSecs=st.mins*60; }
-  if(item.log==="cardio" && st.mins && (item.demo==="walk"||item.demo==="ruck")){
-    var estSteps=Math.round(st.mins*STEP_CADENCE);
-    ex.estSteps=estSteps;
-    day.wellness=day.wellness||{};
-    day.wellness.steps=(parseInt(day.wellness.steps,10)||0)+estSteps;
-    var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
-  }
   dsAddEx(day,ex); saveDay(day);
 }
 function dsUnlog(id){ var day=getDay(), sid="sess_"+id;
   var gone=day.exercises.filter(function(e){return e.id===sid;})[0];
   if(gone){
     dsSetTomb(day,gone);
-    if(gone.estSteps){
-      day.wellness=day.wellness||{};
-      day.wellness.steps=Math.max(0,(parseInt(day.wellness.steps,10)||0)-gone.estSteps);
-      var stepsIn=document.getElementById("steps-in"); if(stepsIn) stepsIn.value=day.wellness.steps;
-    }
   }
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;}); saveDay(day); }
 
