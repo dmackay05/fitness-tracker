@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v171 — 2026-09-15";
+var APP_BUILD = "v172 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -876,6 +876,165 @@ function renderPainSummary(){
   h+='<button onclick="dsCopyPainReport()" style="margin-top:10px;width:100%;background:none;border:1px solid #3a3a3a;color:#aaa;border-radius:9px;padding:9px;font-size:12px;cursor:pointer">Copy full log for a PT visit</button>';
   el.innerHTML=h;
 }
+
+// ── STRENGTH TREND (per-lift load/reps history) ──────────────────────────
+// dsEncodeSets packs a logged exercise's sets into slash/pipe-delimited
+// strings on the day's exercise record; this reverses that so history can be
+// walked across days instead of only ever reading "today".
+function dsDecodeSets(ex){
+  if(!ex) return [];
+  var reps=(ex.reps!=null?String(ex.reps):'').split('/');
+  var loadsRaw=(ex.load!=null?String(ex.load):'');
+  var loads=loadsRaw.indexOf('|')>=0 ? loadsRaw.split('|') : reps.map(function(){return loadsRaw;});
+  var rirs=(ex.rir!=null?String(ex.rir):'').split('/');
+  var n=Math.max(reps.length,1);
+  var out=[];
+  for(var i=0;i<n;i++){
+    out.push({reps:parseFloat(reps[i]), load:(loads[i]||'').trim(), rir:(rirs[i]!==''&&rirs[i]!=null)?parseFloat(rirs[i]):null});
+  }
+  return out;
+}
+// Pulls the first number out of a load string like "45 lb" or "band 40-50" —
+// good enough to trend since load fields are entered as plain numbers here.
+function dsParseLoadNum(s){
+  if(!s) return null;
+  var m=String(s).match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : null;
+}
+// Walks every logged strength session across all days and groups by exercise
+// id, keeping the top (heaviest-set) load and its reps per session — the one
+// number that actually answers "is this lift progressing."
+function strengthTrendData(){
+  var byId={};
+  Object.keys(appData).sort().forEach(function(k){
+    var d=appData[k]; if(!d||!d.exercises) return;
+    d.exercises.forEach(function(ex){
+      if(!ex.id||ex.id.indexOf('sess_')!==0) return;
+      var sets=dsDecodeSets(ex); if(!sets.length) return;
+      var best=null;
+      sets.forEach(function(s){
+        var ln=dsParseLoadNum(s.load);
+        if(ln==null) return;
+        if(!best||ln>best.load) best={load:ln,reps:s.reps||null,rir:s.rir};
+      });
+      if(!best) return;
+      var avgRir=null, rirVals=sets.map(function(s){return s.rir;}).filter(function(v){return v!=null&&!isNaN(v);});
+      if(rirVals.length) avgRir=rirVals.reduce(function(a,b){return a+b;},0)/rirVals.length;
+      var name=(ex.name||'').replace(/\s*·.*$/,'');
+      if(!byId[ex.id]) byId[ex.id]={name:name,history:[]};
+      byId[ex.id].history.push({date:k,load:best.load,reps:best.reps,rir:avgRir});
+    });
+  });
+  // Only exercises with a real load trend (2+ sessions with a numeric load) are worth showing.
+  var list=Object.keys(byId).map(function(id){return {id:id,name:byId[id].name,history:byId[id].history};})
+    .filter(function(x){return x.history.length>=2;});
+  list.sort(function(a,b){
+    var la=a.history[a.history.length-1].date, lb=b.history[b.history.length-1].date;
+    return la<lb?1:(la>lb?-1:0);
+  });
+  return list;
+}
+var STRENGTH_TREND_SHOW=4;
+function renderStrengthTrend(){
+  var el=document.getElementById("dash-strength-trend"); if(!el) return;
+  var list=strengthTrendData();
+  if(!list.length){ el.innerHTML='<span style="color:#666">Log a load number (not just reps) on a couple of lifts and their trend will show up here.</span>'; return; }
+  var h='';
+  list.slice(0,STRENGTH_TREND_SHOW).forEach(function(x){
+    var hist=x.history, cur=hist[hist.length-1], prev=hist.length>=2?hist[hist.length-2]:null;
+    var col='#9a9d8c', arrow='', note='';
+    if(prev){
+      var d=cur.load-prev.load;
+      if(d>0){ col='#5eead4'; arrow='\u25B2'; note=' up from '+prev.load+(prev.reps?'\u00d7'+prev.reps:'')+' last session'; }
+      else if(d<0){ col='#fb923c'; arrow='\u25BC'; note=' down from '+prev.load+(prev.reps?'\u00d7'+prev.reps:'')+' \u2014 check fatigue or form before reading it as regression'; }
+      else { col='#888'; arrow='\u2192'; note=' holding steady vs last session'; }
+    }
+    h+='<div style="padding:6px 0;border-bottom:1px solid #222">'
+      +'<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px">'
+      +'<span style="color:#ccc;font-weight:600">'+escH(x.name)+'</span>'
+      +'<span style="color:'+col+'">'+arrow+' '+cur.load+(cur.reps?'\u00d7'+cur.reps:'')+'</span></div>';
+    if(note) h+='<div style="font-size:10px;color:#666;margin-top:2px">'+note+'</div>';
+    if(cur.rir!=null) h+='<div style="font-size:10px;color:#555;margin-top:2px">avg RIR '+cur.rir.toFixed(1)+' this session</div>';
+    h+='</div>';
+  });
+  el.innerHTML=h;
+}
+
+// ── PROTEIN STREAK ────────────────────────────────────────────────────────
+// Reuses the same near-miss band as the daily protein tag (dsProteinDayTag)
+// so a 168g day doesn't snap the streak to zero over a target that was never
+// meant to be a hard cliff edge.
+function proteinStreak(){
+  var streak=0, d=new Date(), todK=todayKey();
+  var todayDay=appData[todK];
+  var todayLogged = todayDay&&todayDay.foods&&todayDay.foods.length &&
+    todayDay.foods.reduce(function(a,f){return a+(+f.protein||0);},0) >= (GOALS.protein-PROTEIN_BAND);
+  if(!todayLogged) d.setDate(d.getDate()-1);
+  for(var guard=0; guard<400; guard++){
+    var k=localDateKey(d), day=appData[k];
+    if(!day||!day.foods||!day.foods.length) break;
+    var pro=day.foods.reduce(function(a,f){return a+(+f.protein||0);},0);
+    if(pro < (GOALS.protein-PROTEIN_BAND)) break;
+    streak++; d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+function renderProteinStreak(){
+  var el=document.getElementById("dash-protein-streak"); if(!el) return;
+  var st=proteinStreak();
+  if(!st){ el.innerHTML='<span style="color:#666">Hit '+(GOALS.protein-PROTEIN_BAND)+'g\u2009+ protein today to start a streak.</span>'; return; }
+  el.innerHTML='<span style="font-size:22px">\ud83d\udd25</span> <b style="color:#fb923c;font-size:18px">'+st+'</b> <span style="color:#888">day'+(st===1?'':'s')+' at or within '+PROTEIN_BAND+'g of target</span>';
+}
+
+// ── RECOVERY CHECK ────────────────────────────────────────────────────────
+// A simple composite, not a device-measured readiness score: it flags the two
+// patterns that actually precede burnout in this program — RIR sliding down
+// across sessions (working sets are getting harder for the same target) and
+// too many consecutive training days without the rest/active-recovery days
+// the split already calls for.
+function dsConsecutiveTrainingDays(){
+  var n=0, d=new Date(), todK=todayKey();
+  var cursor=new Date(d);
+  if(!(appData[todK]&&appData[todK].exercises&&appData[todK].exercises.length)) cursor.setDate(cursor.getDate()-1);
+  for(var guard=0; guard<30; guard++){
+    var k=localDateKey(cursor), day=appData[k];
+    if(day&&day.exercises&&day.exercises.length){ n++; cursor.setDate(cursor.getDate()-1); } else break;
+  }
+  return n;
+}
+function dsRirFatigueTrend(){
+  // Pull avg RIR per day (across all logged sets that day), most recent first.
+  var days=Object.keys(appData).sort().reverse();
+  var vals=[];
+  for(var i=0;i<days.length&&vals.length<6;i++){
+    var d=appData[days[i]]; if(!d||!d.exercises) continue;
+    var rirs=[];
+    d.exercises.forEach(function(ex){
+      if(!ex.id||ex.id.indexOf('sess_')!==0) return;
+      dsDecodeSets(ex).forEach(function(s){ if(s.rir!=null&&!isNaN(s.rir)) rirs.push(s.rir); });
+    });
+    if(rirs.length) vals.push(rirs.reduce(function(a,b){return a+b;},0)/rirs.length);
+  }
+  if(vals.length<4) return null;
+  var recent=vals.slice(0,3), older=vals.slice(3,6);
+  if(!older.length) return null;
+  var mean=function(a){return a.reduce(function(x,y){return x+y;},0)/a.length;};
+  return mean(recent)-mean(older); // negative = getting harder (fatigue climbing)
+}
+function renderRecoveryFlag(){
+  var el=document.getElementById("dash-recovery"); if(!el) return;
+  var consec=dsConsecutiveTrainingDays();
+  var rirDelta=dsRirFatigueTrend();
+  var flags=[];
+  if(consec>=6) flags.push({col:'#ff6b6b',txt:consec+' training days in a row with no rest/active-recovery day \u2014 the split has one built in for a reason.'});
+  if(rirDelta!=null && rirDelta<=-1) flags.push({col:'#fbbf24',txt:'Average RIR has dropped '+Math.abs(rirDelta).toFixed(1)+' over your last few sessions \u2014 working sets are getting harder for the same target, a common lead-in to burnout.'});
+  if(!flags.length){
+    el.innerHTML='<span style="color:#5eead4">\u2713 On track</span> <span style="color:#888">\u2014 no fatigue or missed-rest pattern detected.</span>';
+    return;
+  }
+  el.innerHTML=flags.map(function(f){return '<div style="color:'+f.col+';padding:4px 0;font-size:12px;line-height:1.4">\u26A0 '+f.txt+'</div>';}).join('');
+}
+
 // Weekly and monthly intake side by side, so drift shows up as a difference
 // between the two columns rather than needing to be remembered.
 function renderIntakeAverages(){
@@ -957,6 +1116,7 @@ function renderDash(){
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
   renderIntakeAverages(); renderWeightTrend(); renderTdeePanel(); renderPainSummary();
+  renderStrengthTrend(); renderProteinStreak(); renderRecoveryFlag();
 
   // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
   // rolling 7-day kept as a secondary reference line since it reads differently mid-week.
