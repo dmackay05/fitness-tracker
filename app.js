@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v168 — 2026-09-15";
+var APP_BUILD = "v169 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2239,13 +2239,13 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; }); return cfg;
 }
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1};
   var any=false;
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
   if(!any) return false;
@@ -2263,6 +2263,16 @@ function applyConfig(cfg){
   try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){}
   if(typeof initHealthSettings==="function") initHealthSettings();
   try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object') DS_SWAPS=swv; }catch(e){}
+  // Merge (not overwrite) the four per-day/per-exercise maps below: each device may have
+  // logged its own entries locally since the last sync, and a straight overwrite would
+  // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
+  // (last pushed wins per-key), everything else from both sides is kept.
+  try{ var umv=JSON.parse(cfg.ds_usermoves||'null'); if(umv&&typeof umv==='object'){ for(var k1 in umv) DS_USERMOVES[k1]=umv[k1]; store.set('ds_usermoves',JSON.stringify(DS_USERMOVES)); } }catch(e){}
+  try{ var shv=JSON.parse(cfg.ds_sat_heat_on||'null'); if(shv&&typeof shv==='object'){ for(var k2 in shv) DS_SAT_HEAT_ON[k2]=shv[k2]; store.set('ds_sat_heat_on',JSON.stringify(DS_SAT_HEAT_ON)); } }catch(e){}
+  try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
+  try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
+  if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
+  if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
   renderAll();
   return true;
 }
@@ -3785,7 +3795,7 @@ var DS_SATHEAT_MOVES=[
 ];
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
 var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
-function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsRender(); }
+function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; dsTrimDateKeys(DS_SAT_HEAT_ON,120); try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); }
 function dsSessOf(sk){ if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
 
 var DS_SESSIONS={
@@ -4177,6 +4187,7 @@ function dsRotateOffset(dk){
 function dsToggleRotate(on){
   DS_ROTATE=!!on;
   try{ store.set('ds_rotate', DS_ROTATE?'1':'0'); }catch(e){}
+  dsQueueConfigPush();
   DS_DAY_OVERRIDE=null;
   if(typeof dsRender==='function') dsRender();
   if(typeof dsRenderRotatePreview==='function') dsRenderRotatePreview();
@@ -4197,6 +4208,7 @@ function dsVariantAutoIndex(item,dk){
 function dsToggleVarRotate(on){
   DS_VAR_ROTATE=!!on;
   try{ store.set('ds_var_rotate', DS_VAR_ROTATE?'1':'0'); }catch(e){}
+  dsQueueConfigPush();
   if(typeof dsRender==='function') dsRender();
   if(typeof dsRenderVarRotatePreview==='function') dsRenderVarRotatePreview();
   if(typeof renderAll==='function') renderAll();
@@ -4638,7 +4650,17 @@ var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};
 var DS_PAIN={}; try{ DS_PAIN=JSON.parse(store.get("ds_pain")||"{}"); }catch(e){ DS_PAIN={}; }
 var DS_PAIN_SITES=['R elbow','R shoulder','R SI joint','L knee','Low back','Other'];
 var DS_PAIN_LVL=['','niggle','sore','sharp'];
-function dsPainSave(){ try{ store.set("ds_pain",JSON.stringify(DS_PAIN)); }catch(e){} }
+// Both DS_PAIN and DS_SAT_HEAT_ON are keyed by calendar date, so unlike the exercise-id-
+// or weekday-keyed maps (DS_PROG, DS_SWAPS, DS_USERMOVES) they'd otherwise grow forever
+// once synced. The pain dashboard only ever reports the trailing 90 days (see
+// dsPainReport), so keeping ~120 days of headroom preserves that while keeping the
+// settings-sync payload bounded.
+function dsTrimDateKeys(obj,days){
+  try{ var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days); var ck=localDateKey(cutoff);
+    Object.keys(obj).forEach(function(k){ if(/^\d{4}-\d{2}-\d{2}$/.test(k) && k<ck) delete obj[k]; });
+  }catch(e){}
+}
+function dsPainSave(){ dsTrimDateKeys(DS_PAIN,120); try{ store.set("ds_pain",JSON.stringify(DS_PAIN)); }catch(e){} dsQueueConfigPush(); }
 function dsPainGet(id,dateKey){ var d=DS_PAIN[dateKey||activeDate]; return (d&&d[id])||null; }
 function dsPainSet(id,lvl,site){
   var k=activeDate; if(!DS_PAIN[k]) DS_PAIN[k]={};
@@ -4709,9 +4731,14 @@ var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){
   }catch(e){}
 })();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
-var _swapPushTimer=null;
+// Shared debounce for anything that should ride along on the settings-sync channel
+// (see "Batch C: SETTINGS SYNC TO SHEET") so a change on one device reaches others
+// without needing its own bespoke sync plumbing. 1.2s coalesces rapid edits (e.g.
+// several quick swaps or pain-log taps) into a single push.
+var _cfgPushTimer=null;
+function dsQueueConfigPush(){ clearTimeout(_cfgPushTimer); _cfgPushTimer=setTimeout(function(){ try{pushConfig();}catch(e){} },1200); }
 function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catch(e){}
-  clearTimeout(_swapPushTimer); _swapPushTimer=setTimeout(function(){ try{pushConfig();}catch(e){} },1200); }
+  dsQueueConfigPush(); }
 function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[activeDate]; }
 function dsSyncedExercise(id){
   var day=getDay(), sid="sess_"+id;
@@ -4726,7 +4753,7 @@ function dsSyncedExercise(id){
 }
 // ── DYNAMIC PROGRAM UPDATES: evolving reps target per exercise, based on trend ──
 var DS_PROG={}; try{ DS_PROG=JSON.parse(store.get("ds_prog")||"{}"); }catch(e){ DS_PROG={}; }
-function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catch(e){} }
+function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catch(e){} dsQueueConfigPush(); }
 function dsProgTarget(id){
   var rec=DS_PROG[id];
   if(rec && rec.day===activeDate) return rec.reps; // already computed for today, don't recompute mid-session
@@ -4866,7 +4893,7 @@ function dsMasterLookup(id){ var p=dsMasterPool(); for(var i=0;i<p.length;i++){ 
 var DS_CUSTOM={}; try{ DS_CUSTOM=JSON.parse(store.get("ds_custom")||"{}"); }catch(e){ DS_CUSTOM={}; }
 function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){} }
 var DS_USERMOVES={}; try{ DS_USERMOVES=JSON.parse(store.get("ds_usermoves")||"{}"); }catch(e){ DS_USERMOVES={}; }
-function dsUserMovesSave(){ try{ store.set("ds_usermoves", JSON.stringify(DS_USERMOVES)); }catch(e){} }
+function dsUserMovesSave(){ try{ store.set("ds_usermoves", JSON.stringify(DS_USERMOVES)); }catch(e){} dsQueueConfigPush(); }
 function dsAddUserMove(dayKey,def){
   var id="user_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   var item={id:id,name:def.name,target:def.target||"",equip:def.equip||"",rx:def.rx||"",cal:def.cal||20,log:"setsreps",sets:def.sets||3,userMove:true};
