@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v179 — 2026-09-15";
+var APP_BUILD = "v181 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4156,7 +4156,7 @@ var DS_SESSIONS={
 
   tue:{title:'Lower Body Push',sub:'Quads · Glutes · Core',accent:'var(--accent)',
     moves:[DS_WARMUP_RAISE,DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW7,DS_WARMUP_HIPCARS,
-      {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×10',cal:30,cue:'Land softly — toes first, knees bend to absorb',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
+      {id:'tue-jump',name:'Jump Squat',slot:'Power',target:'Quads · Glutes',equip:'Bodyweight',rx:'3×3–5',cal:30,cue:'Power move, not a burnout set — 3–5 max-effort reps, then rest. Land softly, toes first, knees bending to absorb. Past rep 5 you\'re not jumping any higher, just stacking landings on a left knee/right SI history that doesn\'t need the extra impact.',demo:'squat',log:'setsreps',sets:3,variants:[{name:'Squat to Calf Raise',equip:'Tube 30\u201340 lb',rx:'3\u00d712',cue:'Zero-impact power swap \u2014 squat, drive up, finish tall on the toes with a 1-sec squeeze',demo:'squat'}]},
       {id:'tue-squat',name:'Banded Squat',slot:'Squat',target:'Quads · Glutes',equip:'Clench mini loop above knees',rx:'4×12–15',cal:40,cue:'Mini loop above the knees — sit back and down, knees push out against the band',demo:'squat',log:'setsreps',sets:4,ramp:'1 set bodyweight × 10, 1 set with a lighter band × 8, then your working sets. If you are on the Heavy Band Front Squat variant, ramp through 2 lighter bands before the working band.',
         variants:[{name:'Goblet Squat',equip:'10 lb dumbbell',rx:'4×15–20',cue:'Hold the DB at your chest — sit back, elbows brush inside the knees',demo:'goblet'},
                   {name:'Long-Length Partial Squat',equip:'Mini loop above knees or bodyweight',rx:'3×15–20',cue:'Drop to the bottom of the squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in the deep stretch the whole set; quads burn fast.',demo:'squat'},{name:'Ball Wall Squat',equip:'Stability ball against wall',rx:'3\u00d715',cue:'Ball in the low back against the wall \u2014 roll down to parallel, drive up through the heels. Very SI-friendly',demo:'squat'},
@@ -4239,7 +4239,7 @@ var DS_SESSIONS={
         variants:[{name:'Heel Tap + Block Anchor (SI-safe)',equip:'Yoga block',rx:'3×8/side',cue:'Bend the moving knee to 90° and only tap the heel down — don\'t extend the leg straight. Pin a yoga block between the OTHER knee and hand, pressing knee-into-hand the whole set to lock the pelvis still. Full exhale through the mouth as you tap down. Stop 2–3" before the point where the SI joint usually pops, and only expand that range as it stays quiet week over week.',demo:'deadbug'},
           {name:'Bird Dog',equip:'Bodyweight · mat',rx:'3×8/side',cue:'Opposite arm and leg extend — flat back, zero rocking. Swap in if Dead Bug pops your SI joint',demo:'birddog'}]},
       {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]},
-      {id:'wed-rotslam',name:'Rotational Slam',demo:'slam',slot:'Power (bonus) · Obliques',target:'Obliques',equip:'10 lb slam ball',rx:'3×8/side',cal:30,cue:'Hips lead the rotation — arms just guide it. Moved from Wednesday — more dynamic than the static Pallof rotation above',log:'setsreps',sets:3,
+      {id:'wed-rotslam',name:'Rotational Slam',demo:'slam',slot:'Power (bonus) · Obliques',target:'Obliques',equip:'10 lb slam ball',rx:'3×8/side',cal:30,cue:'Hips lead the rotation — arms just guide it. Moved from Wednesday — more dynamic than the static Pallof rotation above. \u26A0\ufe0f SI joint flag — this loads the right SI joint directly through rotation. Control matters more than reps here: if form or hip-lead starts breaking down late in a set, stop the set there rather than grinding out the rest. Any SI joint response the next day is the signal to drop to the Pallof variant below for a while.',log:'setsreps',sets:3,
         variants:[{name:'Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern as the slam, no ballistic force at all',demo:'pallof'}]}]},
 
   sat:{title:'Mountain Bike Ride',sub:'Cardio · Fat Loss · HDL Boost — or swap in the Growth Circuit below',accent:'var(--blue)',
