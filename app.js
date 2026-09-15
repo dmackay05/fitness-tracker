@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v182 — 2026-09-15";
+var APP_BUILD = "v183 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5783,10 +5783,13 @@ function dsMuscleVolBandRowsHtml(v){
     var val=Math.round((v[m]||0)*10)/10;
     var pct=Math.min(val/MAX,1)*100;
     var cls=val===0?'ds-mv-low':(val<LO?'ds-mv-mid':(val>HI?'ds-mv-high':'ds-mv-good'));
-    return '<div class="ds-mvrow"><span class="ds-mvname">'+m+'</span>'+
+    var open=(DS_MV_BREAKDOWN_OPEN===m);
+    var row='<div class="ds-mvrow" style="cursor:pointer" onclick="dsToggleMvBreakdown(\''+m.replace(/'/g,"\\'")+'\')"><span class="ds-mvname">'+m+'</span>'+
       '<div class="ds-mvbar"><div class="ds-mvband" style="left:'+(LO/MAX*100)+'%;width:'+((HI-LO)/MAX*100)+'%"></div>'+
       '<div class="ds-mvfill '+cls+'" style="width:'+pct+'%"></div></div>'+
       '<span class="ds-mvval">'+(val%1===0?val.toFixed(0):val.toFixed(1))+'</span></div>';
+    if(open) row+=dsMvBreakdownHtml(m);
+    return row;
   }).join('');
 }
 function dsMuscleTagsFromTarget(target){
@@ -6753,6 +6756,61 @@ function dsMVWeek(dateKeys){
     });
   }
   return out;
+}
+// Same walk as dsMVWeek, same per-(day,id) max-across-sources dedup, but
+// returns what actually contributed to ONE muscle instead of just a total —
+// so a surprising number can be checked against real logged sessions instead
+// of trusted blind. Mirrors the "show what counted" pattern already used for
+// the recovery-day check, which is what actually caught real bugs there.
+function dsMuscleVolBreakdown(muscle,dateKeys){
+  var keys=dateKeys||dsMVDateKeysRolling();
+  var out=[];
+  for(var d=0;d<keys.length;d++){
+    var key=keys[d];
+    var ui=DS_UI[key]||{};
+    var sessCount={}, sessName={};
+    try{ var day=appData[key]; if(day&&day.exercises){ day.exercises.forEach(function(e){
+      var eid=e.id?String(e.id):"";
+      if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid]){sessCount[xid]=n1; sessName[xid]=e.name;} return; }
+      if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
+        if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid]){sessCount[mid]=n2; sessName[mid]=e.name;} return; } }
+    }); } }catch(e){}
+    var cloudDay=DS_CLOUD_VOL[key]||{};
+    Object.keys(DS_MV).forEach(function(id){
+      var map=DS_MV[id]; if(!map[muscle]) return;
+      var st=ui[id];
+      var localN=(st&&st.sets)?st.sets.length:0;
+      var syncedN=sessCount[id]||0;
+      var cloudN=cloudDay[id]||0;
+      var n=Math.max(localN,syncedN,cloudN);
+      if(!n) return;
+      var src=(n===localN&&localN>0)?'this device':(n===syncedN&&syncedN>0)?'sheet sync':'overload history';
+      var nm=sessName[id]||(dsRawItem(id)&&dsRawItem(id).name)||id;
+      out.push({date:key,name:nm,sets:n,weight:map[muscle],contribution:Math.round(n*map[muscle]*10)/10,source:src});
+    });
+  }
+  return out;
+}
+var DS_MV_BREAKDOWN_OPEN=null; // muscle name currently expanded, or null
+function dsToggleMvBreakdown(muscle){
+  DS_MV_BREAKDOWN_OPEN=(DS_MV_BREAKDOWN_OPEN===muscle)?null:muscle;
+  if(typeof dsRenderMuscleVolume==='function') dsRenderMuscleVolume();
+}
+function dsMvBreakdownHtml(muscle){
+  var rows=dsMuscleVolBreakdown(muscle);
+  if(!rows.length) return '<div style="padding:8px 0;font-size:11px;color:#666">Nothing logged for '+escH(muscle)+' in the last 7 days.</div>';
+  rows.sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:0);});
+  var total=rows.reduce(function(s,r){return s+r.contribution;},0);
+  var h='<div style="padding:8px 0 2px;font-size:10px;color:#666">'+rows.length+' logged item'+(rows.length===1?'':'s')+' \u00d7 their per-set weight toward '+escH(muscle)+' = '+(Math.round(total*10)/10)+' total. Each item is counted once per day (highest of device/sheet/cloud), never added across sources.</div>';
+  h+='<div style="margin-top:4px;max-height:240px;overflow-y:auto">';
+  rows.forEach(function(r){
+    h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
+      +'<span style="color:#777">'+r.date.slice(5)+'</span>'
+      +'<span style="color:#ccc;flex:1;padding:0 8px">'+escH(r.name)+' \u00d7'+r.sets+'</span>'
+      +'<span style="color:#999;text-align:right">'+r.sets+'\u00d7'+r.weight+' = '+r.contribution+'<div style="font-size:9px;color:#555">'+r.source+'</div></span></div>';
+  });
+  h+='</div>';
+  return h;
 }
 
 function dsRender(){
