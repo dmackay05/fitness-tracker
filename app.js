@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v181 — 2026-09-15";
+var APP_BUILD = "v182 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1316,6 +1316,10 @@ function switchTab(id){
   document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("active");});
   var btn=document.querySelector("[data-tab="+id+"]"), panel=document.getElementById("panel-"+id);
   if(btn) btn.classList.add("active"); if(panel) panel.classList.add("active");
+  // The dashboard's refresh button lives in the header (under the date nav)
+  // rather than at the top of the dashboard panel, so it needs to hide
+  // itself on every other tab instead of relying on the panel's own display.
+  var hrd=document.getElementById("header-refresh-dash"); if(hrd) hrd.style.display=(id==="dash")?"flex":"none";
   if(id==="yoga" && typeof renderPoses==="function") renderPoses();
   if(id==="today" && typeof renderToday==="function") renderToday();
   if(id==="log" && typeof ldInit==="function") ldInit();
