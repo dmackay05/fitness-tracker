@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v183 — 2026-09-15";
+var APP_BUILD = "v185 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6798,16 +6798,37 @@ function dsToggleMvBreakdown(muscle){
 }
 function dsMvBreakdownHtml(muscle){
   var rows=dsMuscleVolBreakdown(muscle);
-  if(!rows.length) return '<div style="padding:8px 0;font-size:11px;color:#666">Nothing logged for '+escH(muscle)+' in the last 7 days.</div>';
-  rows.sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:0);});
-  var total=rows.reduce(function(s,r){return s+r.contribution;},0);
-  var h='<div style="padding:8px 0 2px;font-size:10px;color:#666">'+rows.length+' logged item'+(rows.length===1?'':'s')+' \u00d7 their per-set weight toward '+escH(muscle)+' = '+(Math.round(total*10)/10)+' total. Each item is counted once per day (highest of device/sheet/cloud), never added across sources.</div>';
-  h+='<div style="margin-top:4px;max-height:240px;overflow-y:auto">';
-  rows.forEach(function(r){
-    h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
-      +'<span style="color:#777">'+r.date.slice(5)+'</span>'
-      +'<span style="color:#ccc;flex:1;padding:0 8px">'+escH(r.name)+' \u00d7'+r.sets+'</span>'
-      +'<span style="color:#999;text-align:right">'+r.sets+'\u00d7'+r.weight+' = '+r.contribution+'<div style="font-size:9px;color:#555">'+r.source+'</div></span></div>';
+  var barTotal=Math.round(((dsWeeklyMuscleVolume('rolling')[muscle])||0)*10)/10;
+  var total=Math.round(rows.reduce(function(s,r){return s+r.contribution;},0)*10)/10;
+  var mismatch=Math.abs(total-barTotal)>0.05;
+  // Group contributing rows by date so every one of the 7 rolling-window
+  // days shows up explicitly — including the ones with nothing logged for
+  // this muscle. Without this, a day that legitimately had zero contribution
+  // just silently doesn't appear, which reads as "this isn't really checking
+  // 7 days" even when it is — the window is right, most days just had no
+  // relevant exercise logged.
+  var byDate={}; rows.forEach(function(r){ (byDate[r.date]=byDate[r.date]||[]).push(r); });
+  var allDays=dsMVDateKeysRolling().sort().reverse(); // newest first
+  var h='<div style="padding:8px 0 2px;font-size:10px;color:#666">Rolling 7-day window ('+allDays[allDays.length-1]+' through '+allDays[0]+'). '+rows.length+' logged item'+(rows.length===1?'':'s')+' across '+Object.keys(byDate).length+' of those 7 days contribute to '+escH(muscle)+' = '+total+' total. Each item counted once per day (highest of device/sheet/cloud), never added across sources.</div>';
+  h+='<div style="padding:4px 0 2px;font-size:11px;color:'+(mismatch?'#ff6b6b':'#5eead4')+'">'
+    +(mismatch?'\u26A0 Bar shows '+barTotal+', items below total '+total+' \u2014 mismatch of '+(Math.round((barTotal-total)*10)/10)+'.':'\u2713 Matches the bar above ('+barTotal+').')
+    +'</div>';
+  h+='<div style="margin-top:4px;max-height:280px;overflow-y:auto;padding-right:6px">';
+  allDays.forEach(function(dk){
+    var dayRows=byDate[dk];
+    if(!dayRows||!dayRows.length){
+      h+='<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
+        +'<span style="color:#555;flex:0 0 44px">'+dk.slice(5)+'</span>'
+        +'<span style="color:#555;flex:1">\u2014 nothing logged for '+escH(muscle)+'</span></div>';
+      return;
+    }
+    dayRows.forEach(function(r,i){
+      h+='<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
+        +'<span style="color:#777;flex:0 0 44px">'+(i===0?r.date.slice(5):'')+'</span>'
+        +'<span style="color:#ccc;flex:1;min-width:0;overflow-wrap:break-word">'+escH(r.name)+' \u00d7'+r.sets+'</span>'
+        +'<span style="color:#999;flex:0 0 auto;text-align:right;white-space:nowrap">'+r.sets+'\u00d7'+r.weight+' = '+r.contribution+'</span></div>'
+        +'<div style="text-align:right;font-size:9px;color:#555;margin:-3px 0 4px">'+r.source+'</div>';
+    });
   });
   h+='</div>';
   return h;
