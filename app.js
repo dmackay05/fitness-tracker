@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v173 — 2026-09-15";
+var APP_BUILD = "v176 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -597,30 +597,80 @@ function rowToDay(row){
 function mergeDay(key,remote){
   var local=appData[key];
   if(!local){ appData[key]=remote; return; }
-  // Local kept if it has equal/more food detail; remote fills missing scalars.
-  if((remote.foods||[]).length > (local.foods||[]).length){
-    if(local.exTombs) remote.exTombs=local.exTombs;
-    remote.exercises=dsMergeExercises([],remote.exercises,remote.exTombs);
-    // The sheet only carries daily averages/summaries for a few wellness
-    // fields — it can't represent multi-reading-per-day detail. Before this
-    // branch throws away `local` entirely, carry forward anything local has
-    // that remote can only approximate, so a resync never silently deletes
-    // detail the sheet was never able to store in the first place.
-    remote.wellness=remote.wellness||{};
-    if(local.wellness){
-      if(local.wellness.rhrLog && local.wellness.rhrLog.length) remote.wellness.rhrLog=local.wellness.rhrLog;
-      if(local.wellness.bpLog && local.wellness.bpLog.length) remote.wellness.bpLog=local.wellness.bpLog;
-    }
-    if(local.meditation && local.meditation.length && !(remote.meditation&&remote.meditation.length)) remote.meditation=local.meditation;
-    appData[key]=remote; return; }
-  if(!local.weight && remote.weight) local.weight=remote.weight;
-  if(!local.waterOz && remote.waterOz) local.waterOz=remote.waterOz;
-  ["wellness","supplements","measurements","bodyComp","habits"].forEach(function(grp){
-    if(remote[grp]){ local[grp]=local[grp]||{};
-      Object.keys(remote[grp]).forEach(function(k){ if(local[grp][k]==null && remote[grp][k]!=null) local[grp][k]=remote[grp][k]; }); }
+  if(local.exTombs) remote.exTombs=local.exTombs;
+  // Union-merge by content key: take the max count of each distinct item
+  // between the two devices, preferring the richer local instance and padding
+  // with remote's when remote has MORE of that same item (i.e. logged on
+  // another device and not yet reflected here). This correctly keeps genuine
+  // same-day duplicates (two identical snacks really is two entries) while
+  // never silently dropping an entry the way a whole-array length comparison
+  // could — the old rule replaced the entire day with whichever side had more
+  // food rows total, which meant a shorter-but-different array on either side
+  // just lost its unique entries outright.
+  local.foods=dsMergeArrayByKey(local.foods,remote.foods,function(f){
+    return [f.name||'',f.cal||0,f.protein||0,f.carbs||0,f.fat||0,f.mealTag||''].join('|');
   });
+  if(!local.weight && remote.weight) local.weight=remote.weight;
+  // Water is an additive running total, logged from whichever device is at
+  // hand — phone at lunch, laptop at dinner. "Only fill if empty" (the old
+  // rule) meant a device that already had ANY number for the day, even a
+  // stale one from before another device's later add, would never pick up
+  // the higher total again. Taking the max is the safe merge for a same-day
+  // counter that only normally goes up; the rare deliberate correction via
+  // removeWater on one device is a smaller loss than silently freezing a
+  // device's water count for the rest of the day.
+  if(remote.waterOz>local.waterOz) local.waterOz=remote.waterOz;
+  // Scalar daily readings (one number per field per day): fill in only what's
+  // missing locally. rhrLog/bpLog are excluded here and merged as logs below,
+  // since they're multi-reading arrays, not single scalars.
+  ["wellness","measurements","bodyComp"].forEach(function(grp){
+    if(remote[grp]){ local[grp]=local[grp]||{};
+      Object.keys(remote[grp]).forEach(function(k){
+        if(k==='rhrLog'||k==='bpLog') return;
+        if(local[grp][k]==null && remote[grp][k]!=null) local[grp][k]=remote[grp][k];
+      }); }
+  });
+  // Daily checklist flags: "done" logged on either device should stick, so a
+  // stale local false/undefined must not block a true that already happened
+  // elsewhere today — same class of bug as water, just boolean instead of additive.
+  ["supplements","habits"].forEach(function(grp){
+    if(remote[grp]){ local[grp]=local[grp]||{};
+      Object.keys(remote[grp]).forEach(function(k){ if(remote[grp][k]===true && local[grp][k]!==true) local[grp][k]=true; }); }
+  });
+  local.wellness=local.wellness||{};
+  if(remote.wellness){
+    local.wellness.rhrLog=dsMergeArrayByKey(local.wellness.rhrLog,remote.wellness.rhrLog,function(r){return r.t+'|'+r.v;});
+    local.wellness.bpLog=dsMergeArrayByKey(local.wellness.bpLog,remote.wellness.bpLog,function(r){return r.t+'|'+r.sys+'|'+r.dia;});
+  }
+  local.meditation=dsMergeArrayByKey(local.meditation,remote.meditation,function(m){return m.mins+'|'+m.type+'|'+(m.clarity||0);});
   local.exercises=dsMergeExercises(local.exercises,remote.exercises,local.exTombs);
   appData[key]=local;
+}
+// Generic same-day union merge: buckets both arrays by a content key and, for
+// each key, keeps the higher of the two counts — local instances first (they
+// tend to carry richer/original fields), padded with remote instances if
+// remote logged more of that same item. This is the one fix that covers
+// foods, RHR/BP readings, and meditation sessions at once: any field where
+// multiple same-shaped entries can legitimately exist per day and can be
+// added from more than one device before either has synced.
+function dsMergeArrayByKey(localArr,remoteArr,keyFn){
+  localArr=localArr||[]; remoteArr=remoteArr||[];
+  if(!remoteArr.length) return localArr;
+  if(!localArr.length) return remoteArr;
+  function bucket(arr){
+    var m={}, order=[];
+    arr.forEach(function(item){ var k=keyFn(item); if(!m[k]){m[k]=[];order.push(k);} m[k].push(item); });
+    return {m:m,order:order};
+  }
+  var L=bucket(localArr), R=bucket(remoteArr);
+  var order=L.order.slice();
+  R.order.forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
+  var out=[];
+  order.forEach(function(k){
+    var lItems=L.m[k]||[], rItems=R.m[k]||[], n=Math.max(lItems.length,rItems.length);
+    for(var i=0;i<n;i++) out.push(lItems[i]||rItems[i]);
+  });
+  return out;
 }
 function dsMergeExercises(localEx,remoteEx,tombs){
   localEx=localEx||[]; remoteEx=remoteEx||[];
@@ -1010,6 +1060,23 @@ function dsConsecutiveTrainingDays(){
   }
   return n;
 }
+// Same walk as dsConsecutiveTrainingDays, but returns what actually got counted
+// on each day — because "type !== yoga" is a blunt instrument (e.g. Wednesday's
+// active-recovery mobility work is logged the same way as a real lift, as
+// type:"session") and a wrong count is worse than no count if it can't be checked.
+function dsConsecutiveTrainingDetail(){
+  var out=[], d=new Date(), todK=todayKey();
+  var cursor=new Date(d);
+  if(!dsHasNonYogaTraining(appData[todK])) cursor.setDate(cursor.getDate()-1);
+  for(var guard=0; guard<30; guard++){
+    var k=localDateKey(cursor), day=appData[k];
+    if(!dsHasNonYogaTraining(day)) break;
+    var names=day.exercises.filter(function(e){return e.type!=="yoga";}).map(function(e){return e.name||e.id;});
+    out.push({date:k,names:names});
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return out;
+}
 function dsRirFatigueTrend(){
   // Pull avg RIR per day (across all logged sets that day), most recent first.
   var days=Object.keys(appData).sort().reverse();
@@ -1029,18 +1096,35 @@ function dsRirFatigueTrend(){
   var mean=function(a){return a.reduce(function(x,y){return x+y;},0)/a.length;};
   return mean(recent)-mean(older); // negative = getting harder (fatigue climbing)
 }
+var RECOVERY_LIST_OPEN=false;
+function dsToggleRecoveryList(){ RECOVERY_LIST_OPEN=!RECOVERY_LIST_OPEN; renderRecoveryFlag(); }
 function renderRecoveryFlag(){
   var el=document.getElementById("dash-recovery"); if(!el) return;
-  var consec=dsConsecutiveTrainingDays();
+  var detail=dsConsecutiveTrainingDetail();
+  var consec=detail.length;
   var rirDelta=dsRirFatigueTrend();
   var flags=[];
-  if(consec>=6) flags.push({col:'#ff6b6b',txt:consec+' training days in a row with no rest/active-recovery day \u2014 the split has one built in for a reason.'});
+  if(consec>=6) flags.push({col:'#ff6b6b',txt:consec+' training days in a row with no rest/active-recovery day \u2014 the split has one built in for a reason.',showList:true});
   if(rirDelta!=null && rirDelta<=-1) flags.push({col:'#fbbf24',txt:'Average RIR has dropped '+Math.abs(rirDelta).toFixed(1)+' over your last few sessions \u2014 working sets are getting harder for the same target, a common lead-in to burnout.'});
   if(!flags.length){
     el.innerHTML='<span style="color:#5eead4">\u2713 On track</span> <span style="color:#888">\u2014 no fatigue or missed-rest pattern detected.</span>';
     return;
   }
-  el.innerHTML=flags.map(function(f){return '<div style="color:'+f.col+';padding:4px 0;font-size:12px;line-height:1.4">\u26A0 '+f.txt+'</div>';}).join('');
+  var h=flags.map(function(f){return '<div style="color:'+f.col+';padding:4px 0;font-size:12px;line-height:1.4">\u26A0 '+f.txt+'</div>';}).join('');
+  if(consec>0){
+    h+='<div onclick="dsToggleRecoveryList()" style="margin-top:6px;font-size:11px;color:#5eead4;cursor:pointer">'
+      +(RECOVERY_LIST_OPEN?'\u25B4 Hide':'\u25BE Show')+' what counted on each of those '+consec+' days</div>';
+    if(RECOVERY_LIST_OPEN){
+      h+='<div style="margin-top:6px;max-height:220px;overflow-y:auto">';
+      detail.forEach(function(d){
+        h+='<div style="padding:5px 0;border-bottom:1px solid #1f1f1f;font-size:11px">'
+          +'<span style="color:#777">'+d.date+'</span> '
+          +'<span style="color:#aaa">'+(d.names.length?escH(d.names.join(', ')):'(unnamed entry)')+'</span></div>';
+      });
+      h+='</div><div style="margin-top:6px;font-size:11px;color:#666;line-height:1.4">If a day here was meant as rest or pure yoga, whatever\u2019s listed for it is what got logged with a type other than \u201cyoga\u201d \u2014 e.g. active-recovery mobility work logged the same way as a lift.</div>';
+    }
+  }
+  el.innerHTML=h;
 }
 
 // Weekly and monthly intake side by side, so drift shows up as a difference
