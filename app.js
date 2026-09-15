@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v178 — 2026-09-15";
+var APP_BUILD = "v179 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1056,20 +1056,52 @@ function renderProteinStreak(){
 //      Dog/Warrior/Savasana, no lift) were being counted as training.
 //      wed-rotslam and similar real Wednesday band exercises are NOT covered
 //      by this prefix (only wed-flow-*), so they still count correctly.
+// Name-keyed on purpose, not id/type. Once any exercise round-trips through
+// the Google Sheet sync, rowToDay rebuilds its id as "sheet_n_<name>" and its
+// type defaults to "logged" unless Code.gs specifically tagged it (only
+// cardio/yoga get a tag at all — the guided-flow and mobility pose library
+// entries are plain type:"session" and never get one). Since almost all real
+// data has synced through the sheet at least once by the time anyone looks at
+// it, id-prefix and type checks silently stopped working — verified against
+// David's actual exported data, where an entire pure-yoga day ("Yoga (15
+// min)" and nothing else) was still being counted as training. Name is the
+// one field that survives the round trip unchanged, so it's the only thing
+// this checks against.
+// NOTE: this list is a snapshot of the wed-flow-*/y-* pose libraries' names as
+// of v179. If new poses are added to either library later, their names need
+// adding here too — there's no way to derive this dynamically once identity
+// only survives as a name string.
+var DS_RECOVERY_NAME_SET=(function(){
+  var names=[
+    "seated centering breath","cat-cow — breath-led","bird dog — slow flow","child's pose — side reaches",
+    "downward dog — pedal out","dragon — low lunge","warrior i","warrior ii","reverse warrior","warrior iii",
+    "triangle pose","cobra — gentle backbend","standing forward fold","sleeping swan","caterpillar — seated fold",
+    "supine twist","slow bridge rolls","legs up the wall","savasana","extended flow — hip + shoulder cars",
+    "supine knee hugs","sleeping swan (yin pigeon)","dragon (low lunge)","caterpillar","deep resting squat",
+    "side lunge","t-spine twist","dancer's bridge","tailor's pose"
+  ];
+  var set={}; names.forEach(function(n){set[n]=true;}); return set;
+})();
 function dsIsYogaOrRecoveryItem(ex){
   if(!ex) return false;
+  var nm=String(ex.name||"").trim();
+  if(DS_RECOVERY_NAME_SET[nm.toLowerCase()]) return true;
+  // Condensed quick-log entries: "Yoga (15 min)", "Wednesday Yoga Flow (20-25 min)".
+  if(/^yoga\s*\(\d+/i.test(nm)) return true;
+  if(/^wednesday yoga flow/i.test(nm)) return true;
+  // A plain daily walk was deliberately added across every day, including
+  // rest days, as low-impact movement — not training load. Anchored to the
+  // start of the name so it never matches a real exercise that happens to
+  // contain the word "walk" (Banded Lateral Walk, Backward Walking are real
+  // training and must NOT be excluded). "Rucked Walk" (weighted) starts with
+  // "Rucked", so it's unaffected and still counts, same as a bike ride.
+  if(/^walk\b/i.test(nm)) return true;
+  if(/^recovery walk$/i.test(nm)) return true;
+  // Belt-and-suspenders: still correct for same-day, not-yet-synced entries.
   if(ex.type==="yoga") return true;
   var id=String(ex.id||"");
   if(id.indexOf("sess_wed-flow-")===0) return true;
   if(id.indexOf("sess_y-")===0) return true;
-  // A plain daily walk was deliberately added across every day, including
-  // rest days, as low-impact movement — not training load. A "Rucked Walk"
-  // (weighted) is real training stress and still counts; a bike ride or a
-  // run/run-walk interval session does too.
-  if(ex.type==="cardio"){
-    var nm=String(ex.name||"");
-    if(/walk/i.test(nm) && !/rucked/i.test(nm)) return true;
-  }
   return false;
 }
 function dsHasNonYogaTraining(day){
