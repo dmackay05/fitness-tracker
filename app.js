@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v165 — 2026-09-14";
+var APP_BUILD = "v166 — 2026-09-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4799,6 +4799,14 @@ function dsTimerPaint(id,secs){
   btn.classList.toggle('ds-run', s.cls==='ds-run');
   btn.textContent=s.txt;
 }
+// beepDone had gone missing the same way tgStartTimer had — referenced by
+// dsStartTimer's completion branch above, guarded by the same typeof check,
+// so a finished hold (Squat Hold, etc.) has been silently not chiming.
+// Reuses the same ivlBeep tone as the rest-timer fix for consistency.
+function beepDone(){
+  try{ if(typeof ivlBeep==='function'){ ivlBeep(880,150); setTimeout(function(){ivlBeep(880,150);},220); } }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){}
+}
 function dsStartTimer(id,secs){
   var t=ds_timers[id];
   if(t && t.done){ delete ds_timers[id]; t=null; } // restart after a completed hold
@@ -5027,52 +5035,11 @@ var FRUIT_TIPS = [
   {name:"Blueberries", tip:"Best for reducing inflammation — highest anthocyanin content, MIND diet staple.", emoji:"🫐"},
   {name:"Strawberries", tip:"Best for managing overall calorie intake — lowest calorie density of common fruits.", emoji:"🍓"},
   {name:"Apples", tip:"Best convenient, slow-digesting, portable snack — eat the skin for the fiber.", emoji:"🍎"},
-  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"},
-  {name:"Oranges", tip:"Best for immune support and satiety — high vitamin C plus pectin fiber that slows digestion.", emoji:"🍊"},
-  {name:"Peaches", tip:"Best low-calorie summer snack — high water content, good potassium for post-workout electrolytes.", emoji:"🍑"},
-  {name:"Cherries (tart)", tip:"Best for exercise recovery — compounds linked to reduced muscle soreness and better sleep.", emoji:"🍒"},
-  {name:"Kiwi", tip:"Best pre-bed fruit — studies link it to improved sleep onset and duration.", emoji:"🥝"},
-  {name:"Pears", tip:"Best for fullness on a deficit — very high fiber-to-calorie ratio.", emoji:"🍐"},
-  {name:"Grapes", tip:"Best frozen snack for cravings — freezing slows eating pace and mimics candy texture at a fraction of the sugar.", emoji:"🍇"},
-  {name:"Watermelon", tip:"Best post-workout rehydrator — ~92% water plus citrulline, which may help blood flow and soreness.", emoji:"🍉"},
-  {name:"Pineapple", tip:"Best for digestion — contains bromelain, an enzyme that helps break down protein.", emoji:"🍍"},
-  {name:"Mango", tip:"Best vitamin A source among common fruits — good for skin/eye health, pairs well as a smoothie base.", emoji:"🥭"},
-  {name:"Lemons/limes", tip:"Best flavor-without-calories add — brightens water, dressings, or fish without added sugar or sodium.", emoji:"🍋"},
-  {name:"Blackberries", tip:"Best fiber-per-cup of the berries — even higher fiber than raspberries, great yogurt topper.", emoji:"🫐"},
-  {name:"Plums", tip:"Best natural laxative-adjacent fruit — sorbitol content aids regularity, good on a higher-fiber day.", emoji:"🍑"},
-  {name:"Cantaloupe", tip:"Best low-sugar melon — more vitamin A and less sugar than watermelon, good hot-weather snack.", emoji:"🍈"},
-  {name:"Grapefruit", tip:"Best morning appetite fruit — some evidence it modestly blunts appetite; check interactions if on statins.", emoji:"🍏"},
-  {name:"Olives", tip:"Technically a fruit, best savory fat source — monounsaturated fat, good Mediterranean-diet staple.", emoji:"🫒"}
-];
-var VEGGIE_TIPS = [
-  {name:"Spinach", tip:"Best leafy green for iron and folate — cooks down fast, easy to sneak into eggs or pasta.", emoji:"🥬"},
-  {name:"Broccoli", tip:"Best cruciferous all-rounder — high in fiber, vitamin C, and sulforaphane compounds tied to inflammation control.", emoji:"🥦"},
-  {name:"Carrots", tip:"Best crunchy low-calorie snack — high in beta-carotene, satisfying raw with hummus.", emoji:"🥕"},
-  {name:"Sweet potatoes", tip:"Best slow-digesting starchy veg for lift days — fiber slows the carb spike compared to white potato.", emoji:"🍠"},
-  {name:"Bell peppers", tip:"Best vitamin-C-per-calorie veg — red peppers have more vitamin C than an orange.", emoji:"🫑"},
-  {name:"Tomatoes", tip:"Best for lycopene — an antioxidant more bioavailable cooked (great in sauces) than raw.", emoji:"🍅"},
-  {name:"Onions & garlic", tip:"Best for gut and cardiovascular support — prebiotic fiber plus sulfur compounds.", emoji:"🧅"},
-  {name:"Cucumbers", tip:"Best hydrating low-calorie filler — mostly water, good for volume eating on a deficit.", emoji:"🥒"},
-  {name:"Avocado", tip:"Best satiating fat source — monounsaturated fat plus fiber, pairs well with an egg/toast routine.", emoji:"🥑"},
-  {name:"Eggplant", tip:"Best fiber-dense low-calorie base for family dinners — absorbs flavor well as a meat extender.", emoji:"🍆"},
-  {name:"Cauliflower", tip:"Best rice/potato substitute for volume eating — very low calorie density, absorbs seasoning well.", emoji:"🥦"},
-  {name:"Kale", tip:"Best nutrient-density leafy green — higher vitamin K and C than spinach, holds up better to roasting.", emoji:"🥬"},
-  {name:"Green beans", tip:"Best kid-friendly fiber veg — mild flavor, easy sell alongside plain meats for a picky eater.", emoji:"🫛"},
-  {name:"Corn", tip:"Best starchy veg for gradual energy — more fiber than white rice per serving, family-dinner-friendly.", emoji:"🌽"},
-  {name:"Beets", tip:"Best for exercise performance — nitrates may support blood flow and endurance, good pre-ride option.", emoji:"🥕"},
-  {name:"Mushrooms", tip:"Best meat extender — umami-rich, low calorie, works well swapped in for part of ground turkey/beef.", emoji:"🍄"},
-  {name:"Zucchini/summer squash", tip:"Best low-calorie pasta substitute — works as noodles or grated into baked goods.", emoji:"🫑"},
-  {name:"Cabbage", tip:"Best budget fiber veg — cheap, versatile (slaw, stir-fry, soup), keeps well for a family of five.", emoji:"🥬"},
-  {name:"Brussels sprouts", tip:"Best roasted cruciferous — crisps up well, similar sulforaphane benefits to broccoli.", emoji:"🌰"},
-  {name:"Peas", tip:"Best plant-protein-boosted veg — more protein per cup than most vegetables, easy frozen staple.", emoji:"🫘"}
+  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"}
 ];
 function fruitTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
   return FRUIT_TIPS[doy % FRUIT_TIPS.length];
-}
-function veggieTipOfDay(){
-  var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
-  return VEGGIE_TIPS[doy % VEGGIE_TIPS.length];
 }
 function renderFruitGuide(targetId){
   var el=document.getElementById(targetId||"meals-fruit-guide"); if(!el) return;
@@ -5082,16 +5049,6 @@ function renderFruitGuide(targetId){
     '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all fruit picks</summary>'+
     '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
     FRUIT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
-    '</div></details>';
-}
-function renderVeggieGuide(targetId){
-  var el=document.getElementById(targetId||"meals-veggie-guide"); if(!el) return;
-  var t=veggieTipOfDay();
-  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Veggie Tip of the Day</div>'+
-    '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
-    '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all veggie picks</summary>'+
-    '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
-    VEGGIE_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
 function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
@@ -5149,7 +5106,6 @@ function miRender(){
 }
 function renderMealsTab(){
   renderFruitGuide("meals-fruit-guide");
-  renderVeggieGuide("meals-veggie-guide");
   miRender();
 }
 
@@ -6610,6 +6566,60 @@ function dsFinishSets(id){
   dsSaveUI(); dsRender(); renderAll();
 }
 function dsMarkDone(id){ if(ds_timers[id]){ if(ds_timers[id].interval)clearInterval(ds_timers[id].interval); delete ds_timers[id]; } if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
+// ── REST TIMER WIDGET (drives #timer-widget in index.html) ───────────────
+// tgStartTimer/pauseTimer/restartTimer/closeTimer had gone missing from this
+// file entirely — the widget's HTML/CSS in index.html was fully intact and
+// already wired to call these by name, but nothing defined them, so every
+// call site (dsLogSet's auto-fire after a set, and the custom-plan Rest
+// buttons) was silently a no-op via its own typeof guard. Rebuilt to match
+// exactly what that markup expects: #timer-display, #timer-bar (width %),
+// #timer-label/#timer-name text, and the .urgent class in the last 5s.
+var _twState={secs:0,total:0,interval:null,paused:false,label:'REST',name:''};
+function _twRender(){
+  var el=document.getElementById('timer-widget'); if(!el) return;
+  var disp=document.getElementById('timer-display');
+  var bar=document.getElementById('timer-bar');
+  var lbl=document.getElementById('timer-label');
+  var nm=document.getElementById('timer-name');
+  var pauseBtn=document.getElementById('t-pause');
+  var m=Math.floor(_twState.secs/60), s=_twState.secs%60;
+  if(disp) disp.textContent=m+':'+(s<10?'0':'')+s;
+  var pct=_twState.total>0 ? Math.max(0,Math.min(100,(_twState.secs/_twState.total)*100)) : 0;
+  if(bar) bar.style.width=pct+'%';
+  var urgent=_twState.secs<=5 && _twState.secs>0;
+  if(disp) disp.classList.toggle('urgent',urgent);
+  if(bar) bar.classList.toggle('urgent',urgent);
+  if(lbl) lbl.textContent=_twState.label;
+  if(nm) nm.textContent=_twState.name||'';
+  if(pauseBtn) pauseBtn.textContent=_twState.paused?'\u25B6':'\u23F8';
+}
+function tgStartTimer(secs,name,label){
+  var el=document.getElementById('timer-widget'); if(!el) return;
+  secs=parseInt(secs,10)||60;
+  if(_twState.interval){ clearInterval(_twState.interval); _twState.interval=null; }
+  _twState.secs=secs; _twState.total=secs; _twState.name=name||''; _twState.label=label||'REST'; _twState.paused=false;
+  _twRender();
+  el.classList.add('active');
+  _twState.interval=setInterval(function(){
+    if(_twState.paused) return;
+    _twState.secs--;
+    if(_twState.secs<=0){
+      _twState.secs=0; _twRender();
+      clearInterval(_twState.interval); _twState.interval=null;
+      try{ if(typeof ivlBeep==='function'){ ivlBeep(880,150); setTimeout(function(){ivlBeep(880,150);},220); } }catch(e){}
+      try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){}
+      setTimeout(function(){ closeTimer(); },1500);
+      return;
+    }
+    _twRender();
+  },1000);
+}
+function pauseTimer(){ _twState.paused=!_twState.paused; _twRender(); }
+function restartTimer(){ _twState.secs=_twState.total; _twState.paused=false; _twRender(); }
+function closeTimer(){
+  var el=document.getElementById('timer-widget'); if(el) el.classList.remove('active');
+  if(_twState.interval){ clearInterval(_twState.interval); _twState.interval=null; }
+}
 function dsBumpMin(id,delta,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var cur=st.mins||raw.defMin||30; cur=Math.max(5,cur+delta); st.mins=cur; dsSaveUI();
   var m=document.getElementById('ds-min-'+id); if(m)m.value=cur;
   var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+calAdj(cur*perMin)+' kcal'; }
