@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v176 — 2026-09-15";
+var APP_BUILD = "v178 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1042,13 +1042,38 @@ function renderProteinStreak(){
 // across sessions (working sets are getting harder for the same target) and
 // too many consecutive training days without the rest/active-recovery days
 // the split already calls for.
-// A day counts as "training" only if it has a non-yoga exercise logged (lift
-// or ride). Daily yoga is active recovery by design, not a training day, so
-// on its own it must NOT block this streak from resetting — that was the bug:
-// a yoga-only day was being read as training, so a daily yoga habit made the
-// streak look like it never reset even on real rest days.
+// A day counts as "training" only if it has a real lift/ride logged. Two
+// separate things need excluding, not just type:"yoga":
+//   1. The condensed "Yoga (N min)" entries (type:"yoga") from the quick-log
+//      button and the Wednesday-flow toggle.
+//   2. The GUIDED yoga flow and general mobility library, which log each pose
+//      individually through the same generic session engine as a real lift —
+//      so a pure Cat-Cow/Warrior I/Savasana day comes through as ordinary
+//      type:"session" entries and was still being read as a training day.
+//      These are identifiable by id prefix: wed-flow-* (the guided flow) and
+//      y-* (the standalone pose library) — confirmed against David's actual
+//      logged data, where whole pose-flow-only days (e.g. all Cat-Cow/Bird
+//      Dog/Warrior/Savasana, no lift) were being counted as training.
+//      wed-rotslam and similar real Wednesday band exercises are NOT covered
+//      by this prefix (only wed-flow-*), so they still count correctly.
+function dsIsYogaOrRecoveryItem(ex){
+  if(!ex) return false;
+  if(ex.type==="yoga") return true;
+  var id=String(ex.id||"");
+  if(id.indexOf("sess_wed-flow-")===0) return true;
+  if(id.indexOf("sess_y-")===0) return true;
+  // A plain daily walk was deliberately added across every day, including
+  // rest days, as low-impact movement — not training load. A "Rucked Walk"
+  // (weighted) is real training stress and still counts; a bike ride or a
+  // run/run-walk interval session does too.
+  if(ex.type==="cardio"){
+    var nm=String(ex.name||"");
+    if(/walk/i.test(nm) && !/rucked/i.test(nm)) return true;
+  }
+  return false;
+}
 function dsHasNonYogaTraining(day){
-  return !!(day && day.exercises && day.exercises.some(function(e){ return e.type!=="yoga"; }));
+  return !!(day && day.exercises && day.exercises.some(function(e){ return !dsIsYogaOrRecoveryItem(e); }));
 }
 function dsConsecutiveTrainingDays(){
   var n=0, d=new Date(), todK=todayKey();
@@ -1061,9 +1086,7 @@ function dsConsecutiveTrainingDays(){
   return n;
 }
 // Same walk as dsConsecutiveTrainingDays, but returns what actually got counted
-// on each day — because "type !== yoga" is a blunt instrument (e.g. Wednesday's
-// active-recovery mobility work is logged the same way as a real lift, as
-// type:"session") and a wrong count is worse than no count if it can't be checked.
+// on each day — a wrong count is worse than no count if it can't be checked.
 function dsConsecutiveTrainingDetail(){
   var out=[], d=new Date(), todK=todayKey();
   var cursor=new Date(d);
@@ -1071,7 +1094,7 @@ function dsConsecutiveTrainingDetail(){
   for(var guard=0; guard<30; guard++){
     var k=localDateKey(cursor), day=appData[k];
     if(!dsHasNonYogaTraining(day)) break;
-    var names=day.exercises.filter(function(e){return e.type!=="yoga";}).map(function(e){return e.name||e.id;});
+    var names=day.exercises.filter(function(e){return !dsIsYogaOrRecoveryItem(e);}).map(function(e){return e.name||e.id;});
     out.push({date:k,names:names});
     cursor.setDate(cursor.getDate()-1);
   }
