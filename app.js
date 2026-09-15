@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v169 — 2026-09-15";
+var APP_BUILD = "v170 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5345,7 +5345,14 @@ function dsComplete(id){ var item=dsRawItem(id);
     if(st.manualDone) return true;
     var ex=dsSyncedExercise(id);
     return !!(ex && !ex.partial); }
-  var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
+  // "done"/"time" items (single-tap completions like a walk, ride, or mobility flow) have
+  // no local echo state to fall back on, so they need the robust lookup directly. A naive
+  // "e.id==='sess_'+id" check only ever matches an entry logged on THIS device — anything
+  // that arrives via sync from another device comes back from the Sheet round-trip as
+  // "sheet_n_<name>" (see rowToDay), so it silently never matched here. dsSyncedExercise
+  // already handles both id shapes (exact sess_ id, or sheet_ id matched by name).
+  var ex2=dsSyncedExercise(id);
+  return !!(ex2 && !ex2.partial); }
 function dsEncodeSets(ex,sets){
   if(!sets||!sets.length)return;
   var reps=sets.map(function(x){return x.reps!=null?x.reps:'';});
@@ -6505,9 +6512,13 @@ function dsRender(){
 }
 function renderToday(){ try{dsRender();}catch(e){} }
 function dsUpdateStats(){
-  var vis=dsVisibleItems(), all=dsAllItems(), total=vis.length, done=0, burned=0, d=getDay();
-  vis.forEach(function(it){ var e=d.exercises.filter(function(x){return x.id==="sess_"+it.id;})[0]; if(e)done++; });
-  all.forEach(function(it){ var e=d.exercises.filter(function(x){return x.id==="sess_"+it.id;})[0]; if(e)burned+=(+e.calories||0); });
+  var vis=dsVisibleItems(), all=dsAllItems(), total=vis.length, done=0, burned=0;
+  // Same fix as dsComplete: a naive "sess_"+id match only ever sees entries logged on
+  // THIS device. dsSyncedExercise also matches the "sheet_n_<name>" shape a completion
+  // comes back as after round-tripping through the Sheet from another device — without
+  // it, the done-count and calorie total both silently exclude anything logged elsewhere.
+  vis.forEach(function(it){ if(dsSyncedExercise(it.id)) done++; });
+  all.forEach(function(it){ var e=dsSyncedExercise(it.id); if(e) burned+=(+e.calories||0); });
   var dn=document.getElementById('ds-done'); if(dn)dn.textContent=done+' / '+total;
   var bu=document.getElementById('ds-burned'); if(bu)bu.textContent=burned;
   var bar=document.getElementById('ds-bar'); if(bar)bar.style.width=(total?Math.round(done/total*100):0)+'%';
