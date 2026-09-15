@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v166 — 2026-09-13";
+var APP_BUILD = "v167 — 2026-09-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3803,7 +3803,7 @@ var DS_SESSIONS={
         variants:[{name:'Wide Row (free)',equip:'Tube 20–30 lb',rx:'3×12',cue:'Pull wide to the ribs, squeeze the mid-back',demo:'row'},
                   {name:'Chest-Supported Row (ball)',equip:'Chest on stability ball + tube band',rx:'3×12',cue:'Chest stays glued to the ball — zero lower back, all upper back',demo:'ballrow'},
                   {name:'Narrow Row',equip:'Tube 30–40 lb',rx:'3×12',cue:'Hands close, pull to the belt line — elbows brush the ribs, hits lats more than mid-back',demo:'row'}]},
-      {id:'mon-ohp',name:'Overhead Press',slot:'Push · Vertical Push',target:'Shoulders',equip:'Tube 20–30 → 40–50 lb',rx:'3×10–12',cal:35,cue:"Press straight to the ceiling — don't let your low back arch",demo:'press',log:'setsreps',sets:3,ramp:'1 set light band × 10, 1 set mid band × 6–8, then working sets. Priming the shoulder here matters more than chasing failure given the shoulder history — ramp fully before loading up.',
+      {id:'mon-ohp',name:'Overhead Press',slot:'Push · Vertical Push',target:'Shoulders',equip:'Tube 20–30 → 40–50 lb',rx:'4×10–12',cal:35,cue:"Press straight to the ceiling — don't let your low back arch",demo:'press',log:'setsreps',sets:4,ramp:'1 set light band × 10, 1 set mid band × 6–8, then working sets. Priming the shoulder here matters more than chasing failure given the shoulder history — ramp fully before loading up.',
         variants:[{name:'DB Overhead Press',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Press both DBs straight up, brief squeeze at the top — control the descent',demo:'press'},{name:'Seated OHP on Stability Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d712',cue:'Sit tall on the ball, feet planted wide \u2014 press straight up. The ball keeps you honest: no lower-back arch possible',demo:'press'}]},
       {id:'thu-facepull',name:'Rear Delts / Face Pull',slot:'Pull · Rear Delts',target:'Rear Delts · Traps',equip:'Tube 10–20 → 50 lb',rx:'3–4×15–20',cal:30,cue:'Pull to your temples, elbows high — thumbs point behind you at the finish',demo:'facepull',log:'setsreps',sets:4,
         variants:[{name:'Cross-Body Rear Delt Fly',equip:'Tube 10–20 lb · chest-height anchor',rx:'3×12–15',cue:'Anchor at chest height, reach the working arm all the way across your body toward the anchor for a deep pre-stretch, then sweep it out and back — rear delt only, no shrugging',demo:'fly'}]},
