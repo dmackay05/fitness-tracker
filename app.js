@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v172 — 2026-09-15";
+var APP_BUILD = "v173 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -992,13 +992,21 @@ function renderProteinStreak(){
 // across sessions (working sets are getting harder for the same target) and
 // too many consecutive training days without the rest/active-recovery days
 // the split already calls for.
+// A day counts as "training" only if it has a non-yoga exercise logged (lift
+// or ride). Daily yoga is active recovery by design, not a training day, so
+// on its own it must NOT block this streak from resetting — that was the bug:
+// a yoga-only day was being read as training, so a daily yoga habit made the
+// streak look like it never reset even on real rest days.
+function dsHasNonYogaTraining(day){
+  return !!(day && day.exercises && day.exercises.some(function(e){ return e.type!=="yoga"; }));
+}
 function dsConsecutiveTrainingDays(){
   var n=0, d=new Date(), todK=todayKey();
   var cursor=new Date(d);
-  if(!(appData[todK]&&appData[todK].exercises&&appData[todK].exercises.length)) cursor.setDate(cursor.getDate()-1);
+  if(!dsHasNonYogaTraining(appData[todK])) cursor.setDate(cursor.getDate()-1);
   for(var guard=0; guard<30; guard++){
     var k=localDateKey(cursor), day=appData[k];
-    if(day&&day.exercises&&day.exercises.length){ n++; cursor.setDate(cursor.getDate()-1); } else break;
+    if(dsHasNonYogaTraining(day)){ n++; cursor.setDate(cursor.getDate()-1); } else break;
   }
   return n;
 }
