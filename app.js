@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v167 — 2026-09-14";
+var APP_BUILD = "v168 — 2026-09-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5309,7 +5309,15 @@ function dsViewOf(item){ if(!item)return item; var v=dsActiveVariant(item); if(!
 
 function dsComplete(id){ var item=dsRawItem(id);
   if(item && item.log==='setsreps'){ var st=dsItemState(id);
-    return !!st.manualDone; }
+    // Local manualDone is the fast path (set the instant you tap Done on this device).
+    // But it only gets seeded from synced data the first time dsItemState() sees this id
+    // today — and dsItemState() is called on every render just to populate the card's
+    // input fields, so that seed check fires (and misses) before you've ever marked it
+    // done. Falling back to the live synced exercise means a completion logged on another
+    // device shows up here on the next sync, not just on this device's first render of the day.
+    if(st.manualDone) return true;
+    var ex=dsSyncedExercise(id);
+    return !!(ex && !ex.partial); }
   var d=getDay(); return d.exercises.some(function(e){return e.id==="sess_"+id;}); }
 function dsEncodeSets(ex,sets){
   if(!sets||!sets.length)return;
