@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=108">
+<link rel="stylesheet" href="styles.css?v=109">
 </head>
 <body>
 
@@ -731,6 +731,8 @@
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
         <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
         <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()">⬆ Import Plan (JSON)</button>
+        <button class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
+        <div id="ds-plan-sync-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
         <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
         <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
         <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
@@ -973,6 +975,6 @@
   </div>
 </div>
 
-<script src="app.js?v=280"></script>
+<script src="app.js?v=281"></script>
 </body>
 </html>

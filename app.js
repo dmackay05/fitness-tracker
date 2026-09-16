@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v186 — 2026-09-16";
+var APP_BUILD = "v187 — 2026-09-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4497,6 +4497,29 @@ function dsPlanStampAndPush(msg){
 }
 // Called from applyConfig. Takes the Sheet's plan only if it is newer than this
 // device's copy. Returns true when the active plan actually changed (caller reloads).
+// Manual, verbose version for the Settings button — iOS has no visible console,
+// so every outcome is reported on screen.
+function dsPullPlanManual(){
+  if(!SHEETS_URL){ dsPlanMsg("No Apps Script URL on this device \u2014 add it under Google Sheets & Security"); return; }
+  dsPlanMsg("Checking Sheet for a plan\u2026 ("+APP_BUILD+")");
+  pullConfig(false,function(ok,cfg){
+    if(!ok){ dsPlanMsg("Couldn\u2019t reach the Sheet \u2014 check the URL and that Code.gs was redeployed as a New version"); return; }
+    if(!cfg || cfg.ds_custom_plan_ts==null){ dsPlanMsg("Sheet has no saved plan \u2014 re-import the JSON on the main device (needs the updated Code.gs)"); return; }
+    var inTs=parseInt(cfg.ds_custom_plan_ts,10)||0, myTs=parseInt(store.get('ds_custom_plan_ts'),10)||0;
+    if(inTs<=myTs){ dsPlanMsg("This device already has the newest plan ("+new Date(myTs).toLocaleString()+")"); return; }
+    if(cfg.ds_custom_plan){
+      var obj; try{ obj=JSON.parse(cfg.ds_custom_plan); }catch(e){ dsPlanMsg("Sheet plan is not valid JSON ("+String(cfg.ds_custom_plan).length+" chars) \u2014 it may be truncated"); return; }
+      var err=dsValidateCustomPlan(obj); if(err){ dsPlanMsg("Sheet plan rejected: "+err); return; }
+    }
+    if(dsApplySyncedPlan(cfg)){ dsPlanMsg("\u2713 Plan loaded from Sheet \u2014 reloading\u2026"); setTimeout(function(){ location.reload(); },1200); }
+    else dsPlanMsg("Plan in Sheet matches this device \u2014 nothing to change");
+  });
+}
+// Persistent status line under the plan buttons (toasts vanish in 1.5s).
+function dsPlanMsg(msg){
+  toast(msg);
+  var el=document.getElementById('ds-plan-sync-msg'); if(el) el.textContent=msg;
+}
 function dsApplySyncedPlan(cfg){
   if(!cfg || cfg.ds_custom_plan_ts==null || cfg.ds_custom_plan==null) return false;
   var inTs=parseInt(cfg.ds_custom_plan_ts,10)||0;
