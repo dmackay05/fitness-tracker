@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=109">
+<link rel="stylesheet" href="styles.css?v=110">
 </head>
 <body>
 
@@ -354,6 +354,12 @@
               <option value="run">Run (~10.5 kcal/min)</option>
               <option value="ruck">Rucked Walk (~6.2 kcal/min)</option>
               <option value="ride">Bike Ride (~4.5 kcal/min)</option>
+              <option value="incline">Incline Treadmill Walk (~7 kcal/min)</option>
+              <option value="elliptical">Elliptical (~8 kcal/min)</option>
+              <option value="row">Rowing Machine (~7.5 kcal/min)</option>
+              <option value="stairs">Stair Climber (~9 kcal/min)</option>
+              <option value="spin">Stationary Bike (~7 kcal/min)</option>
+              <option value="swim">Swim (~8 kcal/min)</option>
             </select>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
@@ -671,10 +677,10 @@
       <div class="card" style="margin-top:10px">
         <div class="card-title">Daily Goals</div>
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Calories vary by day type to support muscle building in a mild deficit. Protein and other macros stay constant.</div>
-        <div class="rlbl" style="margin-top:0">Rest day calories <span style="color:#666">(Sun)</span></div><input type="number" id="ft-cal-rest" style="margin-bottom:8px"/>
-        <div class="rlbl">Active recovery calories <span style="color:#666">(Wed · yoga + walk/ride)</span></div><input type="number" id="ft-cal-recovery" style="margin-bottom:8px"/>
-        <div class="rlbl">Active/lift day calories <span style="color:#666">(Mon · Tue · Thu · Fri)</span></div><input type="number" id="ft-cal-active" style="margin-bottom:8px"/>
-        <div class="rlbl">Ride day calories <span style="color:#666">(Sat)</span></div><input type="number" id="ft-cal-ride" style="margin-bottom:8px"/>
+        <div class="rlbl" style="margin-top:0">Rest day calories <span style="color:#666" id="ds-cal-days-rest">(Sun)</span></div><input type="number" id="ft-cal-rest" style="margin-bottom:8px"/>
+        <div class="rlbl"><span id="ds-cal-lbl-recovery">Active recovery calories</span> <span style="color:#666" id="ds-cal-days-recovery">(Wed · yoga + walk/ride)</span></div><input type="number" id="ft-cal-recovery" style="margin-bottom:8px"/>
+        <div class="rlbl">Active/lift day calories <span style="color:#666" id="ds-cal-days-active">(Mon · Tue · Thu · Fri)</span></div><input type="number" id="ft-cal-active" style="margin-bottom:8px"/>
+        <div class="rlbl"><span id="ds-cal-lbl-ride">Ride day calories</span> <span style="color:#666" id="ds-cal-days-ride">(Sat)</span></div><input type="number" id="ft-cal-ride" style="margin-bottom:8px"/>
         <div class="g2">
           <div><div class="rlbl" style="margin-top:0">Protein (g)</div><input type="number" id="ft-protein" style="margin-bottom:0"/></div>
           <div><div class="rlbl" style="margin-top:0">Carbs (g)</div><input type="number" id="ft-carbs" style="margin-bottom:0"/></div>
@@ -730,9 +736,11 @@
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
         <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
-        <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()">⬆ Import Plan (JSON)</button>
+        <button class="bp bfull" onclick="dsPlanEditorOpen()" style="margin-top:0">✎ Edit Plan</button>
+        <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()" style="margin-top:6px">⬆ Import Plan (JSON)</button>
         <button class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
         <div id="ds-plan-sync-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
+        <div style="margin-top:10px"><label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer"><span style="font-size:11px;color:#ccc;font-family:'DM Mono',monospace">Show built-in home extras</span><input type="checkbox" id="ds-guest-extras-toggle" onchange="dsSetGuestExtras(this.checked)" style="width:20px;height:20px;accent-color:#5eead4"/></label></div>
         <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
         <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
         <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
@@ -748,7 +756,7 @@
       </div>
       <div class="te-section-hdr">⏸️ Deload Week</div>
       <div class="card">
-        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.</div>
+        <div id="ds-deload-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Deload week active</span>
           <input type="checkbox" id="ds-deload-toggle" onchange="dsSetDeload(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
@@ -757,7 +765,7 @@
       </div>
       <div class="te-section-hdr">▶️ Maintenance Week</div>
       <div class="card">
-        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A recomp break — one week at measured maintenance every 4-6 weeks instead of the deficit. Counters metabolic adaptation from sustained dieting and lets training intensity catch up. Sets every day's calorie target to maintenance for 7 days, then auto-reverts. Keep protein at 170g+ and train as normal.</div>
+        <div id="ds-maint-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A recomp break — one week at measured maintenance every 4-6 weeks instead of the deficit. Counters metabolic adaptation from sustained dieting and lets training intensity catch up. Sets every day's calorie target to maintenance for 7 days, then auto-reverts. Keep protein at 170g+ and train as normal.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Maintenance week active</span>
           <input type="checkbox" id="ds-maint-toggle" onchange="dsSetMaint(this.checked)" style="width:20px;height:20px;accent-color:#7dd3fc;cursor:pointer" />
@@ -766,7 +774,7 @@
       </div>
       <div class="te-section-hdr">🔁 Session Rotation</div>
       <div class="card">
-        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
+        <div id="ds-rotate-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate weekly</span>
           <input type="checkbox" id="ds-rotate-toggle" onchange="dsToggleRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
@@ -975,6 +983,6 @@
   </div>
 </div>
 
-<script src="app.js?v=281"></script>
+<script src="app.js?v=282"></script>
 </body>
 </html>

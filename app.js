@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v187 — 2026-09-16";
+var APP_BUILD = "v188 — 2026-09-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -53,7 +53,37 @@ var GOALS = {
 var DAY_TYPE_MAP = {0:"rest", 1:"active", 2:"active", 3:"recovery", 4:"active", 5:"active", 6:"ride"};
 function dayTypeForKey(dateKey){
   var d = keyToDate(dateKey);
+  if(dsGuestMode()){ var gt=dsGuestDayTypes()[DS_WEEKMAP_CAL[d.getDay()]]; if(gt) return gt; }
   return DAY_TYPE_MAP[d.getDay()] || "active";
+}
+var DS_WEEKMAP_CAL=['sun','mon','tue','wed','thu','fri','sat'];
+// ── GUEST / CUSTOM-PLAN MODE ────────────────────────────────────────────
+// On automatically whenever an imported plan is active. Hides David's home
+// extras, locks session rotation, genericizes deload/maintenance text, and
+// derives calorie day types from the plan instead of David's fixed week.
+function dsGuestMode(){ try{ return !!(store.get('ds_custom_plan')||""); }catch(e){ return false; } }
+var DS_GUEST_TYPES_CACHE=null, DS_GUEST_TYPES_RAW=null;
+// Per day: the plan's own "dayType" (rest|active|recovery|ride) if given;
+// otherwise a day with no plan session or only a log:"done" rest move = rest,
+// anything else = active.
+function dsGuestDayTypes(){
+  var raw=""; try{ raw=store.get('ds_custom_plan')||""; }catch(e){}
+  if(raw===DS_GUEST_TYPES_RAW && DS_GUEST_TYPES_CACHE) return DS_GUEST_TYPES_CACHE;
+  var out={}, o={}; try{ o=JSON.parse(raw)||{}; }catch(e){}
+  ['mon','tue','wed','thu','fri','sat','sun'].forEach(function(d){
+    var s=o[d], valid={rest:1,active:1,recovery:1,ride:1};
+    if(s && valid[s.dayType]) { out[d]=s.dayType; return; }
+    if(!s || !Array.isArray(s.moves) || !s.moves.length){ out[d]=(o.replace===true)?'rest':null; return; }
+    var real=s.moves.filter(function(m){ return m && m.log!=='done'; });
+    out[d]=real.length?'active':'rest';
+  });
+  DS_GUEST_TYPES_RAW=raw; DS_GUEST_TYPES_CACHE=out; return out;
+}
+function dsDaysOfType(t){
+  var map=dsGuestMode()?dsGuestDayTypes():null, names={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'}, res=[];
+  var order=['mon','tue','wed','thu','fri','sat','sun'], idx={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6};
+  order.forEach(function(d){ var dt=map&&map[d]?map[d]:(DAY_TYPE_MAP[idx[d]]||'active'); if(dt===t) res.push(names[d]); });
+  return res.length?res.join(' \u00b7 '):'none';
 }
 function calGoalForKey(dateKey){
   if(dsMaintActive()) return GOALS.calMaint||2600;
@@ -67,7 +97,7 @@ function calGoalLabelForKey(dateKey){
   if(dsMaintActive()) return "Maintenance week";
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return "Rest day";
-  if(t==="ride") return "Ride day";
+  if(t==="ride") return dsGuestMode()?"Long cardio day":"Ride day";
   if(t==="recovery") return "Active recovery";
   return "Active/lift day";
 }
@@ -107,8 +137,10 @@ function dsRenderDeloadUI(){
   var active = dsDeloadActive();
   if(toggle) toggle.checked = active;
   if(preview) preview.textContent = active
-    ? ("Active — day "+(dsDeloadDaysElapsed()+1)+" of 7. Cut lift load ~30-40%, skip deep stretch-position lifts, easy/flat rides only, keep yoga daily.")
-    : "Off. Turning this on flags a lighter week across lifts and rides for 7 days.";
+    ? ("Active — day "+(dsDeloadDaysElapsed()+1)+" of 7. "+(dsGuestMode()
+        ? "Cut working weights ~30-40% (or drop a set per exercise), stop 3-4 reps shy of failure, keep cardio easy."
+        : "Cut lift load ~30-40%, skip deep stretch-position lifts, easy/flat rides only, keep yoga daily."))
+    : (dsGuestMode() ? "Off. Turning this on flags a lighter training week for 7 days." : "Off. Turning this on flags a lighter week across lifts and rides for 7 days.");
   if(badge) badge.style.display = active ? "" : "none";
   if(badge) badge.textContent = "⏸ Deload — day "+(dsDeloadDaysElapsed()+1)+"/7";
 }
@@ -136,7 +168,7 @@ function dsRenderMaintUI(){
   var active = dsMaintActive();
   if(toggle) toggle.checked = active;
   if(preview) preview.textContent = active
-    ? ("Active — day "+(dsMaintDaysElapsed()+1)+" of 7. Calorie target: "+(GOALS.calMaint||2600)+" every day this week (was periodized "+GOALS.calRest+"–"+GOALS.calRide+"). Keep protein at 170g+ or a bit higher. Train as normal.")
+    ? ("Active — day "+(dsMaintDaysElapsed()+1)+" of 7. Calorie target: "+(GOALS.calMaint||2600)+" every day this week (was periodized "+GOALS.calRest+"–"+GOALS.calRide+"). Keep protein at "+GOALS.protein+"g+ or a bit higher. Train as normal.")
     : "Off. Turning this on sets every day's calorie target to your measured maintenance ("+(GOALS.calMaint||2600)+") for 7 days, then auto-reverts to your normal periodized targets.";
   if(badge) badge.style.display = active ? "" : "none";
   if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1)+"/7";
@@ -1412,7 +1444,9 @@ function renderFoodLog(){
     '<div style="font-size:10px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g (carbs − fiber)</div>';
 }
 
-var CARDIO_RATES={walk:{perMin:4.3,label:"Walk"},ruck:{perMin:6.2,label:"Rucked Walk"},ride:{perMin:4.5,label:"Bike Ride"},run:{perMin:10.5,label:"Run"}};
+var CARDIO_RATES={walk:{perMin:4.3,label:"Walk"},ruck:{perMin:6.2,label:"Rucked Walk"},ride:{perMin:4.5,label:"Bike Ride"},run:{perMin:10.5,label:"Run"},
+  incline:{perMin:7.0,label:"Incline Treadmill Walk"},elliptical:{perMin:8.0,label:"Elliptical"},row:{perMin:7.5,label:"Rowing Machine"},
+  stairs:{perMin:9.0,label:"Stair Climber"},spin:{perMin:7.0,label:"Stationary Bike"},swim:{perMin:8.0,label:"Swim"}};
 function updateCardioHint(){
   var t=document.getElementById("cardio-type"); if(!t) return;
   var r=CARDIO_RATES[t.value]||CARDIO_RATES.walk;
@@ -2318,7 +2352,26 @@ function dsRenderVarRotatePreview(){
   if(sample.length) out+='<br>This week, e.g.: '+sample.join(' · ');
   host.innerHTML=out;
 }
-function openSettings(){ initHealthSettings(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function dsGuestSettingsText(){
+  var g=dsGuestMode();
+  function set(id,txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
+  set('ds-deload-desc', g
+    ? "For a week when joints, sleep, or recovery are lagging. A visual reminder for 7 days to cut working weights ~30-40% (or a set per exercise) and stop well short of failure. Auto-turns off after 7 days."
+    : "For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.");
+  set('ds-maint-desc', "A diet break — one week at maintenance calories every 4-6 weeks instead of the deficit. Counters metabolic adaptation from sustained dieting and lets training catch up. Sets every day's calorie target to maintenance for 7 days, then auto-reverts. Keep protein at "+GOALS.protein+"g+ and train as normal.");
+  set('ds-rotate-desc', g
+    ? "Not available with a custom plan \u2014 it assumes the built-in week (recovery Wed, ride Sat) and would scramble your own days."
+    : "Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.");
+  var rt=document.getElementById('ds-rotate-toggle'); if(rt){ rt.disabled=g; if(g) rt.checked=false; }
+  set('ds-cal-days-rest', '('+dsDaysOfType('rest')+')');
+  set('ds-cal-days-recovery', '('+dsDaysOfType('recovery')+')');
+  set('ds-cal-days-active', '('+dsDaysOfType('active')+')');
+  set('ds-cal-days-ride', '('+dsDaysOfType('ride')+')');
+  set('ds-cal-lbl-recovery', g?'Active recovery calories':'Active recovery calories');
+  set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
+  var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
+}
+function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -4604,7 +4657,7 @@ var DS_EXTRAS_ACTIVE=false; // when true, the Extras tab is showing instead of a
 function dsRealSessionKey(dk){
   var d=new Date(dk+'T12:00:00');
   var base=DS_WEEKMAP[d.getDay()];
-  if(!DS_ROTATE) return base;
+  if(!DS_ROTATE || dsGuestMode()) return base;
   var slot=DS_ROTATE_POOL.indexOf(base);
   if(slot<0) return base; // wed / sat / sun are anchored
   var n=DS_ROTATE_POOL.length;
@@ -5264,6 +5317,203 @@ function dsRawItem(id){
 }
 
 
+// ── IN-APP PLAN EDITOR ──────────────────────────────────────────────────
+// Edits the active plan (imported, or the built-in one as a starting point)
+// without touching JSON. Saves through the same validate -> store -> Sheet path.
+var PE=null, PE_DAY='mon', PE_OPEN_MOVE=-1, PE_ADD_Q='';
+var PE_DAYS=['mon','tue','wed','thu','fri','sat','sun'];
+var PE_DAYNAME={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
+function peEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function peStartObj(){
+  var raw=dsCustomPlanRaw();
+  if(raw){ try{ return JSON.parse(raw); }catch(e){} }
+  // No import yet: start from the built-in week so there is something to edit.
+  var out={replace:true, mv:{}};
+  PE_DAYS.forEach(function(d){ var S=DS_SESSIONS[d]; if(!S) return;
+    out[d]={title:S.title, sub:S.sub||'', accent:S.accent||'var(--accent)', moves:(S.moves||[]).map(function(m){
+      var o={id:m.id,name:m.name,rx:m.rx||'',log:m.log||'done'};
+      ['slot','target','equip','cal','cue','sets','secs','perMin','defMin'].forEach(function(k){ if(m[k]!=null) o[k]=m[k]; });
+      if(DS_MV[m.id]) out.mv[m.id]=DS_MV[m.id];
+      return o; })};
+  });
+  return out;
+}
+function dsPlanEditorOpen(){
+  PE=peStartObj(); if(!PE.mv) PE.mv={}; PE_DAY='mon'; PE_OPEN_MOVE=-1; PE_ADD_Q='';
+  var ov=document.getElementById('ds-pe-overlay');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='ds-pe-overlay';
+    ov.style.cssText='display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9999;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    document.body.appendChild(ov);
+  }
+  ov.style.display='flex'; peRender(); ov.scrollTop=0;
+}
+function dsPlanEditorClose(force){
+  if(!force && !confirm('Close without saving your plan changes?')) return;
+  var ov=document.getElementById('ds-pe-overlay'); if(ov) ov.style.display='none'; PE=null;
+}
+function peSess(){ return PE[PE_DAY]; }
+function peIsRest(){ var s=peSess(); return !s || !Array.isArray(s.moves) || !s.moves.length; }
+function peSetDay(d){ PE_DAY=d; PE_OPEN_MOVE=-1; peRender(); }
+function peDayField(k,v){ var s=peSess(); if(!s) return; s[k]=v; }
+function peToggleRest(){
+  if(peIsRest()){ PE[PE_DAY]={title:'Workout', sub:'', accent:'var(--accent)', moves:[]}; PE_OPEN_MOVE=-1; peRender(); peFocusAdd(); return; }
+  if(!confirm('Make '+PE_DAYNAME[PE_DAY]+' a rest day? Its exercises will be removed from the plan.')) return;
+  (peSess().moves||[]).forEach(function(m){ delete PE.mv[m.id]; });
+  delete PE[PE_DAY]; PE.replace=true; PE_OPEN_MOVE=-1; peRender();
+}
+function peSetDayType(v){ var s=peSess(); if(!s) return; if(v) s.dayType=v; else delete s.dayType; }
+function peMove(i){ return peSess().moves[i]; }
+function peField(i,k,v){
+  var m=peMove(i); if(!m) return;
+  if(['sets','secs','perMin','defMin','cal'].indexOf(k)>=0){ v=parseFloat(v); if(isNaN(v)) { delete m[k]; return; } }
+  if(v===''&&k!=='name'&&k!=='rx'){ delete m[k]; return; }
+  m[k]=v;
+  if(k==='log'){ peRender(); }
+  if(k==='name'){ var h=document.getElementById('pe-mh-'+i); if(h) h.textContent=v||'(unnamed)'; }
+}
+function peMuscle(i,mus){
+  var m=peMove(i); var w=PE.mv[m.id]||{};
+  var cur=w[mus]||0, nxt=cur===0?1:(cur===1?0.5:0);
+  if(nxt) w[mus]=nxt; else delete w[mus];
+  if(Object.keys(w).length) PE.mv[m.id]=w; else delete PE.mv[m.id];
+  peRender();
+}
+function peReorder(i,dir){
+  var a=peSess().moves, j=i+dir; if(j<0||j>=a.length) return;
+  var t=a[i]; a[i]=a[j]; a[j]=t; PE_OPEN_MOVE=(PE_OPEN_MOVE===i)?j:(PE_OPEN_MOVE===j?i:PE_OPEN_MOVE); peRender();
+}
+function peDelete(i){
+  var m=peMove(i); if(!confirm('Remove "'+(m.name||'this exercise')+'" from '+PE_DAYNAME[PE_DAY]+'?')) return;
+  peSess().moves.splice(i,1); delete PE.mv[m.id]; PE_OPEN_MOVE=-1; peRender();
+}
+function peOpen(i){ PE_OPEN_MOVE=(PE_OPEN_MOVE===i)?-1:i; peRender(); }
+function peNewId(name){
+  var slug=String(name||'move').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)||'move';
+  return PE_DAY+'-'+slug+'-'+Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,4);
+}
+function peAddBlank(){
+  var id=peNewId('exercise');
+  peSess().moves.push({id:id,name:'New exercise',rx:'3×8–12',log:'setsreps',sets:3,cal:30});
+  PE_OPEN_MOVE=peSess().moves.length-1; peRender();
+}
+function peAddFromLib(libId){
+  var src=null; DS_GYM_LIBRARY.forEach(function(m){ if(m.id===libId) src=m; });
+  if(!src) return;
+  var id=peNewId(src.name);
+  var m={id:id,name:src.name,rx:src.rx,log:'setsreps',sets:src.sets||3,cal:src.cal||30};
+  ['slot','target','equip','cue'].forEach(function(k){ if(src[k]) m[k]=src[k]; });
+  peSess().moves.push(m);
+  if(src.mv){ var w={}; for(var k in src.mv) w[k]=src.mv[k]; PE.mv[id]=w; }
+  toast('Added '+src.name); peRender();
+}
+function peFocusAdd(){ setTimeout(function(){ var el=document.getElementById('pe-add-q'); if(el) el.scrollIntoView({block:'center'}); },50); }
+function peAddSearch(v){ PE_ADD_Q=v; var box=document.getElementById('pe-add-list'); if(box) box.innerHTML=peLibListHtml(); }
+function peLibListHtml(){
+  var q=PE_ADD_Q.toLowerCase().trim();
+  var list=DS_GYM_LIBRARY.filter(function(m){ return !q || (m.name+' '+m.target+' '+m.slot+' '+m.equip).toLowerCase().indexOf(q)>=0; });
+  if(!list.length) return '<div style="color:#555;font-size:12px;padding:8px 0">No matches \u2014 use "+ Blank Exercise" instead.</div>';
+  return list.map(function(m){
+    return '<div class="row" style="cursor:pointer" onclick="peAddFromLib(\''+m.id+'\')"><div style="flex:1;min-width:0"><div class="row-name">'+peEsc(m.name)+'</div><div class="row-sub">'+peEsc(m.target)+' \u00b7 '+peEsc(m.equip)+'</div></div><div style="color:#5eead4;font-size:18px">+</div></div>';
+  }).join('');
+}
+function peInp(i,k,val,ph,type){
+  return '<input '+(type?'type="'+type+'" inputmode="decimal" ':'')+'value="'+peEsc(val)+'" placeholder="'+peEsc(ph||'')+'" oninput="peField('+i+',\''+k+'\',this.value)" style="margin-bottom:6px;font-size:13px"/>';
+}
+function peMoveHtml(m,i,n){
+  var open=PE_OPEN_MOVE===i, w=PE.mv[m.id]||{};
+  var mus=Object.keys(w).map(function(k){ return k+(w[k]<1?' ½':''); }).join(', ');
+  var h='<div class="card" style="margin-bottom:8px;padding:10px 12px">'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<div style="flex:1;min-width:0;cursor:pointer" onclick="peOpen('+i+')"><div class="row-name" id="pe-mh-'+i+'">'+peEsc(m.name||'(unnamed)')+'</div>'
+    +'<div class="row-sub">'+peEsc(m.rx||'')+(mus?' \u00b7 '+peEsc(mus):' \u00b7 <span style="color:#fbbf24">no muscles set</span>')+'</div></div>'
+    +'<button class="bs" style="padding:6px 9px" onclick="peReorder('+i+',-1)"'+(i===0?' disabled':'')+'>\u2191</button>'
+    +'<button class="bs" style="padding:6px 9px" onclick="peReorder('+i+',1)"'+(i===n-1?' disabled':'')+'>\u2193</button>'
+    +'<button class="bs" style="padding:6px 9px" onclick="peOpen('+i+')">'+(open?'\u25B2':'\u270E')+'</button></div>';
+  if(open){
+    h+='<div style="margin-top:10px">'
+      +'<div class="rlbl" style="margin-top:0">Name</div>'+peInp(i,'name',m.name,'e.g. Leg Press')
+      +'<div class="rlbl">Prescription shown</div>'+peInp(i,'rx',m.rx,'e.g. 3×8–12')
+      +'<div class="rlbl">How it\u2019s logged</div>'
+      +'<select onchange="peField('+i+',\'log\',this.value)" style="width:100%;margin-bottom:6px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px">'
+      +[['setsreps','Sets × reps × weight'],['time','Timed hold / interval'],['cardio','Cardio minutes'],['done','Just check it off']].map(function(o){ return '<option value="'+o[0]+'"'+(m.log===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>';
+    if(m.log==='setsreps') h+='<div class="rlbl">Sets</div>'+peInp(i,'sets',m.sets,'3','number');
+    if(m.log==='time') h+='<div class="rlbl">Seconds per set</div>'+peInp(i,'secs',m.secs,'40','number');
+    if(m.log==='cardio') h+='<div class="g2"><div><div class="rlbl">kcal / min</div>'+peInp(i,'perMin',m.perMin,'8','number')+'</div><div><div class="rlbl">Default minutes</div>'+peInp(i,'defMin',m.defMin,'20','number')+'</div></div>';
+    h+='<div class="g2"><div><div class="rlbl">Muscle group label</div>'+peInp(i,'slot',m.slot,'Horizontal Push')+'</div><div><div class="rlbl">Target</div>'+peInp(i,'target',m.target,'Chest')+'</div></div>'
+      +'<div class="g2"><div><div class="rlbl">Equipment</div>'+peInp(i,'equip',m.equip,'Dumbbells')+'</div><div><div class="rlbl">Est. calories</div>'+peInp(i,'cal',m.cal,'30','number')+'</div></div>'
+      +'<div class="rlbl">Coaching cue</div><textarea oninput="peField('+i+',\'cue\',this.value)" rows="3" style="width:100%;margin-bottom:6px;font-size:13px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;box-sizing:border-box">'+peEsc(m.cue||'')+'</textarea>'
+      +'<div class="rlbl">Muscles worked <span style="color:#666">(tap: off \u2192 main \u2192 ½ secondary)</span></div><div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px">'
+      +DS_MV_ORDER.map(function(mu){ var v=w[mu]||0;
+        var st=v===1?'background:#5eead4;color:#0d0d1a;border-color:#5eead4':(v?'background:#5eead433;color:#5eead4;border-color:#5eead4':'background:transparent;color:#888;border-color:#2a2a45');
+        return '<button onclick="peMuscle('+i+',\''+mu+'\')" style="padding:6px 10px;border-radius:14px;border:1px solid;font-size:11px;font-family:\'DM Mono\',monospace;'+st+'">'+mu+(v&&v<1?' ½':'')+'</button>'; }).join('')
+      +'</div><button class="bs bfull" style="color:#f87171;border-color:#f8717155" onclick="peDelete('+i+')">\u2715 Remove exercise</button></div>';
+  }
+  return h+'</div>';
+}
+function peRender(){
+  var ov=document.getElementById('ds-pe-overlay'); if(!ov||!PE) return;
+  var sy=ov.scrollTop;
+  var h='<div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:2;gap:8px">'
+    +'<button class="bs" onclick="dsPlanEditorClose()">\u2715 Cancel</button>'
+    +'<div style="font-size:15px;font-weight:800;color:#f0f0f0">\uD83D\uDDD3\uFE0F Edit Plan</div>'
+    +'<button class="bp" onclick="peSave()">Save</button></div>'
+    +'<div style="padding:14px 16px 60px;max-width:560px;margin:0 auto;width:100%;box-sizing:border-box">'
+    +'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px">'
+    +PE_DAYS.map(function(d){ var on=d===PE_DAY, rest=!PE[d]||!(PE[d].moves||[]).length;
+      return '<button onclick="peSetDay(\''+d+'\')" style="flex-shrink:0;padding:8px 12px;border-radius:14px;font-size:12px;font-family:\'DM Mono\',monospace;border:1px solid '+(on?'#5eead4':'#2a2a45')+';background:'+(on?'#5eead422':'transparent')+';color:'+(on?'#5eead4':(rest?'#555':'#ccc'))+'">'+PE_DAYNAME[d].slice(0,3)+(rest?' \u00b7 rest':'')+'</button>'; }).join('')
+    +'</div>';
+  if(peIsRest()){
+    h+='<div class="card" style="text-align:center;color:#aaa;font-size:13px">'+PE_DAYNAME[PE_DAY]+' is a rest day.<br><br><button class="bp" onclick="peToggleRest()">+ Make it a training day</button></div>';
+  } else {
+    var s=peSess(), n=s.moves.length;
+    h+='<div class="card" style="margin-bottom:12px"><div class="rlbl" style="margin-top:0">Session title</div>'
+      +'<input value="'+peEsc(s.title)+'" oninput="peDayField(\'title\',this.value)" placeholder="e.g. Upper Push" style="margin-bottom:6px"/>'
+      +'<div class="rlbl">Subtitle</div><input value="'+peEsc(s.sub)+'" oninput="peDayField(\'sub\',this.value)" placeholder="e.g. Chest · Shoulders · Triceps" style="margin-bottom:6px"/>'
+      +'<div class="rlbl">Calorie day type</div><select onchange="peSetDayType(this.value)" style="width:100%;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:10px 12px;color:#f0f0f0;font-size:13px">'
+      +[['','Auto (training day)'],['active','Lift / training day'],['recovery','Active recovery'],['ride','Long cardio day'],['rest','Rest day']].map(function(o){ return '<option value="'+o[0]+'"'+((s.dayType||'')===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'
+      +'<button class="bs bfull" style="margin-top:10px" onclick="peToggleRest()">Make this a rest day</button></div>'
+      +'<div class="te-section-hdr">Exercises ('+n+')</div>'
+      +(n?s.moves.map(function(m,i){ return peMoveHtml(m,i,n); }).join(''):'<div style="color:#666;font-size:12px;margin-bottom:10px">No exercises yet \u2014 add some below.</div>')
+      +'<div class="te-section-hdr">Add Exercise</div><div class="card">'
+      +'<button class="bs bfull" onclick="peAddBlank()" style="margin-bottom:10px">+ Blank Exercise</button>'
+      +'<input id="pe-add-q" value="'+peEsc(PE_ADD_Q)+'" oninput="peAddSearch(this.value)" placeholder="Search gym ideas (e.g. chest, cable, squat)" style="margin-bottom:6px"/>'
+      +'<div id="pe-add-list" style="max-height:320px;overflow-y:auto">'+peLibListHtml()+'</div></div>';
+  }
+  h+='<div class="te-section-hdr">Plan Options</div><div class="card" style="font-size:12px;color:#aaa;line-height:1.6">'
+    +'<label style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>Days not in this plan are rest days</span>'
+    +'<input type="checkbox" '+(PE.replace===true?'checked ':'')+'onchange="PE.replace=this.checked" style="width:20px;height:20px;accent-color:#5eead4"/></label>'
+    +'<div style="color:#666;font-size:10px;margin-top:4px">Off = empty days fall back to the app\u2019s built-in sessions.</div>'
+    +'<button class="bs bfull" style="margin-top:10px" onclick="peExport()">\u2B07 Download this plan as JSON (backup)</button></div></div>';
+  ov.innerHTML=h;
+  ov.scrollTop=sy;
+}
+function peClean(){
+  var o=JSON.parse(JSON.stringify(PE));
+  PE_DAYS.forEach(function(d){ if(o[d] && (!Array.isArray(o[d].moves) || !o[d].moves.length)) delete o[d]; });
+  // Drop muscle maps for exercises no longer in the plan.
+  var ids={}; PE_DAYS.forEach(function(d){ if(o[d]) o[d].moves.forEach(function(m){ ids[m.id]=1; }); });
+  for(var k in o.mv) if(!ids[k]) delete o.mv[k];
+  return o;
+}
+function peExport(){
+  try{
+    var blob=new Blob([JSON.stringify(peClean(),null,2)],{type:'application/json'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='my-plan.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }catch(e){ toast('Could not export'); }
+}
+function peSave(){
+  var o=peClean();
+  var err=dsValidateCustomPlan(o);
+  if(err){ alert('Can\u2019t save yet:\n\n'+err); return; }
+  var noMus=[]; PE_DAYS.forEach(function(d){ if(o[d]) o[d].moves.forEach(function(m){ if(m.log==='setsreps' && !o.mv[m.id]) noMus.push(m.name); }); });
+  if(noMus.length && !confirm(noMus.length+' exercise'+(noMus.length>1?'s have':' has')+' no muscles set, so '+(noMus.length>1?'they':'it')+' won\u2019t count on the Volume tab:\n\n'+noMus.slice(0,8).join('\n')+(noMus.length>8?'\n\u2026':'')+'\n\nSave anyway?')) return;
+  try{ store.set('ds_custom_plan', JSON.stringify(o)); }catch(e){ alert('Could not save on this device.'); return; }
+  dsPlanEditorClose(true);
+  dsPlanStampAndPush(SHEETS_URL ? 'Plan saved \u2014 syncing to Sheet\u2026' : 'Plan saved on this device \u2014 reloading\u2026');
+}
+
 // ── GYM EXERCISE LIBRARY ────────────────────────────────────────────────
 // Commercial-gym ideas for the Custom Exercise Set builder. Shown first whenever
 // an imported plan is active (someone training at a gym), and always searchable.
@@ -5341,7 +5591,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
+  if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
   var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
   dsRegisterLibraryMV(libs);
   // Imported plan active -> gym ideas lead the list; default plan -> they trail it.
@@ -6625,7 +6875,17 @@ var DS_TC_KEEP_IDS = {"tue-bridge":1,"tue-lat":1};  // glute activation kept on 
 function dsTcKeep(m){ return !!(DS_TC_KEEP_SLOTS[m.slot] || DS_TC_KEEP_IDS[m.id]); }
 function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("ds_tc", DS_TIME_CRUNCH?"1":"0"); }catch(e){} dsRender(); }
 var DS_MORE_OPEN=false;
+function dsGuestShowExtras(){ try{ return store.get('ds_guest_extras')==='1'; }catch(e){ return false; } }
+function dsSetGuestExtras(on){ try{ store.set('ds_guest_extras', on?'1':'0'); }catch(e){} dsRender(); }
+function dsExtrasHidden(){ return dsGuestMode() && !dsGuestShowExtras(); }
 function dsRenderExtras(){
+  if(dsExtrasHidden()){
+    return '<div class="card" style="font-size:12px;color:#aaa;font-family:\'DM Mono\',monospace;line-height:1.6">'
+      +'The built-in extras (home band, mobility and bodyweight routines) are hidden while a custom plan is active.<br><br>'
+      +'To add gym exercises to a day, use <span style="color:#5eead4;text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Custom Exercise Set</span>, '
+      +'or edit the plan itself in Settings \u2192 Exercise Plan \u2192 Edit Plan.<br><br>'
+      +'<span style="color:#5eead4;text-decoration:underline;cursor:pointer" onclick="dsSetGuestExtras(true)">Show the built-in extras anyway</span></div>';
+  }
   var html=dsRenderSection('Morning Activation',DS_MORNING.meta,DS_MORNING.accent,DS_MORNING.moves,DS_MORNING.blurb);
   html+=dsRenderSection('Pre-Workout',DS_PRE.meta,DS_PRE.accent,DS_PRE.moves,DS_PRE.blurb);
   html+=dsRenderSection('Mobility',DS_MOBILITY.meta,DS_MOBILITY.accent,DS_MOBILITY.moves,DS_MOBILITY.blurb);
@@ -6652,6 +6912,7 @@ function dsRenderSearchAll(q){
     {label:DS_ATG.title,accent:DS_ATG.accent,moves:DS_ATG.moves},
     {label:DS_BWLEG.title,accent:DS_BWLEG.accent,moves:DS_BWLEG.moves}
   ];
+  if(dsExtrasHidden()) extras=[];
   extras.forEach(function(ex){
     var m=ex.moves.filter(function(it){return dsItemMatchesSearch(it,q);});
     if(m.length){ totalHits+=m.length; html+=dsRenderSection(ex.label,'',ex.accent,m,''); }
