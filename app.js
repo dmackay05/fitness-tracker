@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v185 — 2026-09-15";
+var APP_BUILD = "v186 — 2026-09-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2550,15 +2550,28 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate"];
-  var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; }); return cfg;
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom"];
+  var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
+  // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
+  // across devices. Only sent once this device has touched the plan (ts set), so a
+  // fresh install never blanks the copy in the Sheet. An empty string = "reverted".
+  var pts=store.get("ds_custom_plan_ts");
+  if(pts){ cfg.ds_custom_plan=store.get("ds_custom_plan")||""; cfg.ds_custom_plan_ts=pts; }
+  return cfg;
 }
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
   var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1};
   var any=false;
+  var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
+  if(_planChanged){
+    // DS_SESSIONS is built once at startup, so a newly synced plan needs a reload.
+    toast("Exercise plan synced from Sheet \u2014 reloading\u2026");
+    setTimeout(function(){ location.reload(); }, 900);
+    return true;
+  }
   if(!any) return false;
   USER_NAME=store.get('ft_name')||"";
   START_WEIGHT=parseFloat(store.get('ft_start_weight'))||START_WEIGHT;
@@ -2582,6 +2595,7 @@ function applyConfig(cfg){
   try{ var shv=JSON.parse(cfg.ds_sat_heat_on||'null'); if(shv&&typeof shv==='object'){ for(var k2 in shv) DS_SAT_HEAT_ON[k2]=shv[k2]; store.set('ds_sat_heat_on',JSON.stringify(DS_SAT_HEAT_ON)); } }catch(e){}
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
+  try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
   renderAll();
@@ -2752,6 +2766,9 @@ initHealthSettings();
 var _bn=document.getElementById("sync-banner");
 if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Tap \u2699 Settings to enter your Apps Script URL. (Tap this banner to dismiss.)"; _bn.style.color="#fbbf24"; _bn.style.display="block"; _bn.onclick=function(){ _bn.style.display="none"; }; }
 if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
+// Already set up: still check the Sheet for a newer imported exercise plan on open,
+// without re-applying every other setting.
+else if(SHEETS_URL){ pullConfig(false,function(ok,cfg){ if(ok && cfg && dsApplySyncedPlan(cfg)){ toast("Exercise plan synced from Sheet \u2014 reloading\u2026"); setTimeout(function(){ location.reload(); },900); } }); }
 fetchOverloadCache();
 _lastSheetPull=Date.now();
 fetchSheet(function(rows,ok,why){
@@ -4448,8 +4465,7 @@ function dsImportPlanFile(input){
     if(err){ toast("Plan not imported: "+err); input.value=""; return; }
     try{ store.set('ds_custom_plan', text); }catch(e){}
     dsApplyCustomPlan(obj);
-    toast("Plan imported \u2014 reloading\u2026");
-    setTimeout(function(){ location.reload(); }, 700);
+    dsPlanStampAndPush(SHEETS_URL ? "Plan imported \u2014 saving to Sheet\u2026" : "Plan imported (no Sheet connected \u2014 this device only) \u2014 reloading\u2026");
   };
   reader.onerror=function(){ toast("Couldn't read that file"); };
   reader.readAsText(file);
@@ -4462,14 +4478,39 @@ function dsTogglePlanReplace(){
   var obj; try{ obj=JSON.parse(raw); }catch(e){ toast('Stored plan is not valid JSON'); return; }
   obj.replace = !(obj.replace===true);
   try{ store.set('ds_custom_plan', JSON.stringify(obj)); }catch(e){}
-  toast(obj.replace ? 'Missing days will be rest days \u2014 reloading\u2026'
-                    : 'Missing days will use the built-in plan \u2014 reloading\u2026');
-  setTimeout(function(){ location.reload(); }, 700);
+  dsPlanStampAndPush(obj.replace ? 'Missing days will be rest days \u2014 reloading\u2026'
+                                 : 'Missing days will use the built-in plan \u2014 reloading\u2026');
 }
 function dsResetCustomPlan(){
   try{ store.set('ds_custom_plan',''); }catch(e){}
-  toast("Reverted to the default plan \u2014 reloading\u2026");
-  setTimeout(function(){ location.reload(); }, 700);
+  dsPlanStampAndPush("Reverted to the default plan \u2014 reloading\u2026");
+}
+// Stamps the local plan as newest, pushes it to the Sheet (waiting for the push
+// so the reload can't cut it off), then reloads so DS_SESSIONS is rebuilt.
+function dsPlanStampAndPush(msg){
+  try{ store.set('ds_custom_plan_ts', String(Date.now())); }catch(e){}
+  toast(msg);
+  var reloaded=false; function go(){ if(reloaded)return; reloaded=true; location.reload(); }
+  var p; try{ p=pushConfig(); }catch(e){ p=null; }
+  if(p && p.then) p.then(function(){ setTimeout(go,300); }, function(){ setTimeout(go,300); });
+  setTimeout(go, p ? 6000 : 700);
+}
+// Called from applyConfig. Takes the Sheet's plan only if it is newer than this
+// device's copy. Returns true when the active plan actually changed (caller reloads).
+function dsApplySyncedPlan(cfg){
+  if(!cfg || cfg.ds_custom_plan_ts==null || cfg.ds_custom_plan==null) return false;
+  var inTs=parseInt(cfg.ds_custom_plan_ts,10)||0;
+  var myTs=parseInt(store.get('ds_custom_plan_ts'),10)||0;
+  if(inTs<=myTs) return false;
+  var incoming=typeof cfg.ds_custom_plan==='string'?cfg.ds_custom_plan:JSON.stringify(cfg.ds_custom_plan);
+  if(incoming){
+    var obj; try{ obj=JSON.parse(incoming); }catch(e){ console.warn('Synced plan is not valid JSON, ignoring.'); return false; }
+    var err=dsValidateCustomPlan(obj);
+    if(err){ console.warn('Synced plan failed validation: '+err); return false; }
+  }
+  var changed = incoming !== (store.get('ds_custom_plan')||"");
+  try{ store.set('ds_custom_plan', incoming); store.set('ds_custom_plan_ts', String(inTs)); }catch(e){}
+  return changed;
 }
 function dsCustomPlanStatus(){
   var raw=dsCustomPlanRaw(); if(!raw) return "Using default plan";
@@ -5199,12 +5240,89 @@ function dsRawItem(id){
   return fallback;
 }
 
+
+// ── GYM EXERCISE LIBRARY ────────────────────────────────────────────────
+// Commercial-gym ideas for the Custom Exercise Set builder. Shown first whenever
+// an imported plan is active (someone training at a gym), and always searchable.
+// A plan file may also carry its own "library": [ {move}, ... ] (same shape as
+// plan moves, optional "mv":{Muscle:w}) which is listed ahead of these.
+// ids are "lib-" prefixed so they never collide with plan ids.
+function _gl(id,name,slot,target,equip,rx,sets,mv,cue){ return {id:'lib-'+id,name:name,slot:slot,target:target,equip:equip,rx:rx,cal:30,log:'setsreps',sets:sets,cue:cue,mv:mv}; }
+var DS_GYM_LIBRARY=[
+  _gl('smith-squat','Smith Machine Squat','Squat','Quads · Glutes','Smith machine','3×8–10',3,{Quads:1,Glutes:0.5},'Feet slightly forward of the bar so you sit straight down. Control the descent, drive through mid-foot.'),
+  _gl('hack-squat','Hack Squat','Squat','Quads','Hack squat machine','3×8–12',3,{Quads:1,Glutes:0.5},'Back flat on the pad, go as deep as you can keep your hips down. Quad-dominant and easy on the low back.'),
+  _gl('goblet-squat','Goblet Squat','Squat','Quads · Glutes','Dumbbell','3×10–12',3,{Quads:1,Glutes:0.5,Core:0.5},'Hold the bell at the chest, elbows inside the knees at the bottom. Great warm-up or finisher.'),
+  _gl('bss','Bulgarian Split Squat','Lunge','Quads · Glutes','Dumbbells + bench','3×8–10/leg',3,{Quads:1,Glutes:1},'Rear foot laces-down on the bench. Slight forward lean biases glutes; upright biases quads.'),
+  _gl('walk-lunge','Walking Lunge','Lunge','Quads · Glutes','Dumbbells','3×10/leg',3,{Quads:1,Glutes:1},'Long stride, back knee kisses the floor, push through the front heel.'),
+  _gl('leg-ext','Leg Extension','Knee Extension','Quads','Leg extension machine','3×12–15',3,{Quads:1},'Pause 1 sec at the top, lower for 3. Adjust the pad so the knee lines up with the machine pivot.'),
+  _gl('lying-curl','Lying Leg Curl','Knee Flexion','Hamstrings','Leg curl machine','3×10–12',3,{Hamstrings:1},'Hips pinned to the pad. Full stretch at the bottom, squeeze at the top.'),
+  _gl('seated-curl','Seated Leg Curl','Knee Flexion','Hamstrings','Seated curl machine','3×10–12',3,{Hamstrings:1},'Lean the torso forward slightly for a deeper hamstring stretch — the best-researched curl variant for growth.'),
+  _gl('db-rdl','Dumbbell Romanian Deadlift','Hinge','Hamstrings · Glutes','Dumbbells','3×8–10',3,{Hamstrings:1,Glutes:0.5,Back:0.5},'Soft knees, hips back, bells track down the thighs. Stop when the hips stop moving back.'),
+  _gl('trap-dl','Trap Bar Deadlift','Hinge','Glutes · Quads · Back','Trap bar','3×5–6',3,{Glutes:1,Quads:0.5,Hamstrings:0.5,Back:0.5},'Handles at the sides keep the load centered — friendlier on the low back than a straight bar.'),
+  _gl('hip-thrust','Barbell Hip Thrust','Hip Extension','Glutes','Barbell + bench (or machine)','3×8–12',3,{Glutes:1,Hamstrings:0.5},'Upper back on the bench, chin tucked, ribs down. Full lockout with a 1-sec squeeze.'),
+  _gl('back-ext','45° Back Extension','Hinge','Glutes · Hamstrings · Low Back','Back extension bench','3×12–15',3,{Glutes:1,Hamstrings:0.5},'Round slightly and squeeze glutes to bias glutes; flat back to bias spinal erectors.'),
+  _gl('cable-kickback','Cable Glute Kickback','Hip Extension','Glutes','Cable + ankle strap','3×12–15/leg',3,{Glutes:1},'Slight forward lean, kick back and slightly out. No low-back arch.'),
+  _gl('abductor','Hip Abduction Machine','Hip Abduction','Glute Med','Abduction machine','3×15–20',3,{Glutes:0.5},'Lean forward a touch to hit upper glutes. Controlled — no slamming the stack.'),
+  _gl('standing-calf','Standing Calf Raise','Calves','Calves','Calf machine / Smith','4×10–15',4,{Calves:1},'Full stretch at the bottom with a 2-sec pause, then all the way up on the big toe.'),
+  _gl('seated-calf','Seated Calf Raise','Calves','Calves (soleus)','Seated calf machine','3×12–20',3,{Calves:1},'Bent knee shifts work to the soleus. Deep stretch every rep.'),
+  _gl('db-bench','Dumbbell Bench Press','Horizontal Push','Chest · Triceps','Dumbbells + bench','3×8–10',3,{Chest:1,Triceps:0.5,Shoulders:0.5},'Deeper stretch than a barbell and easier on the shoulders. Elbows ~45°.'),
+  _gl('incline-db','Incline Dumbbell Press','Incline Push','Upper Chest','Dumbbells + incline bench','3×8–10',3,{Chest:1,Shoulders:0.5,Triceps:0.5},'Bench at 30°. Press up and slightly in.'),
+  _gl('machine-chest','Machine Chest Press','Horizontal Push','Chest','Chest press machine','3×10–12',3,{Chest:1,Triceps:0.5},'Handles at mid-chest height. Easy to push close to failure safely without a spotter.'),
+  _gl('cable-fly','Cable Fly (Mid or Low-to-High)','Chest Fly','Chest','Cable crossover','3×12–15',3,{Chest:1},'Soft elbows locked in place, hug a tree. Big stretch, controlled squeeze.'),
+  _gl('pec-deck','Pec Deck','Chest Fly','Chest','Pec deck machine','3×12–15',3,{Chest:1},'Shoulders down and back; stop when hands meet.'),
+  _gl('dips','Assisted / Weighted Dips','Vertical Push','Chest · Triceps','Dip station / assisted machine','3×8–12',3,{Chest:1,Triceps:1},'Slight forward lean for chest. Stop at a comfortable depth if the shoulders complain.'),
+  _gl('db-ohp','Seated Dumbbell Shoulder Press','Vertical Push','Shoulders · Triceps','Dumbbells + upright bench','3×8–10',3,{Shoulders:1,Triceps:0.5},'Elbows slightly forward of the body, press to just short of lockout.'),
+  _gl('machine-ohp','Machine Shoulder Press','Vertical Push','Shoulders','Shoulder press machine','3×10–12',3,{Shoulders:1,Triceps:0.5},'Stable, easy to take close to failure.'),
+  _gl('cable-lateral','Cable Lateral Raise','Lateral Raise','Side Delts','Cable + D-handle','3×12–15/arm',3,{Shoulders:1},'Cable behind the body for tension at the bottom. Lead with the elbow.'),
+  _gl('machine-lateral','Machine Lateral Raise','Lateral Raise','Side Delts','Lateral raise machine','3×12–15',3,{Shoulders:1},'Pads on the outside of the elbows, raise to shoulder height.'),
+  _gl('rev-pec','Reverse Pec Deck','Rear Delt','Rear Delts','Pec deck (reverse)','3×15–20',3,{'Rear Delts':1,Back:0.5},'Arms nearly straight, sweep wide and back. Light and strict.'),
+  _gl('face-pull','Cable Face Pull','Rear Delt','Rear Delts · Rotator Cuff','Cable + rope','3×15–20',3,{'Rear Delts':1,Back:0.5},'Pull to the forehead, thumbs back, finish in a double-biceps pose. Shoulder-health staple.'),
+  _gl('pulldown','Lat Pulldown','Vertical Pull','Lats · Biceps','Lat pulldown','3×8–12',3,{Back:1,Biceps:0.5},'Slight lean back, pull elbows down to the ribs. Full stretch overhead each rep.'),
+  _gl('assist-pullup','Assisted Pull-Up','Vertical Pull','Lats · Biceps','Assisted pull-up machine','3×6–10',3,{Back:1,Biceps:0.5},'Reduce assistance over time — the long-term goal is bodyweight reps.'),
+  _gl('sa-pulldown','Single-Arm Cable Pulldown','Vertical Pull','Lats','Cable + D-handle','3×10–12/arm',3,{Back:1,Biceps:0.5},'Kneel or sit, pull the elbow toward the hip for a strong lat contraction.'),
+  _gl('db-row','One-Arm Dumbbell Row','Horizontal Pull','Lats · Mid Back','Dumbbell + bench','3×8–12/arm',3,{Back:1,Biceps:0.5,'Rear Delts':0.5},'Row toward the hip, not the chest. Let the shoulder blade stretch forward at the bottom.'),
+  _gl('csr','Chest-Supported T-Bar / Machine Row','Horizontal Pull','Mid Back','T-bar or row machine','3×8–12',3,{Back:1,'Rear Delts':0.5,Biceps:0.5},'Chest on the pad removes low-back load so you can push the back hard.'),
+  _gl('straight-arm','Straight-Arm Cable Pulldown','Lat Isolation','Lats','Cable + rope or bar','3×12–15',3,{Back:1},'Hinge slightly, arms long, sweep the hands to the thighs.'),
+  _gl('shrug','Dumbbell Shrug','Traps','Upper Traps','Dumbbells','3×12–15',3,{Back:0.5},'Straight up toward the ears, 1-sec hold. No rolling.'),
+  _gl('cable-curl','Cable Curl','Elbow Flexion','Biceps','Cable + bar','3×10–12',3,{Biceps:1,Forearms:0.5},'Elbows pinned at the sides; constant tension top to bottom.'),
+  _gl('incline-curl','Incline Dumbbell Curl','Elbow Flexion','Biceps (long head)','Dumbbells + incline bench','3×10–12',3,{Biceps:1},'Arms hang behind the body for a big stretch. Slow negatives.'),
+  _gl('preacher','Preacher Curl (Machine or EZ-Bar)','Elbow Flexion','Biceps','Preacher bench','3×10–12',3,{Biceps:1},'Lower all the way down under control — the bottom half does the most work.'),
+  _gl('hammer','Hammer Curl','Elbow Flexion','Brachialis · Forearms','Dumbbells','3×10–12',3,{Biceps:1,Forearms:1},'Neutral grip, no swinging.'),
+  _gl('pushdown','Cable Triceps Pushdown','Elbow Extension','Triceps','Cable + rope or bar','3×10–15',3,{Triceps:1},'Elbows fixed at the sides, spread the rope at the bottom.'),
+  _gl('oh-ext','Overhead Cable Triceps Extension','Elbow Extension','Triceps (long head)','Cable + rope','3×10–12',3,{Triceps:1},'Face away from the stack, elbows by the ears. The stretch is the point.'),
+  _gl('skull','EZ-Bar Skull Crusher','Elbow Extension','Triceps','EZ bar + bench','3×8–12',3,{Triceps:1},'Lower behind the head, not to the forehead, for more long-head stretch.'),
+  _gl('cable-crunch','Kneeling Cable Crunch','Core Flexion','Abs','Cable + rope','3×12–15',3,{Core:1},'Hips stay still; curl the ribs toward the pelvis.'),
+  _gl('hanging-kr','Hanging Knee / Leg Raise','Core Flexion','Abs · Hip Flexors','Pull-up bar or captain\'s chair','3×10–15',3,{Core:1},'Tilt the pelvis up at the top; no swinging.'),
+  _gl('pallof','Cable Pallof Press','Anti-Rotation','Core · Obliques','Cable + D-handle','3×10/side',3,{Core:1},'Press out and hold 2 sec. Resist the pull — nothing should rotate.'),
+  _gl('ab-wheel','Ab Wheel Rollout','Anti-Extension','Core','Ab wheel','3×8–12',3,{Core:1},'Ribs down, glutes tight. Roll only as far as you can without the low back sagging.'),
+  _gl('farmer','Farmer\u2019s Carry','Carry','Grip · Core · Traps','Heavy dumbbells','3×40 m',3,{Forearms:1,Core:0.5,Back:0.5},'Tall posture, short quick steps. Great conditioning finisher.')
+];
+DS_GYM_LIBRARY.forEach(function(m){ m.lib=true; });
+function dsPlanLibrary(){
+  var raw=dsCustomPlanRaw(); if(!raw) return [];
+  try{ var o=JSON.parse(raw); if(!Array.isArray(o.library)) return [];
+    return o.library.filter(function(m){ return m&&m.id&&m.name; }).map(function(m){
+      var c={}; for(var k in m) c[k]=m[k];
+      if(!c.log) c.log='setsreps'; if(c.log==='setsreps'&&!(c.sets>0)) c.sets=3; if(!c.rx) c.rx=(c.sets||3)+' sets';
+      c.lib=true; return c; });
+  }catch(e){ return []; }
+}
+// Register library muscle maps so custom-set picks count on the Volume tab.
+function dsRegisterLibraryMV(list){
+  if(typeof DS_MV==='undefined') return;
+  list.forEach(function(m){ if(m.mv && !DS_MV[m.id]) DS_MV[m.id]=m.mv; });
+}
+
 // ── CUSTOM SET (user-built, day-assigned) ───────────────────────────────
 function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
   groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
+  var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
+  dsRegisterLibraryMV(libs);
+  // Imported plan active -> gym ideas lead the list; default plan -> they trail it.
+  if(dsCustomPlanRaw()) groups.unshift(libs); else groups.push(libs);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -5212,7 +5330,7 @@ function dsMasterPool(){
 }
 function dsMasterLookup(id){ var p=dsMasterPool(); for(var i=0;i<p.length;i++){ if(p[i].id===id) return p[i]; } return null; }
 var DS_CUSTOM={}; try{ DS_CUSTOM=JSON.parse(store.get("ds_custom")||"{}"); }catch(e){ DS_CUSTOM={}; }
-function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){} }
+function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
 var DS_USERMOVES={}; try{ DS_USERMOVES=JSON.parse(store.get("ds_usermoves")||"{}"); }catch(e){ DS_USERMOVES={}; }
 function dsUserMovesSave(){ try{ store.set("ds_usermoves", JSON.stringify(DS_USERMOVES)); }catch(e){} dsQueueConfigPush(); }
 function dsAddUserMove(dayKey,def){
@@ -5589,9 +5707,12 @@ function dsCustomRenderLibrary(){
   var pool=dsMasterPool();
   if(q) pool=pool.filter(function(m){ return (m.name+" "+(m.target||"")+" "+(m.slot||"")).toLowerCase().indexOf(q)!==-1; });
   if(!pool.length){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No matches.</div>'; return; }
+  var _lastGrp=null;
   el.innerHTML=pool.map(function(m){
     var picked=DS_CUSTOM_PICK.indexOf(m.id)!==-1;
-    return '<div class="row" style="cursor:pointer" onclick="'+(picked?'dsCustomRemove':'dsCustomAdd')+'(\''+m.id+'\')">'+
+    var grp=m.lib?'Gym Exercise Ideas':'From Your Plan & Extras', hdr='';
+    if(!q && grp!==_lastGrp){ _lastGrp=grp; hdr='<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#5eead4;font-family:\'DM Mono\',monospace;margin:12px 0 4px">'+grp+'</div>'; }
+    return hdr+'<div class="row" style="cursor:pointer" onclick="'+(picked?'dsCustomRemove':'dsCustomAdd')+'(\''+m.id+'\')">'+
       '<div style="flex:1;min-width:0"><div class="row-name">'+m.name+'</div><div class="row-sub">'+(m.target||"")+(m.equip?(" · "+m.equip):"")+'</div></div>'+
       '<div style="flex-shrink:0;font-size:18px;color:'+(picked?"#5eead4":"#555")+'">'+(picked?"✓":"+")+'</div></div>';
   }).join("");

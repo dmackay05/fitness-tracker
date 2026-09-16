@@ -773,18 +773,47 @@ function getOverloadRows_(ss) {
     return obj;
   });
 }
+// The imported exercise plan can be large, so it is kept out of A1 and split
+// across row 2 (A2, B2, ...) in 40k-char chunks — a single cell caps at 50k.
+var PLAN_CHUNK_ = 40000;
 function getConfig_(ss){
   var sh = ss.getSheetByName("Config");
   if (!sh) return {};
   var v = sh.getRange("A1").getValue();
-  if (!v) return {};
-  try { return JSON.parse(v); } catch(e){ return {}; }
+  var cfg = {};
+  if (v) { try { cfg = JSON.parse(v) || {}; } catch(e){ cfg = {}; } }
+  var planTs = sh.getRange("D1").getValue();
+  if (planTs !== "" && planTs != null) {
+    var lastCol = Math.max(1, sh.getLastColumn());
+    var parts = sh.getRange(2, 1, 1, lastCol).getValues()[0];
+    cfg.ds_custom_plan = parts.map(function(p){ return p == null ? "" : String(p); }).join("");
+    cfg.ds_custom_plan_ts = String(planTs);
+  }
+  return cfg;
 }
 function saveConfig_(ss, cfg){
   var sh = ss.getSheetByName("Config");
   if (!sh) sh = ss.insertSheet("Config");
+  var hasPlan = Object.prototype.hasOwnProperty.call(cfg, "ds_custom_plan");
+  var plan = hasPlan ? String(cfg.ds_custom_plan || "") : null;
+  var planTs = hasPlan ? String(cfg.ds_custom_plan_ts || Date.now()) : null;
+  delete cfg.ds_custom_plan; delete cfg.ds_custom_plan_ts;
   sh.getRange("A1").setValue(JSON.stringify(cfg));
   sh.getRange("C1").setValue(new Date());
+  if (hasPlan) {
+    var oldTs = Number(sh.getRange("D1").getValue()) || 0;
+    if (Number(planTs) >= oldTs) {          // never let an older device overwrite a newer plan
+      var lastCol = Math.max(1, sh.getLastColumn());
+      sh.getRange(2, 1, 1, lastCol).clearContent();
+      var chunks = [];
+      for (var i = 0; i < plan.length; i += PLAN_CHUNK_) chunks.push(plan.substring(i, i + PLAN_CHUNK_));
+      if (!chunks.length) chunks.push("");
+      var cells = sh.getRange(2, 1, 1, chunks.length);
+      cells.setNumberFormat("@");             // keep it as plain text
+      cells.setValues([chunks]);
+      sh.getRange("D1").setNumberFormat("@").setValue(planTs);
+    }
+  }
 }
 
 
