@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v188 — 2026-09-16";
+var APP_BUILD = "v189 — 2026-09-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -991,7 +991,7 @@ function strengthTrendData(){
   Object.keys(appData).sort().forEach(function(k){
     var d=appData[k]; if(!d||!d.exercises) return;
     d.exercises.forEach(function(ex){
-      if(!ex.id||ex.id.indexOf('sess_')!==0) return;
+      if(!ex.id||(ex.id.indexOf('sess_')!==0 && ex.id.indexOf('sheet_')!==0)) return;
       var sets=dsDecodeSets(ex); if(!sets.length) return;
       var best=null;
       sets.forEach(function(s){
@@ -1172,7 +1172,7 @@ function dsRirFatigueTrend(){
     var d=appData[days[i]]; if(!d||!d.exercises) continue;
     var rirs=[];
     d.exercises.forEach(function(ex){
-      if(!ex.id||ex.id.indexOf('sess_')!==0) return;
+      if(!ex.id||(ex.id.indexOf('sess_')!==0 && ex.id.indexOf('sheet_')!==0)) return;
       dsDecodeSets(ex).forEach(function(s){ if(s.rir!=null&&!isNaN(s.rir)) rirs.push(s.rir); });
     });
     if(rirs.length) vals.push(rirs.reduce(function(a,b){return a+b;},0)/rirs.length);
