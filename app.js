@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v189 — 2026-09-17";
+var APP_BUILD = "v190 — 2026-09-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -967,7 +967,8 @@ function dsDecodeSets(ex){
   if(!ex) return [];
   var reps=(ex.reps!=null?String(ex.reps):'').split('/');
   var loadsRaw=(ex.load!=null?String(ex.load):'');
-  var loads=loadsRaw.indexOf('|')>=0 ? loadsRaw.split('|') : reps.map(function(){return loadsRaw;});
+  var loadDelim = loadsRaw.indexOf('|')>=0 ? '|' : (loadsRaw.indexOf('/')>=0 ? '/' : null);
+  var loads=loadDelim ? loadsRaw.split(loadDelim) : reps.map(function(){return loadsRaw;});
   var rirs=(ex.rir!=null?String(ex.rir):'').split('/');
   var n=Math.max(reps.length,1);
   var out=[];

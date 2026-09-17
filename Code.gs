@@ -245,7 +245,7 @@ function processDailyData(ss, data) {
       var base = nm + " (" + (e.calories || 0) + " cal";
       var detailParts = [];
       if (e.sets && e.reps) {
-        var l = ((e.load||"")+"").replace(/[)\|,@]/g, "");
+        var l = ((e.load||"")+"").replace(/\|/g, "/").replace(/,/g, "/").replace(/[)@]/g, "");
         var r = ((e.reps||"")+"").replace(/,/g, "/").replace(/[)\|@]/g, "");
         detailParts.push(e.sets + "x" + r + (l ? ("@"+l) : ""));
       }
