@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v195 — 2026-09-19";
+var APP_BUILD = "v196 — 2026-09-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5780,7 +5780,15 @@ var FRUIT_TIPS = [
   {name:"Blueberries", tip:"Best for reducing inflammation — highest anthocyanin content, MIND diet staple.", emoji:"🫐"},
   {name:"Strawberries", tip:"Best for managing overall calorie intake — lowest calorie density of common fruits.", emoji:"🍓"},
   {name:"Apples", tip:"Best convenient, slow-digesting, portable snack — eat the skin for the fiber.", emoji:"🍎"},
-  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"}
+  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"},
+  {name:"Oranges", tip:"Best for vitamin C and hydration — high water content plus fiber that whole juice loses.", emoji:"🍊"},
+  {name:"Watermelon", tip:"Best for post-workout rehydration — over 90% water plus some citrulline for blood flow.", emoji:"🍉"},
+  {name:"Grapes", tip:"Best frozen as a low-effort sweet-craving fix — portion yourself a small bowl since they're easy to overeat.", emoji:"🍇"},
+  {name:"Kiwi", tip:"Best fruit for vitamin C per calorie — more than an equivalent serving of oranges, skin and all if you can stand it.", emoji:"🥝"},
+  {name:"Mango", tip:"Best for vitamin A — rich in beta-carotene, though higher in sugar so watch portions in a deficit.", emoji:"🥭"},
+  {name:"Pineapple", tip:"Best for digestion — contains bromelain, an enzyme that helps break down protein.", emoji:"🍍"},
+  {name:"Cherries", tip:"Best for sleep support — natural source of melatonin, good as an evening snack.", emoji:"🍒"},
+  {name:"Pears", tip:"Best for satiety alongside apples — high in fiber, especially when eaten with the skin.", emoji:"🍐"}
 ];
 function fruitTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
@@ -5794,6 +5802,33 @@ function renderFruitGuide(targetId){
     '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all fruit picks</summary>'+
     '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
     FRUIT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
+    '</div></details>';
+}
+var VEG_TIPS = [
+  {name:"Spinach", tip:"Best for iron and folate — cooking it down actually increases how much iron your body can absorb.", emoji:"🥬"},
+  {name:"Broccoli", tip:"Best cruciferous pick for vitamin C — has more per gram than an orange, plus fiber and sulforaphane.", emoji:"🥦"},
+  {name:"Bell Peppers", tip:"Best raw snacking vegetable for vitamin C — red peppers have roughly triple what green ones do.", emoji:"🫑"},
+  {name:"Carrots", tip:"Best for vitamin A — beta-carotene absorbs better when eaten with a little fat, like in hummus.", emoji:"🥕"},
+  {name:"Sweet Potato", tip:"Best slow-digesting starchy vegetable — high in fiber and potassium, good pre- or post-workout carb.", emoji:"🍠"},
+  {name:"Brussels Sprouts", tip:"Best cruciferous option for fiber per calorie — pairs well roasted with a lean protein for volume.", emoji:"🥬"},
+  {name:"Zucchini", tip:"Best low-calorie bulk vegetable — very high water content, good for adding volume without many calories.", emoji:"🥒"},
+  {name:"Kale", tip:"Best for vitamin K — one cup covers several days' worth, though it can interact with blood thinners.", emoji:"🥬"},
+  {name:"Tomatoes", tip:"Best for lycopene — an antioxidant that's actually more available to the body once tomatoes are cooked.", emoji:"🍅"},
+  {name:"Cucumber", tip:"Best for hydration and lowest-calorie crunch — mostly water, good sub for chips as a dipping vehicle.", emoji:"🥒"},
+  {name:"Cauliflower", tip:"Best low-carb substitute vegetable — works as a rice or mash swap to cut carbs while keeping volume.", emoji:"🥦"}
+];
+function vegTipOfDay(){
+  var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
+  return VEG_TIPS[doy % VEG_TIPS.length];
+}
+function renderVegGuide(targetId){
+  var el=document.getElementById(targetId||"meals-veg-guide"); if(!el) return;
+  var t=vegTipOfDay();
+  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Vegetable Tip of the Day</div>'+
+    '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
+    '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all vegetable picks</summary>'+
+    '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
+    VEG_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
 var NUT_TIPS = [
@@ -5874,6 +5909,7 @@ function miRender(){
 }
 function renderMealsTab(){
   renderFruitGuide("meals-fruit-guide");
+  renderVegGuide("meals-veg-guide");
   renderNutGuide("meals-nut-guide");
   miRender();
 }
