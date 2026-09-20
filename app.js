@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v197 — 2026-09-19";
+var APP_BUILD = "v198 — 2026-09-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7492,6 +7492,7 @@ function dsRepsBlur(id){ var st=dsItemState(id); var el=document.getElementById(
 function dsMinInput(id,perMin){ var el=document.getElementById('ds-min-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ var st=dsItemState(id); st.mins=Math.min(600,v); dsSaveUI(); var c=document.getElementById('ds-calprev-'+id); if(c)c.textContent='\u2248'+calAdj(st.mins*perMin)+' kcal'; } }
 function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); var el=document.getElementById('ds-min-'+id); if(el)el.value=st.mins||raw.defMin||30; }
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
+function dsIsElasticBand(item){ var e=(item.equip||''); return /tube|band|loop/i.test(e) && !/dumbbell|kettlebell|\bkb\b/i.test(e); }
 function dsIsUnilateral(item){ return /\/side|\/leg/i.test(item.rx||''); }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;st._loadTouched=true;dsSaveUI();} }
 var DS_AUTOREG_REP_CEIL=20; // above this, stop adding bodyweight/band reps and suggest upping the load instead
@@ -7513,8 +7514,12 @@ function dsAutoregulate(id){
   else if(rir>=2.5){ newReps=curReps+1; note='\u2713 Good pace \u2014 adding a rep, '+newReps+' next set'; }
   else { note='\u2713 On target \u2014 holding at '+curReps+' reps'; }
   if(newReps>DS_AUTOREG_REP_CEIL){
-    newReps=curReps; capped=true;
-    note='\u26A1 Maxed out at '+DS_AUTOREG_REP_CEIL+'+ reps on your top band \u2014 holding at '+curReps+' reps. Add difficulty with a slower tempo (3\u20134 sec down) or a pause at peak contraction instead of more reps.';
+    if(dsIsElasticBand(_viewItem)){
+      note='\u26A1 Past '+DS_AUTOREG_REP_CEIL+'+ reps \u2014 band tension peaks at end-range, so this can still be real work even at high reps. Keep following Effort above the rep count. Add a slower tempo (3\u20134 sec down) or a pause at peak contraction on TOP of the extra reps for more stimulus, not as a stand-in for them.';
+    } else {
+      newReps=curReps; capped=true;
+      note='\u26A1 Maxed out at '+DS_AUTOREG_REP_CEIL+'+ reps \u2014 holding at '+curReps+' reps. Time to add load.';
+    }
   }
   if(!capped && st.sets.length>=2){
     var prevRir=st.sets[st.sets.length-2].rir;
