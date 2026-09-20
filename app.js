@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v196 — 2026-09-19";
+var APP_BUILD = "v197 — 2026-09-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5854,6 +5854,32 @@ function renderNutGuide(targetId){
     NUT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
+var MYTH_TIPS = [
+  {name:"Fruit sugar", tip:"Whole fruit isn't the same as added sugar — fiber and water slow digestion and blunt the blood sugar spike you'd get from juice or candy with the same sugar content.", emoji:"🍎"},
+  {name:"Dietary fat", tip:"Eating fat doesn't make you fat — total calories in vs. out drives body fat, and fat is essential for hormones and satiety.", emoji:"🥑"},
+  {name:"Late-night eating", tip:"Eating late doesn't uniquely cause weight gain — it's total daily calories that matter, not the clock.", emoji:"🌙"},
+  {name:"Carbs", tip:"Carbs aren't the enemy — whole-food carbs come with fiber and micronutrients; the issue is usually the ultra-processed sources, not the macro itself.", emoji:"🌾"},
+  {name:"Skipping meals", tip:"Skipping meals doesn't 'reset' your metabolism — any benefit comes from eating fewer calories that day, not from meal timing itself.", emoji:"⏱️"},
+  {name:"Spot reduction", tip:"You can't spot-reduce fat by training a specific body part — fat loss happens across the body based on overall calorie balance and genetics.", emoji:"🎯"},
+  {name:"Detox foods", tip:"No food or juice 'detoxes' you — your liver and kidneys already do that; diet quality matters, but not through a specific detox food.", emoji:"🥤"},
+  {name:"Protein timing", tip:"The 'anabolic window' is wider than people think — total daily protein intake matters far more than eating it within 30 minutes of training.", emoji:"⏰"},
+  {name:"Egg yolks", tip:"Whole eggs aren't a cardiovascular risk for most people — dietary cholesterol has a much smaller effect on blood cholesterol than once believed.", emoji:"🥚"},
+  {name:"Sweating = fat loss", tip:"How much you sweat doesn't reflect how much fat you're burning — it's mostly about temperature regulation and hydration, not calorie burn.", emoji:"💧"}
+];
+function mythTipOfDay(){
+  var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
+  return MYTH_TIPS[doy % MYTH_TIPS.length];
+}
+function renderMythGuide(targetId){
+  var el=document.getElementById(targetId||"meals-myth-guide"); if(!el) return;
+  var t=mythTipOfDay();
+  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Nutrition Myth of the Day</div>'+
+    '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
+    '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all myths</summary>'+
+    '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
+    MYTH_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
+    '</div></details>';
+}
 function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
 function miToggleFav(id){
   var f=miFavs(); var i=f.indexOf(id);
@@ -5911,6 +5937,7 @@ function renderMealsTab(){
   renderFruitGuide("meals-fruit-guide");
   renderVegGuide("meals-veg-guide");
   renderNutGuide("meals-nut-guide");
+  renderMythGuide("meals-myth-guide");
   miRender();
 }
 
