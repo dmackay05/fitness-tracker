@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v194 — 2026-09-19";
+var APP_BUILD = "v195 — 2026-09-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5796,6 +5796,29 @@ function renderFruitGuide(targetId){
     FRUIT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
+var NUT_TIPS = [
+  {name:"Pistachios", tip:"Best protein-to-calorie ratio and lowest calorie density of common nuts — great volume for a deficit.", emoji:"🌰"},
+  {name:"Almonds", tip:"High in vitamin E and calcium; fiber + protein combo makes them very filling per calorie.", emoji:"🌰"},
+  {name:"Walnuts", tip:"Richest nut source of plant omega-3s (ALA) — good heart/brain pick, pairs well with fruit.", emoji:"🌰"},
+  {name:"Cashews", tip:"High in magnesium and zinc, but softer and easy to overeat since they're less filling per calorie.", emoji:"🌰"},
+  {name:"Peanuts", tip:"Technically a legume — cheapest source of nut-style protein, good for hitting protein targets economically.", emoji:"🥜"},
+  {name:"Brazil Nuts", tip:"Extremely high in selenium — 1-2 nuts covers a full day's need, easy to overdo.", emoji:"🌰"},
+  {name:"Pecans", tip:"Most calorie-dense common nut, mostly monounsaturated fat — energy-dense, easy to overshoot in a deficit.", emoji:"🌰"}
+];
+function nutTipOfDay(){
+  var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
+  return NUT_TIPS[doy % NUT_TIPS.length];
+}
+function renderNutGuide(targetId){
+  var el=document.getElementById(targetId||"meals-nut-guide"); if(!el) return;
+  var t=nutTipOfDay();
+  el.innerHTML='<div class="card-title" style="margin-bottom:8px">'+t.emoji+' Nut Tip of the Day</div>'+
+    '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:10px"><strong style="color:#f0f0f0">'+t.name+':</strong> '+t.tip+'</div>'+
+    '<details><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:\'DM Mono\',monospace">See all nut picks</summary>'+
+    '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
+    NUT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
+    '</div></details>';
+}
 function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
 function miToggleFav(id){
   var f=miFavs(); var i=f.indexOf(id);
@@ -5851,6 +5874,7 @@ function miRender(){
 }
 function renderMealsTab(){
   renderFruitGuide("meals-fruit-guide");
+  renderNutGuide("meals-nut-guide");
   miRender();
 }
 
