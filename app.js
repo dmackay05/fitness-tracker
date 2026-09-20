@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v193 — 2026-09-19";
+var APP_BUILD = "v194 — 2026-09-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6765,21 +6765,74 @@ function dsCopyHealthExport(){
   var done=false;
   try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value); done=true; } }catch(e){}
   if(!done){ try{ document.execCommand('copy'); done=true; }catch(e){} }
-  dsToast(done ? ('✓ Copied — paste into '+(DS_EXPORT_KIND==='food'?'Google Health':'Google Health')) : 'Select the text above and copy manually');
+  dsToast(done ? '✓ Copied' : 'Select the text above and copy manually');
 }
 function dsDownloadHealthExport(){
   var ta = document.getElementById('ds-health-export-text');
   if(!ta) return;
+  var fnamePrefix = DS_EXPORT_KIND==='food' ? 'food-' : (DS_EXPORT_KIND==='week' ? 'week-' : 'workout-');
+  var fnameKey = DS_EXPORT_KIND==='week' ? localDateKey(_weekStartMon()) : activeDate;
   var blob = new Blob([ta.value], {type:'text/plain'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  a.href = url; a.download = (DS_EXPORT_KIND==='food'?'food-':'workout-')+activeDate+'.txt';
+  a.href = url; a.download = fnamePrefix+fnameKey+'.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-  dsToast('✓ Downloaded '+(DS_EXPORT_KIND==='food'?'food-':'workout-')+activeDate+'.txt');
+  dsToast('✓ Downloaded '+fnamePrefix+fnameKey+'.txt');
 }
 
-/* ── Food export — grouped by meal window, same copy/download pattern as the workout export ── */
+/* ── Weekly export — same copy/download pattern as the daily workout export,
+   but rolls up Mon\u2013today (or the last 7 logged days) into one text block:
+   totals, then a per-day exercise breakdown with sets/reps/load/RIR. */
+function dsBuildWeekExportText(){
+  var start=_weekStartMon(), now=new Date(), keys=[];
+  for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); if(d>now) break; keys.push(localDateKey(d)); }
+  var totalCal=0, totalSecs=0, workoutDays=0;
+  var dayBlocks=[];
+  keys.forEach(function(k){
+    var dd=appData[k]; var list=(dd&&dd.exercises)?dd.exercises.slice():[];
+    var strengthList=list.filter(function(e){return e.sets || (e.type==='strength');});
+    if(!list.length) return;
+    workoutDays++;
+    var dayCal=0;
+    list.forEach(function(e){ dayCal+=Math.round(e.calories||0); });
+    totalCal+=dayCal;
+    totalSecs+=dsDailyTrainingSeconds(k);
+    var lines=[prettyDate(k)+" ("+k+")"];
+    list.forEach(function(ex){
+      var bits=[ex.name];
+      if(ex.sets) bits.push(ex.sets+" sets"+(ex.reps?" \u00d7 "+ex.reps:""));
+      else if(ex.reps) bits.push(ex.reps);
+      if(ex.load) bits.push(ex.load);
+      if(ex.rir!=null && ex.rir!=='') bits.push("RIR "+ex.rir);
+      if(ex.calories) bits.push(Math.round(ex.calories)+" kcal");
+      lines.push("  \u2022 "+bits.join(" \u2014 "));
+    });
+    dayBlocks.push(lines.join("\n"));
+  });
+  if(!workoutDays){
+    return "This week ("+prettyDate(localDateKey(start))+" \u2192 "+prettyDate(localDateKey(now))+")\nNo completed exercises logged yet.";
+  }
+  var out=[];
+  out.push("Weekly Workout Export \u2014 "+prettyDate(localDateKey(start))+" \u2192 "+prettyDate(localDateKey(now)));
+  out.push("");
+  out.push("TOTALS: "+workoutDays+" day"+(workoutDays===1?"":"s")+" logged \u2014 "+dsFormatTrainingTime(totalSecs)+" \u2014 "+Math.round(totalCal)+" kcal");
+  out.push("");
+  out.push(dayBlocks.join("\n\n"));
+  return out.join("\n");
+}
+function dsShowWeekExport(){
+  var modal = document.getElementById('ds-health-export-modal');
+  var ta = document.getElementById('ds-health-export-text');
+  var title = document.getElementById('ds-health-export-title');
+  if(!modal||!ta) return;
+  DS_EXPORT_KIND='week';
+  title.textContent = "This Week's Workouts";
+  ta.value = dsBuildWeekExportText();
+  modal.style.display = 'flex';
+  ta.focus(); ta.select();
+}
+
 var DS_EXPORT_KIND='workout';
 var DS_FOOD_EXPORT_ORDER=['Breakfast','Lunch','Snack','Dinner'];
 function dsBuildFoodExportText(key){
