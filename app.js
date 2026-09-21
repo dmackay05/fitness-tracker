@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v198 — 2026-09-20";
+var APP_BUILD = "v199 — 2026-09-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4227,6 +4227,10 @@ var DS_SESSIONS={
       {id:'mon-elbow',name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',rx:'3×15',cal:12,cue:'Slow on the lower — this is the rehab that actually works',demo:'wristecc',log:'setsreps',sets:3,
         setup:'Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. 3×15, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer\'s elbow — do it even when the elbow feels fine.',
         variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating',demo:'wristecc'}]},
+      {id:'mon-forearm',name:'Forearm Finisher — Wrist Curl',slot:'Pull · Forearms',target:'Forearm Flexors',equip:'2–10 lb dumbbells',rx:'2×15–25',cal:15,cue:'⚠️ Same flexor tendon as the elbow rehab above — this is loading, not rehab, so keep it light and stop the set the moment you feel elbow ache rather than pushing to true failure.',demo:'wristecc',log:'setsreps',sets:2,
+        setup:'Seated, forearm resting across your thigh, palm up, dumbbell in hand. Curl the wrist up and hold the peak contraction 1 second, then lower slow enough that the weight rolls all the way out to your fingertips before curling back up. High reps (15–25) — the range of motion is short, so light weight and volume builds the pump, not load.',
+        variants:[{name:'One-Arm Bench Wrist Curl (alternating)',equip:'2–10 lb dumbbell',rx:'2×15–17/arm, rest-free',cue:'Off the edge of the piano bench, one arm at a time, same peak-hold-and-slow-lower as above. Start with your weaker arm, count the reps to near-failure, then immediately switch to the other arm for the same count — alternate back and forth without resting.',demo:'wristecc'},
+                  {name:'Band Wrist Curl (myo-rep)',equip:'Tube 10–20 lb, anchored underfoot',rx:'1 set near-failure + 2–3 mini-sets of 5–8',cue:'Anchor the band under one foot, palm up, curl against the tension. Take the first set close to failure, rest 5–15 seconds, squeeze out a mini-set, repeat 2–3 times — accumulates volume fast since forearms recover quickly between short rests.',demo:'wristecc'}]},
       dsCore('mon-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down')]},
 
   tue:{title:'Lower Body Push',sub:'Quads · Glutes · Core',accent:'var(--accent)',
@@ -4294,6 +4298,10 @@ var DS_SESSIONS={
       {id:'thu-elbow',name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',rx:'3×15',cal:12,cue:'Slow on the lower — this is the rehab that actually works',demo:'wristecc',log:'setsreps',sets:3,
         setup:'Second elbow session of the week. Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. 3×15. A mild ache through the forearm is fine; sharp pain means lighten it.',
         variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating — isometrics load the tendon with less irritation',demo:'wristecc'}]},
+      {id:'thu-forearm',name:'Forearm Finisher — Wrist Curl',slot:'Pull · Forearms',target:'Forearm Flexors',equip:'2–10 lb dumbbells',rx:'2×15–25',cal:15,cue:'Second forearm session of the week — rotate through the variants below rather than repeating Monday\'s exact exercise, and keep the same rule: light weight, stop short of true failure if the elbow starts talking.',demo:'wristecc',log:'setsreps',sets:2,
+        setup:'Seated, forearm resting across your thigh, palm up, dumbbell in hand. Curl the wrist up and hold the peak contraction 1 second, then lower slow enough that the weight rolls all the way out to your fingertips before curling back up.',
+        variants:[{name:'Bar Push-Off (plank press-off)',equip:'Stability ball or slam ball, low and stable',rx:'Density target: 60 total reps, 5-sec breathers as needed',cue:'Angled plank position, hands pressing off the ball — press away using the wrist flexors, staying in the deep-stretch partial range rather than full extension. No barbell at home, so this approximates the stretch-and-press-off intent with what you have. Add a few reps to the density target each week.',demo:'wristecc'},
+                  {name:'One-Arm Bench Wrist Curl (alternating)',equip:'2–10 lb dumbbell',rx:'2×15–17/arm, rest-free',cue:'Off the bench edge, one arm at a time — weaker arm sets the rep count, then switch arms with no rest and match it. Repeat back and forth.',demo:'wristecc'}]},
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down')]},
 
   fri:{title:'Lower Body Pull',sub:'Hamstrings · Glutes · Lower Back',accent:'var(--accent)',
