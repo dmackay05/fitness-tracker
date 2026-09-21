@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=120">
+<link rel="stylesheet" href="styles.css?v=121">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-deload-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -758,6 +758,23 @@
         <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
+      <div class="te-section-hdr">📈 Training Phase Cycle</div>
+      <div class="card">
+        <div id="ds-phase-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">13-week wave adapted from Jeff Nippard's Ultimate PPL: Phase 1 Base (wk 1-6, moderate volume, RPE 8-9/9-10) → Phase 2 Max Effort (wk 7-10, 1-2 sets, RPE 9-10) → Phase 3 Supercompensation (wk 11-12, high volume, 15-20 reps) → Deload (wk 13), then repeats. Every exercise's sets/reps/RPE/rest updates automatically as the weeks pass. Rehab and joint-flagged movements (elbow work, wrist curls, SI-flagged moves) are excluded on purpose — they stay fixed no matter the phase.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Phase cycle active</span>
+          <input type="checkbox" id="ds-phase-toggle" onchange="dsSetPhaseCycleStart(this.checked)" style="width:20px;height:20px;accent-color:#c084fc;cursor:pointer" />
+        </label>
+        <div id="ds-phase-preview" style="font-size:10px;color:#c084fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div class="rlbl" style="margin-top:12px">Manual phase override (optional)</div>
+        <select id="ds-phase-manual-select" onchange="dsSetPhaseManual(this.value)" style="width:100%;padding:8px;border-radius:8px;background:#1a1a24;color:#f0f0f0;border:1px solid #333;font-family:'DM Mono',monospace;font-size:12px">
+          <option value="">Auto (follow the calendar above)</option>
+          <option value="p1">Pin to Phase 1 — Base</option>
+          <option value="p2">Pin to Phase 2 — Max Effort</option>
+          <option value="p3">Pin to Phase 3 — Supercompensation</option>
+          <option value="deload">Pin to Deload</option>
+        </select>
+      </div>
       <div class="te-section-hdr">⏸️ Deload Week</div>
       <div class="card">
         <div id="ds-deload-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.</div>
@@ -987,6 +1004,6 @@
   </div>
 </div>
 
-<script src="app.js?v=293"></script>
+<script src="app.js?v=294"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v199 — 2026-09-20";
+var APP_BUILD = "v200 — 2026-09-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -173,6 +173,117 @@ function dsRenderMaintUI(){
   if(badge) badge.style.display = active ? "" : "none";
   if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1)+"/7";
 }
+
+// ── TRAINING PHASE CYCLE — Base / Max Effort / Supercompensation / Deload ──
+// 13-week wave, adapted from Jeff Nippard's Ultimate PPL periodization for
+// home band/DB training: Phase 1 wk1-6 (Base — moderate volume, RPE 8-9/9-10),
+// Phase 2 wk7-10 (Max Effort — 1-2 sets, RPE 9-10), Phase 3 wk11-12
+// (Supercompensation — high volume, 15-20 reps), Deload wk13. Repeats after
+// wk13. Rehab/joint-flagged exercises (elbow eccentric work, wrist curls,
+// SI-flagged rotational moves) are intentionally left out of DS_PHASE_RX
+// below and never get phase-scaled — they're protective, not hypertrophy work.
+var PHASE_START = store.get('ft_phase_start') || null;
+var PHASE_MANUAL = store.get('ft_phase_manual') || null; // 'p1'|'p2'|'p3'|'deload'|null(auto by date)
+var PHASE_LABELS = {p1:'Phase 1 \u2014 Base',p2:'Phase 2 \u2014 Max Effort',p3:'Phase 3 \u2014 Supercompensation',deload:'Deload'};
+function dsPhaseWeekInfo(){
+  if(!PHASE_START) return null;
+  var ms = Date.now() - keyToDate(PHASE_START).getTime();
+  var days = Math.floor(ms/86400000);
+  var weekNum = Math.floor(days/7)+1;      // 1-indexed week since cycle start
+  var cyclePos = ((weekNum-1)%13)+1;       // 1..13 position within the wave
+  var cycleNum = Math.floor((weekNum-1)/13)+1;
+  var phase, weekInPhase, totalInPhase;
+  if(cyclePos<=6){ phase='p1'; weekInPhase=cyclePos; totalInPhase=6; }
+  else if(cyclePos<=10){ phase='p2'; weekInPhase=cyclePos-6; totalInPhase=4; }
+  else if(cyclePos<=12){ phase='p3'; weekInPhase=cyclePos-10; totalInPhase=2; }
+  else { phase='deload'; weekInPhase=1; totalInPhase=1; }
+  return {phase:phase,weekInPhase:weekInPhase,totalInPhase:totalInPhase,cycleNum:cycleNum,cyclePos:cyclePos};
+}
+function dsCurrentPhase(){
+  if(PHASE_MANUAL) return PHASE_MANUAL;
+  var info = dsPhaseWeekInfo();
+  return info ? info.phase : null;
+}
+function dsSetPhaseCycleStart(on){
+  if(on){ PHASE_START = todayKey(); store.set('ft_phase_start', PHASE_START); }
+  else { PHASE_START = null; store.remove('ft_phase_start'); }
+  PHASE_MANUAL = null; store.remove('ft_phase_manual');
+  try{ renderAll(); }catch(e){}
+  dsRenderPhaseUI();
+}
+function dsSetPhaseManual(key){
+  if(key){ PHASE_MANUAL = key; store.set('ft_phase_manual', key); }
+  else { PHASE_MANUAL = null; store.remove('ft_phase_manual'); }
+  try{ renderAll(); }catch(e){}
+  dsRenderPhaseUI();
+}
+function dsRenderPhaseUI(){
+  var badge = document.getElementById('ds-phase-badge');
+  var toggle = document.getElementById('ds-phase-toggle');
+  var preview = document.getElementById('ds-phase-preview');
+  var select = document.getElementById('ds-phase-manual-select');
+  var phase = dsCurrentPhase();
+  var info = dsPhaseWeekInfo();
+  if(toggle) toggle.checked = !!PHASE_START;
+  if(select) select.value = PHASE_MANUAL || '';
+  if(preview){
+    if(!PHASE_START && !PHASE_MANUAL){
+      preview.textContent = "Off. Turning this on starts the 13-week wave (Base \u2192 Max Effort \u2192 Supercompensation \u2192 Deload) from today \u2014 every exercise's sets/reps/RPE/rest below will follow it automatically, week by week.";
+    } else if(PHASE_MANUAL){
+      preview.textContent = "Manually pinned to "+PHASE_LABELS[PHASE_MANUAL]+". Every exercise reflects this phase until you change it or clear the pin below.";
+    } else if(info){
+      preview.textContent = PHASE_LABELS[info.phase]+" \u2014 Week "+info.weekInPhase+" of "+info.totalInPhase+" (cycle week "+info.cyclePos+"/13, cycle #"+info.cycleNum+"). Numbers update automatically each week \u2014 nothing to do but train.";
+    }
+  }
+  if(badge){
+    var active = !!phase;
+    badge.style.display = active ? "" : "none";
+    if(active) badge.textContent = "\ud83d\udcc8 "+(PHASE_LABELS[phase]||phase)+(info&&!PHASE_MANUAL?" \u00b7 wk "+info.weekInPhase+"/"+info.totalInPhase:" \u00b7 pinned");
+  }
+}
+// Per-exercise phase overlay: sets/reps text, RPE, and rest per phase. Any
+// exercise id NOT listed here (rehab work, SI/elbow-flagged movements, the
+// intentionally-light Friday goblet squat, etc.) keeps its normal fixed rx
+// in every phase — see the wave-plan doc for why each of those is excluded.
+var DS_PHASE_RX = {
+  'mon-pushup':{p1:{rx:'3\u20134\u00d710\u201315',sets:4,rpe:'8\u20139',rest:'2 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u20132\u00d712\u201315',sets:2,rpe:'6\u20137',rest:'1.5 min'}},
+  'mon-row':{p1:{rx:'4\u20135\u00d710\u201312',sets:5,rpe:'8\u20139',rest:'2 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u20132\u00d710\u201312',sets:2,rpe:'6\u20137',rest:'1.5 min'}},
+  'mon-ohp':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8',rest:'2\u20133 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'8',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8',rest:'1.5 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'6',rest:'2 min'}},
+  'thu-chest':{p1:{rx:'4\u00d712\u201315',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6\u20137',rest:'1 min'}},
+  'thu-facepull':{p1:{rx:'5\u00d715\u201320',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
+  'mon-lateral':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'7',rest:'1 min'}},
+  'mon-curl':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
+  'mon-tri':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
+  'mon-calf':{p1:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},p2:{rx:'1\u00d710\u201312',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
+  'mon-legraise':{p1:{rx:'1\u00d710\u201312',sets:1,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'8',rest:'1 min'},p3:{rx:'2\u00d710\u201312',sets:2,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78',sets:1,rpe:'6',rest:'1 min'}},
+  'mon-hollow':{p1:{rx:'2\u00d730s',sets:2},p2:{rx:'1\u00d730s',sets:1},p3:{rx:'2\u00d730s',sets:2},deload:{rx:'1\u00d720s',sets:1}},
+  'thu-hollow':{p1:{rx:'2\u00d730s',sets:2},p2:{rx:'1\u00d730s',sets:1},p3:{rx:'2\u00d730s',sets:2},deload:{rx:'1\u00d720s',sets:1}},
+  'thu-legraise':{p1:{rx:'1\u00d710\u201312',sets:1,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'8',rest:'1 min'},p3:{rx:'2\u00d710\u201312',sets:2,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78',sets:1,rpe:'6',rest:'1 min'}},
+  'tue-jump':{p1:{rx:'3\u00d73\u20135',sets:3},p2:{rx:'2\u00d73\u20135',sets:2},p3:{rx:'3\u00d73\u20135',sets:3},deload:{rx:'1\u00d73',sets:1}},
+  'tue-squat':{p1:{rx:'4\u00d712\u201315',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'4\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d712\u201315',sets:2,rpe:'6\u20137',rest:'2 min'}},
+  'fri-bulg':{p1:{rx:'3\u00d710/leg',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u20138/leg',sets:2,rpe:'9',rest:'2.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'6',rest:'1.5 min'}},
+  'tue-lat':{p1:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d715/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710/side',sets:1,rpe:'6',rest:'1 min'}},
+  'tue-pallof':{p1:{rx:'3\u00d710/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78/side',sets:1,rpe:'6',rest:'1 min'}},
+  'tue-tib':{p1:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},p2:{rx:'1\u00d710',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
+  'tue-calf':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'4\u00d720',sets:4,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
+  'mon-inclinepress':{p1:{rx:'3\u00d710\u201312',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'6',rest:'1.5 min'}},
+  'thu-lat':{p1:{rx:'4\u20135\u00d710\u201312',sets:5,rpe:'8\u20139',rest:'2 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u20132\u00d710\u201312',sets:2,rpe:'6',rest:'1.5 min'}},
+  'mon-standbandpress':{p1:{rx:'3\u00d712\u201315',sets:3,rpe:'8\u20139',rest:'1.5\u20132 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6',rest:'1 min'}},
+  'mon-pullapart':{p1:{rx:'5\u00d715\u201320',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
+  'thu-lateral':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'7',rest:'1 min'}},
+  'thu-uprightrow':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8',rest:'1.5 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'8',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'thu-shrug':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
+  'thu-hammer':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
+  'thu-ohtriceps':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'thu-ballpullover':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'fri-slrdl':{p1:{rx:'3\u20134\u00d78\u201312',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u20138',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d710',sets:2,rpe:'6\u20137',rest:'2 min'}},
+  'fri-nordic':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1.5 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'fri-goodmorning':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'fri-add':{p1:{rx:'3\u00d712\u201315/leg',sets:3,rpe:'8\u20139',rest:'1 min'},p2:{rx:'1\u00d78\u201310/leg',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'6',rest:'1 min'}},
+  'fri-tib':{p1:{rx:'2\u00d715\u201320',sets:2,rpe:'8\u20139',rest:'1 min'},p2:{rx:'1\u00d710',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'2\u00d720',sets:2,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
+  'fri-calf':{p1:{rx:'4\u00d712\u201315/leg',sets:4,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78/leg',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'7',rest:'1 min'}},
+  'fri-plank':{p1:{rx:'3\u00d730\u201345s',sets:3},p2:{rx:'1\u00d730s',sets:1},p3:{rx:'3\u00d745s',sets:3},deload:{rx:'1\u00d720s',sets:1}}
+};
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
 var TREND_METRICS=[
   {key:"weight",  label:"Weight",   unit:"lbs", dir:"lower",   color:"#a78bfa", goal:function(){return GOAL_WEIGHT||0;}, get:function(d){return (d.weight!=null&&d.weight!=="")?d.weight:null;}},
@@ -748,7 +859,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -2372,7 +2483,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -6578,7 +6689,16 @@ function dsItemMatchesSearch(rawItem,q){
 }
 
 function dsRenderItem(rawItem,idx){
-  var item=dsViewOf(rawItem); var st=dsItemState(item.id); var done=dsComplete(item.id);
+  var item=dsViewOf(rawItem);
+  var _phase=dsCurrentPhase(); var _po=_phase && DS_PHASE_RX[item.id] && DS_PHASE_RX[item.id][_phase];
+  if(_po){
+    item={id:item.id,name:item.name,slot:item.slot,target:item.target,equip:item.equip,
+      rx:_po.rx+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''),
+      cal:item.cal,cue:item.cue,demo:item.demo,log:item.log,
+      sets:(_po.sets!=null?_po.sets:item.sets),
+      secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants};
+  }
+  var st=dsItemState(item.id); var done=dsComplete(item.id);
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
