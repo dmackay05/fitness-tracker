@@ -89,6 +89,22 @@ var SHEET_WORKOUTS = "Workout Log";
 var SHEET_OVERLOAD = "Progressive Overload";
 var SHEET_LABS     = "Lab Results";
 var SHEET_FOOD_DETAIL = "Food Detail";
+var SHEET_SYNC_DEBUG = "Sync Debug";
+var SYNC_ERRS_ = [];
+
+// v10: one line per push in a "Sync Debug" tab, so a failed or misrouted
+// save is visible in the Sheet itself instead of hidden in Executions.
+function logSyncDebug_(ss, branch, payload, note) {
+  try {
+    var sh = getOrCreate(ss, SHEET_SYNC_DEBUG,
+      ["Time","Branch","Date keys","Latest date","Top-level keys","Errors / note"]);
+    var keys = Object.keys(payload || {});
+    var dates = keys.filter(function(k){ return /^\d{4}-\d{2}-\d{2}$/.test(k); }).sort();
+    var other = keys.filter(function(k){ return !/^\d{4}-\d{2}-\d{2}$/.test(k); });
+    sh.appendRow([new Date(), branch, dates.length, dates.length ? dates[dates.length-1] : "",
+      other.join(", ").slice(0, 300), (SYNC_ERRS_.concat(note ? [note] : [])).join(" | ").slice(0, 45000)]);
+  } catch (e) {}
+}
 
 
 
@@ -170,13 +186,17 @@ function doPost(e) {
     // Rides payload is a separate push: { rides: [...] }
     if (payload.rides || payload.workouts || payload.overload || payload.labs) {
       processSupplementalData(ss, payload);
+      logSyncDebug_(ss, "supplemental", payload);
     } else {
       processDailyData(ss, payload);
-      writeFoodDetail_(ss, payload);   // v2: per-food analysis sheet
+      try { writeFoodDetail_(ss, payload); }   // v2: per-food analysis sheet
+      catch (fe) { SYNC_ERRS_.push("food detail: " + (fe && fe.stack || fe)); }
+      logSyncDebug_(ss, "daily", payload);
     }
     return okResponse("saved");
   } catch(err) {
     console.error("doPost failed: " + (err && err.stack || err));
+    try { logSyncDebug_(SpreadsheetApp.getActiveSpreadsheet(), "CRASH", null, "doPost failed: " + (err && err.stack || err)); } catch (e2) {}
     return ContentService.createTextOutput(
       JSON.stringify({ status: "error", message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -215,7 +235,7 @@ function processDailyData(ss, data) {
   // is logged (visible in Apps Script → Executions) and the rest still write.
   Object.keys(data).sort().forEach(function(dateKey) {
     try { processOneDay_(dateKey); }
-    catch (err) { console.error("processDailyData failed for " + dateKey + ": " + (err && err.stack || err)); }
+    catch (err) { var m = "failed " + dateKey + ": " + (err && err.stack || err); SYNC_ERRS_.push(m); console.error(m); }
   });
 
   function processOneDay_(dateKey) {
