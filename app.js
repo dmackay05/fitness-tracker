@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v213 — 2026-09-22";
+var APP_BUILD = "v214 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -811,6 +811,11 @@ function mergeDay(key,remote){
   // the Sheet stores macros rounded (1.5g fat comes back as 2g), so every
   // synced food looked "new" and got duplicated. Entries without a timestamp
   // (very old data) still fall back to name+calories.
+  if(local.foodTombs){
+    var _ft=local.foodTombs, _cut=Date.now()-30*24*3600*1000;
+    Object.keys(_ft).forEach(function(k){ if(!(_ft[k]>_cut)) delete _ft[k]; });
+    remote.foods=(remote.foods||[]).filter(function(f){ return !_ft[dsFoodKey(f)]; });
+  }
   local.foods=dsDedupeFoods(dsMergeArrayByKey(local.foods,remote.foods,dsFoodKey));
   if(!local.weight && remote.weight) local.weight=remote.weight;
   // Water is an additive running total, logged from whichever device is at
@@ -1590,7 +1595,15 @@ function addCustomFood(){
   addFoodObj(_cfo);
   ["cf-name","cf-cal","cf-protein","cf-carbs","cf-fat","cf-fiber","cf-sodium","cf-satfat","cf-chol"].forEach(function(i){document.getElementById(i).value="";});
 }
-function removeFood(id){ var day=getDay(); day.foods=day.foods.filter(function(f){return f.id!=id;}); saveDay(day); renderAll(); }
+// Deleting leaves a tombstone keyed like the merge key, so the next pull from
+// the Sheet (which still has the food until this device pushes) can't merge
+// it straight back in. Same idea as exTombs for exercises.
+function removeFood(id){
+  var day=getDay(), gone=day.foods.filter(function(f){return f.id==id;})[0];
+  if(gone){ day.foodTombs=day.foodTombs||{}; day.foodTombs[dsFoodKey(gone)]=Date.now(); }
+  day.foods=day.foods.filter(function(f){return f.id!=id;});
+  saveDay(day); renderAll();
+}
 var editingFoodId=null;
 function editFood(id){
   var f=getDay().foods.filter(function(x){return x.id==id;})[0]; if(!f) return;
