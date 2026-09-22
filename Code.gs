@@ -701,6 +701,17 @@ function buildIndex(sheet) {
 // Update existing row or append new one
 function upsertRow(sheet, key, row, index) {
   key = String(key).trim();
+  // v11: Sheets rejects the whole row if any cell exceeds 50,000 characters.
+  // Trim oversized cells instead, and note which column and how long it was
+  // in Sync Debug so the bloated field can be found and fixed at the source.
+  var hdr = (sheet.getName() === SHEET_DAILY) ? DAILY_HEADERS : null;
+  row = row.map(function(v, i) {
+    if (typeof v === "string" && v.length > 49000) {
+      SYNC_ERRS_.push("trimmed " + key + " col " + (hdr && hdr[i] ? hdr[i] : (i + 1)) + " from " + v.length + " chars");
+      return v.slice(0, 49000) + " …[trimmed]";
+    }
+    return v;
+  });
   if (index[key]) {
     var r = sheet.getRange(index[key], 1, 1, row.length);
     r.setNumberFormat("@");
