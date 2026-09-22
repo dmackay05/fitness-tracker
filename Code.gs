@@ -23,6 +23,13 @@
 //   • Foods column may also carry sodium: Name (240 kcal|3p|13c|22f|10.1fb|450na)
 //   • New "Sodium (mg)" daily column, appended at the end.
 //
+// v9 CHANGES (hyperlipidemia tracking):
+//   • Foods column may also carry sat fat / cholesterol:
+//     Name (240 kcal|3p|13c|22f|10.1fb|450na|8sf|85ch)
+//   • New "Sat Fat (g)" and "Cholesterol (mg)" daily columns, appended at
+//     the end (same reasoning as Sodium above).
+//   • Food Detail sheet gains matching Sat Fat (g) / Cholesterol (mg) columns.
+//
 // v3 CHANGES (Biceps measurement):
 //   • Added "Biceps (in)" to Daily Log and Measurements headers, appended
 //     at the end so existing columns never shift. ensureHeaders_ backfills
@@ -98,7 +105,8 @@ var DAILY_HEADERS = [
   "Body Fat (%)","Muscle (lbs)","Body Water (%)","Bone Mass (lbs)",  // v5: appended at the end, same reasoning
   "Habits Completed",  // v6: appended at the end, same reasoning
   "Sodium (mg)",        // v7: appended at the end, same reasoning
-  "Supplements"         // v8: appended at the end, same reasoning — see v8 note below
+  "Supplements",        // v8: appended at the end, same reasoning — see v8 note below
+  "Sat Fat (g)","Cholesterol (mg)"  // v9: appended at the end, same reasoning
 ];
 
 
@@ -110,7 +118,8 @@ var WORKOUT_HEADERS  = ["Date","Exercises Completed","Exercise Count"];
 var OVERLOAD_HEADERS = ["Row Key","Exercise ID","Exercise","Date","Band / Weight","Reps","Sets","RIR"];
 var LAB_HEADERS      = ["Date","A1c (%)","HDL (mg/dL)","LDL (mg/dL)","Triglycerides (mg/dL)","Notes"];
 var FOOD_DETAIL_HEADERS = ["Date","Food","Grams","FDC ID","Calories",
-                          "Protein (g)","Carbs (g)","Fat (g)","Fiber (g)","Net Carbs (g)","Sodium (mg)"];
+                          "Protein (g)","Carbs (g)","Fat (g)","Fiber (g)","Net Carbs (g)","Sodium (mg)",
+                          "Sat Fat (g)","Cholesterol (mg)"];
 
 
 
@@ -351,6 +360,13 @@ function processDailyData(ss, data) {
       .map(function(k) { return suppNames[k] || k; });
     row.push(suppsOn.join(", "));
 
+    // v9: Sat Fat + Cholesterol, appended at the end (same reasoning) —
+    // hyperlipidemia tracking
+    var satFatSum = realFoods.reduce(function(a, f) { return a + (parseFloat(f.satfat) || 0); }, 0);
+    var cholSum   = realFoods.reduce(function(a, f) { return a + (parseFloat(f.chol)   || 0); }, 0);
+    row.push(satFatSum > 0 ? round1_(satFatSum) : "");
+    row.push(cholSum   > 0 ? Math.round(cholSum) : "");
+
 
 
 
@@ -389,7 +405,7 @@ function realFoods_(d) {
 // segment (Breakfast/Lunch/Dinner/Snack) when explicitly set, so entries
 // without them are byte-identical to the old format.
 //   Old: Name (240 kcal|3p|13c|22f)
-//   New: Name (240 kcal|3p|13c|22f|10.1fb|t1737400000000|mDinner)
+//   New: Name (240 kcal|3p|13c|22f|10.1fb|450na|8sf|85ch|t1737400000000|mDinner)
 // The timestamp/tag let the app restore which meal a food belonged to even
 // after a full sync round-trip — without them, every synced food defaults
 // to a midday guess, and the explicit tag (if the person set one) always
@@ -403,6 +419,10 @@ function foodToStr_(f) {
   if (fb > 0) s += "|" + (Math.round(fb * 10) / 10) + "fb";
   var na = parseFloat(f.sodium) || 0;
   if (na > 0) s += "|" + Math.round(na) + "na";
+  var sf = parseFloat(f.satfat) || 0;
+  if (sf > 0) s += "|" + (Math.round(sf * 10) / 10) + "sf";
+  var ch = parseFloat(f.chol) || 0;
+  if (ch > 0) s += "|" + Math.round(ch) + "ch";
   var tsMatch = String(f.id || "").match(/^(\d{13})/);
   if (tsMatch) s += "|t" + tsMatch[1];
   if (f.mealTag && /^(Breakfast|Lunch|Dinner|Snack)$/.test(f.mealTag)) s += "|m" + f.mealTag;
@@ -450,13 +470,17 @@ function writeFoodDetail_(ss, data) {
       var carbs  = parseFloat(f.carbs)  || 0;
       var fiber  = parseFloat(f.fiber)  || 0;
       var sodium = parseFloat(f.sodium) || 0;
+      var satfat = parseFloat(f.satfat) || 0;
+      var chol   = parseFloat(f.chol)   || 0;
       fresh.push([
         dateKey, f.name || "", grams || "", f.fdcId || "",
         Math.round(parseFloat(f.cal) || 0),
         round1_(f.protein), round1_(carbs), round1_(f.fat),
         fiber ? round1_(fiber) : "",
         fiber ? round1_(Math.max(0, carbs - fiber)) : "",
-        sodium ? Math.round(sodium) : ""
+        sodium ? Math.round(sodium) : "",
+        satfat ? round1_(satfat) : "",
+        chol ? Math.round(chol) : ""
       ]);
     });
   });

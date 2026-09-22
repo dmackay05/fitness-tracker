@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=129">
+<link rel="stylesheet" href="styles.css?v=130">
 </head>
 <body>
 
@@ -326,6 +326,7 @@
           <input type="text" id="cf-name" placeholder="Food name"/>
           <div class="g2"><input type="number" id="cf-cal" placeholder="Calories"/><input type="number" id="cf-protein" placeholder="Protein (g)"/><input type="number" id="cf-carbs" placeholder="Carbs (g)"/><input type="number" id="cf-fat" placeholder="Fat (g)"/></div>
           <div class="g2" style="margin-top:8px"><input type="number" id="cf-fiber" placeholder="Fiber (g) — optional"/><input type="number" id="cf-sodium" placeholder="Sodium (mg) — optional"/></div>
+          <div class="g2" style="margin-top:8px"><input type="number" id="cf-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" id="cf-chol" placeholder="Cholesterol (mg) — optional"/></div>
           <button class="bp bfull" onclick="addCustomFood()">Add to Log</button>
         </div>
       </div>
@@ -626,6 +627,7 @@
     <input type="text" id="ef-name" placeholder="Food name"/>
     <div class="g2"><input type="number" id="ef-cal" placeholder="Calories"/><input type="number" id="ef-protein" placeholder="Protein (g)"/><input type="number" id="ef-carbs" placeholder="Carbs (g)"/><input type="number" id="ef-fat" placeholder="Fat (g)"/></div>
     <div class="g2" style="margin-top:8px"><input type="number" id="ef-fiber" placeholder="Fiber (g) — optional"/><input type="number" id="ef-sodium" placeholder="Sodium (mg) — optional"/></div>
+    <div class="g2" style="margin-top:8px"><input type="number" id="ef-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" id="ef-chol" placeholder="Cholesterol (mg) — optional"/></div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="bs" style="flex:1" onclick="closeFoodEdit()">Cancel</button>
       <button class="bp" style="flex:1" onclick="saveFoodEdit()">Save</button>
@@ -679,6 +681,8 @@
           <div><div class="rlbl">Fat (g)</div><input type="number" id="ft-fat" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Fiber (g)</div><input type="number" id="ft-fiber" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Sodium limit (mg)</div><input type="number" id="ft-sodium" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Sat Fat limit (g)</div><input type="number" id="ft-satfat" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Cholesterol limit (mg)</div><input type="number" id="ft-chol" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Burn target</div><input type="number" id="ft-burned" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Water (oz)</div><input type="number" id="ft-water" style="margin-bottom:0"/></div>
           <div><div class="rlbl">Activity (min/wk)</div><input type="number" id="ft-activity" style="margin-bottom:0"/></div>
@@ -1009,6 +1013,6 @@
   </div>
 </div>
 
-<script src="app.js?v=302"></script>
+<script src="app.js?v=303"></script>
 </body>
 </html>
