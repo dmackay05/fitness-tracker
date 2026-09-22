@@ -176,6 +176,7 @@ function doPost(e) {
     }
     return okResponse("saved");
   } catch(err) {
+    console.error("doPost failed: " + (err && err.stack || err));
     return ContentService.createTextOutput(
       JSON.stringify({ status: "error", message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -208,7 +209,16 @@ function processDailyData(ss, data) {
 
 
 
+  // v10: each day is processed in its own try/catch. Previously one day with
+  // unexpected data threw out of the whole loop, so every later date was
+  // silently skipped while doPost still reported "Completed". Now a bad day
+  // is logged (visible in Apps Script → Executions) and the rest still write.
   Object.keys(data).sort().forEach(function(dateKey) {
+    try { processOneDay_(dateKey); }
+    catch (err) { console.error("processDailyData failed for " + dateKey + ": " + (err && err.stack || err)); }
+  });
+
+  function processOneDay_(dateKey) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
     var d = data[dateKey];
     if (!d) return;
@@ -219,7 +229,7 @@ function processDailyData(ss, data) {
     // Filter out placeholder/restored foods
     var realFoods = realFoods_(d);
     var realExs = (d.exercises || []).filter(function(e) {
-      return e.type !== "restored";
+      return e && e.type !== "restored";
     });
 
 
@@ -381,7 +391,7 @@ function processDailyData(ss, data) {
         [dateKey, meas.waist||"", meas.chest||"", meas.hips||"", meas.thighs||"", meas.neck||"", meas.biceps||""],
         msIdx);
     }
-  });
+  }
 }
 
 
@@ -395,7 +405,7 @@ function processDailyData(ss, data) {
 // Same placeholder filter used everywhere foods are written
 function realFoods_(d) {
   return (d.foods || []).filter(function(f) {
-    return f.name !== "Restored from backup" && (f.cal || 0) > 0;
+    return f && typeof f === "object" && f.name !== "Restored from backup" && (parseFloat(f.cal) || 0) > 0;
   });
 }
 
