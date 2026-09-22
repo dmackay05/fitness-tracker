@@ -92,9 +92,12 @@ var SHEET_FOOD_DETAIL = "Food Detail";
 var SHEET_SYNC_DEBUG = "Sync Debug";
 var SYNC_ERRS_ = [];
 
-// v10: one line per push in a "Sync Debug" tab, so a failed or misrouted
-// save is visible in the Sheet itself instead of hidden in Executions.
+// v10/v12: a "Sync Debug" tab that records only pushes with problems, so a
+// failed save is visible in the Sheet itself instead of hidden in Executions.
 function logSyncDebug_(ss, branch, payload, note) {
+  // Only record pushes that had a problem: a failed day, a trimmed cell,
+  // or a crash. Clean pushes write nothing.
+  if (!SYNC_ERRS_.length && !note) return;
   try {
     var sh = getOrCreate(ss, SHEET_SYNC_DEBUG,
       ["Time","Branch","Date keys","Latest date","Top-level keys","Errors / note"]);
