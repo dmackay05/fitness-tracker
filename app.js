@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v207 — 2026-09-21";
+var APP_BUILD = "v208 — 2026-09-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -236,7 +236,7 @@ function dsRenderPhaseUI(){
     }
   }
   if(badge){
-    var active = !!phase;
+    var active = !!phase && DS_ACTIVE_TAB==='today';
     badge.style.display = active ? "" : "none";
     if(active) badge.textContent = "\ud83d\udcc8 "+(PHASE_LABELS[phase]||phase)+(info&&!PHASE_MANUAL?" \u00b7 wk "+info.weekInPhase+"/"+info.totalInPhase:" \u00b7 pinned");
   }
@@ -1464,7 +1464,10 @@ function renderRadials(items){
 }
 
 // ── NAV / DATE ──────────────────────────────────────────────────────────
+var DS_ACTIVE_TAB = 'dash'; // tracks which tab is showing, so header items like the phase
+                             // badge (lives outside the panel divs) can show only on 'today'
 function switchTab(id){
+  DS_ACTIVE_TAB = id;
   document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active");});
   document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("active");});
   var btn=document.querySelector("[data-tab="+id+"]"), panel=document.getElementById("panel-"+id);
@@ -1473,6 +1476,7 @@ function switchTab(id){
   // rather than at the top of the dashboard panel, so it needs to hide
   // itself on every other tab instead of relying on the panel's own display.
   var hrd=document.getElementById("header-refresh-dash"); if(hrd) hrd.style.display=(id==="dash")?"flex":"none";
+  if(typeof dsRenderPhaseUI==="function") dsRenderPhaseUI(); // phase badge is Today-only, same reasoning as above
   if(id==="yoga" && typeof renderPoses==="function") renderPoses();
   if(id==="today" && typeof renderToday==="function") renderToday();
   if(id==="log" && typeof ldInit==="function") ldInit();

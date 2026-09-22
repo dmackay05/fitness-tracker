@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=128">
+<link rel="stylesheet" href="styles.css?v=129">
 </head>
 <body>
 
@@ -55,7 +55,7 @@
           <span class="past-badge" id="past-badge" style="display:none">past day</span>
           <button class="today-btn" id="btn-today" onclick="goToToday()" style="display:none">Today</button>
         </div>
-        <div class="refresh-bar" id="header-refresh-dash" style="margin-top:8px;display:flex"><button class="refresh-btn-sm" onclick="doRefresh('dash')"><span id="refresh-icon-dash">↻</span> Refresh</button></div>
+        <div class="refresh-bar" id="header-refresh-dash" style="margin-top:8px;display:flex"><button onclick="doRefresh('dash')" title="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></div>
       </div>
     </div>
   </div>
@@ -1009,6 +1009,6 @@
   </div>
 </div>
 
-<script src="app.js?v=301"></script>
+<script src="app.js?v=302"></script>
 </body>
 </html>
