@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v209 — 2026-09-22";
+var APP_BUILD = "v210 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2978,13 +2978,13 @@ fetchSheet(function(rows,ok,why){
   if(_bn && SHEETS_URL && ok) setTimeout(function(){ _bn.style.display="none"; },2200);
 });
 
-// ── PERIODIC BACKGROUND SYNC (every 3 minutes) ──────────────────────────
+// ── PERIODIC BACKGROUND SYNC (every 1 minute) ──────────────────────────
 setInterval(function(){
   if(!SHEETS_URL) return;
   fetchSheet(function(rows,ok){
     if(ok&&rows){ mergeRows(rows); renderAll(); }
   });
-}, 3 * 60 * 1000);
+}, 60 * 1000);
 
 // Recover an in-progress GPS tracking session if the page reloaded mid-walk/ride
 // (backgrounded tab getting killed, screen lock causing a refresh, etc.)
