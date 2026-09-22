@@ -153,7 +153,11 @@ function doGet(e) {
   } else if (e && e.parameter && e.parameter.overload) {
     json = JSON.stringify(getOverloadRows_(ss));
   } else {
-    json = JSON.stringify(getDailyRows(ss));
+    // v13: ?days=N returns only the last N days. Regular syncs only need
+    // recent days; sending the whole history every pull made doGet slow
+    // enough to time out on the phone as the log grew.
+    var days = e && e.parameter && parseInt(e.parameter.days, 10);
+    json = JSON.stringify(getDailyRows(ss, days > 0 ? days : 0));
   }
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + json + ")")
@@ -619,14 +623,20 @@ function processSupplementalData(ss, D) {
 // ═══════════════════════════════════════════════════════════════════════════
 // READ — return array of row objects for doGet
 // ═══════════════════════════════════════════════════════════════════════════
-function getDailyRows(ss) {
+function getDailyRows(ss, days) {
   var sheet = ss.getSheetByName(SHEET_DAILY);
   if (!sheet) return [];
   var tz   = ss.getSpreadsheetTimeZone();
   var data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
   var headers = data[0];
-  return data.slice(1).map(function(row) {
+  var rows = data.slice(1);
+  if (days) {
+    var cut = new Date(); cut.setDate(cut.getDate() - days);
+    var cutKey = Utilities.formatDate(cut, tz, "yyyy-MM-dd");
+    rows = rows.filter(function(row) { var k = normDate(row[0], tz); return k && k >= cutKey; });
+  }
+  return rows.map(function(row) {
     var obj = {};
     headers.forEach(function(h, i) {
       obj[String(h)] = (h === "Date")

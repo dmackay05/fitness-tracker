@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v214 — 2026-09-22";
+var APP_BUILD = "v215 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -668,9 +668,13 @@ function _fetchSheetOnce(onRows){
   function finish(rows, ok, why){ if(done) return; done=true; onRows(rows,ok,why); }
 
   // Timeout after 8 seconds regardless
-  var timeout = setTimeout(function(){ finish(null,false,"timeout (8s, both fetch and JSONP fallback never resolved)"); }, 8000);
+  var timeout = setTimeout(function(){ finish(null,false,"timeout (20s, both fetch and JSONP fallback never resolved)"); }, 20000);
+  // Regular syncs pull only the last 21 days (this device already has older
+  // history). A new or nearly empty device pulls everything once.
+  var _dayKeys=Object.keys(appData||{}).filter(function(k){return /^\d{4}-\d{2}-\d{2}$/.test(k);}).length;
+  var _range=(_dayKeys>=30)?"&days=21":"";
 
-  fetch(SHEETS_URL+"?nocache="+Date.now())
+  fetch(SHEETS_URL+"?nocache="+Date.now()+_range)
     .then(function(r){
       if(!r.ok){ var e=new Error("HTTP "+r.status); e._httpStatus=r.status; throw e; }
       return r.json();
@@ -683,7 +687,7 @@ function _fetchSheetOnce(onRows){
       window[cb]=function(rows){ clearTimeout(timeout); delete window[cb]; finish(rows,true); };
       var s=document.createElement("script");
       s.onerror=function(){ delete window[cb]; finish(null,false,"fetch failed (\""+fetchErr+"\") and JSONP <script> also failed to load"); };
-      s.src=SHEETS_URL+"?callback="+cb+"&nocache="+Date.now();
+      s.src=SHEETS_URL+"?callback="+cb+"&nocache="+Date.now()+_range;
       document.head.appendChild(s);
     });
 }
