@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v212 — 2026-09-22";
+var APP_BUILD = "v213 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -806,9 +806,12 @@ function mergeDay(key,remote){
   // could — the old rule replaced the entire day with whichever side had more
   // food rows total, which meant a shorter-but-different array on either side
   // just lost its unique entries outright.
-  local.foods=dsMergeArrayByKey(local.foods,remote.foods,function(f){
-    return [f.name||'',f.cal||0,f.protein||0,f.carbs||0,f.fat||0,f.mealTag||''].join('|');
-  });
+  // Foods match by their 13-digit log timestamp (the id prefix, which the
+  // Sheet round-trip preserves as |t...). Matching by macros failed because
+  // the Sheet stores macros rounded (1.5g fat comes back as 2g), so every
+  // synced food looked "new" and got duplicated. Entries without a timestamp
+  // (very old data) still fall back to name+calories.
+  local.foods=dsDedupeFoods(dsMergeArrayByKey(local.foods,remote.foods,dsFoodKey));
   if(!local.weight && remote.weight) local.weight=remote.weight;
   // Water is an additive running total, logged from whichever device is at
   // hand — phone at lunch, laptop at dinner. "Only fill if empty" (the old
@@ -852,6 +855,22 @@ function mergeDay(key,remote){
 // foods, RHR/BP readings, and meditation sessions at once: any field where
 // multiple same-shaped entries can legitimately exist per day and can be
 // added from more than one device before either has synced.
+function dsFoodKey(f){
+  var t=String((f&&f.id)||"").match(/^(\d{13})/);
+  return t ? "t"+t[1] : "c|"+String((f&&f.name)||"").toLowerCase().trim()+"|"+Math.round(+(f&&f.cal)||0);
+}
+// Collapses entries that share a timestamp key: one log action = one food.
+// Genuine repeats (two identical snacks) are logged at different times, so
+// they have different timestamps and are kept. Local copies come first in
+// the merged array, so the richer local entry wins.
+function dsDedupeFoods(arr){
+  var seen={};
+  return (arr||[]).filter(function(f){
+    if(!f) return false;
+    var k=dsFoodKey(f); if(k.charAt(0)!=="t") return true;
+    if(seen[k]) return false; seen[k]=1; return true;
+  });
+}
 function dsMergeArrayByKey(localArr,remoteArr,keyFn){
   localArr=localArr||[]; remoteArr=remoteArr||[];
   if(!remoteArr.length) return localArr;
@@ -889,11 +908,10 @@ function dsMergeExercises(localEx,remoteEx,tombs){
   // through the Google Sheet it comes back as a *different* id (sheet_n_<name>),
   // so without this they'd fail to match their own local original and duplicate
   // every time a sync pulled the sheet copy back down.
-  function mkey(e){
-    var id=String(e.id||"");
-    if(id.indexOf("sess_")===0||id.indexOf("sheet_")===0||e.type==="cardio"||e.type==="yoga") return "n_"+String(e.name||"").toLowerCase().trim();
-    return id||("n_"+String(e.name||"").toLowerCase().trim());
-  }
+  // Every exercise matches by name. The Sheet round-trip gives each entry a
+  // new sheet_ id, so id-based matching for manually logged exercises could
+  // never pair a local entry with its own synced copy, duplicating it.
+  function mkey(e){ return "n_"+String((e&&e.name)||"").toLowerCase().trim(); }
   function better(a,b){
     if(!a)return b; if(!b)return a;
     var as=a.sets||0, bs=b.sets||0;
