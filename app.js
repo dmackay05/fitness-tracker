@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v210 — 2026-09-22";
+var APP_BUILD = "v212 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -496,6 +496,30 @@ function saveAll(){
 }
 function saveDay(day,key){ key=key||activeDate; appData[key]=day; saveAll(); }
 
+// Mobile browsers/PWAs suspend JS timers the moment the tab is backgrounded
+// (app switch, screen lock), so the 8s debounce above can die before it ever
+// fires — the edit gets saved locally but never reaches the Sheet. Flush any
+// pending push immediately on hide, using sendBeacon (fire-and-forget, keeps
+// working even as the page is torn down) instead of fetch, which mobile OSes
+// often cancel mid-flight once the tab is no longer foregrounded.
+function flushPendingSync(){
+  if(_syncTimer){ clearTimeout(_syncTimer); _syncTimer=null; }
+  if(!SHEETS_URL) return;
+  var hash = JSON.stringify(appData).length+"_"+(appData[todayKey()]?JSON.stringify(appData[todayKey()]).length:0);
+  if(hash===_lastHash) return; // nothing pending
+  _lastHash=hash;
+  if(navigator.sendBeacon){
+    try{
+      var blob=new Blob(["data="+encodeURIComponent(JSON.stringify(buildFtPayload()))],{type:"application/x-www-form-urlencoded"});
+      var ok=navigator.sendBeacon(SHEETS_URL, blob);
+      if(ok) return;
+    }catch(e){}
+  }
+  pushToSheets(); // fallback if sendBeacon is unavailable or queuing failed
+}
+document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="hidden") flushPendingSync(); });
+window.addEventListener("pagehide",function(){ flushPendingSync(); });
+
 // v8 fix: supplements are fully user-configurable (SUPPS), but Code.gs only
 // ever had two hardcoded names to write to the sheet. This sends the current
 // id->name map alongside the daily data so Code.gs can resolve each day's
@@ -535,14 +559,33 @@ function postPayload(payload){
     headers:{"Content-Type":"application/x-www-form-urlencoded"},
     body:"data="+encodeURIComponent(JSON.stringify(payload))});
 }
+// Push-side used to be a blind overwrite: it uploaded whatever the local
+// device had for a day and replaced the whole Sheet row with it, with no
+// merge. That's fine for a single device, but with two devices open at once
+// it's a race — if phone pushes food, then desktop (still holding a stale
+// local copy from before that food existed) pushes moments later for an
+// unrelated reason, desktop's push wipes the phone's food right back out.
+// No error either side — both calls genuinely succeed, they just stomp each
+// other. Pulling + merging (the same union-merge logic mergeRows/mergeDay
+// already use for reads) immediately before building the outgoing payload
+// closes that gap: the payload this device sends always includes whatever
+// the OTHER device already wrote, so a push can add to the row but never
+// silently erase something that arrived after this device's last pull.
 function pushToSheets(){
   if(!SHEETS_URL) return Promise.resolve();
-  var chain = postPayload(buildFtPayload());
-  var wk = buildWkPayload();
-  if(wk){ chain = chain.then(function(){return new Promise(function(r){setTimeout(r,700);});}).then(function(){return postPayload(wk);}); }
-  var ov = buildOverloadPayload();
-  if(ov){ chain = chain.then(function(){return new Promise(function(r){setTimeout(r,700);});}).then(function(){return postPayload(ov);}); }
-  return chain.catch(function(){});
+  return new Promise(function(resolve){
+    fetchSheet(function(rows,ok){
+      if(ok&&rows){ mergeRows(rows); }
+      resolve();
+    });
+  }).then(function(){
+    var chain = postPayload(buildFtPayload());
+    var wk = buildWkPayload();
+    if(wk){ chain = chain.then(function(){return new Promise(function(r){setTimeout(r,700);});}).then(function(){return postPayload(wk);}); }
+    var ov = buildOverloadPayload();
+    if(ov){ chain = chain.then(function(){return new Promise(function(r){setTimeout(r,700);});}).then(function(){return postPayload(ov);}); }
+    return chain.catch(function(){});
+  });
 }
 
 // ── PROGRESSIVE OVERLOAD CLOUD CACHE (cross-device last-time history) ───
