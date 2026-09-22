@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v204 — 2026-09-21";
+var APP_BUILD = "v205 — 2026-09-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6807,7 +6807,11 @@ function dsRenderItem(rawItem,idx){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b> <span onclick="event.stopPropagation();dsShowExerciseHistory(\''+item.id+'\')" style="cursor:pointer;color:var(--accent);font-weight:600">\u2022 \ud83d\udcc8 Progress</span></div>';
+    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    // Progress link is independent of "Last time" — that line only appears when a past
+    // session has reps data, but tapping "Done" directly (no per-set logging) still creates
+    // history with no reps recorded. Show Progress whenever ANY history exists at all.
+    if(dsExerciseHistory(item.id).length)h+='<div class="ds-lastline" onclick="event.stopPropagation();dsShowExerciseHistory(\''+item.id+'\')" style="cursor:pointer;color:var(--accent);font-weight:600">\ud83d\udcc8 View Progress</div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
@@ -7075,6 +7079,7 @@ function dsBuildExerciseHistoryText(id){
     var bits=[prettyDate(h.date)];
     if(h.sets) bits.push(h.sets+" sets"+(h.reps?" \u00d7 "+h.reps:""));
     else if(h.reps) bits.push(h.reps);
+    else bits.push("Done (no set detail logged)");
     if(h.load) bits.push(h.load);
     if(h.rir!=null && h.rir!=='') bits.push("RIR "+h.rir);
     var tr=dsFmtTimeRange(h); if(tr) bits.push(tr);
