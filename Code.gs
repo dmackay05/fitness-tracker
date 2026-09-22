@@ -62,6 +62,14 @@
 //     change won't retroactively gain a type — there's no way to recover
 //     information that was never written — but everything logged from here
 //     on survives the round trip correctly.
+//
+// v9 CHANGES (exercise start/end timestamps):
+//   • Exercises now carry their real wall-clock start/end time (epoch ms), so
+//     a synced/restored day shows *when* each exercise happened, not just its
+//     duration or calories. Encoded as a |ts:<startMs>-<endMs> tag on the
+//     detail segment, same append-only pattern as |t:cardio above. Rows
+//     written before this change have no ts tag and just show no time range
+//     on export — nothing to recover there either.
 // ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -254,6 +262,9 @@ function processDailyData(ss, data) {
       // reverted to a generic type once read back after a sync — see v8 note
       // at the top of this file.
       if (e.type === "cardio" || e.type === "yoga") detailParts.push("t:" + e.type);
+      // v9: start/end wall-clock timestamps (epoch ms) so the exercise's logged
+      // time-of-day survives a sync to another device, not just its duration.
+      if (e.startTs) detailParts.push("ts:" + e.startTs + "-" + (e.endTs || e.startTs));
       if (detailParts.length) base += "|" + detailParts.join("|");
       return base + ")";
     }).join(", ");

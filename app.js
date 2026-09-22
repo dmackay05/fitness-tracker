@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v200 — 2026-09-21";
+var APP_BUILD = "v204 — 2026-09-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -553,6 +553,7 @@ function dsCleanField(v){
   return v;
 }
 var DS_CLOUD_VOL = {};   // {date: {exId: sets}} — clean per-day set counts from the Overload sheet
+var DS_CLOUD_HIST = {};  // {exId: [{date,reps,load,sets,rir}, ...]} — full per-date history for the in-app Progress view
 function fetchOverloadCache(){
   if(!SHEETS_URL) return;
   function ingest(rows){
@@ -574,6 +575,11 @@ function fetchOverloadCache(){
           if(!DS_CLOUD_VOL[date])DS_CLOUD_VOL[date]={};
           if(!DS_CLOUD_VOL[date][exId]||s>DS_CLOUD_VOL[date][exId]){ DS_CLOUD_VOL[date][exId]=s; volChanged=true; }
         }
+      }
+      // Full history (every date, not just the latest) for the per-exercise Progress view
+      if(!DS_CLOUD_HIST[exId])DS_CLOUD_HIST[exId]=[];
+      if(!DS_CLOUD_HIST[exId].some(function(x){return x.date===date;})){
+        DS_CLOUD_HIST[exId].push({date:date, reps:dsCleanField(r["Reps"]||""), load:dsCleanField(r["Band / Weight"]||""), sets:dsCleanField(r["Sets"]||""), rir:dsCleanField(r["RIR"]||"")});
       }
     });
     if(volChanged){ try{ renderAll(); }catch(e){} }
@@ -722,7 +728,10 @@ function rowToDay(row){
           // before that fix won't have this tag and fall back to "logged",
           // same as before; nothing to recover there, the info was never sent.
           var tm=seg.match(/^t:(cardio|yoga)$/);
-          if(tm){ ex.type=tm[1]; }
+          if(tm){ ex.type=tm[1]; return; }
+          // v9: start/end wall-clock timestamps (epoch ms), round-tripped through the sheet.
+          var tsm=seg.match(/^ts:(\d+)-(\d+)$/);
+          if(tsm){ ex.startTs=parseInt(tsm[1],10); ex.endTs=parseInt(tsm[2],10); }
         });
       }
       remote.exercises.push(ex);
@@ -2155,6 +2164,7 @@ function trkSaveManual(){
 }
 function trkCommit(miles,dur,source,avgHr,intervals){
   var day=getDay();
+  var _startTs=trk.startTs||null, _endTs=Date.now();
   if(trk.activity==="ride"){
     day.rides=day.rides||[];
     var rideEntry={miles:miles,duration:dur,effort:"",daughter:false,notes:source};
@@ -2162,7 +2172,7 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     if(intervals) rideEntry.intervals=intervals;
     day.rides.push(rideEntry);
     var rideCals = dur ? calAdj(dur*4.5) : calAdj(miles*48.25);
-    if(miles>0 || dur>0) dsAddEx(day,{name:"Mountain Bike Ride — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:rideCals,type:"cardio",id:Date.now().toString()});
+    if(miles>0 || dur>0) dsAddEx(day,{name:"Mountain Bike Ride — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":""),calories:rideCals,type:"cardio",id:Date.now().toString(),startTs:_startTs,endTs:_endTs});
   } else if(trk.activity==="ruck"){
     // Baseline ~7.7 cal/min at 15 lb (matches the prescribed 230 kcal/30min Rucked Walk),
     // scaled up ~0.9% per lb over/under that reference load.
@@ -2170,7 +2180,7 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     var lbMult = 1 + (lb-15)*0.009;
     var cals = dur ? calAdj(dur*7.7*lbMult) : calAdj(miles*115*lbMult);
     var walkMin = dur>0 ? dur : Math.round(miles*22);
-    dsAddEx(day,{name:"Rucked Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"")+(lb?" · "+lb+" lb":""),calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min",load:lb?(lb+" lb"):""});
+    dsAddEx(day,{name:"Rucked Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"")+(lb?" · "+lb+" lb":""),calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min",load:lb?(lb+" lb"):"",startTs:_startTs,endTs:_endTs});
   } else if(trk.activity==="run"){
     // ~10.5 cal/min baseline jog pace; scale up modestly with pace once distance+duration are both known
     var cals = dur ? calAdj(dur*10.5) : calAdj(miles*115);
@@ -2178,7 +2188,7 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     var nm = "Run — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"");
     if(avgHr){ var z=dsHrZone(avgHr); if(z) nm += " \u2014 "+z.zone; }
     if(intervals) nm += " \u00b7 Run/walk: "+intervals.label+" ("+intervals.roundsDone+"/"+intervals.rounds+")";
-    var runEx={name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:runMin+" min"};
+    var runEx={name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:runMin+" min",startTs:_startTs,endTs:_endTs};
     if(avgHr) runEx.avgHr=avgHr;
     dsAddEx(day,runEx);
   } else {
@@ -2186,7 +2196,7 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     var walkMin = dur>0 ? dur : Math.round(miles*20); // fallback est. if only distance was logged (manual, no duration)
     var nm = "Walk — "+miles.toFixed(2)+" mi"+(dur?" ("+dur+" min)":"");
     if(intervals) nm += " \u00b7 Intervals: "+intervals.label+" ("+intervals.roundsDone+"/"+intervals.rounds+")";
-    dsAddEx(day,{name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min"});
+    dsAddEx(day,{name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:walkMin+" min",startTs:_startTs,endTs:_endTs});
   }
   saveDay(day); renderAll();
 }
@@ -3227,6 +3237,51 @@ var DS_DEMOS={
     '<circle cx="128" cy="54" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
     '<polyline points="122,62 124,86 128,104" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','122,62 124,86 128,104; 122,62 140,72 120,80; 122,62 124,86 128,104')+'</polyline>'+
     '<line x1="128" y1="124" x2="128" y2="104" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'y2','104;80;104')+'</line>'+
+    '</svg>';},
+  pendlayrow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="50" y1="126" x2="150" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="96" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="122" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="128" cy="54" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<polyline points="122,62 124,86 128,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+
+    '<animate attributeName="points" values="122,62 124,86 128,124;122,62 124,86 128,124;122,62 140,72 122,60;122,62 124,86 128,124" keyTimes="0;0.35;0.65;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '</polyline>'+
+    '<line x1="128" y1="124" x2="128" y2="124" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+
+    '<animate attributeName="y2" values="124;124;60;124" keyTimes="0;0.35;0.65;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '</line>'+
+    '</svg>';},
+  singlearmrow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="10" y1="126" x2="190" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<rect x="20" y="88" width="70" height="10" rx="2" fill="#5F5E5A"/>'+
+    '<line x1="70" y1="88" x2="70" y2="58" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="76" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="70" y1="66" x2="40" y2="88" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="70" y1="74" x2="118" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="118,106 120,90 96,70" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','118,106 120,90 96,70; 118,106 138,116 150,126; 118,106 120,90 96,70')+'</polyline>'+
+    '<line x1="150" y1="126" x2="96" y2="70" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','96;150;96')+dsS(2.4,'y2','70;126;70')+'</line>'+
+    '</svg>';},
+  preachercurl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="20" y1="126" x2="180" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<rect x="80" y="70" width="14" height="56" rx="4" fill="#5F5E5A" transform="rotate(20 87 98)"/>'+
+    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="55" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="90" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="70" x2="88" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="88,98 82,116 70,132" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','88,98 82,116 70,132; 88,98 78,90 66,72; 88,98 82,116 70,132')+'</polyline>'+
+    '<line x1="88" y1="98" x2="70" y2="132" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','70;66;70')+dsS(2.4,'y2','132;72;132')+'</line>'+
+    '</svg>';},
+  crossbodyhammercurl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="47" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="94" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="94" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="88" y1="56" x2="86" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="56" x2="114" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<polyline points="86,86 82,108 78,122" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','86,86 82,108 78,122; 86,86 100,66 122,50; 86,86 82,108 78,122')+'</polyline>'+
+    '<line x1="114" y1="86" x2="120" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="78" y1="124" x2="78" y2="122" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','78;122;78')+dsS(2.4,'y2','122;50;122')+'</line>'+
     '</svg>';},
   press:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
     '<line x1="100" y1="74" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
@@ -4313,7 +4368,9 @@ var DS_SESSIONS={
       {id:'mon-row',name:'Bent-Over Row',slot:'Pull · Horizontal Pull',target:'Back · Biceps',equip:'Tube 30–40 → 50–70 lb',rx:'4–5×10–12',cal:35,cue:'Drive elbows into your back pockets — not hands to your chest',demo:'row',log:'setsreps',sets:5,ramp:'1 set light band × 10, 1 set one step below working band × 6–8, then your working sets.',
         variants:[{name:'Wide Row (free)',equip:'Tube 20–30 lb',rx:'3×12',cue:'Pull wide to the ribs, squeeze the mid-back',demo:'row'},
                   {name:'Chest-Supported Row (ball)',equip:'Chest on stability ball + tube band',rx:'3×12',cue:'Chest stays glued to the ball — zero lower back, all upper back',demo:'ballrow'},
-                  {name:'Narrow Row',equip:'Tube 30–40 lb',rx:'3×12',cue:'Hands close, pull to the belt line — elbows brush the ribs, hits lats more than mid-back',demo:'row'}]},
+                  {name:'Narrow Row',equip:'Tube 30–40 lb',rx:'3×12',cue:'Hands close, pull to the belt line — elbows brush the ribs, hits lats more than mid-back',demo:'row'},
+                  {name:'Pendlay Row',equip:'Tube 30–40 lb',rx:'3×10',cue:'Clench Fitness variant — dead-stop at the floor every rep instead of staying tensioned. Reset your flat-back hinge each time before pulling — trades a bit of time-under-tension for a clean strict pull with zero momentum.',demo:'pendlayrow'},
+                  {name:'Single Arm Row',equip:'Tube 20–30 lb · bench or sturdy chair to brace on',rx:'3×10/side',cue:'Clench Fitness variant — brace your free hand and same-side knee on a bench, pull the band straight to your hip with the working arm, elbow trailing back. Do each side; great for catching left/right back imbalances.',demo:'singlearmrow'}]},
       {id:'mon-ohp',name:'Overhead Press',slot:'Push · Vertical Push',target:'Shoulders',equip:'Tube 20–30 → 40–50 lb',rx:'4×10–12',cal:35,cue:"Press straight to the ceiling — don't let your low back arch",demo:'press',log:'setsreps',sets:4,ramp:'1 set light band × 10, 1 set mid band × 6–8, then working sets. Priming the shoulder here matters more than chasing failure given the shoulder history — ramp fully before loading up.',
         variants:[{name:'DB Overhead Press',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Press both DBs straight up, brief squeeze at the top — control the descent',demo:'press'},{name:'Seated OHP on Stability Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d712',cue:'Sit tall on the ball, feet planted wide \u2014 press straight up. The ball keeps you honest: no lower-back arch possible',demo:'press'}]},
       {id:'mon-lateral',name:'Lateral Raise',demo:'lateralraise',slot:'Push · Side Delts',target:'Side Delts',equip:'Tube 10 → 30 lb',rx:'5×12–15',cal:25,cue:'Second side-delt session of the week — same movement as Thursday, added because side delts were sitting well under everything else in the plan. Lead with elbows, not hands — pour water from a pitcher.',log:'setsreps',sets:5,
@@ -4330,7 +4387,8 @@ var DS_SESSIONS={
                   {name:'Forward Fold Curl',equip:'2× 10 lb dumbbells',rx:'3×10–12',cue:'Hinge forward like an RDL and hold it — curl from the hang, arms perpendicular to the floor. No swing possible',demo:'curl'},
                   {name:'Bayesian Curl (low anchor)',equip:'Tube 10–20 lb · low anchor',rx:'3×10–12',cue:'Face away from a low door anchor, arm trailing slightly behind your torso. This keeps peak tension on the bicep right at the bottom, where a standing curl normally goes slack.',demo:'curl'},
                   {name:'Wall-Braced Curl (short head)',equip:'Tube 10–20 lb',rx:'3×10–12',cue:'⚠️ Elbow flag — start light. Brace your upper arm against a wall or chair back to lock the elbow in place. Curl slowly, turn pinkies up at the top. Stop if you feel medial elbow ache.',demo:'curl'},
-                  {name:'Reverse Curl (brachialis/forearms)',equip:'Tube 10–20 lb',rx:'3×12–15',cue:'⚠️ Elbow flag — start light. Overhand/pronated grip (palms down), elbows pinned to your sides — curl up without letting the wrists break. Builds arm width and forearm thickness, but the pronated grip loads the elbow more than a standard curl. Don\\u2019t stack this with the Wall-Braced Curl in the same week.',demo:'curl'}]},
+                  {name:'Reverse Curl (brachialis/forearms)',equip:'Tube 10–20 lb',rx:'3×12–15',cue:'⚠️ Elbow flag — start light. Overhand/pronated grip (palms down), elbows pinned to your sides — curl up without letting the wrists break. Builds arm width and forearm thickness, but the pronated grip loads the elbow more than a standard curl. Don\\u2019t stack this with the Wall-Braced Curl in the same week.',demo:'curl'},
+                  {name:'Preacher Curl',equip:'Tube 10–20 lb · angled surface (arm of a couch, tilted bench, or ball)',rx:'3×12',cue:'Clench Fitness variant — rest the back of your upper arm on an angled support so it can\'t swing, lower all the way down under control since the bottom half does the most work.',demo:'preachercurl'}]},
       {id:'mon-tri',name:'Triceps Pushdown',slot:'Push · Triceps',target:'Triceps',equip:'Tube 10–20 → 50 lb',rx:'5×12–15',cal:25,cue:'Elbows pinned to ribs — only forearms move',log:'setsreps',sets:5,
         variants:[{name:'DB Kickbacks',equip:'2× 10 lb dumbbells',rx:'3×12/arm',cue:'Hinge forward, upper arm locked parallel to the floor — extend back and squeeze 1 sec at lockout',demo:'triceps'},{name:'DB Overhead Triceps Extension',equip:'1\u00d7 10 lb dumbbell (both hands) or 2\u00d7 2 lb',rx:'3\u00d712\u201315',cue:'Hold the DB overhead with both hands, upper arms vertical and close to your ears \u2014 lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn\u2019t arch. Start light \u2014 stop if you feel any pull on the inside of the elbow.',demo:'triceps'}]},
       {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3,variants:[{name:'Single-Leg Calf Raise',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cue:'One heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top — unilateral load builds strength faster than bilateral once bodyweight gets easy',demo:'calf'}]},
@@ -4399,7 +4457,8 @@ var DS_SESSIONS={
         setup:'Stand on the center of the band with feet shoulder-width apart, holding a handle in each hand at your sides. Keeping arms straight, shrug your shoulders straight up toward your ears, pause a beat at the top, then lower slowly. No rolling or rotating — pure vertical movement. Nothing else in the program directly targets the upper traps, so this rounds out shoulder girdle coverage.',
         variants:[{name:'DB Shrug',equip:'2× 10 lb dumbbells',rx:'3×15–20',cue:'Same straight-up-and-down shrug, dumbbells at your sides instead of a band — a bit more resistance at the top of the range',demo:'trap3'}]},
       {id:'thu-hammer',name:'Hammer Curl',slot:'Pull · Biceps',target:'Biceps · Forearms',equip:'Tube — stack toward your tested failure load',rx:'5×12–15',cal:25,cue:'Thumbs up the whole time — slow and controlled on the way down. Neutral grip is easier on the medial elbow than supinated curls, so this is the one to progress heaviest — go up one band step at a time.',log:'setsreps',sets:5,
-        variants:[{name:'DB Hammer Curl',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Neutral grip, thumbs up — curl both DBs together or alternate',demo:'curl'}]},
+        variants:[{name:'DB Hammer Curl',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Neutral grip, thumbs up — curl both DBs together or alternate',demo:'curl'},
+                  {name:'Crossbody Hammer Curl',equip:'Tube 10–20 lb',rx:'3×10/side',cue:'Clench Fitness variant — neutral grip, curl the band diagonally across your body toward the opposite shoulder instead of straight up. Shifts emphasis onto the brachialis/forearm and adds a light anti-rotation core demand.',demo:'crossbodyhammercurl'}]},
       {id:'thu-inclinecurl',name:'Stability Ball Incline Curl (long head)',slot:'Pull · Biceps',target:'Biceps — Long Head',equip:'Stability ball tilted + tube band, low anchor',rx:'3×6–10',cal:20,cue:'⚠️ Highest elbow caution — lie back on the ball at an incline, arms hanging behind your torso line, curl from a deep stretch. Start with a light band or no band at all the first session. Stop immediately if elbow soreness lingers past 24h. Trial on a separate week from wall-braced curls so you know which one caused any flare-up.',demo:'curl',log:'setsreps',sets:4,variants:[{name:'DB Incline Curl on Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312',cue:'Lean back over the ball so the arms hang behind the torso \u2014 curl from that deep stretch, slow negatives. Full supination (palms up) targets the long head best, but if your left wrist pops, rotate hands slightly inward toward neutral \u2014 same fix as your standing curl.',demo:'curl'},{name:'Ball Preacher Curl',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312/side',cue:'Kneel behind the ball, drape the back of your upper arm over the front at a downward angle (not flat on top) \u2014 let the arm hang almost straight at the bottom, curl up, squeeze 1 sec, then 3-sec slow lower. Keep the wrist neutral, straight in line with the forearm — if it still pops, back off from full palms-up toward a slight inward angle.',demo:'curl'}]},
       {id:'mon-slamskull',name:'Slam Ball Skull Crusher (supine)',slot:'Push · Triceps',target:'Triceps',equip:'Slam ball',rx:'3×6–8',cal:20,cue:'⚠️ Elbow + control flag — lie on your back, arms straight up holding the ball overhead. Bend only the elbows to lower the ball toward your forehead, then press back to lockout. Use your lightest ball, stop the set the moment you feel any elbow pull, and check in on elbow status the next day before adding reps.',log:'setsreps',sets:4,variants:[{name:'Banded Overhead Triceps Extension',equip:'Tube 10–20 lb, anchored underfoot',rx:'3×10–12',cue:'Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Lower elbow shear than the skull crusher, easier to stop the instant the elbow complains',demo:'triceps'}]},
       {id:'thu-ohtriceps',name:'Banded Overhead Triceps Extension',slot:'Push · Triceps',target:'Triceps — Long Head',equip:'Tube 10–20 lb, anchored underfoot',rx:'4×10–12',cal:20,cue:'Added for a second triceps angle this week — pushdowns train elbow extension with arms at your sides, this trains it with the triceps in a stretched overhead position, which pushdowns miss. Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Elbows stay close to your ears, no flaring out.',demo:'triceps',log:'setsreps',sets:4,
@@ -4445,8 +4504,11 @@ var DS_SESSIONS={
     moves:[
       {id:'sat-ride',name:'Mountain Bike Ride',demo:'ride',slot:'Cardio',target:'Vigorous aerobic effort',equip:'Roadmaster · compression sleeve',rx:'30–60 min',cal:0,cue:'Neighborhood hills push this into vigorous zone most of the ride — that\'s expected, not a sign you\'re overdoing it. Wear the compression sleeve.',log:'cardio',perMin:4.5,defMin:43,variants:[{name:'Interval Ride',equip:'Roadmaster · compression sleeve',rx:'30–45 min · 1 min hard / 1–2 min easy, repeat',perMin:6.3,defMin:35,cue:'Push a hard, standing-effort pace for 1 min, then settle back to conversational for the recovery. Repeat for most of the ride. This is HIIT on equipment you already have — no impact, and it edges out steady-state for visceral fat loss.',demo:'ride'}]},
       {id:'sat-walk',name:'Optional Recovery Walk',demo:'walk',slot:'Cardio',target:'NEAT',equip:'Outdoors',rx:'20–30 min',cal:0,cue:'Loose and easy — protect the joints, keep moving',log:'cardio',perMin:4.3,defMin:30,variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'20–30 min',perMin:6.2,defMin:30,cue:'Pack high and tight, chest proud — recovery pace with a load beats a fast unloaded shuffle',demo:'ruck'}]},
-      {id:'sat-growth-row',name:'Bent-Over Row (Growth Circuit)',slot:'Optional Swap · Pull',target:'Back · Biceps',equip:'Tube — stack to your working failure load',rx:'3×8–15 to true failure',cal:35,cue:'Optional Saturday swap for the ride — pick this session when you want a pure growth day instead of cardio. Hinge forward, elbows drive to your back pockets, pause-and-squeeze at the top, control the negative. Push every set to a real failure point, not a round number.',demo:'row',log:'setsreps',sets:3},
-      {id:'sat-growth-pulldown',name:'Lats / Pulldown (Growth Circuit)',slot:'Optional Swap · Pull',target:'Lats · Back',equip:'Tube — stack to your working failure load',rx:'3×8–15 to true failure',cal:35,cue:'Vertical pulling angle — different lat emphasis than the row above. Elbows to back pockets, chest up, slight lean back.',demo:'pulldown',log:'setsreps',sets:3},
+      {id:'sat-growth-row',name:'Bent-Over Row (Growth Circuit)',slot:'Optional Swap · Pull',target:'Back · Biceps',equip:'Tube — stack to your working failure load',rx:'3×8–15 to true failure',cal:35,cue:'Optional Saturday swap for the ride — pick this session when you want a pure growth day instead of cardio. Hinge forward, elbows drive to your back pockets, pause-and-squeeze at the top, control the negative. Push every set to a real failure point, not a round number.',demo:'row',log:'setsreps',sets:3,
+        variants:[{name:'Pendlay Row',equip:'Tube — stack to your working failure load',rx:'3×8–12 to true failure',cue:'Clench Fitness variant — dead-stop at the floor between every rep, flat back, reset the hinge each time before pulling.',demo:'pendlayrow'},
+                  {name:'Single Arm Row',equip:'Tube — bench or chair to brace on',rx:'3×8–15/side to true failure',cue:'Clench Fitness variant — brace free hand and same-side knee on a bench, pull to the hip one side at a time.',demo:'singlearmrow'}]},
+      {id:'sat-growth-pulldown',name:'Lats / Pulldown (Growth Circuit)',slot:'Optional Swap · Pull',target:'Lats · Back',equip:'Tube — stack to your working failure load',rx:'3×8–15 to true failure',cal:35,cue:'Vertical pulling angle — different lat emphasis than the row above. Elbows to back pockets, chest up, slight lean back.',demo:'pulldown',log:'setsreps',sets:3,
+        variants:[{name:'Lat Pulldown',equip:'Tube — high anchor, stack to your working failure load',rx:'3×12 to true failure',cue:'Clench Fitness variant — standard overhand grip, slight lean back, pull elbows down to the ribs with a full stretch overhead each rep.',demo:'pulldown'}]},
       {id:'sat-growth-ohp',name:'Overhead Press (Growth Circuit)',slot:'Optional Swap · Push',target:'Shoulders',equip:'Tube — ramp fully before working sets',rx:'3×8–12 to true failure',cal:35,cue:'Ramp with 2 light/medium sets first — prime the shoulder before chasing failure given the shoulder history. Press straight to the ceiling, no low-back arch.',demo:'press',log:'setsreps',sets:3},
       {id:'sat-growth-pushup',name:'Banded Push-ups (Growth Circuit)',slot:'Optional Swap · Push',target:'Chest · Triceps',equip:'Heaviest band/anchor combo that keeps good form',rx:'3×8–15 to true failure',cal:35,cue:'Chest to floor, elbows 45° back, drive up explosively. Use the Super Band across the back for real added load if bodyweight is easy.',demo:'pushup',log:'setsreps',sets:3},
       {id:'sat-growth-curl',name:'Bicep Curl (Growth Circuit)',slot:'Optional Swap · Biceps',target:'Biceps',equip:'Tube — stack toward your tested failure load',rx:'3×8–15 to true failure',cal:25,cue:'Upper arms glued to your sides. Log the exact band stack (e.g. "50+40") so failure-rep data stays comparable session to session.',demo:'curl',log:'setsreps',sets:3},
@@ -6297,6 +6359,8 @@ function dsSyncPartialLog(item){ if(!item)return; var day=getDay(), sid="sess_"+
   var ex={name:item.name,calories:calAdj((item.cal||0)*frac),type:"session",id:sid,sets:st.sets.length,partial:true};
   dsEncodeSets(ex,st.sets);
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
+  if(st.sets[0].ts) ex.startTs=st.sets[0].ts;
+  if(st.sets[st.sets.length-1].ts) ex.endTs=st.sets[st.sets.length-1].ts;
   dsAddEx(day,ex); saveDay(day); }
 function dsLogComplete(item){ if(!item)return; var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
@@ -6305,6 +6369,10 @@ function dsLogComplete(item){ if(!item)return; var day=getDay(), sid="sess_"+ite
   else if(st.mins){ ex.reps=st.mins+" min"; }
   var actualSecs=dsComputeActualSecs(item, st); if(actualSecs!=null) ex.actualSecs=actualSecs;
   else if(item.log==="cardio" && st.mins){ ex.actualSecs=st.mins*60; }
+  // Start/end timestamp for the export: real per-set clock times when they exist (strength
+  // work), otherwise derive a start by walking actualSecs back from the moment it was marked done.
+  if(st.sets&&st.sets.length&&st.sets[0].ts){ ex.startTs=st.sets[0].ts; ex.endTs=st.sets[st.sets.length-1].ts||Date.now(); }
+  else { ex.endTs=Date.now(); ex.startTs=ex.actualSecs!=null?(ex.endTs-ex.actualSecs*1000):ex.endTs; }
   dsAddEx(day,ex); saveDay(day);
 }
 function dsUnlog(id){ var day=getDay(), sid="sess_"+id;
@@ -6739,7 +6807,7 @@ function dsRenderItem(rawItem,idx){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b> <span onclick="event.stopPropagation();dsShowExerciseHistory(\''+item.id+'\')" style="cursor:pointer;color:var(--accent);font-weight:600">\u2022 \ud83d\udcc8 Progress</span></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
@@ -6910,6 +6978,18 @@ function dsFormatTrainingTime(totalSecs){
   var h = Math.floor(mins/60), m = mins % 60;
   return h + "h " + m + "m";
 }
+// Formats an epoch-ms timestamp as a local wall-clock time, e.g. "6:42 AM" — used to show
+// each exercise's start/end time in the health/week exports.
+function dsFmtClock(ts){
+  if(!ts) return '';
+  try{ return new Date(ts).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }catch(e){ return ''; }
+}
+function dsFmtTimeRange(ex){
+  if(!ex || !ex.startTs) return '';
+  var a=dsFmtClock(ex.startTs), b=ex.endTs?dsFmtClock(ex.endTs):'';
+  if(!a) return '';
+  return (b && b!==a) ? (a+'\u2013'+b) : a;
+}
 
 /* ── Google Health manual-log export ──
    Google Health's "Add workout" screen wants: activity type, duration, calories.
@@ -6958,10 +7038,63 @@ function dsBuildHealthExportText(key){
     if(ex.sets) bits.push(ex.sets+" sets"+(ex.reps?" \u00d7 "+ex.reps:""));
     else if(ex.reps) bits.push(ex.reps);
     if(ex.calories) bits.push(Math.round(ex.calories)+" kcal");
+    var tr=dsFmtTimeRange(ex); if(tr) bits.push(tr);
     lines.push("\u2022 "+bits.join(" \u2014 "));
   });
   return lines.join("\n");
 }
+// ── PER-EXERCISE PROGRESS VIEW ──────────────────────────────────────────
+// Merges this device's own local history (richer — carries load/RIR per set and,
+// since v9, start/end clock times) with the Progressive Overload sheet's cached
+// history (DS_CLOUD_HIST — covers dates logged on other devices this one hasn't
+// synced down as full day objects). Local wins on a date collision.
+function dsExerciseHistory(id){
+  var sid="sess_"+id, out={}, order=[];
+  Object.keys(appData).forEach(function(k){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+    var d=appData[k]; if(!d||!d.exercises) return;
+    d.exercises.forEach(function(e){
+      if(e.id!==sid) return;
+      if(!out[k]) order.push(k);
+      out[k]={date:k,reps:dsCleanField(e.reps),load:dsCleanField(e.load),sets:e.sets,rir:e.rir,startTs:e.startTs,endTs:e.endTs};
+    });
+  });
+  (DS_CLOUD_HIST[id]||[]).forEach(function(r){
+    if(out[r.date]) return; // local already has this date, richer data
+    if(!out[r.date]) order.push(r.date);
+    out[r.date]={date:r.date,reps:r.reps,load:r.load,sets:r.sets,rir:r.rir};
+  });
+  return order.sort().reverse().slice(0,20).map(function(k){return out[k];});
+}
+function dsBuildExerciseHistoryText(id){
+  var item=dsRawItem(id); var name=(item&&item.name)||id;
+  var hist=dsExerciseHistory(id);
+  if(!hist.length) return name+"\n\nNo logged history yet for this exercise.";
+  var lines=[name+" \u2014 Progress (last "+hist.length+" session"+(hist.length===1?"":"s")+")",""];
+  hist.forEach(function(h){
+    var bits=[prettyDate(h.date)];
+    if(h.sets) bits.push(h.sets+" sets"+(h.reps?" \u00d7 "+h.reps:""));
+    else if(h.reps) bits.push(h.reps);
+    if(h.load) bits.push(h.load);
+    if(h.rir!=null && h.rir!=='') bits.push("RIR "+h.rir);
+    var tr=dsFmtTimeRange(h); if(tr) bits.push(tr);
+    lines.push("\u2022 "+bits.join(" \u2014 "));
+  });
+  return lines.join("\n");
+}
+function dsShowExerciseHistory(id){
+  var modal = document.getElementById('ds-health-export-modal');
+  var ta = document.getElementById('ds-health-export-text');
+  var title = document.getElementById('ds-health-export-title');
+  if(!modal||!ta) return;
+  var item=dsRawItem(id); var name=(item&&item.name)||id;
+  DS_EXPORT_KIND='history'; DS_EXPORT_HISTORY_ID=id;
+  title.textContent = name+" \u2014 Progress";
+  ta.value = dsBuildExerciseHistoryText(id);
+  modal.style.display = 'flex';
+  ta.focus(); ta.select();
+}
+var DS_EXPORT_HISTORY_ID=null;
 function dsShowHealthExport(){
   var modal = document.getElementById('ds-health-export-modal');
   var ta = document.getElementById('ds-health-export-text');
@@ -6985,7 +7118,7 @@ function dsCopyHealthExport(){
 function dsDownloadHealthExport(){
   var ta = document.getElementById('ds-health-export-text');
   if(!ta) return;
-  var fnamePrefix = DS_EXPORT_KIND==='food' ? 'food-' : (DS_EXPORT_KIND==='week' ? 'week-' : 'workout-');
+  var fnamePrefix = DS_EXPORT_KIND==='food' ? 'food-' : (DS_EXPORT_KIND==='week' ? 'week-' : (DS_EXPORT_KIND==='history' ? 'history-'+(DS_EXPORT_HISTORY_ID||'ex')+'-' : 'workout-'));
   var fnameKey = DS_EXPORT_KIND==='week' ? localDateKey(_weekStartMon()) : activeDate;
   var blob = new Blob([ta.value], {type:'text/plain'});
   var url = URL.createObjectURL(blob);
@@ -7021,6 +7154,7 @@ function dsBuildWeekExportText(){
       if(ex.load) bits.push(ex.load);
       if(ex.rir!=null && ex.rir!=='') bits.push("RIR "+ex.rir);
       if(ex.calories) bits.push(Math.round(ex.calories)+" kcal");
+      var tr=dsFmtTimeRange(ex); if(tr) bits.push(tr);
       lines.push("  \u2022 "+bits.join(" \u2014 "));
     });
     dayBlocks.push(lines.join("\n"));
@@ -9631,7 +9765,7 @@ function ygShowDone() {
     var label="Yoga ("+totMins+" min)";
     var already=ftData[dk].exercises.some(function(x){return x.name===label;});
     if (!already) {
-      ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString(),actualSecs:totMins*60});
+      ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString(),actualSecs:totMins*60,startTs:Date.now()-totMins*60000,endTs:Date.now()});
       store.set("ft_data",JSON.stringify(ftData));
       if(typeof appData!=="undefined") appData=ftData;
       if(typeof renderAll==="function") renderAll();

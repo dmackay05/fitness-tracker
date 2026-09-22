@@ -12,7 +12,7 @@
 // (Any byte change to this file triggers the update cycle on next launch.)
 // ═══════════════════════════════════════════════════════════════════════
 
-var CACHE_VERSION = "suite-v300";
+var CACHE_VERSION = "suite-v304";
 
 self.addEventListener("install", function (e) {
   self.skipWaiting();
