@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v222 — 2026-09-23";
+var APP_BUILD = "v224 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -375,6 +375,7 @@ var TREND_METRICS=[
   {key:"neck",    label:"Neck",     unit:"in",  dir:"lower",   color:"#60a5fa", get:function(d){return _meas(d,"neck");}},
   {key:"biceps",  label:"Biceps",   unit:"in",  dir:"higher",  color:"#c084fc", get:function(d){return _meas(d,"biceps");}},
   {key:"cal",     label:"Calories", unit:"kcal",dir:"neutral", color:"#5eead4", goal:function(){return GOALS.calActive||GOALS.cal||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.cal||0);},0):null;}},
+  {key:"maintTDEE", label:"Measured Maintenance", unit:"kcal", dir:"neutral", color:"#fbbf24", get:function(){return null;}, series:function(){return maintenanceSeries();}},
   {key:"protein", label:"Protein",  unit:"g",   dir:"higher",  color:"#fbbf24", goal:function(){return GOALS.protein||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.protein||0);},0):null;}},
   {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
   {key:"sodium",  label:"Sodium",   unit:"mg",  dir:"lower",   color:"#f472b6", goal:function(){return GOALS.sodium||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.sodium||0);},0);return s>0?Math.round(s):null;}},
@@ -507,10 +508,13 @@ function median(arr){
   return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
 }
 // Every logged day in the window, with its total and whether it looks complete.
-function intakeDaysDetail(windowDays){
+// endKey lets this be evaluated as of any past date (used to build a day-by-day
+// history of the measured-maintenance number itself, not just today's value).
+function intakeDaysDetail(windowDays,endKey){
   var days=windowDays||TDEE_WINDOW_DAYS;
-  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
-  var startKey=localDateKey(startD), endKey=todayKey();
+  endKey=endKey||todayKey();
+  var startD=new Date(endKey+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD);
   return Object.keys(appData).filter(function(k){
     if(k<startKey||k>endKey) return false;
     var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
@@ -524,11 +528,12 @@ function intakeDaysDetail(windowDays){
             complete:cal>=floor, items:foods.length};
   });
 }
-function measuredTDEE(windowDays){
+function measuredTDEE(windowDays,endKey){
   var days=windowDays||TDEE_WINDOW_DAYS;
-  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
-  var startKey=localDateKey(startD), endKey=todayKey();
-  var all=intakeDaysDetail(days);
+  endKey=endKey||todayKey();
+  var startD=new Date(endKey+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD);
+  var all=intakeDaysDetail(days,endKey);
   if(all.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'needs '+TDEE_MIN_INTAKE_DAYS+' days of logged intake in the last '+days+' \u2014 you have '+all.length};
   var full=all.filter(function(d){return d.complete;});
   var partial=all.filter(function(d){return !d.complete;});
@@ -541,13 +546,26 @@ function measuredTDEE(windowDays){
   if(pts.length<4) return {ok:false,reason:'needs 4 weigh-ins in the last '+days+' days \u2014 you have '+pts.length};
   var span=Math.round((new Date(pts[pts.length-1].key+'T00:00:00')-new Date(pts[0].key+'T00:00:00'))/86400000);
   if(span<TDEE_MIN_SPAN) return {ok:false,reason:'weigh-ins only span '+span+' days, needs '+TDEE_MIN_SPAN};
-  // Average the first and last few weigh-ins so one bloated morning at either
-  // end cannot swing the whole estimate.
-  var k=Math.max(2,Math.min(5,Math.floor(pts.length/2)));
-  var head=pts.slice(0,k).reduce(function(a,p){return a+p.w;},0)/k;
-  var tail=pts.slice(-k).reduce(function(a,p){return a+p.w;},0)/k;
-  var lbChange=tail-head;
-  var dailyBalance=(lbChange*KCAL_PER_LB)/span;   // negative when losing
+  // Ordinary least-squares fit of weight (lbs) vs. day-offset across every
+  // weigh-in in the window, not just the first/last few. A handful of
+  // endpoint values (old approach) let a single bloated or dehydrated
+  // morning swing the whole trend; fitting a line through all the points
+  // spreads that same noise across the whole window instead, which is the
+  // standard way trend-weight tools (Trendweight, Happy Scale) do this.
+  var t0=new Date(pts[0].key+'T00:00:00').getTime();
+  var xs=pts.map(function(p){return (new Date(p.key+'T00:00:00').getTime()-t0)/86400000;});
+  var ys=pts.map(function(p){return p.w;});
+  var n=xs.length;
+  var sumX=xs.reduce(function(a,x){return a+x;},0);
+  var sumY=ys.reduce(function(a,y){return a+y;},0);
+  var sumXY=0,sumXX=0;
+  for(var i=0;i<n;i++){ sumXY+=xs[i]*ys[i]; sumXX+=xs[i]*xs[i]; }
+  var denom=(n*sumXX-sumX*sumX);
+  // denom is 0 only if every weigh-in landed on the same day-offset, which
+  // pts.length>=4 with span>=TDEE_MIN_SPAN already rules out.
+  var slopePerDay=denom ? (n*sumXY-sumX*sumY)/denom : 0;  // lbs/day, negative when losing
+  var lbChange=slopePerDay*span;   // fitted total change over the window, replaces tail-head
+  var dailyBalance=(lbChange*KCAL_PER_LB)/span;   // negative when losing; span cancels but kept for clarity/consistency below
   // Median is the headline: the failure mode here is a handful of abandoned logs,
   // which is a one-sided outlier problem the median barely notices.
   return {ok:true,
@@ -557,6 +575,35 @@ function measuredTDEE(windowDays){
     lbChange:lbChange, span:span, nIntake:full.length, nPartial:partial.length,
     nWeights:pts.length, lbPerWeek:(lbChange/span)*7,
     all:all, partial:partial, full:full};
+}
+// Day-by-day history of the measured-maintenance number itself, by replaying
+// measuredTDEE() as of every calendar day from the first day it could be
+// trusted through today. This is what lets you watch the number move over
+// time instead of only ever seeing today's snapshot. Cheap enough (one
+// measuredTDEE() sweep per calendar day of history) to recompute on every
+// render rather than cache, which avoids showing a stale graph after editing
+// an existing day's log without changing the total day count. Capped to the
+// trailing 180 days of history so the sweep — which is roughly O(days^2)
+// since each day rescans its own trailing window — stays fast indefinitely
+// as logs accumulate over months/years; 180 days of a rolling-28-day metric
+// is already far more than useful chart resolution.
+var MAINT_SERIES_MAX_HISTORY=180;
+function maintenanceSeries(windowDays){
+  var days=windowDays||TDEE_WINDOW_DAYS;
+  var keys=Object.keys(appData).filter(function(k){return appData[k];}).sort();
+  var out=[];
+  if(keys.length){
+    var startD=new Date(keys[0]+'T00:00:00'), end=new Date(todayKey()+'T00:00:00');
+    var cap=new Date(end); cap.setDate(cap.getDate()-(MAINT_SERIES_MAX_HISTORY-1));
+    var d=startD>cap?startD:cap;
+    while(d<=end){
+      var k=localDateKey(d);
+      var r=measuredTDEE(days,k);
+      if(r.ok) out.push({t:d.getTime(), v:r.tdee});
+      d.setDate(d.getDate()+1);
+    }
+  }
+  return out;
 }
 function calScale(){ var w = parseFloat(getLatestWeight()); return (w > 0) ? (w / CAL_REF_WEIGHT) : 1; }
 function calAdj(c){ return Math.round((+c || 0) * calScale()); }
@@ -1167,8 +1214,10 @@ function renderTdeePanel(){
   }
   var target=GOALS.cal, gap=r.tdee-target;
   var spread=Math.abs(r.tdee-r.tdeeMean);
-  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>'
-   +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
+  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>';
+  var mSeries=maintenanceSeries();
+  if(mSeries.length>=2) h+='<div style="margin-top:6px">'+sparkSVG(mSeries,{color:'#fbbf24',h:90})+'</div>';
+  h+='<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
    +(r.nPartial?(', with '+r.nPartial+' partial '+(r.nPartial===1?'day':'days')+' set aside'):'')
    +'. Across '+r.span+' days and '+r.nWeights+' weigh-ins you trended '
    +(r.lbChange<0?'down ':(r.lbChange>0?'up ':'flat at '))+Math.abs(r.lbPerWeek).toFixed(2)+' lbs/week.</div>';
@@ -2746,7 +2795,7 @@ function renderTrends(){
   var chartEl=document.getElementById("trend-chart"); if(!chartEl) return;
   var chips=document.getElementById("trend-chips");
   var avail=[];
-  TREND_METRICS.forEach(function(m){ m._s=_series(m.get); if(m._s.length>=2) avail.push(m); });
+  TREND_METRICS.forEach(function(m){ m._s=m.series?m.series():_series(m.get); if(m._s.length>=2) avail.push(m); });
   if(!avail.length){ if(chips) chips.innerHTML=""; chartEl.innerHTML='<div style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace;padding:8px 0">Log a metric at least twice (weight, waist, food, water\u2026) and your trend appears here.</div>'; return; }
   var sel=store.get("ft_trend_metric")||"weight";
   if(!avail.some(function(m){return m.key===sel;})) sel=avail[0].key;
