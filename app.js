@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v217 — 2026-09-22";
+var APP_BUILD = "v218 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -159,11 +159,18 @@ function dsMaintDaysElapsed(){
 }
 function dsMaintActive(){ return !!MAINT_START; }
 // Live measured maintenance when there's enough data to trust it; otherwise
-// falls back to the stored/manual calMaint figure.
+// falls back to the stored/manual calMaint figure. Guards against
+// measuredTDEE() -> intakeDaysDetail() -> calGoalForKey() -> here recursion.
+var _dsMaintTdeeGuard = false;
 function dsMaintTargetCal(){
-  var r = measuredTDEE();
-  if(r && r.ok && r.tdee) return r.tdee;
-  return GOALS.calMaint||2600;
+  if(_dsMaintTdeeGuard) return GOALS.calMaint||2600;
+  _dsMaintTdeeGuard = true;
+  var cal;
+  try{
+    var r = measuredTDEE();
+    cal = (r && r.ok && r.tdee) ? r.tdee : (GOALS.calMaint||2600);
+  } finally { _dsMaintTdeeGuard = false; }
+  return cal;
 }
 function dsSetMaint(on){
   if(on){ MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START); }
