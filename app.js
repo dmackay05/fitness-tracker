@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v218 — 2026-09-22";
+var APP_BUILD = "v219 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4950,6 +4950,22 @@ function dsToggleVarRotate(on){
   if(typeof dsRenderVarRotatePreview==='function') dsRenderVarRotatePreview();
   if(typeof renderAll==='function') renderAll();
 }
+// ── ANCHOR SET ROTATION ─────────────────────────────────────────────────
+// One isolation/machine-safe exercise per week is flagged as the "anchor
+// set" — per Jeff Nippard's RIR-calibration approach, take that one set to
+// TRUE failure (not just RPE 8-9) to recalibrate what 0 RIR actually feels
+// like, since self-reported RIR drifts inaccurate over time. Rotates weekly
+// on the same clock as session/variant rotation. Deliberately excludes
+// anything with an elbow/tendon caution flag (forearm work, incline curl)
+// and any heavy spinal-loaded compound (squats, RDL, good morning) — this
+// is for safe isolation/machine work only.
+var DS_ANCHOR_POOL=['mon-curl','mon-tri','mon-lateral','thu-hammer','thu-ohtriceps','thu-facepull','tue-calf','fri-calf'];
+function dsAnchorExerciseId(dk){
+  var pool=DS_ANCHOR_POOL, n=pool.length; if(!n) return null;
+  var w=dsWeekIndex(dk||activeDate);
+  return pool[((w%n)+n)%n];
+}
+function dsIsAnchorSet(id){ return !!id && id===dsAnchorExerciseId(activeDate); }
 var DS_ORDER=['mon','tue','wed','thu','fri','sat','sun'];
 var DS_DAY_OVERRIDE=null; // when set, the Today tab shows this day's session instead of the real calendar day
 var DS_EXTRAS_ACTIVE=false; // when true, the Extras tab is showing instead of any day's session
@@ -6882,8 +6898,9 @@ function dsRenderItem(rawItem,idx){
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
-  var h='<div class="'+cls+'" id="ds-move-'+item.id+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
-  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+'</div>';
+  var _isAnchor=dsIsAnchorSet(item.id);
+  var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+'" id="ds-move-'+item.id+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
+  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+'</div>';
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
@@ -6891,6 +6908,7 @@ function dsRenderItem(rawItem,idx){
   h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div></div>';
   h+='<div class="ds-mbody">';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
+  if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   if(rawItem.ramp&&(DS_SWAPS[item.id]||0)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
