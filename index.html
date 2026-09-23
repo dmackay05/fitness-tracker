@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=135">
+<link rel="stylesheet" href="styles.css?v=136">
 </head>
 <body>
 
@@ -785,6 +785,19 @@
         </label>
         <div id="ds-maint-preview" style="font-size:10px;color:#7dd3fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
+      <div class="te-section-hdr">⬆️ Bulk Phase</div>
+      <div class="card">
+        <div id="ds-bulk-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A deliberate muscle-building surplus — sits at your measured maintenance plus a modest surplus (default +350 kcal) for as long as you leave it on, and bumps protein to 190g. Keep the surplus lean-leaning (fiber-dense carbs, unsaturated fats) over saturated fat/added sugar. Mutually exclusive with Maintenance Mode. Stays on until you turn it off — check in with your doctor/dietitian on A1c and cholesterol during this phase.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;margin-bottom:12px">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Surplus (kcal over maintenance)</span>
+          <input type="number" id="ds-bulk-surplus" value="350" step="25" onchange="dsSetBulkSurplus(this.value)" style="width:70px;background:#1a1a2e;border:1px solid #333;border-radius:6px;color:#f0f0f0;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;text-align:right" />
+        </label>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Bulk phase active</span>
+          <input type="checkbox" id="ds-bulk-toggle" onchange="dsSetBulk(this.checked)" style="width:20px;height:20px;accent-color:#fb923c;cursor:pointer" />
+        </label>
+        <div id="ds-bulk-preview" style="font-size:10px;color:#fb923c;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
       <div class="te-section-hdr">🔁 Session Rotation</div>
       <div class="card">
         <div id="ds-rotate-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
@@ -1013,6 +1026,6 @@
   </div>
 </div>
 
-<script src="app.js?v=315"></script>
+<script src="app.js?v=316"></script>
 </body>
 </html>

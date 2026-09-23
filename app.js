@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v221 — 2026-09-23";
+var APP_BUILD = "v222 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -88,6 +88,7 @@ function dsDaysOfType(t){
   return res.length?res.join(' \u00b7 '):'none';
 }
 function calGoalForKey(dateKey){
+  if(dsBulkActive()) return dsBulkTargetCal();
   if(dsMaintActive()) return dsMaintTargetCal();
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return GOALS.calRest;
@@ -96,6 +97,7 @@ function calGoalForKey(dateKey){
   return GOALS.calActive;
 }
 function calGoalLabelForKey(dateKey){
+  if(dsBulkActive()) return "Bulk phase";
   if(dsMaintActive()) return "Maintenance mode";
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return "Rest day";
@@ -190,6 +192,67 @@ function dsRenderMaintUI(){
     : "Off. Turning this on sets every day's calorie target to your measured maintenance (currently "+cal+", recalculated as new data comes in) and stays there until you turn it back off.";
   if(badge) badge.style.display = active ? "" : "none";
   if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1);
+}
+
+// ── BULK PHASE — manual toggle, persists until turned off ────────────────
+// Deliberate muscle-building surplus block: sits at measured maintenance PLUS
+// a modest surplus (default +350 kcal) for as long as it's toggled on, and
+// bumps the protein target into the 185-200g range discussed for the phase.
+// Mutually exclusive with Maintenance Mode (turning one on turns the other off)
+// since both drive a single flat daily calorie target.
+var BULK_START = store.get('ft_bulk_start') || null;
+var BULK_SURPLUS = parseInt(store.get('ft_bulk_surplus')) || 350;
+var BULK_PROTEIN = parseInt(store.get('ft_bulk_protein')) || 190;
+function dsBulkDaysElapsed(){
+  if(!BULK_START) return 0;
+  var ms = Date.now() - keyToDate(BULK_START).getTime();
+  return Math.floor(ms/86400000);
+}
+function dsBulkActive(){ return !!BULK_START; }
+var _dsBulkTdeeGuard = false;
+function dsBulkTargetCal(){
+  if(_dsBulkTdeeGuard) return (GOALS.calMaint||2600)+BULK_SURPLUS;
+  _dsBulkTdeeGuard = true;
+  var cal;
+  try{
+    var r = measuredTDEE();
+    cal = (r && r.ok && r.tdee) ? r.tdee : (GOALS.calMaint||2600);
+  } finally { _dsBulkTdeeGuard = false; }
+  return cal + BULK_SURPLUS;
+}
+function dsSetBulk(on){
+  if(on){
+    BULK_START = todayKey(); store.set('ft_bulk_start', BULK_START);
+    if(dsMaintActive()){ MAINT_START=null; store.remove('ft_maint_start'); }
+    if(!store.get('ft_protein_prebulk')) store.set('ft_protein_prebulk', GOALS.protein);
+    GOALS.protein = BULK_PROTEIN; store.set('ft_protein', BULK_PROTEIN);
+  } else {
+    BULK_START = null; store.remove('ft_bulk_start');
+    var prior = parseInt(store.get('ft_protein_prebulk'));
+    if(prior){ GOALS.protein = prior; store.set('ft_protein', prior); store.remove('ft_protein_prebulk'); }
+  }
+  try{ renderAll(); }catch(e){}
+  dsRenderBulkUI(); dsRenderMaintUI();
+}
+function dsSetBulkSurplus(v){
+  BULK_SURPLUS = parseInt(v)||350; store.set('ft_bulk_surplus', BULK_SURPLUS);
+  try{ renderAll(); }catch(e){}
+  dsRenderBulkUI();
+}
+function dsRenderBulkUI(){
+  var badge = document.getElementById('ds-bulk-badge');
+  var toggle = document.getElementById('ds-bulk-toggle');
+  var preview = document.getElementById('ds-bulk-preview');
+  var surplusInput = document.getElementById('ds-bulk-surplus');
+  var active = dsBulkActive();
+  var cal = dsBulkTargetCal();
+  if(toggle) toggle.checked = active;
+  if(surplusInput) surplusInput.value = BULK_SURPLUS;
+  if(preview) preview.textContent = active
+    ? ("Active — day "+(dsBulkDaysElapsed()+1)+". Calorie target: "+cal+" every day (measured maintenance + "+BULK_SURPLUS+" kcal surplus, was periodized "+GOALS.calRest+"–"+GOALS.calRide+"). Protein bumped to "+BULK_PROTEIN+"g. Keep the surplus lean — fiber-dense carbs and unsaturated fats over saturated fat/added sugar, given the A1c/cholesterol focus. Stays on until you turn it off.")
+    : "Off. Turning this on sets every day's calorie target to measured maintenance + a "+BULK_SURPLUS+" kcal surplus (currently "+cal+" total), bumps protein to "+BULK_PROTEIN+"g, and stays there until you turn it back off. Turns off Maintenance Mode if that's active.";
+  if(badge) badge.style.display = active ? "" : "none";
+  if(badge) badge.textContent = "\u2B06 Bulk — day "+(dsBulkDaysElapsed()+1);
 }
 
 // ── TRAINING PHASE CYCLE — Base / Max Effort / Supercompensation / Deload ──
@@ -958,7 +1021,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -2605,7 +2668,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -2837,7 +2900,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -2849,7 +2912,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
