@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v216 — 2026-09-22";
+var APP_BUILD = "v217 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -96,7 +96,7 @@ function calGoalForKey(dateKey){
   return GOALS.calActive;
 }
 function calGoalLabelForKey(dateKey){
-  if(dsMaintActive()) return "Maintenance week";
+  if(dsMaintActive()) return "Maintenance mode";
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return "Rest day";
   if(t==="ride") return dsGuestMode()?"Long cardio day":"Ride day";
