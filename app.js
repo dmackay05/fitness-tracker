@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v215 — 2026-09-22";
+var APP_BUILD = "v216 — 2026-09-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -88,7 +88,7 @@ function dsDaysOfType(t){
   return res.length?res.join(' \u00b7 '):'none';
 }
 function calGoalForKey(dateKey){
-  if(dsMaintActive()) return GOALS.calMaint||2600;
+  if(dsMaintActive()) return dsMaintTargetCal();
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return GOALS.calRest;
   if(t==="ride") return GOALS.calRide;
@@ -147,16 +147,24 @@ function dsRenderDeloadUI(){
   if(badge) badge.textContent = "⏸ Deload — day "+(dsDeloadDaysElapsed()+1)+"/7";
 }
 
-// ── MAINTENANCE WEEK — manual toggle, auto-expires after 7 days ─────────────
-// Recomp break: one week at measured maintenance every 4-6 weeks to counter
-// adaptive thermogenesis and let training intensity/recovery catch up.
+// ── MAINTENANCE MODE — manual toggle, persists until turned off ─────────────
+// Extended maintenance block: sits at measured maintenance for as long as
+// toggled on (no fixed end date), to let training intensity/recovery catch up
+// and bank some size before returning to a deficit.
 var MAINT_START = store.get('ft_maint_start') || null;
 function dsMaintDaysElapsed(){
   if(!MAINT_START) return 0;
   var ms = Date.now() - keyToDate(MAINT_START).getTime();
   return Math.floor(ms/86400000);
 }
-function dsMaintActive(){ return !!MAINT_START && dsMaintDaysElapsed() < 7; }
+function dsMaintActive(){ return !!MAINT_START; }
+// Live measured maintenance when there's enough data to trust it; otherwise
+// falls back to the stored/manual calMaint figure.
+function dsMaintTargetCal(){
+  var r = measuredTDEE();
+  if(r && r.ok && r.tdee) return r.tdee;
+  return GOALS.calMaint||2600;
+}
 function dsSetMaint(on){
   if(on){ MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START); }
   else { MAINT_START = null; store.remove('ft_maint_start'); }
@@ -168,12 +176,13 @@ function dsRenderMaintUI(){
   var toggle = document.getElementById('ds-maint-toggle');
   var preview = document.getElementById('ds-maint-preview');
   var active = dsMaintActive();
+  var cal = dsMaintTargetCal();
   if(toggle) toggle.checked = active;
   if(preview) preview.textContent = active
-    ? ("Active — day "+(dsMaintDaysElapsed()+1)+" of 7. Calorie target: "+(GOALS.calMaint||2600)+" every day this week (was periodized "+GOALS.calRest+"–"+GOALS.calRide+"). Keep protein at "+GOALS.protein+"g+ or a bit higher. Train as normal.")
-    : "Off. Turning this on sets every day's calorie target to your measured maintenance ("+(GOALS.calMaint||2600)+") for 7 days, then auto-reverts to your normal periodized targets.";
+    ? ("Active — day "+(dsMaintDaysElapsed()+1)+". Calorie target: "+cal+" every day (was periodized "+GOALS.calRest+"–"+GOALS.calRide+"), tracking your measured maintenance as it updates. Keep protein at "+GOALS.protein+"g+ or a bit higher. Train as normal. Stays on until you turn it off.")
+    : "Off. Turning this on sets every day's calorie target to your measured maintenance (currently "+cal+", recalculated as new data comes in) and stays there until you turn it back off.";
   if(badge) badge.style.display = active ? "" : "none";
-  if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1)+"/7";
+  if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1);
 }
 
 // ── TRAINING PHASE CYCLE — Base / Max Effort / Supercompensation / Deload ──
@@ -2576,7 +2585,7 @@ function dsGuestSettingsText(){
   set('ds-deload-desc', g
     ? "For a week when joints, sleep, or recovery are lagging. A visual reminder for 7 days to cut working weights ~30-40% (or a set per exercise) and stop well short of failure. Auto-turns off after 7 days."
     : "For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.");
-  set('ds-maint-desc', "A diet break — one week at maintenance calories every 4-6 weeks instead of the deficit. Counters metabolic adaptation from sustained dieting and lets training catch up. Sets every day's calorie target to maintenance for 7 days, then auto-reverts. Keep protein at "+GOALS.protein+"g+ and train as normal.");
+  set('ds-maint-desc', "A maintenance block — sits at your measured maintenance instead of the deficit, for as long as you leave it on. Counters metabolic adaptation from sustained dieting and lets training intensity/recovery catch up. Tracks your measured maintenance as it updates, and stays on until you manually turn it off. Keep protein at "+GOALS.protein+"g+ and train as normal.");
   set('ds-rotate-desc', g
     ? "Not available with a custom plan \u2014 it assumes the built-in week (recovery Wed, ride Sat) and would scramble your own days."
     : "Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.");
