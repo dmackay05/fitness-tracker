@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=138">
+<link rel="stylesheet" href="styles.css?v=139">
 </head>
 <body>
 
@@ -828,6 +828,7 @@
         <button class="bp bfull" id="bk-btn" onclick="doBackup()" style="margin-top:0">Backup Now</button>
         <button class="bo bfull" id="ft-open-sheet-btn" style="margin-top:8px;display:none" onclick="openHealthSheet()">&#128202; Open Google Sheet</button>
         <button class="bo bfull" style="margin-top:8px" onclick="pullConfigManual()">&#11015; Load settings from Sheet</button>
+        <button class="bo bfull" id="ft-export-btn" style="margin-top:8px" onclick="exportAllData()">&#11015; Export All Data (JSON)</button>
         <button class="bo bfull" style="margin-top:8px;border-color:#f87171;color:#f87171" onclick="clearLocalData()">🗑 Clear Local Data</button>
         <div class="bk-status" id="bk-status"></div>
         <div class="bk-last" id="bk-last"></div>
@@ -1026,6 +1027,6 @@
   </div>
 </div>
 
-<script src="app.js?v=318"></script>
+<script src="app.js?v=319"></script>
 </body>
 </html>

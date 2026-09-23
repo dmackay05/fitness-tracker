@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v224 — 2026-09-23";
+var APP_BUILD = "v225 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2589,6 +2589,18 @@ function showTodayRow(r){
 function clearLocalData(){
   if(!confirm("Clear all locally stored data on this device? Your Google Sheet backup is NOT affected.")) return;
   store.remove("ft_data"); appData={}; renderAll();
+}
+// Full raw log — every day's foods/exercises/weight/measurements/etc — as one
+// JSON file. Distinct from peExport()/dsExportPlanTemplate(), which export
+// just the program template, not your actual logged history.
+function exportAllData(){
+  try{
+    var blob=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='fitness-tracker-export-'+todayKey()+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  }catch(e){ toast('Could not export data'); }
 }
 
 // ── PIN ─────────────────────────────────────────────────────────────────
