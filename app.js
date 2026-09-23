@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v225 — 2026-09-23";
+var APP_BUILD = "v226 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1215,8 +1215,10 @@ function renderTdeePanel(){
   var target=GOALS.cal, gap=r.tdee-target;
   var spread=Math.abs(r.tdee-r.tdeeMean);
   var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>';
-  var mSeries=maintenanceSeries();
-  if(mSeries.length>=2) h+='<div style="margin-top:6px">'+sparkSVG(mSeries,{color:'#fbbf24',h:90})+'</div>';
+  try{
+    var mSeries=maintenanceSeries();
+    if(mSeries.length>=2) h+='<div style="margin-top:6px">'+sparkSVG(mSeries,{color:'#fbbf24',h:90})+'</div>';
+  }catch(e){}
   h+='<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
    +(r.nPartial?(', with '+r.nPartial+' partial '+(r.nPartial===1?'day':'days')+' set aside'):'')
    +'. Across '+r.span+' days and '+r.nWeights+' weigh-ins you trended '
@@ -2807,7 +2809,7 @@ function renderTrends(){
   var chartEl=document.getElementById("trend-chart"); if(!chartEl) return;
   var chips=document.getElementById("trend-chips");
   var avail=[];
-  TREND_METRICS.forEach(function(m){ m._s=m.series?m.series():_series(m.get); if(m._s.length>=2) avail.push(m); });
+  TREND_METRICS.forEach(function(m){ try{ m._s=m.series?m.series():_series(m.get); }catch(e){ m._s=[]; } if(m._s.length>=2) avail.push(m); });
   if(!avail.length){ if(chips) chips.innerHTML=""; chartEl.innerHTML='<div style="font-size:11px;color:#555;font-family:\'DM Mono\',monospace;padding:8px 0">Log a metric at least twice (weight, waist, food, water\u2026) and your trend appears here.</div>'; return; }
   var sel=store.get("ft_trend_metric")||"weight";
   if(!avail.some(function(m){return m.key===sel;})) sel=avail[0].key;
