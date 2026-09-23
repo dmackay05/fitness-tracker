@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v220 — 2026-09-23";
+var APP_BUILD = "v221 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4493,6 +4493,9 @@ var DS_SESSIONS={
         variants:[{name:'Banded Push-up',pat:'pushup',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
                   {name:'Floor DB Press',pat:'press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'},
                   {name:'Low-Anchor Stretch Fly',pat:'fly',equip:'Tube 10–20 lb · low anchor',rx:'3×12–15',cue:'Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body',demo:'fly'}]},
+      {id:'mon-pressaround',name:'Single-Arm Band Press-Around',slot:'Push · Chest Finisher',target:'Chest (inner/peak contraction)',equip:'Tube 10–20 lb, chest-height anchor',rx:'3×10–12/side',cal:25,cue:'Anchor behind you at chest height — press the handle across your body in a wide arc, squeezing the chest hard at full extension where the pec fibers cross the midline, then control the return',demo:'fly',log:'setsreps',sets:3,
+        setup:'Anchor the band behind you at chest height. Standing side-on to the anchor, hold the handle at your chest with the working arm, then press and sweep it across your body in an arc until the arm is fully extended toward the opposite side — this crossing motion loads the chest at its peak contraction, which a straight-ahead press or fly does not reach. Squeeze hard at the end range, then return under control. Do all reps one side before switching.',
+        variants:[{name:'Standing Cross-Body Cable Fly (light DB)',equip:'2 lb dumbbell',rx:'3×10–12/side',cue:'No anchor handy? Hold a light DB and mimic the same sweeping arc across the body by hand — lighter load, same peak-contraction emphasis',demo:'fly'}]},
       {id:'mon-curl',name:'Bicep Curl',slot:'Pull · Biceps',target:'Biceps',equip:'Tube — stack toward your tested failure load',rx:'5×12–15',cal:25,cue:'Upper arms glued to your sides — only forearms move',log:'setsreps',sets:5,
         variants:[{name:'DB Curl (neutral grip)',equip:'2× 10 lb dumbbells',rx:'3×12–15',cue:'Rotate hands slightly inward (semi-neutral, not full palms-forward) — this is the wrist-friendly angle. Curl to the shoulders, slow on the way down. Go back to full supination only if the wrist stays quiet.',demo:'curl'},
                   {name:'Iso-Hold Curl',equip:'2× 10 lb dumbbells or tube',rx:'3×10 + 5s holds',cue:'Curl up, stop and hold 5 sec at 90° halfway, then finish the rep — the hold is the exercise',demo:'curl'},
