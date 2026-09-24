@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v224 — 2026-09-23";
+var APP_BUILD = "v225 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7063,7 +7063,7 @@ function dsItemMatchesSearch(rawItem,q){
   return false;
 }
 
-function dsRenderItem(rawItem,idx){
+function dsRenderItem(rawItem,idx,accent){
   var item=dsViewOf(rawItem);
   var _phase=dsCurrentPhase(); var _po=_phase && DS_PHASE_RX[item.id] && DS_PHASE_RX[item.id][_phase];
   if(_po){
@@ -7078,7 +7078,7 @@ function dsRenderItem(rawItem,idx){
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
   var _isAnchor=dsIsAnchorSet(item.id);
-  var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+'" id="ds-move-'+item.id+'"><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
+  var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+'" id="ds-move-'+item.id+'"'+(accent?' style="border-left:4px solid '+accent+'"':'')+'><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
   h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+'</div>';
   var _target=item.target||'';
   var _equip=item.equip||'';
@@ -7216,7 +7216,7 @@ function dsRenderSection(label,meta,accent,items,blurb){
   h+='<div class="ds-secchev">'+(collapsed?'\u25B6':'\u25BC')+'</div></div>';
   if(!collapsed){
     if(blurb)h+='<div class="ds-setup" style="margin:-2px 0 12px">'+blurb+'</div>';
-    items.forEach(function(it,i){h+=dsRenderItem(it,i+1);});
+    items.forEach(function(it,i){h+=dsRenderItem(it,i+1,accent);});
   }
   return h;
 }
