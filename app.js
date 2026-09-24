@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v225 — 2026-09-23";
+var APP_BUILD = "v226 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7232,7 +7232,9 @@ function dsSectionBucket(it){
   if(/core|anti-rotation|anti-extension|\brotation\b|oblique/.test(slot)) return 'core';
   return 'main';
 }
-var DS_SEC_ACCENT_WARMUP='var(--accent3)', DS_SEC_ACCENT_CORE='#c4b5fd';
+// Hardcoded hex, not CSS var() — var(--accent)/(--accent3) are scoped to a #tg-app
+// element that doesn't exist in this DOM, so they silently resolve to nothing here.
+var DS_SEC_ACCENT_WARMUP='#7dd3fc', DS_SEC_ACCENT_CORE='#c4b5fd', DS_SEC_ACCENT_MAIN='#e8ff47';
 var DS_REST_SECS = 60;
 var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
 
@@ -8021,10 +8023,14 @@ function dsRender(){
       var _wu=[],_core=[],_main=[];
       _moves.forEach(function(m){ var b=dsSectionBucket(m); if(b==='warmup')_wu.push(m); else if(b==='core')_core.push(m); else _main.push(m); });
       html+=(_wu.length?dsRenderSection('Warm-Up','',DS_SEC_ACCENT_WARMUP,_wu,''):'')
-        +(_main.length?dsRenderSection('Main Work','',SS.accent,_main,''):'')
+        +(_main.length?dsRenderSection('Main Work','',DS_SEC_ACCENT_MAIN,_main,''):'')
         +(_core.length?dsRenderSection('Core','',DS_SEC_ACCENT_CORE,_core,''):'');
     } else {
-      html+=dsRenderSection('The Session','',SS.accent,_moves,'');
+      // Same hardcoded-hex fix as the split sections above — these day accents were
+      // var(--blue)/var(--purple)/var(--green), none of which are ever defined, so
+      // "The Session" header rendered colorless. Hex equivalents restore the color.
+      var _fallbackAccent={wed:'#c084fc',sat:'#7dd3fc',sun:'#4ade80'}[sk]||DS_SEC_ACCENT_MAIN;
+      html+=dsRenderSection('The Session','',_fallbackAccent,_moves,'');
     }
     var _customMoves=dsCustomMoves(sk);
     if(_customMoves.length){
