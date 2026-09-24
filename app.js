@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v230 — 2026-09-24";
+var APP_BUILD = "v231 — 2026-09-24";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4749,7 +4749,8 @@ var DS_SESSIONS={
         variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating — isometrics load the tendon with less irritation',demo:'wristecc'}]},
       {id:'thu-forearm',name:'Forearm Finisher — Wrist Curl',slot:'Pull · Forearms',target:'Forearm Flexors',equip:'2–10 lb dumbbells',rx:'2×15–25',cal:15,cue:'Second forearm session of the week — rotate through the variants below rather than repeating Monday\'s exact exercise, and keep the same rule: light weight, stop short of true failure if the elbow starts talking.',demo:'wristecc',log:'setsreps',sets:2,
         setup:'Seated, forearm resting across your thigh, palm up, dumbbell in hand. Curl the wrist up and hold the peak contraction 1 second, then lower slow enough that the weight rolls all the way out to your fingertips before curling back up.',
-        variants:[{name:'Bar Push-Off (plank press-off)',equip:'Stability ball or slam ball, low and stable',rx:'Density target: 60 total reps, 5-sec breathers as needed',cue:'Angled plank position, hands pressing off the ball — press away using the wrist flexors, staying in the deep-stretch partial range rather than full extension. No barbell at home, so this approximates the stretch-and-press-off intent with what you have. Add a few reps to the density target each week.',demo:'wristecc'},
+        variants:[{name:'Banded Wrist Curl',equip:'Tube 5–10 lb, anchored underfoot',rx:'2×15–25',cue:'Same seated setup as the dumbbell version — anchor the band under your foot, forearm across your thigh, palm up, handle in hand. Curl the wrist up against the band, hold the peak contraction 1 second, then lower slow enough the band pulls all the way back out to your fingertips before curling again.',demo:'wristecc'},
+                  {name:'Bar Push-Off (plank press-off)',equip:'Stability ball or slam ball, low and stable',rx:'Density target: 60 total reps, 5-sec breathers as needed',cue:'Angled plank position, hands pressing off the ball — press away using the wrist flexors, staying in the deep-stretch partial range rather than full extension. No barbell at home, so this approximates the stretch-and-press-off intent with what you have. Add a few reps to the density target each week.',demo:'wristecc'},
                   {name:'One-Arm Bench Wrist Curl (alternating)',equip:'2–10 lb dumbbell',rx:'2×15–17/arm, rest-free',cue:'Off the bench edge, one arm at a time — weaker arm sets the rep count, then switch arms with no rest and match it. Repeat back and forth.',demo:'wristecc'}]},
       dsCore('thu-legraise','Leg Raise','1×10–12',20,'Low back stays flat — lower only as far as it stays down')]},
 
