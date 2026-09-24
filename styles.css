@@ -1414,6 +1414,7 @@ html body div.app{max-width:480px}
 #panel-today .ds-minfo{flex:1;min-width:0;}
 #panel-today .ds-mname{font-size:16px;font-weight:600;color:#f1f3e8;}
 #panel-today .ds-mcue{font-size:13px;color:#cfe84f;margin-top:2px;line-height:1.4;}
+#panel-today .ds-mequip{font-size:12px;color:#9a9d8c;background:#24261a;border-radius:6px;padding:5px 9px;margin-top:6px;line-height:1.4;}
 #panel-today .ds-ramp{font-size:12px;color:#7dd3fc;margin-top:4px;line-height:1.4;background:rgba(125,211,252,0.08);border-left:2px solid #7dd3fc;padding:5px 8px;border-radius:4px;}
 #panel-today .ds-anchor-tag{display:inline-block;font-size:10px;font-weight:700;color:#f97316;background:rgba(249,115,22,0.12);border:1px solid rgba(249,115,22,0.4);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle;letter-spacing:.02em;}
 #panel-today .ds-anchor{font-size:12px;color:#f97316;margin-top:4px;line-height:1.4;background:rgba(249,115,22,0.08);border-left:2px solid #f97316;padding:5px 8px;border-radius:4px;}

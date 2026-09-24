@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v229 — 2026-09-24";
+var APP_BUILD = "v230 — 2026-09-24";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7080,9 +7080,10 @@ function dsRenderItem(rawItem,idx,accent){
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
-  h+='<div class="ds-mtags">'+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+(_equip?'<span>'+dsHi(_equip,_q)+'</span>':'')+'</div></div>';
+  h+='<div class="ds-mtags">'+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+'</div></div>';
   h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div></div>';
   h+='<div class="ds-mbody">';
+  if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   if(rawItem.ramp&&(DS_SWAPS[item.id]||0)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
