@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v226 — 2026-09-23";
+var APP_BUILD = "v227 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -604,6 +604,71 @@ function maintenanceSeries(windowDays){
     }
   }
   return out;
+}
+// ── RUN/WALK PROGRESSION ──────────────────────────────────────────────────
+// A staged run:walk interval progression (Galloway-style run-walk-run),
+// gated on actual Zone 2 heart-rate adherence rather than the calendar —
+// mirrors the same "advance only when the signal says you're ready" logic
+// already used for RIR-based lifting progression, applied to cardio instead.
+// You advance to the next stage only once the last 2 sessions logged AT the
+// current stage both held Zone 2 (or easier) average HR; a session that
+// drifted into Zone 3+ doesn't advance you, it just means try again.
+var RUNWALK_STAGES=[
+  {work:60,  rest:120, rounds:6, label:'1:00 run / 2:00 walk \u00d7 6'},
+  {work:60,  rest:60,  rounds:8, label:'1:00 run / 1:00 walk \u00d7 8'},
+  {work:120, rest:60,  rounds:6, label:'2:00 run / 1:00 walk \u00d7 6'},
+  {work:180, rest:60,  rounds:5, label:'3:00 run / 1:00 walk \u00d7 5'},
+  {work:300, rest:60,  rounds:4, label:'5:00 run / 1:00 walk \u00d7 4'},
+  {work:1200,rest:0,   rounds:1, label:'Continuous run \u2014 walk only if HR drifts above Zone 2'}
+];
+function runwalkStage(){ var s=parseInt(store.get('ft_runwalk_stage'))||1; return Math.max(1,Math.min(RUNWALK_STAGES.length,s)); }
+function runwalkStageConfig(){ return RUNWALK_STAGES[runwalkStage()-1]; }
+// Every past session actually tagged against a given stage (see trkCommit),
+// oldest first.
+function runwalkSessions(stage){
+  var out=[];
+  Object.keys(appData).sort().forEach(function(k){
+    var exs=(appData[k]&&appData[k].exercises)||[];
+    exs.forEach(function(e){
+      if(e.runwalkStage===stage && e.avgHR!=null && !isNaN(e.avgHR)) out.push({date:k, ts:e.startTs||0, avgHR:e.avgHR});
+    });
+  });
+  out.sort(function(a,b){ if(a.date!==b.date) return a.date<b.date?-1:1; return a.ts-b.ts; });
+  return out;
+}
+// Did this session hold Zone 2 or easier? Under-shooting Zone 2 isn't a
+// safety concern the way over-shooting into Zone 3+ is, so only the latter
+// blocks advancement.
+function runwalkHeld(session){
+  var z=dsHrZone(session.avgHR); if(!z) return null;
+  return z.zone==='Zone 2' || z.zone==='Below Z2';
+}
+// Call right after logging a stage-tagged session. Auto-advances the stage
+// when the most recent 2 sessions at the current stage both held Zone 2 or
+// easier (a Zone 3+ session breaks that streak, not just lowers a total).
+function runwalkCheckProgress(){
+  var stage=runwalkStage();
+  if(stage>=RUNWALK_STAGES.length) return {advanced:false,stage:stage,toward:0,need:2,final:true};
+  var sess=runwalkSessions(stage);
+  var toward=0;
+  for(var i=sess.length-1;i>=0 && (sess.length-i)<=2;i--){
+    if(runwalkHeld(sess[i])) toward++; else break;
+  }
+  if(toward>=2){
+    store.set('ft_runwalk_stage', String(stage+1));
+    return {advanced:true, stage:stage+1, toward:0, need:2};
+  }
+  return {advanced:false, stage:stage, toward:toward, need:2};
+}
+// Push the current stage's timing into the interval timer as the default
+// for a run session (doesn't select any of the fixed IVL_PRESETS buttons —
+// this is the recommended default, not a preset pick; picking a preset
+// button afterward still overrides it for that session).
+function runwalkApplyStagePreset(){
+  var cfg=runwalkStageConfig();
+  ivl.work=cfg.work; ivl.rest=cfg.rest; ivl.rounds=cfg.rounds; ivl.label=cfg.label; ivl.on=true; ivl.started=false;
+  document.querySelectorAll('.ivl-preset').forEach(function(b){b.style.border='1px solid #ffffff1a';b.style.background='transparent';b.style.color='#ccc';});
+  ivlRenderStatus();
 }
 function calScale(){ var w = parseFloat(getLatestWeight()); return (w > 0) ? (w / CAL_REF_WEIGHT) : 1; }
 function calAdj(c){ return Math.round((+c || 0) * calScale()); }
@@ -1237,6 +1302,30 @@ function renderTdeePanel(){
 // Collapsible day-by-day intake so a suspicious average can actually be audited.
 var TDEE_LIST_OPEN=false;
 function tdeeToggleList(){ TDEE_LIST_OPEN=!TDEE_LIST_OPEN; renderTdeePanel(); }
+function renderRunWalkProgress(){
+  var el=document.getElementById("dash-runwalk"); if(!el) return;
+  var stage=runwalkStage(), cfg=RUNWALK_STAGES[stage-1];
+  var sess=runwalkSessions(stage);
+  var toward=0;
+  for(var i=sess.length-1;i>=0 && (sess.length-i)<=2;i--){ if(runwalkHeld(sess[i])) toward++; else break; }
+  var isFinal=stage>=RUNWALK_STAGES.length;
+  var h='<div><b style="color:#f472b6;font-size:15px">Stage '+stage+'/'+RUNWALK_STAGES.length+'</b> <span style="color:#888">'+cfg.label+'</span></div>';
+  if(isFinal){
+    h+='<div style="color:#4ade80;margin-top:4px">\ud83c\udfc1 Final stage \u2014 continuous running, walk only if HR drifts above Zone 2</div>';
+  } else if(!sess.length){
+    h+='<div style="color:#888;margin-top:4px;line-height:1.45">No sessions logged at this stage yet. Pick "Run" in the tracker \u2014 the interval timer will default to this stage\'s ratio automatically.</div>';
+  } else {
+    var dotFor=function(n){ return n<toward ? '<span style="color:#4ade80">\u25cf</span>' : '<span style="color:#555">\u25cb</span>'; };
+    h+='<div style="margin-top:4px">'+dotFor(0)+' '+dotFor(1)+' <span style="color:#888">'+toward+'/2 consecutive Zone-2 sessions logged at this stage</span></div>';
+    var last=sess[sess.length-1], z=dsHrZone(last.avgHR);
+    if(z && !(z.zone==='Zone 2'||z.zone==='Below Z2')){
+      h+='<div style="color:#fbbf24;margin-top:4px;line-height:1.45">Last session averaged '+Math.round(z.pct)+'% max HR ('+z.zone+') \u2014 that resets the streak. Ease back on pace at this stage before advancing.</div>';
+    } else {
+      h+='<div style="color:#888;margin-top:4px;line-height:1.45">'+(toward>=2?'Ready to advance on the next stage-tagged session.':'2 in a row at Zone 2 or easier advances you to the next stage.')+'</div>';
+    }
+  }
+  el.innerHTML=h;
+}
 function tdeeDayListHtml(r,forceCount){
   var all=r.all||[]; if(!all.length) return '';
   var h='<div onclick="tdeeToggleList()" style="margin-top:8px;font-size:11px;color:#5eead4;cursor:pointer">'
@@ -1620,6 +1709,7 @@ function renderDash(){
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
   renderIntakeAverages(); renderWeightTrend(); renderTdeePanel(); renderPainSummary();
+  try{ renderRunWalkProgress(); }catch(e){}
   renderStrengthTrend(); renderProteinStreak(); renderRecoveryFlag();
 
   // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
@@ -2180,7 +2270,14 @@ function setTrackActivity(a){
   var ruckLbEl=document.getElementById("trk-ruck-lb"); if(ruckLbEl) ruckLbEl.style.display = a==="ruck" ? "block" : "none";
   // Intervals apply to rides, plain walks, and runs (steady pace is the point of a ruck, so skip there)
   var ivlPanel=document.getElementById('ivl-panel'); if(ivlPanel) ivlPanel.style.display = (a==="ride"||a==="walk"||a==="run") ? "block" : "none";
-  var ivlHint=document.getElementById('ivl-hint'); if(ivlHint) ivlHint.textContent = a==="walk" ? "Great for interval walking — try 1:00 push / 1:30 ease" : (a==="run" ? "Run/walk intervals — try 1:00 push / 2:00 ease while building up" : "Optional push/ease surges");
+  var ivlHint=document.getElementById('ivl-hint');
+  if(a==="run"){
+    runwalkApplyStagePreset();
+    var rwStg=runwalkStage();
+    if(ivlHint) ivlHint.textContent = "Stage "+rwStg+"/"+RUNWALK_STAGES.length+": "+runwalkStageConfig().label+" \u2014 aim for Zone 2";
+  } else if(ivlHint){
+    ivlHint.textContent = a==="walk" ? "Great for interval walking — try 1:00 push / 1:30 ease" : "Optional push/ease surges";
+  }
   if(a==="ruck"){ ivlOff(); }
 }
 // ── RIDE INTERVALS (push/ease surge intervals layered on top of GPS tracking) ──
@@ -2415,8 +2512,29 @@ function trkCommit(miles,dur,source,avgHr,intervals){
     if(avgHr){ var z=dsHrZone(avgHr); if(z) nm += " \u2014 "+z.zone; }
     if(intervals) nm += " \u00b7 Run/walk: "+intervals.label+" ("+intervals.roundsDone+"/"+intervals.rounds+")";
     var runEx={name:nm,calories:cals,type:"cardio",id:Date.now().toString(),reps:runMin+" min",startTs:_startTs,endTs:_endTs};
-    if(avgHr) runEx.avgHr=avgHr;
+    // avgHR (capital), not avgHr — matches the exercise editor (editEx/saveExEdit)
+    // and every other reader of exercise HR (exDetailStr, the day-level HR
+    // average). The old avgHr (lowercase) here meant runs logged through this
+    // tracker silently never showed their HR anywhere else in the app.
+    if(avgHr) runEx.avgHR=avgHr;
+    // Only tag this session against the run/walk progression if its actual
+    // logged interval timing matches the current stage exactly — a manually
+    // chosen different preset (e.g. picking "short" surge intervals for a
+    // change of pace) shouldn't count as a stage attempt.
+    if(intervals){
+      var rwCfg=runwalkStageConfig();
+      if(intervals.work===rwCfg.work && intervals.rest===rwCfg.rest && intervals.rounds===rwCfg.rounds){
+        runEx.runwalkStage=runwalkStage();
+      }
+    }
     dsAddEx(day,runEx);
+    if(runEx.runwalkStage){
+      var rwProg=runwalkCheckProgress();
+      if(rwProg.advanced){
+        var nextCfg=RUNWALK_STAGES[rwProg.stage-1];
+        setTimeout(function(){ toast('\ud83c\udf89 Run/Walk advanced \u2014 Stage '+rwProg.stage+': '+nextCfg.label); },300);
+      }
+    }
   } else {
     var cals = dur ? calAdj(dur*6.5) : calAdj(miles*100);
     var walkMin = dur>0 ? dur : Math.round(miles*20); // fallback est. if only distance was logged (manual, no duration)
