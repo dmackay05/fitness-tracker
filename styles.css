@@ -286,6 +286,7 @@ button:active{opacity:0.7}
 /* ── YOGA EMBEDDED STYLES ────────────────────────────────────────── */
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.ds-flow-row.ds-flow-dragging{transition:none;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 :root{
   --bg:#0e0e14;--bg2:#13131d;--bg3:#1a1a28;
   --border:#ffffff10;--border2:#ffffff1a;

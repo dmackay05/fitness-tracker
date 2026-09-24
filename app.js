@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v223 — 2026-09-23";
+var APP_BUILD = "v224 — 2026-09-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2900,7 +2900,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -2912,7 +2912,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -2946,6 +2946,7 @@ function applyConfig(cfg){
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){}
+  try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
   renderAll();
@@ -3199,7 +3200,118 @@ function dsFlowSeqIndex(dk){
   var w=dsWeekIndex(dk||activeDate);
   return ((w%DS_FLOW_SEQUENCES.length)+DS_FLOW_SEQUENCES.length)%DS_FLOW_SEQUENCES.length;
 }
-function dsFlowActiveIds(){ return DS_FLOW_SEQUENCES[dsFlowSeqIndex(activeDate)]; }
+// ── CUSTOM FLOW ORDER — user can reorder/swap poses and save the result as their new default,
+// overriding the weekly Grounding/Warrior/Balance rotation entirely once saved. ──
+var DS_FLOW_POOL=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child','wed-flow-downdog',
+  'wed-flow-dragon','wed-flow-cobra','wed-flow-fold','wed-flow-swan','wed-flow-cat','wed-flow-twist',
+  'wed-flow-bridge','wed-flow-legsup','wed-flow-sav','wed-flow-warrior1','wed-flow-warrior2','wed-flow-revwarrior',
+  'wed-flow-warrior3','wed-flow-trianglepose','wed-flow-extcars'];
+var DS_FLOW_CUSTOM={active:false,ids:null};
+try{ var _fcv0=JSON.parse(store.get('ds_flowcustom')||'null'); if(_fcv0&&typeof _fcv0==='object'&&Array.isArray(_fcv0.ids)){ DS_FLOW_CUSTOM.active=!!_fcv0.active; DS_FLOW_CUSTOM.ids=_fcv0.ids; } }catch(e){}
+function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){} try{dsQueueConfigPush();}catch(e){} }
+function dsFlowActiveIds(){
+  if(DS_FLOW_CUSTOM.active && DS_FLOW_CUSTOM.ids && DS_FLOW_CUSTOM.ids.length) return DS_FLOW_CUSTOM.ids;
+  return DS_FLOW_SEQUENCES[dsFlowSeqIndex(activeDate)];
+}
+var DS_FLOWEDIT_OPEN=false, DS_FLOWEDIT_IDS=null, DS_FLOWEDIT_PICKER=false;
+function dsFlowEditOpen(){ DS_FLOWEDIT_IDS=dsFlowActiveIds().slice(); DS_FLOWEDIT_OPEN=true; DS_FLOWEDIT_PICKER=false; dsRender(); }
+function dsFlowEditClose(){ DS_FLOWEDIT_OPEN=false; DS_FLOWEDIT_IDS=null; DS_FLOWEDIT_PICKER=false; dsRender(); }
+function dsFlowEditRemove(idx){ if(!DS_FLOWEDIT_IDS)return; DS_FLOWEDIT_IDS.splice(idx,1); dsRender(); }
+function dsFlowEditMove(idx,dir){
+  if(!DS_FLOWEDIT_IDS)return;
+  var j=idx+dir; if(j<0||j>=DS_FLOWEDIT_IDS.length)return;
+  var tmp=DS_FLOWEDIT_IDS[idx]; DS_FLOWEDIT_IDS[idx]=DS_FLOWEDIT_IDS[j]; DS_FLOWEDIT_IDS[j]=tmp;
+  dsRender();
+}
+function dsFlowEditTogglePicker(){ DS_FLOWEDIT_PICKER=!DS_FLOWEDIT_PICKER; dsRender(); }
+function dsFlowEditAdd(id){ if(!DS_FLOWEDIT_IDS)return; if(DS_FLOWEDIT_IDS.indexOf(id)<0) DS_FLOWEDIT_IDS.push(id); DS_FLOWEDIT_PICKER=false; dsRender(); }
+function dsFlowEditSave(){
+  if(!DS_FLOWEDIT_IDS||!DS_FLOWEDIT_IDS.length)return;
+  DS_FLOW_CUSTOM.active=true; DS_FLOW_CUSTOM.ids=DS_FLOWEDIT_IDS.slice();
+  dsSaveFlowCustom();
+  try{dsToast('\u2713 Flow saved as your new default');}catch(e){}
+  dsFlowEditClose();
+}
+function dsFlowEditResetRotation(){
+  DS_FLOW_CUSTOM.active=false; DS_FLOW_CUSTOM.ids=null;
+  dsSaveFlowCustom();
+  DS_FLOWEDIT_IDS=dsFlowActiveIds().slice();
+  try{dsToast('Back to the weekly rotation');}catch(e){}
+  dsRender();
+}
+// Pointer-based drag reorder (mouse + touch, no library). Visual drag is pure DOM
+// transform for smoothness; the actual array reorder commits once on release.
+var _fdrag={active:false,idx:-1,rows:[],rowH:0,startY:0,overIdx:-1};
+function dsFlowDragStart(e,idx){
+  var container=document.getElementById('ds-floweditor-list'); if(!container)return;
+  e.preventDefault();
+  var rows=Array.prototype.slice.call(container.querySelectorAll('.ds-flow-row'));
+  _fdrag.active=true; _fdrag.idx=idx; _fdrag.overIdx=idx; _fdrag.rows=rows;
+  _fdrag.rowH=rows[idx]?(rows[idx].offsetHeight+8):56;
+  _fdrag.startY=e.clientY;
+  rows[idx].classList.add('ds-flow-dragging');
+  rows[idx].style.position='relative'; rows[idx].style.zIndex='5';
+  try{ e.target.setPointerCapture(e.pointerId); }catch(err){}
+  window.addEventListener('pointermove',dsFlowDragMove);
+  window.addEventListener('pointerup',dsFlowDragEnd);
+}
+function dsFlowDragMove(e){
+  if(!_fdrag.active)return;
+  var dy=e.clientY-_fdrag.startY;
+  _fdrag.rows[_fdrag.idx].style.transform='translateY('+dy+'px)';
+  var newIdx=Math.max(0,Math.min(_fdrag.rows.length-1,_fdrag.idx+Math.round(dy/_fdrag.rowH)));
+  _fdrag.rows.forEach(function(r,i){
+    if(i===_fdrag.idx)return;
+    var shift=0;
+    if(_fdrag.idx<newIdx && i>_fdrag.idx && i<=newIdx) shift=-_fdrag.rowH;
+    else if(_fdrag.idx>newIdx && i>=newIdx && i<_fdrag.idx) shift=_fdrag.rowH;
+    r.style.transform='translateY('+shift+'px)';
+  });
+  _fdrag.overIdx=newIdx;
+}
+function dsFlowDragEnd(){
+  if(!_fdrag.active)return;
+  window.removeEventListener('pointermove',dsFlowDragMove);
+  window.removeEventListener('pointerup',dsFlowDragEnd);
+  var from=_fdrag.idx, to=_fdrag.overIdx;
+  _fdrag.rows.forEach(function(r){ r.style.transform=''; r.style.position=''; r.style.zIndex=''; r.classList.remove('ds-flow-dragging'); });
+  _fdrag.active=false;
+  if(to!==from && DS_FLOWEDIT_IDS){ var moved=DS_FLOWEDIT_IDS.splice(from,1)[0]; DS_FLOWEDIT_IDS.splice(to,0,moved); }
+  dsRender();
+}
+function dsFlowEditRowHtml(id,idx,total){
+  var raw=dsRawItem(id); var name=raw?raw.name:id;
+  return '<div class="ds-flow-row" style="display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:8px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:12px;transition:transform .15s;">'
+    +'<div class="ds-flow-handle" style="touch-action:none;cursor:grab;color:#666;font-size:16px;padding:4px;line-height:1;" onpointerdown="dsFlowDragStart(event,'+idx+')">\u22EE\u22EE</div>'
+    +'<div style="flex:1;min-width:0;font-size:13px;color:#f0f0f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(idx+1)+'. '+(name||id)+'</div>'
+    +'<button onclick="dsFlowEditMove('+idx+',-1)" '+(idx===0?'disabled':'')+' style="background:transparent;border:1px solid #ffffff2a;color:#ccc;border-radius:8px;width:26px;height:26px;cursor:pointer;opacity:'+(idx===0?'.3':'1')+'">\u25B2</button>'
+    +'<button onclick="dsFlowEditMove('+idx+',1)" '+(idx===total-1?'disabled':'')+' style="background:transparent;border:1px solid #ffffff2a;color:#ccc;border-radius:8px;width:26px;height:26px;cursor:pointer;opacity:'+(idx===total-1?'.3':'1')+'">\u25BC</button>'
+    +'<button onclick="dsFlowEditRemove('+idx+')" style="background:transparent;border:1px solid #ff6b3540;color:#ff6b35;border-radius:8px;width:26px;height:26px;cursor:pointer;">\u2715</button>'
+    +'</div>';
+}
+function dsRenderFlowEditor(){
+  var ids=DS_FLOWEDIT_IDS||[];
+  var h='<div class="card" style="margin:0 0 14px;border:1px solid #7dd3fc40;background:#7dd3fc08;">';
+  h+='<div style="font-size:12px;color:#7dd3fc;font-weight:700;margin-bottom:4px;">Edit Flow Order</div>';
+  h+='<div style="font-size:11px;color:#888;margin-bottom:12px;">Drag \u22EE\u22EE, use the arrows, or remove a pose \u2014 then add from the pool below.</div>';
+  h+='<div id="ds-floweditor-list">'+ids.map(function(id,i){return dsFlowEditRowHtml(id,i,ids.length);}).join('')+'</div>';
+  if(!DS_FLOWEDIT_PICKER){
+    h+='<button onclick="dsFlowEditTogglePicker()" style="width:100%;margin-top:4px;padding:10px;border-radius:10px;border:1px solid #5eead440;background:#5eead410;color:#5eead4;font-size:12px;cursor:pointer;">+ Add a Pose</button>';
+  } else {
+    var avail=DS_FLOW_POOL.filter(function(id){return ids.indexOf(id)<0;});
+    h+='<div style="margin-top:8px;padding:10px;border:1px solid #5eead440;border-radius:10px;background:#5eead408;">';
+    h+=avail.length?avail.map(function(id){ var r=dsRawItem(id); return '<button onclick="dsFlowEditAdd(\''+id+'\')" style="display:block;width:100%;text-align:left;padding:8px 10px;margin-bottom:6px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:8px;color:#f0f0f0;font-size:12px;cursor:pointer;">+ '+(r?r.name:id)+'</button>'; }).join(''):'<div style="font-size:12px;color:#888;">Every pose in the pool is already in your flow.</div>';
+    h+='<button onclick="dsFlowEditTogglePicker()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ffffff2a;background:transparent;color:#888;font-size:12px;cursor:pointer;">Cancel</button>';
+    h+='</div>';
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:14px;">';
+  h+='<button onclick="dsFlowEditSave()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#7dd3fc;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer;">Save as Default</button>';
+  h+='<button onclick="dsFlowEditClose()" style="padding:10px 16px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#888;font-size:13px;cursor:pointer;">Cancel</button>';
+  h+='</div>';
+  if(DS_FLOW_CUSTOM.active) h+='<div style="margin-top:10px;text-align:center;"><span onclick="dsFlowEditResetRotation()" style="font-size:11px;color:#888;text-decoration:underline;cursor:pointer;">Reset to the weekly rotation (Grounding / Warrior / Balance)</span></div>';
+  h+='</div>';
+  return h;
+}
 var DS_FLOW_REP_SECS=60; // pacing duration for the one non-timed move (Bird Dog) in the flow
 var DS_FLOW={active:false,paused:false,idx:-1,left:0,total:0,interval:null,side:null};
 function dsFlowCurrentItem(){
@@ -3300,13 +3412,14 @@ function dsFlowBarHtml(sk){
   for(var _fi=0;_fi<_fids.length;_fi++){ if(!dsRawItem(_fids[_fi])) return ''; }
   var n=_fids.length;
   if(!n) return '';
-  var _seqLabel=DS_FLOW_SEQ_LABELS[dsFlowSeqIndex(activeDate)];
+  var _seqLabel=DS_FLOW_CUSTOM.active?'Your custom flow':DS_FLOW_SEQ_LABELS[dsFlowSeqIndex(activeDate)];
   if(!DS_FLOW.active){
     return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
       +'<div style="font-size:12px;color:#c084fc;font-weight:700;margin-bottom:8px">\ud83e\uddd8 Guided Flow \u2014 hands-free</div>'
       +'<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:4px">This week: '+_seqLabel+'</div>'
       +'<div style="font-size:11px;color:#999;margin-bottom:10px">Auto-advances through all '+n+' poses, times each hold, and marks them done as it goes</div>'
       +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c084fc;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
+      +(DS_FLOWEDIT_OPEN?'':'<div style="margin-top:8px;font-size:11px;color:#7dd3fc;text-decoration:underline;cursor:pointer" onclick="dsFlowEditOpen()">Reorder / swap poses</div>')
       +'</div>';
   }
   var raw=dsFlowCurrentItem(); var nm=raw?(raw.name+(DS_FLOW.side?' \u2014 '+(DS_FLOW.side==='L'?'Left':'Right'):'')):'';
@@ -7107,6 +7220,19 @@ function dsRenderSection(label,meta,accent,items,blurb){
   }
   return h;
 }
+// Buckets a move into Warm-Up / Core / Main for the day-view section split (lifting days only).
+// Reads the existing `slot`/`target`/`id` fields already on every exercise — no data changes needed.
+function dsSectionBucket(it){
+  var slot=(it.slot||'').toLowerCase();
+  var id=(it.id||'').toLowerCase();
+  if(id.indexOf('warmup-')===0 || id.indexOf('wu-')===0 || slot.indexOf('warm-up')>=0) return 'warmup';
+  // Deliberately keyed off `slot` only, not `target` — target lists secondary muscles
+  // (e.g. a back row that also hits "Core" as a stabilizer) and would wrongly pull
+  // real main lifts into the Core group. `slot` reflects the exercise's actual role.
+  if(/core|anti-rotation|anti-extension|\brotation\b|oblique/.test(slot)) return 'core';
+  return 'main';
+}
+var DS_SEC_ACCENT_WARMUP='var(--accent3)', DS_SEC_ACCENT_CORE='#c4b5fd';
 var DS_REST_SECS = 60;
 var DS_SEC_PER_REP = 3.5; // average concentric+eccentric time per controlled rep, used to estimate exercise duration
 
@@ -7888,7 +8014,18 @@ function dsRender(){
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
     var _flowBar=dsFlowBarHtml(sk);
-    html=_flowBar+_satHeatBtn+_tcBtn+dsRenderSection('The Session','',SS.accent,_moves,'');
+    var _flowEdit=(sk==='wed'&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
+    html=_flowBar+_flowEdit+_satHeatBtn+_tcBtn;
+    var _splitDays={mon:1,tue:1,thu:1,fri:1};
+    if(_splitDays[sk] && !dsDayIsCustom(sk)){
+      var _wu=[],_core=[],_main=[];
+      _moves.forEach(function(m){ var b=dsSectionBucket(m); if(b==='warmup')_wu.push(m); else if(b==='core')_core.push(m); else _main.push(m); });
+      html+=(_wu.length?dsRenderSection('Warm-Up','',DS_SEC_ACCENT_WARMUP,_wu,''):'')
+        +(_main.length?dsRenderSection('Main Work','',SS.accent,_main,''):'')
+        +(_core.length?dsRenderSection('Core','',DS_SEC_ACCENT_CORE,_core,''):'');
+    } else {
+      html+=dsRenderSection('The Session','',SS.accent,_moves,'');
+    }
     var _customMoves=dsCustomMoves(sk);
     if(_customMoves.length){
       html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
