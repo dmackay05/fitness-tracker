@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=145">
+<link rel="stylesheet" href="styles.css?v=146">
 </head>
 <body>
 
@@ -65,7 +65,7 @@
     <button class="tab-btn" data-tab="log"><span class="tab-icon">✎</span>Log</button>
     <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
     <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
-    <button class="tab-btn" data-tab="meals"><span class="tab-icon">🍽</span>Meals</button>
+    <button class="tab-btn" data-tab="meals"><span class="tab-icon">🍽</span>Info</button>
   </div>
 
   <div class="content">
@@ -294,6 +294,42 @@
         <div id="meals-filters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
       <div style="margin-top:14px" id="meals-list"></div>
+
+      <!-- ════════ TRAINING PHASE GUIDE ════════ -->
+      <div class="ds-eyebrow" style="margin-top:26px">Training Phase Guide</div>
+      <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Your 13-week wave, and what each phase is actually for. Toggle it on/off under Dashboard → Phase Cycle.</div>
+
+      <div class="card" style="margin-top:10px;border-left:4px solid var(--accent)">
+        <div class="card-title">1 · Base <span style="font-size:11px;color:#888;font-weight:400">— Weeks 1–6</span></div>
+        <div style="font-size:12px;color:#9a9d8c;margin:4px 0 8px">RPE 8–9 · moderate-to-high volume · 1–2 reps left in the tank</div>
+        <div style="font-size:13px;line-height:1.5"><b>What it's for:</b> Accumulating quality training volume near your MEV/MAV. This is where most of your actual muscle-building work happens — consistent sets, consistent progression, nothing maxed out.</div>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>Tips:</b> Don't chase failure yet — leave 1–2 reps every set. Focus on hitting the top of your rep range with clean form before adding load. This phase is the foundation everything else in the wave builds on, so consistency matters more than intensity here.</div>
+      </div>
+
+      <div class="card" style="margin-top:10px;border-left:4px solid var(--accent)">
+        <div class="card-title">2 · Max Effort <span style="font-size:11px;color:#888;font-weight:400">— Weeks 7–10</span></div>
+        <div style="font-size:12px;color:#9a9d8c;margin:4px 0 8px">RPE 9–10 · low volume (1–2 sets) · near/true failure · 3 min rest</div>
+        <div style="font-size:13px;line-height:1.5"><b>What it's for:</b> After 6 weeks of volume, this phase tests what that volume actually built — fewer sets, but each one pushed close to real failure. It's a strength/neural-drive stimulus, not a pump phase.</div>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>Tips:</b> Rest longer than feels necessary (3 min) — these sets are meant to be near-maximal, and short rest just makes them fail from fatigue instead of true strength limits. Fewer total sets is expected and correct; don't add extra volume back in.</div>
+      </div>
+
+      <div class="card" style="margin-top:10px;border-left:4px solid var(--accent)">
+        <div class="card-title">3 · Supercompensation <span style="font-size:11px;color:#888;font-weight:400">— Weeks 11–12</span></div>
+        <div style="font-size:12px;color:#9a9d8c;margin:4px 0 8px">RPE 8–9 · high reps (15–20) · high volume · 1.5 min rest</div>
+        <div style="font-size:13px;line-height:1.5"><b>What it's for:</b> Capitalizing on the strength built in Max Effort week with a high-rep, high-volume push — more metabolic stress, more pump, a different growth stimulus than either of the first two phases.</div>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>Tips:</b> Lean into the burn — these sets are supposed to feel hard by rep 12–15 even at lighter loads. Mind-muscle connection matters more here than raw load. Short rest is intentional; don't stretch it out like the Max Effort phase.</div>
+      </div>
+
+      <div class="card" style="margin-top:10px;border-left:4px solid var(--yellow, #fbbf24)">
+        <div class="card-title">4 · Deload <span style="font-size:11px;color:#888;font-weight:400">— Week 13</span></div>
+        <div style="font-size:12px;color:#9a9d8c;margin:4px 0 8px">RPE 6–7 · roughly half the usual volume</div>
+        <div style="font-size:13px;line-height:1.5"><b>What it's for:</b> Planned recovery before the wave repeats. Fatigue accumulates across the first 12 weeks even when you feel fine session to session — this week lets joints and connective tissue catch up before ramping intensity again.</div>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>Tips:</b> Don't skip it just because you feel strong — that's usually exactly when it's most needed. Given your elbow and SI history, this week matters more for you than it would for someone with no joint flags. Keep loads light and let effort stay well short of failure.</div>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <div style="font-size:12px;color:#888;line-height:1.5">Rehab and joint-protective work (elbow eccentric rehab, wrist curls, and other flagged movements) stays fixed at its normal prescription in every phase — it's not scaled up or down, since it's protective work rather than a hypertrophy stimulus.</div>
+      </div>
     </div>
 
     <!-- ════════ LOG ════════ -->
@@ -1026,6 +1062,6 @@
   </div>
 </div>
 
-<script src="app.js?v=325"></script>
+<script src="app.js?v=326"></script>
 </body>
 </html>
