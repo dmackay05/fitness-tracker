@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v232 — 2026-09-24";
+var APP_BUILD = "v235 — 2026-09-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3153,7 +3153,7 @@ try{ trkTryRestore(); }catch(e){}
 // One tap in the Guide marks the yoga flow complete in eg_done (streak,
 // week view, auto-push to Workout Log) AND logs a 130 cal exercise entry
 // to TODAY's tracker day (Calories Burned, dashboards, Exercises column).
-var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=130, TG_YOGA_NAME="Wednesday Yoga Flow (20-25 min)";
+var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=200, TG_YOGA_NAME="Wednesday Yoga Flow — Hip & Knee Focus (45-60 min)";
 function tgYogaRefresh(){
   var b=document.getElementById("yoga-complete-btn"); if(!b) return;
   var on=(typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID);
@@ -3167,7 +3167,7 @@ function tgYogaToggle(){
   var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
   if(on){
     if(!day.exercises.some(function(e){return e.id===exId;})){
-      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId,actualSecs:1350});
+      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId,actualSecs:2760});
     }
   } else {
     day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
@@ -3193,6 +3193,15 @@ var DS_FLOW_IDS_B=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-f
 var DS_FLOW_IDS_C=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child',
   'wed-flow-downdog','wed-flow-warrior3','wed-flow-trianglepose','wed-flow-cobra','wed-flow-fold','wed-flow-swan',
   'wed-flow-cat','wed-flow-twist','wed-flow-bridge','wed-flow-legsup','wed-flow-sav'];
+// Hip & Knee Focus — replaces the default Wednesday flow (current weak-point priority).
+// Grounding open → deep hip mobility → light knee-supportive strength/stability →
+// single-leg balance → release. ~45-50 min at listed holds; stretch holds or repeat
+// a phase to fill a full hour if needed.
+var DS_FLOW_IDS_HK=['wed-flow-center','wed-flow-catcow','wed-flow-hk-hipcircles','wed-flow-hk-anklecircles',
+  'wed-flow-hk-quadpull','wed-flow-dragon','wed-flow-hk-9090','wed-flow-hk-firehydrant','wed-flow-hk-frog',
+  'wed-flow-hk-butterflyfold','wed-flow-hk-reclfigure4','wed-flow-hk-wallsit','wed-flow-hk-tke','wed-flow-bridge',
+  'wed-flow-hk-slbridge','wed-flow-hk-clamshell','wed-flow-hk-tree','wed-flow-hk-standfigure4','wed-flow-warrior3',
+  'wed-flow-hk-pigeon','wed-flow-hk-happybaby','wed-flow-twist','wed-flow-hk-sav'];
 var DS_FLOW_SEQUENCES=[DS_FLOW_IDS_A,DS_FLOW_IDS_B,DS_FLOW_IDS_C];
 var DS_FLOW_SEQ_LABELS=['Grounding Flow','Warrior Flow','Balance Flow'];
 function dsFlowSeqIndex(dk){
@@ -3205,8 +3214,15 @@ function dsFlowSeqIndex(dk){
 var DS_FLOW_POOL=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-flow-child','wed-flow-downdog',
   'wed-flow-dragon','wed-flow-cobra','wed-flow-fold','wed-flow-swan','wed-flow-cat','wed-flow-twist',
   'wed-flow-bridge','wed-flow-legsup','wed-flow-sav','wed-flow-warrior1','wed-flow-warrior2','wed-flow-revwarrior',
-  'wed-flow-warrior3','wed-flow-trianglepose','wed-flow-extcars'];
-var DS_FLOW_CUSTOM={active:false,ids:null};
+  'wed-flow-warrior3','wed-flow-trianglepose','wed-flow-extcars',
+  'wed-flow-hk-hipcircles','wed-flow-hk-anklecircles','wed-flow-hk-quadpull','wed-flow-hk-9090',
+  'wed-flow-hk-firehydrant','wed-flow-hk-frog','wed-flow-hk-butterflyfold','wed-flow-hk-reclfigure4',
+  'wed-flow-hk-wallsit','wed-flow-hk-tke','wed-flow-hk-slbridge','wed-flow-hk-clamshell','wed-flow-hk-tree',
+  'wed-flow-hk-standfigure4','wed-flow-hk-pigeon','wed-flow-hk-happybaby','wed-flow-hk-sav'];
+// Default on first load: Hip & Knee Focus replaces the Grounding/Warrior/Balance rotation
+// as the active Wednesday flow (current weak-point priority). Anyone who already saved
+// their own custom flow keeps it — this only sets the default for a fresh install.
+var DS_FLOW_CUSTOM={active:true,ids:DS_FLOW_IDS_HK.slice()};
 try{ var _fcv0=JSON.parse(store.get('ds_flowcustom')||'null'); if(_fcv0&&typeof _fcv0==='object'&&Array.isArray(_fcv0.ids)){ DS_FLOW_CUSTOM.active=!!_fcv0.active; DS_FLOW_CUSTOM.ids=_fcv0.ids; } }catch(e){}
 function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){} try{dsQueueConfigPush();}catch(e){} }
 function dsFlowActiveIds(){
@@ -4443,6 +4459,220 @@ var DS_DEMOS={
     '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
     '<circle cx="60" cy="128" r="5" fill="none" stroke="#4ec98a" stroke-width="2">'+
     '<animateMotion dur="2.8s" repeatCount="indefinite" path="M0,0 C6,-5 6,5 0,0 C-6,-5 -6,5 0,0"/></circle>'+
+    '</svg>';},
+  quadpull:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="58" y1="26" x2="58" y2="128" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="104" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="104" y1="52" x2="104" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="104" y1="60" x2="66" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="104" y1="98" x2="94" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 104 98;140 104 98;0 104 98" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="104" y1="98" x2="104" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '<line x1="104" y1="60" x2="80" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.6,'x2','80;96;80')+dsS(2.6,'y2','118;122;118')+'</line>'+
+    '</svg>';},
+  anklecircle:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="34" y1="128" x2="166" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="70" cy="70" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="70" y1="80" x2="70" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="112" x2="60" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="112" x2="120" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="118" x2="140" y2="120" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="146" cy="120" r="5" fill="none" stroke="#4ec98a" stroke-width="2">'+
+    '<animateMotion dur="2.2s" repeatCount="indefinite" path="M0,0 C6,-8 -6,-8 0,0 C6,8 -6,8 0,0"/></circle>'+
+    '</svg>';},
+  frogpose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="60" y1="128" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="128" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,10;0,0" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="82" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="92" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="86" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="86" x2="130" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  butterflyfold:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="70" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="130" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 118;22 100 118;0 100 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="118" x2="100" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="66" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="90" x2="80" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="120" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  wallsit:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="132" x2="160" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="70" y1="20" x2="70" y2="132" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animate attributeName="opacity" values="0.65;1;0.65" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite"/>'+
+    '<circle cx="70" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="70" y1="62" x2="70" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="70" y1="94" x2="112" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="112" y1="94" x2="112" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  tke:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="52" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="60" x2="66" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="90" y1="60" x2="114" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 90;18 90 90;0 90 90" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="90" x2="106" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '<path d="M106 128 Q100 108 90 90" fill="none" stroke="#4ec98a" stroke-width="3">'+dsS(2.4,'d','M106 128 Q100 108 90 90; M96 128 Q94 108 90 90; M106 128 Q100 108 90 90')+'</path>'+
+    '</svg>';},
+  slbridge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="120" x2="160" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="56" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="64" y1="108" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-12;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="108" x2="128" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="128" y1="108" x2="128" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '<line x1="100" y1="108" x2="118" y2="66" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'y1','108;96;108')+dsS(2.6,'x2','118;108;118')+dsS(2.6,'y2','66;60;66')+'</line>'+
+    '</svg>';},
+  clamshell:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="60" cy="72" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="68" y1="78" x2="118" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="118" y1="100" x2="112" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 118 100;-34 118 100;0 118 100" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="118" y1="100" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="150" y1="112" x2="142" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  treepose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 128;2 100 128;-2 100 128;0 100 128" keyTimes="0;0.33;0.66;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="36" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="46" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="94" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="98" x2="122" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="122" y1="86" x2="108" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="54" x2="80" y2="24" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="54" x2="120" y2="24" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  standfigure4:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="94" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 90;-10 100 90;0 100 90" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="34" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="44" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="76" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="124" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="132" y2="88" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="132" y1="88" x2="110" y2="102" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  pigeonpose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="70" y1="118" x2="110" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="122" x2="150" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 108;16 90 108;0 90 108" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="108" x2="88" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="86" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="82" x2="64" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  happybaby:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="34" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="70" cy="120" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="78" y1="118" x2="112" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="-3 112 118;3 112 118;-3 112 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="112" y1="118" x2="100" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="76" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="112" y1="118" x2="136" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="136" y1="80" x2="150" y2="62" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="88" y1="66" x2="90" y2="60" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="148" y1="68" x2="150" y2="62" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  firehydrant:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="150" cy="76" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="142" y1="84" x2="90" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="100" x2="90" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="142" y1="90" x2="130" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 100;-30 90 100;0 90 100" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="100" x2="64" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="64" y1="90" x2="58" y2="102" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  restsquat:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,6;0,0" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="66" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="76" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="78" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="78" y1="116" x2="76" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="122" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="122" y1="116" x2="124" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="84" x2="80" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="84" x2="120" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  dancerbridge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="120" x2="160" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="52" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="60" y1="108" x2="96" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="44" y1="112" x2="60" y2="108" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.8,'y1','112;104;112')+'</line>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-10;0,0" keyTimes="0;0.5;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="96" y1="108" x2="124" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="124" y1="108" x2="124" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '<line x1="96" y1="108" x2="118" y2="60" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.8,'y1','108;98;108')+dsS(2.8,'x2','118;104;118')+dsS(2.8,'y2','60;54;60')+'</line>'+
+    '</svg>';},
+  tspinetwist:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="70" y1="118" x2="110" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="120" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="90" y1="112" x2="90" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="88" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 100;-42 90 100;0 90 100" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="100" x2="118" y2="70" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  tailorpose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="128" x2="100" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="64" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="90" x2="82" y2="110" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="118" y2="110" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 70 118;-8 70 118;0 70 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 130 118;8 130 118;0 130 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="130" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
+    '</svg>';},
+  legswing:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="58" y1="26" x2="58" y2="128" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="104" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="104" y1="50" x2="104" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="104" y1="58" x2="66" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="104" y1="98" x2="98" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="104" y1="98" x2="128" y2="112" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'x2','128;76;128')+dsS(1.8,'y2','112;118;112')+'</line>'+
+    '</svg>';},
+  ride:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="130" x2="170" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="120" cy="112" r="18" fill="none" stroke="#4ec98a" stroke-width="3" stroke-dasharray="2 4"/>'+
+    '<circle cx="70" cy="112" r="10" fill="none" stroke="#4ec98a" stroke-width="3" stroke-dasharray="2 4"/>'+
+    '<line x1="70" y1="112" x2="100" y2="80" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="100" y1="80" x2="120" y2="112" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<circle cx="102" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="102" y1="68" x2="96" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="102" y1="70" x2="122" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="96" y1="90" x2="120" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="120" cy="112" r="6" fill="none" stroke="#9a9d8c" stroke-width="4">'+
+    '<animateMotion dur="1.6s" repeatCount="indefinite" path="M0,0 C10,-10 10,10 0,0 C-10,-10 -10,10 0,0"/></circle>'+
+    '</svg>';},
+  ruck:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;18,0;0,0" keyTimes="0;0.5;1" dur="2.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<rect x="88" y="52" width="20" height="26" rx="4" fill="#4ec98a22" stroke="#4ec98a" stroke-width="3"/>'+
+    '<line x1="100" y1="78" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="96" x2="84" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','84;114;84')+'</line>'+
+    '<line x1="100" y1="96" x2="118" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','118;88;118')+'</line></g>'+
+    '</svg>';},
+  walk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;18,0;0,0" keyTimes="0;0.5;1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="52" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="64" x2="80" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1,'x2','80;120;80')+'</line>'+
+    '<line x1="100" y1="64" x2="120" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1,'x2','120;80;120')+'</line>'+
+    '<line x1="100" y1="96" x2="84" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','84;114;84')+'</line>'+
+    '<line x1="100" y1="96" x2="118" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','118;88;118')+'</line></g>'+
     '</svg>';}
 };
 
@@ -4726,6 +4956,27 @@ var DS_SESSIONS={
       {id:'wed-flow-legsup',name:'Legs Up the Wall',slot:'Flow · 13',target:'Recovery · Circulation',equip:'Wall',rx:'3 min',cal:5,cue:'Hips close to the wall, arms wide — total surrender. Scoot to the wall and swing your legs up from lying down',demo:'legsup',log:'time',secs:180},
       {id:'wed-flow-sav',name:'Savasana',slot:'Flow · 14',target:'Integration',equip:'Mat',rx:'3 min',cal:3,cue:'Flat on your back, let everything go — the pose where the practice lands. Lower your legs down from the wall into this',demo:'savasana',log:'time',secs:180},
       {id:'wed-flow-extcars',name:'Extended Flow — Hip + Shoulder CARs',slot:'Flow · 15 (add-on)',target:'Joint Health · Mobility',equip:'Mat',rx:'5–8 min',cal:15,cue:'Slow, controlled circles — quality over range. This is the stretch of the practice, not a new one',demo:'catcow',log:'time',secs:360,setup:'Extra add-on beyond the core 14-pose flow: a few slow hip CARs (controlled articular rotations) and shoulder CARs, standing or on hands and knees. Move to the edge of range without forcing it — this is what bumps the daily practice from ~20 min to ~25–30 min.'},
+      // ── HIP & KNEE FOCUS FLOW — built to replace the default Wednesday rotation. Targets
+      // the hips/legs as the current weak point: mobility opening → light knee-supportive
+      // strength/stability → single-leg balance → release. Runs ~45-50 min at the listed
+      // holds; stretch any hold longer or repeat a phase to fill a full hour if needed. ──
+      {id:'wed-flow-hk-hipcircles',name:'Standing Hip Circles',slot:'HK Flow · 3',target:'Hip Capsule · Warm-Up',equip:'None',rx:'8 each direction',cal:6,cue:'Hands on hips, trace slow full circles — both directions. Keep the motion coming from the hip, not the low back',demo:'hipcircle',log:'time',secs:90},
+      {id:'wed-flow-hk-anklecircles',name:'Seated Ankle & Knee Circles',slot:'HK Flow · 4',target:'Ankles · Knees',equip:'Mat',rx:'8 each direction, each side',cal:4,cue:'Seated, lift one leg and slowly circle the ankle, then the knee — both directions before switching sides',demo:'anklecircle',log:'time',secs:60},
+      {id:'wed-flow-hk-quadpull',name:'Standing Quad Pull',slot:'HK Flow · 5',target:'Quads · Hip Flexors',equip:'Wall or chair for balance',rx:'30s/side',cal:5,cue:'Hold a wall or chair, pull the heel gently toward the glute — knees stay close together, don\'t yank',demo:'quadpull',log:'time',secs:60,perSide:true},
+      {id:'wed-flow-hk-9090',name:'90/90 Hip Switches',slot:'HK Flow · 7',target:'Hip Rotation · Groin',equip:'Mat',rx:'6 slow reps',cal:12,cue:'Seated, both knees bent to 90° — front shin and back shin. Rotate slowly through center, switching which leg is front. Use hands on the floor for control',demo:'windshield-wipers',log:'time',secs:150},
+      {id:'wed-flow-hk-firehydrant',name:'Fire Hydrants',slot:'HK Flow · 8',target:'Glute Medius · Hip Stability',equip:'Mat',rx:'8/side',cal:8,cue:'On hands and knees, lift one knee out to the side, knee soft — not locked. Core stays quiet, no rocking',demo:'firehydrant',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-hk-frog',name:'Frog Pose',slot:'HK Flow · 9',target:'Groin · Deep Hip',equip:'Mat',rx:'60-90s hold',cal:8,cue:'Knees wide, shins parallel, hips sink back toward heels. Go only as wide as feels open, not sharp — a block under the chest helps',demo:'frogpose',log:'time',secs:90},
+      {id:'wed-flow-hk-butterflyfold',name:'Butterfly Fold',slot:'HK Flow · 10',target:'Groin · Inner Thigh',equip:'Mat',rx:'60-90s hold',cal:6,cue:'Soles of the feet together, knees fall open, fold gently forward from the hips — let gravity do the work, no forcing the knees down',demo:'butterflyfold',log:'time',secs:90},
+      {id:'wed-flow-hk-reclfigure4',name:'Reclined Figure-4 Stretch',slot:'HK Flow · 11',target:'Glutes · Piriformis',equip:'Mat',rx:'45s/side',cal:6,cue:'Lying on your back, cross one ankle over the opposite knee, pull the standing leg toward your chest. Knee-friendly stand-in for seated pigeon on cranky-hip days',demo:'knees-chest',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-hk-wallsit',name:'Wall Sit',slot:'HK Flow · 12',target:'Quads · Knee Stability',equip:'Wall',rx:'20-30s × 2',cal:10,cue:'Back flat against the wall, knees at roughly 90° — this is light activation, not a burnout set. Stop well short of shaking',demo:'wallsit',log:'time',secs:100},
+      {id:'wed-flow-hk-tke',name:'Standing Terminal Knee Extension',slot:'HK Flow · 13',target:'Quads (VMO) · Knee Health',equip:'Light tube band, anchored',rx:'10/side',cal:8,cue:'Band looped behind the knee, step back to light tension, slowly straighten the knee against the band. Small movement, controlled tempo',demo:'tke',log:'setsreps',sets:1,perSide:true},
+      {id:'wed-flow-hk-slbridge',name:'Single-Leg Glute Bridge',slot:'HK Flow · 15',target:'Glutes · Hip Stability',equip:'Mat',rx:'6/side',cal:8,cue:'From a double-leg bridge, extend one leg straight and lift through the standing-side glute. Skip this one on days the hip is cranky',demo:'slbridge',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-hk-clamshell',name:'Clamshells',slot:'HK Flow · 16',target:'Glute Medius · Hip Stability',equip:'Mat · mini band optional',rx:'10/side',cal:6,cue:'Lying on your side, knees bent, feet stacked — open the top knee like a clamshell, hips stay stacked, no rolling back',demo:'clamshell',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-hk-tree',name:'Tree Pose',slot:'HK Flow · 17',target:'Balance · Hip Stability',equip:'Mat',rx:'30-45s/side',cal:8,cue:'Root through the standing foot, other foot to ankle, calf, or inner thigh — never the knee. Wall or chair nearby if wobbly',demo:'treepose',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-hk-standfigure4',name:'Standing Figure-4 Balance',slot:'HK Flow · 18',target:'Hip Stability · Balance',equip:'Mat · wall for support',rx:'20-30s/side',cal:8,cue:'Shin of the lifted leg rests across the opposite thigh, hinge slightly forward, hands out for balance. Light touch on a wall if needed',demo:'standfigure4',log:'time',secs:90,perSide:true},
+      {id:'wed-flow-hk-pigeon',name:'Pigeon Pose (or Reclined Figure-4)',slot:'HK Flow · 20',target:'Glutes · Deep Hip Release',equip:'Mat',rx:'60-90s/side',cal:8,cue:'Front shin angled in front, back leg long behind — square the hips as best you can. Swap for the reclined figure-4 from earlier if this doesn\'t feel good today',demo:'pigeonpose',log:'time',secs:180,perSide:true},
+      {id:'wed-flow-hk-happybaby',name:'Happy Baby',slot:'HK Flow · 21',target:'Hip Release · Low Back',equip:'Mat',rx:'60s',cal:5,cue:'On your back, grab the outer edges of the feet, knees toward armpits — gentle rock side to side if it feels good',demo:'happybaby',log:'time',secs:90},
+      {id:'wed-flow-hk-sav',name:'Savasana',slot:'HK Flow · 23',target:'Integration',equip:'Mat',rx:'3-5 min',cal:4,cue:'Flat on your back, let everything go — the pose where the practice lands. Stretch this out if you want to fill the full hour',demo:'savasana',log:'time',secs:270},
       ]},
 
   thu:{title:'Upper Body B',sub:'Push · Pull alternating — Chest · Back · Arms',accent:'var(--accent)',
@@ -8933,6 +9184,251 @@ var YOGA_DEMOS={
     '<line x1="98" y1="106" x2="122" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
     '<line x1="122" y1="100" x2="140" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
     '<line x1="140" y1="86" x2="132" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "banana":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<path d="M50,120 Q100,90 150,110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M50,120 Q100,90 150,110;M50,116 Q100,80 150,116;M50,120 Q100,90 150,110" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
+    '<circle cx="155" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "barrelroll":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="50" y1="100" x2="150" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="100" x2="100" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 118;22 100 118;0 100 118;-22 100 118;0 100 118" keyTimes="0;0.25;0.5;0.75;1" dur="4.2s" repeatCount="indefinite"/><line x1="100" y1="118" x2="80" y2="132" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="118" x2="120" y2="132" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</g>'+
+    '</svg>';},
+  "chaturanga":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="118" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="118" x2="72" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="148" y1="112" x2="140" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="48" cy="120" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "cobraroll":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<path d="M50,124 Q90,124 130,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M50,124 Q90,124 130,124;M50,124 Q90,90 140,70;M50,124 Q90,124 130,124" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
+    '<circle cx="140" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animate attributeName="cy" values="120;70;120" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="cx" values="130;140;130" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
+    '<line x1="60" y1="120" x2="50" y2="105" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "downdogpedal":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="124" x2="105" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="124" x2="105" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="80" x2="60" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="105" y1="80" x2="60" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="56" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<circle cx="140" cy="124" r="6" fill="none" stroke="#4ec98a" stroke-width="2"><animate attributeName="cy" values="124;114;124" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
+    '</g>'+
+    '</svg>';},
+  "figure8":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="80" x2="80" y2="95" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="80" x2="120" y2="95" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="110" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="110" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="112" r="4" fill="none" stroke="#4ec98a" stroke-width="2" opacity="0.8"><animateMotion dur="3.2s" repeatCount="indefinite" path="M0,0 C-8,-3 -8,3 0,0 C8,-3 8,3 0,0"/></circle>'+
+    '</g>'+
+    '</svg>';},
+  "headcircle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animateMotion dur="4s" repeatCount="indefinite" path="M0,0 C6,4 6,10 0,12 C-6,10 -6,4 0,0"/></circle>'+
+    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="110" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="110" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "highplank":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="110" x2="150" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="110" x2="60" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="148" y1="105" x2="148" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="48" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "kneeling-sugarcane":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="128" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="80" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<path d="M90,95 Q110,80 100,50" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="90" y1="105" x2="130" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="80;70;80" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '</g>'+
+    '</svg>';},
+  "knees-chest":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="110" x2="60" y2="105" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="50" cy="102" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<path d="M90,110 Q100,90 90,70" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M90,110 Q100,90 90,70;M90,110 Q95,85 80,68;M90,110 Q100,90 90,70" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
+    '</g>'+
+    '</svg>';},
+  "lizardlunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="128" x2="110" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="90" x2="110" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="110" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="110" y1="60" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="110" y1="60" x2="150" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "lizardtwist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="128" x2="110" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="110" y1="90" x2="110" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="110" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="110" y1="60" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="110" y1="60" x2="150" y2="20" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="20;14;20" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '</g>'+
+    '</svg>';},
+  "low-lunge-side":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="128" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="95" x2="145" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M105,95 Q95,70 115,45" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="d" values="M105,95 Q95,70 115,45;M105,95 Q90,68 108,40;M105,95 Q95,70 115,45" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
+    '<circle cx="115" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="115" y1="50" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "neck-shoulder-release":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="110" x2="100" y2="72" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animateTransform attributeName="transform" type="rotate" values="0 100 72;18 100 72;0 100 72" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
+    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "prone-pec":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="120" x2="140" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="150" cy="116" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="120" x2="90" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="transform" values="rotate(0 90 120);rotate(25 90 120);rotate(0 90 120)" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '</g>'+
+    '</svg>';},
+  "rev-half-moon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="90" y1="100" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="90" cy="50" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="68" x2="60" y2="55" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="90" y1="68" x2="120" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="30;22;30" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '<line x1="90" y1="100" x2="90" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="90" y1="100" x2="140" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="90;96;90" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '</g>'+
+    '</svg>';},
+  "rev-high-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="75" y1="128" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="150" y1="110" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="105" y1="95" x2="105" y2="55" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="105" cy="47" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="105" y1="65" x2="80" y2="110" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="105" y1="65" x2="130" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="30;24;30" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '</g>'+
+    '</svg>';},
+  "revtable":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="124" x2="60" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="100" x2="120" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="120" y1="100" x2="140" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="100" x2="80" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="130" cy="92" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "side-leg-ext":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="118" x2="130" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<circle cx="45" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="130" y1="118" x2="165" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="118;90;118" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '</g>'+
+    '</svg>';},
+  "side-plank-mod":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="55" y1="95" x2="150" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="60" y1="95" x2="60" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="150" y1="105" x2="150" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y1" values="105;98;105" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '<circle cx="48" cy="90" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '</g>'+
+    '</svg>';},
+  "sidelunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="90" x2="60" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="x1" values="100;130;100" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
+    '<line x1="100" y1="90" x2="140" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="90" x2="100" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="60" x2="80" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="60" x2="120" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "spinalrot":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="70" y1="128" x2="130" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 100;-18 100 100;0 100 100;18 100 100;0 100 100" keyTimes="0;0.25;0.5;0.75;1" dur="4.4s" repeatCount="indefinite"/><line x1="100" y1="100" x2="100" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+'<line x1="100" y1="72" x2="75" y2="85" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="72" x2="125" y2="85" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</g>'+
+    '</svg>';},
+  "standing-fold-bound":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="124" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<path d="M100,90 Q100,60 100,55" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="50" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="90" y1="70" x2="110" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="124" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="100" y1="124" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '</g>'+
+    '</svg>';},
+  "windshield-wipers":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="60" y1="105" x2="140" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 105;28 100 105;0 100 105;-28 100 105;0 100 105" keyTimes="0;0.25;0.5;0.75;1" dur="4.4s" repeatCount="indefinite"/><line x1="100" y1="105" x2="90" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="105" x2="110" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
+    '</g>'+
+    '</svg>';},
+  "wrist-figure8":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<line x1="60" y1="128" x2="100" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="140" y1="128" x2="100" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
+    '<line x1="100" y1="95" x2="100" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<circle cx="60" cy="128" r="5" fill="none" stroke="#4ec98a" stroke-width="2">'+
+    '<animateMotion dur="2.8s" repeatCount="indefinite" path="M0,0 C6,-5 6,5 0,0 C-6,-5 -6,5 0,0"/></circle>'+
+    '</svg>';},
+  "wrist-rolls":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
+    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
+    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
+    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
+    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="80" cy="100" r="6" fill="none" stroke="#4ec98a" stroke-width="2"><animateMotion dur="2.4s" repeatCount="indefinite" path="M0,0 C4,-4 4,4 0,0 C-4,-4 -4,4 0,0"/></circle>'+
+    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
     '</g>'+
     '</svg>';}
 };
