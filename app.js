@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v235 — 2026-09-25";
+var APP_BUILD = "v238 — 2026-09-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3430,21 +3430,21 @@ function dsFlowBarHtml(sk){
   if(!n) return '';
   var _seqLabel=DS_FLOW_CUSTOM.active?'Your custom flow':DS_FLOW_SEQ_LABELS[dsFlowSeqIndex(activeDate)];
   if(!DS_FLOW.active){
-    return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
-      +'<div style="font-size:12px;color:#c084fc;font-weight:700;margin-bottom:8px">\ud83e\uddd8 Guided Flow \u2014 hands-free</div>'
+    return '<div class="card" id="ds-flowbar" style="border:1px solid #c9a96e55;background:#c9a96e0c;text-align:center">'
+      +'<div style="font-size:12px;color:#c9a96e;font-weight:700;margin-bottom:8px">\ud83e\uddd8 Guided Flow \u2014 hands-free</div>'
       +'<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:4px">This week: '+_seqLabel+'</div>'
       +'<div style="font-size:11px;color:#999;margin-bottom:10px">Auto-advances through all '+n+' poses, times each hold, and marks them done as it goes</div>'
-      +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c084fc;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
+      +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c9a96e;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
       +(DS_FLOWEDIT_OPEN?'':'<div style="margin-top:8px;font-size:11px;color:#7dd3fc;text-decoration:underline;cursor:pointer" onclick="dsFlowEditOpen()">Reorder / swap poses</div>')
       +'</div>';
   }
   var raw=dsFlowCurrentItem(); var nm=raw?(raw.name+(DS_FLOW.side?' \u2014 '+(DS_FLOW.side==='L'?'Left':'Right'):'')):'';
-  return '<div class="card" id="ds-flowbar" style="border:1px solid #c084fc55;background:#c084fc0c;text-align:center">'
+  return '<div class="card" id="ds-flowbar" style="border:1px solid #c9a96e55;background:#c9a96e0c;text-align:center">'
     +'<div style="font-size:11px;color:#999;margin-bottom:2px">Pose '+(DS_FLOW.idx+1)+' of '+n+'</div>'
     +'<div id="ds-flow-name" style="font-size:14px;color:#f0f0f0;font-weight:700;margin-bottom:6px">'+nm+'</div>'
-    +'<div id="ds-flow-time" style="font-size:28px;color:#c084fc;font-weight:700;font-family:\'DM Mono\',monospace;margin-bottom:10px">'+dsMMSS(DS_FLOW.left)+'</div>'
+    +'<div id="ds-flow-time" style="font-size:28px;color:#c9a96e;font-weight:700;font-family:\'DM Mono\',monospace;margin-bottom:10px">'+dsMMSS(DS_FLOW.left)+'</div>'
     +'<div style="display:flex;gap:8px">'
-    +'<button id="ds-flow-pause" onclick="dsFlowPause()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #c084fc55;background:transparent;color:#c084fc;font-weight:700;font-size:12px;cursor:pointer">'+(DS_FLOW.paused?'\u25B6 Resume':'\u23F8 Pause')+'</button>'
+    +'<button id="ds-flow-pause" onclick="dsFlowPause()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #c9a96e55;background:transparent;color:#c9a96e;font-weight:700;font-size:12px;cursor:pointer">'+(DS_FLOW.paused?'\u25B6 Resume':'\u23F8 Pause')+'</button>'
     +'<button onclick="dsFlowSkip()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#aaa;font-weight:700;font-size:12px;cursor:pointer">\u23ED Skip</button>'
     +'<button onclick="dsFlowStop()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #f8717155;background:transparent;color:#f87171;font-weight:700;font-size:12px;cursor:pointer">\u2715 Stop</button>'
     +'</div>'
@@ -7406,11 +7406,12 @@ function dsRenderItem(rawItem,idx,accent){
         +'<div style="flex:1;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:700">LEFT</div><button class="ds-tbtn '+_tsL.cls+'" id="ds-t-'+_idL+'" style="width:100%" onclick="dsStartTimer(\''+_idL+'\','+_half+')">'+_tsL.txt+'</button></div>'
         +'<div style="flex:1;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:700">RIGHT</div><button class="ds-tbtn '+_tsR.cls+'" id="ds-t-'+_idR+'" style="width:100%" onclick="dsStartTimer(\''+_idR+'\','+_half+')">'+_tsR.txt+'</button></div>'
         +'</div>';
+      h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDoneSide(\''+item.id+'\','+_half+')">'+(done?'\u2713 Done':'Mark done')+'</button>';
     } else {
       var _ts=dsTimerLabel(item.id,item.secs);
       h+='<div class="ds-timerwrap"><button class="ds-tbtn '+_ts.cls+'" id="ds-t-'+item.id+'" onclick="dsStartTimer(\''+item.id+'\','+item.secs+')">'+_ts.txt+'</button></div>';
+      h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
     }
-    h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   } else if(item.log==='cardio'){
     var mins=st.mins||item.defMin;
     h+='<div class="ds-logrow"><span class="ds-lbl">Min</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',-5,'+item.perMin+')">\u2212</button><input type="number" inputmode="numeric" min="1" max="600" class="ds-stepval ds-stepinput" id="ds-min-'+item.id+'" value="'+mins+'" oninput="dsMinInput(\''+item.id+'\','+item.perMin+')" onblur="dsMinBlur(\''+item.id+'\','+item.perMin+')"><button class="ds-stepbtn" onclick="dsBumpMin(\''+item.id+'\',5,'+item.perMin+')">+</button></div><span class="ds-calprev" id="ds-calprev-'+item.id+'">\u2248'+calAdj(mins*item.perMin)+' kcal</span></div>';
@@ -8279,7 +8280,7 @@ function dsRender(){
       // Same hardcoded-hex fix as the split sections above — these day accents were
       // var(--blue)/var(--purple)/var(--green), none of which are ever defined, so
       // "The Session" header rendered colorless. Hex equivalents restore the color.
-      var _fallbackAccent={wed:'#c084fc',sat:'#7dd3fc',sun:'#4ade80'}[sk]||DS_SEC_ACCENT_MAIN;
+      var _fallbackAccent={wed:'#c9a96e',sat:'#7dd3fc',sun:'#4ade80'}[sk]||DS_SEC_ACCENT_MAIN;
       html+=dsRenderSection('The Session','',_fallbackAccent,_moves,'');
     }
     var _customMoves=dsCustomMoves(sk);
@@ -8432,6 +8433,30 @@ function dsFinishSets(id){
   if(st.manualDone){ st.manualDone=false; dsSyncPartialLog(dsViewOf(dsRawItem(id))); }
   else { st.manualDone=true; st._autoNote=null; dsLogComplete(dsViewOf(dsRawItem(id))); }
   dsSaveUI(); dsRender(); renderAll();
+}
+// perSide "time" poses (Pigeon, Dragon, Tree, Warrior III, etc.) run two independent
+// timers under ids item.id+'_L' and item.id+'_R', separate from item.id itself. The
+// single Mark-done button below them called dsMarkDone(item.id) — which has no idea
+// either timer exists — so running both side-timers to completion never fed into what
+// got logged; it silently fell back to a flat estimate disconnected from the timers.
+// This computes real elapsed time from both sides (however far each got, whether or
+// not it finished) and logs that, falling back to the full prescribed time only if
+// neither timer was ever started (matches the old no-timer-used behavior).
+function dsMarkDoneSide(id, half){
+  if(dsComplete(id)){ dsUnlog(id); dsRender(); renderAll(); return; }
+  var idL=id+'_L', idR=id+'_R';
+  function elapsed(t){ if(!t) return null; if(t.done) return half; return Math.max(0, half-(t.left||0)); }
+  var eL=elapsed(ds_timers[idL]), eR=elapsed(ds_timers[idR]);
+  var totalSecs = (eL==null&&eR==null) ? (half*2) : ((eL||0)+(eR||0));
+  var raw=dsRawItem(id); if(!raw) return;
+  var item=dsViewOf(raw);
+  var day=getDay(), sid="sess_"+id;
+  day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
+  var ex={name:item.name,calories:calAdj(item.cal),type:"session",id:sid,done:true,actualSecs:totalSecs};
+  ex.endTs=Date.now(); ex.startTs=ex.endTs-ex.actualSecs*1000;
+  dsAddEx(day,ex); saveDay(day);
+  delete ds_timers[idL]; delete ds_timers[idR];
+  dsRender(); renderAll();
 }
 function dsMarkDone(id){ if(ds_timers[id]){ if(ds_timers[id].interval)clearInterval(ds_timers[id].interval); delete ds_timers[id]; } if(dsComplete(id)){dsUnlog(id);} else {dsLogComplete(dsViewOf(dsRawItem(id)));} dsRender(); renderAll(); }
 // ── REST TIMER WIDGET (drives #timer-widget in index.html) ───────────────
@@ -10595,20 +10620,18 @@ function ygEndSession() {
   document.getElementById("sess-ov").classList.remove("open");
 }
 
-function ygShowDone() {
-  var totCal=0;
-  var totMins=0;
-  routine.forEach(function(r){ totCal+=cal(r.pose.cpm,r.dur); totMins+=Math.round(r.dur/60); });
-  document.getElementById("done-cal").textContent=totCal;
-  document.getElementById("done-ov").classList.add("open");
-  // Cross-log to fitness tracker
+// Shared cross-log write, used by both a full Finish and an early ✕ exit.
+// label lets a partial session read distinctly from a completed one in the
+// day's exercise list, rather than both showing up as identical "Yoga (N min)"
+// entries with no way to tell which was cut short.
+function ygCrossLog(totCal, totMins, label) {
+  if (totMins<=0) return false;
   try {
     var d=new Date();
     var dk=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     var ftData = JSON.parse(store.get("ft_data")||"{}");
     if (!ftData[dk]) ftData[dk]={foods:[],exercises:[],weight:null,waterOz:0,wellness:{},supplements:{}};
     if (!ftData[dk].exercises) ftData[dk].exercises=[];
-    var label="Yoga ("+totMins+" min)";
     var already=ftData[dk].exercises.some(function(x){return x.name===label;});
     if (!already) {
       ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString(),actualSecs:totMins*60,startTs:Date.now()-totMins*60000,endTs:Date.now()});
@@ -10617,8 +10640,34 @@ function ygShowDone() {
       if(typeof renderAll==="function") renderAll();
       if(typeof pushToSheets==="function") pushToSheets();
     }
-  } catch(e){}
+    return true;
+  } catch(e){ return false; }
+}
+function ygShowDone() {
+  var totCal=0;
+  var totMins=0;
+  routine.forEach(function(r){ totCal+=cal(r.pose.cpm,r.dur); totMins+=Math.round(r.dur/60); });
+  document.getElementById("done-cal").textContent=totCal;
+  document.getElementById("done-ov").classList.add("open");
+  ygCrossLog(totCal, totMins, "Yoga ("+totMins+" min)");
   try { ygRenderStatsBar(); } catch(e) {}
+}
+// Closing with ✕ used to discard the whole session silently — no credit for
+// whatever was actually practiced. Now it logs the poses actually completed
+// (sessIdx of them) before closing, same as a full Finish, just for less time.
+// A label distinct from the full-session one so it doesn't get deduped away
+// by ygShowDone's exact-name check if both happen to log the same day.
+function ygExitAndLog() {
+  var totCal=0, totMins=0;
+  for (var i=0; i<sessIdx && i<routine.length; i++){
+    var r=routine[i];
+    totCal+=cal(r.pose.cpm,r.dur); totMins+=Math.round(r.dur/60);
+  }
+  if (totMins>0) {
+    ygCrossLog(totCal, totMins, "Yoga ("+totMins+" min, partial)");
+    try { ygRenderStatsBar(); } catch(e) {}
+  }
+  ygEndSession();
 }
 
 function ygCloseDone() {
