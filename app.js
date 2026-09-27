@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v239 — 2026-09-26";
+var APP_BUILD = "v241 — 2026-09-26";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -107,7 +107,7 @@ function calGoalLabelForKey(dateKey){
 }
 var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
 var USER_AGE = parseInt(store.get('ft_age')) || 0; // used only to estimate max HR if Max HR isn't set directly
-var USER_MAXHR = parseInt(store.get('ft_maxhr')) || 0; // if unset, estimated as 220-age (Tanaka formula would be more accurate but 220-age is the common default)
+var USER_MAXHR = parseInt(store.get('ft_maxhr')) || 0; // if unset, estimated with the Tanaka formula (208 - 0.7 x age)
 function dsEstMaxHR(){ if(USER_MAXHR>0) return USER_MAXHR; if(USER_AGE>0) return Math.round(208-(0.7*USER_AGE)); return null; }
 // Zone 2 = ~60-70% of max HR (Seiler/aerobic-base literature). Returns null if no max HR available.
 function dsHrZone(avgHr){
@@ -175,10 +175,13 @@ function dsMaintTargetCal(){
   return cal;
 }
 function dsSetMaint(on){
-  if(on){ MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START); }
+  if(on){
+    MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START);
+    if(dsBulkActive()){ dsSetBulk(false); } // bulk outranks maintenance in calGoalForKey, so leaving it on would silently hide this toggle
+  }
   else { MAINT_START = null; store.remove('ft_maint_start'); }
   try{ renderAll(); }catch(e){}
-  dsRenderMaintUI();
+  dsRenderMaintUI(); dsRenderBulkUI();
 }
 function dsRenderMaintUI(){
   var badge = document.getElementById('ds-maint-badge');
@@ -356,6 +359,11 @@ var DS_PHASE_RX = {
   'thu-shrug':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
   'thu-hammer':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
   'thu-ohtriceps':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'sat-ballpullover':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'sat-chest':{p1:{rx:'4\u00d712\u201315',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6\u20137',rest:'1 min'}},
+  'sat-uprightrow':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8',rest:'1.5 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'8',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'sat-shrug':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
+  'sat-ohtriceps':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'thu-ballpullover':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'fri-slrdl':{p1:{rx:'3\u20134\u00d78\u201312',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u20138',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d710',sets:2,rpe:'6\u20137',rest:'2 min'}},
   'fri-nordic':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1.5 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
@@ -528,7 +536,8 @@ function measuredTDEE(windowDays){
   var days=windowDays||TDEE_WINDOW_DAYS;
   var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
   var startKey=localDateKey(startD), endKey=todayKey();
-  var all=intakeDaysDetail(days);
+  // Today's log is still in progress, so it never counts as a complete day.
+  var all=intakeDaysDetail(days).filter(function(d){ return d.key<endKey; });
   if(all.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'needs '+TDEE_MIN_INTAKE_DAYS+' days of logged intake in the last '+days+' \u2014 you have '+all.length};
   var full=all.filter(function(d){return d.complete;});
   var partial=all.filter(function(d){return !d.complete;});
@@ -541,13 +550,20 @@ function measuredTDEE(windowDays){
   if(pts.length<4) return {ok:false,reason:'needs 4 weigh-ins in the last '+days+' days \u2014 you have '+pts.length};
   var span=Math.round((new Date(pts[pts.length-1].key+'T00:00:00')-new Date(pts[0].key+'T00:00:00'))/86400000);
   if(span<TDEE_MIN_SPAN) return {ok:false,reason:'weigh-ins only span '+span+' days, needs '+TDEE_MIN_SPAN};
-  // Average the first and last few weigh-ins so one bloated morning at either
-  // end cannot swing the whole estimate.
-  var k=Math.max(2,Math.min(5,Math.floor(pts.length/2)));
-  var head=pts.slice(0,k).reduce(function(a,p){return a+p.w;},0)/k;
-  var tail=pts.slice(-k).reduce(function(a,p){return a+p.w;},0)/k;
-  var lbChange=tail-head;
-  var dailyBalance=(lbChange*KCAL_PER_LB)/span;   // negative when losing
+  // Least-squares slope through every weigh-in in the window. The old
+  // first-few vs last-few average divided by the full first-to-last span, but
+  // averaging pulls each end's date inward, so the rate (and the deficit it
+  // implies) came out ~10-20% too small. A fitted slope uses every point at its
+  // real date and is just as resistant to one bloated morning.
+  var t0=new Date(pts[0].key+'T00:00:00').getTime();
+  var xs=pts.map(function(p){ return Math.round((new Date(p.key+'T00:00:00').getTime()-t0)/86400000); });
+  var mx=xs.reduce(function(a,x){return a+x;},0)/xs.length;
+  var my=pts.reduce(function(a,p){return a+p.w;},0)/pts.length;
+  var sxy=0, sxx=0;
+  for(var q=0;q<pts.length;q++){ sxy+=(xs[q]-mx)*(pts[q].w-my); sxx+=(xs[q]-mx)*(xs[q]-mx); }
+  var slope=sxx>0?sxy/sxx:0;                      // lbs per day
+  var lbChange=slope*span;
+  var dailyBalance=slope*KCAL_PER_LB;             // negative when losing
   // Median is the headline: the failure mode here is a handful of abandoned logs,
   // which is a one-sided outlier problem the median barely notices.
   return {ok:true,
@@ -1165,7 +1181,7 @@ function renderTdeePanel(){
     if(r.all&&r.all.length) h0+=tdeeDayListHtml(r,true);
     el.innerHTML=h0; return;
   }
-  var target=GOALS.cal, gap=r.tdee-target;
+  var target=calGoalForKey(todayKey()), gap=r.tdee-target;
   var spread=Math.abs(r.tdee-r.tdeeMean);
   var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>'
    +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
@@ -1176,7 +1192,8 @@ function renderTdeePanel(){
   h+='<div style="color:#777;margin-top:4px;line-height:1.45">Mean-based estimate: '+r.tdeeMean+' kcal'
    +(spread>=100?' \u2014 a '+Math.round(spread)+' kcal gap, which means a few low days are still skewing the average. Trust the median.'
                 :' \u2014 within '+Math.round(spread)+' kcal of the median, so the logging looks consistent.')+'</div>';
-  if(gap>0) h+='<div style="margin-top:6px;color:#5eead4;line-height:1.45">Today\'s target of '+target+' sits about '+gap+' kcal under that \u2014 roughly '+(gap*7/3500).toFixed(2)+' lbs/week of predicted loss.</div>';
+  if(dsMaintActive()||dsBulkActive()) h+='<div style="margin-top:6px;color:#888;line-height:1.45">'+(dsBulkActive()?'Bulk phase is on, so today\'s target is this number + '+BULK_SURPLUS+' kcal':'Maintenance mode is on, so today\'s target is this number')+' and moves with it as new data comes in.</div>';
+  else if(gap>0) h+='<div style="margin-top:6px;color:#5eead4;line-height:1.45">Today\'s target of '+target+' sits about '+gap+' kcal under that \u2014 roughly '+(gap*7/3500).toFixed(2)+' lbs/week of predicted loss.</div>';
   else h+='<div style="margin-top:6px;color:#fbbf24;line-height:1.45">Today\'s target of '+target+' is at or above measured maintenance. If loss has stalled, this is the first number to look at.</div>';
   if(r.tdee<1900) h+='<div style="margin-top:6px;color:#fb923c;line-height:1.45">This lands below a plausible resting rate for your size, which usually means calories are going unlogged rather than unburned \u2014 cooking oil and estimated dinner portions are the usual pair.</div>';
   h+=tdeeDayListHtml(r,false);
@@ -1257,60 +1274,108 @@ function dsParseLoadNum(s){
   var m=String(s).match(/[\d.]+/);
   return m ? parseFloat(m[0]) : null;
 }
-// Walks every logged strength session across all days and groups by exercise
-// id, keeping the top (heaviest-set) load and its reps per session — the one
-// number that actually answers "is this lift progressing."
+// ── STRENGTH TREND: reps at the same band ────────────────────────────────
+// Bands don't move in small steps, so "heaviest load this session vs last" says
+// "holding steady" for weeks while the reps climb. The real signal is reps at the
+// SAME band: 30 lb x 15 beats 30 lb x 12. Each session is compared with the most
+// recent earlier session of the same exercise AND variant at the same band.
+// Moving up a band is its own event, not a regression.
+// Normalizes what was typed in the load box so "30 lb", "30lbs" and "30" match,
+// stacked tubes ("30+20") total 50, and named bands ("Green") still group.
+// An empty load box = bodyweight, so push-ups trend too.
+function dsLoadKey(s){
+  var t=String(s==null?'':s).toLowerCase().replace(/(\d)\s*(lbs?|pounds?)\b/g,'$1').replace(/\s+/g,'');
+  return t||'bw';
+}
+function dsLoadTotal(key){
+  if(key==='bw') return 0;
+  if(/^[\d.]+(\+[\d.]+)*$/.test(key)) return key.split('+').reduce(function(a,x){return a+parseFloat(x);},0);
+  return dsParseLoadNum(key);
+}
+function dsLoadLabel(key){
+  if(key==='bw') return 'bodyweight';
+  if(/^[\d.]+(\+[\d.]+)*$/.test(key)) return key.replace(/\+/g,' + ')+' lb'+(key.indexOf('+')>=0?' ('+dsLoadTotal(key)+')':'');
+  return key;
+}
 function strengthTrendData(){
-  var byId={};
-  Object.keys(appData).sort().forEach(function(k){
+  var byKey={};
+  Object.keys(appData).filter(function(k){return /^\d{4}-\d{2}-\d{2}$/.test(k);}).sort().forEach(function(k){
     var d=appData[k]; if(!d||!d.exercises) return;
     d.exercises.forEach(function(ex){
       if(!ex.id||(ex.id.indexOf('sess_')!==0 && ex.id.indexOf('sheet_')!==0)) return;
-      var sets=dsDecodeSets(ex); if(!sets.length) return;
-      var best=null;
+      var sets=dsDecodeSets(ex).filter(function(s){return isFinite(s.reps)&&s.reps>0;});
+      if(!sets.length) return;
+      // Group this session's sets by band.
+      var groups={};
       sets.forEach(function(s){
-        var ln=dsParseLoadNum(s.load);
-        if(ln==null) return;
-        if(!best||ln>best.load) best={load:ln,reps:s.reps||null,rir:s.rir};
+        var key=dsLoadKey(s.load);
+        var g=groups[key]||(groups[key]={key:key,best:0,total:0,n:0,rirs:[]});
+        g.best=Math.max(g.best,s.reps); g.total+=s.reps; g.n++;
+        if(s.rir!=null&&!isNaN(s.rir)) g.rirs.push(s.rir);
       });
-      if(!best) return;
-      var avgRir=null, rirVals=sets.map(function(s){return s.rir;}).filter(function(v){return v!=null&&!isNaN(v);});
-      if(rirVals.length) avgRir=rirVals.reduce(function(a,b){return a+b;},0)/rirVals.length;
+      // The session's working band = heaviest one used (by total lb); if none are
+      // numeric, the band with the most sets.
+      var top=null;
+      Object.keys(groups).forEach(function(key){
+        var g=groups[key]; g.lb=dsLoadTotal(key);
+        if(!top) { top=g; return; }
+        var a=g.lb, b=top.lb;
+        if(a!=null&&b!=null){ if(a>b||(a===b&&g.n>top.n)) top=g; }
+        else if(a!=null&&b==null) top=g;
+        else if(a==null&&b==null&&g.n>top.n) top=g;
+      });
+      if(!top) return;
       var name=(ex.name||'').replace(/\s*·.*$/,'');
-      if(!byId[ex.id]) byId[ex.id]={name:name,history:[]};
-      byId[ex.id].history.push({date:k,load:best.load,reps:best.reps,rir:avgRir});
+      var gk=ex.id+'|'+name.toLowerCase();
+      if(!byKey[gk]) byKey[gk]={id:ex.id,name:name,history:[]};
+      var avgRir=top.rirs.length?top.rirs.reduce(function(a,b){return a+b;},0)/top.rirs.length:null;
+      byKey[gk].history.push({date:k,band:top.key,lb:top.lb,best:top.best,total:top.total,sets:top.n,rir:avgRir});
     });
   });
-  // Only exercises with a real load trend (2+ sessions with a numeric load) are worth showing.
-  var list=Object.keys(byId).map(function(id){return {id:id,name:byId[id].name,history:byId[id].history};})
-    .filter(function(x){return x.history.length>=2;});
+  var list=Object.keys(byKey).map(function(k){return byKey[k];}).filter(function(x){return x.history.length>=2;});
+  list.forEach(function(x){ x.cmp=strengthCompare(x.history); });
   list.sort(function(a,b){
     var la=a.history[a.history.length-1].date, lb=b.history[b.history.length-1].date;
     return la<lb?1:(la>lb?-1:0);
   });
   return list;
 }
-var STRENGTH_TREND_SHOW=4;
+// Latest session vs the most recent earlier session at the same band.
+function strengthCompare(hist){
+  var cur=hist[hist.length-1], prev=hist[hist.length-2];
+  var same=null;
+  for(var i=hist.length-2;i>=0;i--){ if(hist[i].band===cur.band){ same=hist[i]; break; } }
+  if(prev.band!==cur.band && prev.lb!=null && cur.lb!=null && cur.lb!==prev.lb){
+    return {kind:cur.lb>prev.lb?'bandup':'banddown', cur:cur, prev:prev, same:same};
+  }
+  if(!same) return {kind:'newband', cur:cur, prev:prev};
+  var d=cur.best-same.best, dt=cur.total-same.total;
+  return {kind:d>0?'up':(d<0?'down':(dt>0?'upvol':(dt<0?'downvol':'flat'))), cur:cur, same:same, d:d, dt:dt};
+}
+var STRENGTH_TREND_SHOW=5;
+function _stDate(k){ try{ return keyToDate(k).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return k; } }
 function renderStrengthTrend(){
   var el=document.getElementById("dash-strength-trend"); if(!el) return;
   var list=strengthTrendData();
-  if(!list.length){ el.innerHTML='<span style="color:#666">Log a load number (not just reps) on a couple of lifts and their trend will show up here.</span>'; return; }
+  if(!list.length){ el.innerHTML='<span style="color:#666">Log a couple of sessions of the same exercise (enter the band in the load box) and reps at each band will trend here.</span>'; return; }
   var h='';
   list.slice(0,STRENGTH_TREND_SHOW).forEach(function(x){
-    var hist=x.history, cur=hist[hist.length-1], prev=hist.length>=2?hist[hist.length-2]:null;
-    var col='#9a9d8c', arrow='', note='';
-    if(prev){
-      var d=cur.load-prev.load;
-      if(d>0){ col='#5eead4'; arrow='\u25B2'; note=' up from '+prev.load+(prev.reps?'\u00d7'+prev.reps:'')+' last session'; }
-      else if(d<0){ col='#fb923c'; arrow='\u25BC'; note=' down from '+prev.load+(prev.reps?'\u00d7'+prev.reps:'')+' \u2014 check fatigue or form before reading it as regression'; }
-      else { col='#888'; arrow='\u2192'; note=' holding steady vs last session'; }
-    }
+    var c=x.cmp, cur=c.cur, col='#888', arrow='→', note='';
+    var bandTxt=dsLoadLabel(cur.band);
+    if(c.kind==='up'){ col='#5eead4'; arrow='▲'; note='+'+c.d+' rep'+(c.d===1?'':'s')+' at '+bandTxt+' vs '+_stDate(c.same.date)+' ('+c.same.best+')'; }
+    else if(c.kind==='upvol'){ col='#5eead4'; arrow='▲'; note='same top set, +'+c.dt+' total reps at '+bandTxt+' vs '+_stDate(c.same.date); }
+    else if(c.kind==='down'){ col='#fb923c'; arrow='▼'; note=c.d+' rep'+(c.d===-1?'':'s')+' at '+bandTxt+' vs '+_stDate(c.same.date)+' ('+c.same.best+') — check sleep, fatigue or rest time before calling it regression'; }
+    else if(c.kind==='downvol'){ col='#fbbf24'; arrow='→'; note='same top set, '+c.dt+' total reps at '+bandTxt+' vs '+_stDate(c.same.date); }
+    else if(c.kind==='flat'){ note='matched '+_stDate(c.same.date)+' at '+bandTxt+' — beat it by one rep next time'; }
+    else if(c.kind==='bandup'){ col='#a78bfa'; arrow='⬆'; note='moved up from '+dsLoadLabel(c.prev.band)+' ('+c.prev.best+' reps)'+(c.same?' — last time at this band: '+c.same.best+' reps ('+_stDate(c.same.date)+')':' — first session at this band, this is the new baseline'); }
+    else if(c.kind==='banddown'){ col='#fbbf24'; arrow='⬇'; note='lighter than last time ('+dsLoadLabel(c.prev.band)+')'+(c.same?' — vs '+c.same.best+' reps here on '+_stDate(c.same.date):''); }
+    else { note='first session at '+bandTxt+' — new baseline'; }
     h+='<div style="padding:6px 0;border-bottom:1px solid #222">'
       +'<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px">'
       +'<span style="color:#ccc;font-weight:600">'+escH(x.name)+'</span>'
-      +'<span style="color:'+col+'">'+arrow+' '+cur.load+(cur.reps?'\u00d7'+cur.reps:'')+'</span></div>';
-    if(note) h+='<div style="font-size:10px;color:#666;margin-top:2px">'+note+'</div>';
-    if(cur.rir!=null) h+='<div style="font-size:10px;color:#555;margin-top:2px">avg RIR '+cur.rir.toFixed(1)+' this session</div>';
+      +'<span style="color:'+col+';white-space:nowrap">'+arrow+' '+escH(bandTxt)+' × '+cur.best+'</span></div>';
+    if(note) h+='<div style="font-size:10px;color:#777;margin-top:2px;line-height:1.4">'+escH(note)+'</div>';
+    if(cur.rir!=null) h+='<div style="font-size:10px;color:#555;margin-top:2px">'+cur.sets+' set'+(cur.sets===1?'':'s')+(cur.band==='bw'?'':' at this band')+' · effort: '+dsRirLabel(cur.rir)+'</div>';
     h+='</div>';
   });
   el.innerHTML=h;
@@ -4694,6 +4759,8 @@ var DS_VARIANT_SETUPS={
   "mon-curl::3": "Hold a 10 lb DB in each hand and hinge forward at the hips like the start of an RDL, arms hanging straight down perpendicular to the floor. Hold that hinge and curl from the hang — the forward lean removes any ability to swing.",
   "mon-curl::4": "Anchor the tube at the bottom of a door, handles free. Face away and step forward until the band has tension with your arms hanging slightly behind your torso. Keep the elbows back and still, curl both handles to your shoulders, then lower all the way into the stretch.",
   "mon-curl::5": "Brace the back of your upper arm against a wall or chair back so the elbow cannot drift. Curl slowly with a light band, turning the pinky up at the top.",
+  "sat-ballpullover::1": "Anchor the tube high on a door. Face it and step back until the band is tight with your arms straight out overhead. Keeping elbows soft but fixed, sweep both hands down to your thighs, squeeze the lats, then let the arms float back up into a full overhead stretch.",
+  "sat-chest::3": "Anchor the tube low on a door behind you. Face away in a split stance, handles low by your hips with the arms open wide and slightly behind you. Step forward until the band is tight there, then sweep both hands up and together to eye level in front of you. Control the return into the stretch.",
   "mon-pushup::7": "Set two yoga blocks shoulder-width apart, flat side up. Hands on the blocks, body in a straight line. Lower until your chest drops below the level of your hands, pause 1 second, press up. Once 15 reps is easy, drape the Clench band across your upper back with the ends under your palms.",
   "mon-pressaround::2": "Anchor the tube behind you at chest height. Split stance facing away, one handle in each hand, arms open wide with a slight elbow bend. Step forward until the band is tight in that wide position, then sweep the handles together in front of your chest and control them back.",
   "mon-standbandpress::3": "Feet on the padded piano bench, hands on the floor (or on yoga blocks for more depth) slightly wider than your shoulders. Body straight from heels to head. Lower until your chest passes your hands, pause, press back up.",
@@ -5037,25 +5104,25 @@ var DS_SESSIONS={
 
   sat:{title:'Upper Body C',sub:'Fixed training day — Back · Traps · Arms + Quads/Glutes top-off',accent:'var(--accent)',
     moves:[DS_WARMUP_RAISE,DS_WARMUP_ARMCIRCLE,DS_WARMUP_HIPFLOW9,DS_WARMUP_BANDSHOULDER,DS_WARMUP_SHOULDERCARS,
-      {id:'sat-ballpullover',name:'Straight-Arm Ball Pullover',slot:'Pull · Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'4×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:4,variants:[{name:'Banded Straight-Arm Pulldown',equip:'Tube 20–30 lb, anchored high',rx:'4×12–15',cue:'Anchor overhead, arms straight out in front — sweep both arms down to your thighs keeping elbows soft, control the return. Same lat/serratus target with less loading on the shoulder end-range than the ball pullover',demo:'fly'}]},
-      {id:'sat-chest',name:'Chest — Pull-Apart / Fly',pat:'fly',slot:'Push · Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 40 lb',rx:'4×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest. Third weekly chest touch, spread out from Mon/Thu so no single day carries all the volume.',demo:'fly',log:'setsreps',sets:4,
+      {id:'sat-ballpullover',name:'Straight-Arm Ball Pullover',lockVar:1,slot:'Pull · Back',target:'Lats · Core · Serratus',equip:'Slam ball',rx:'4×10–12',cal:20,cue:'Lie on your back, arms straight up holding the ball overhead. Keeping arms straight (elbows soft, not locked), lower the ball in an arc back toward the floor behind your head, then pull back to the start. No elbow bend — the arc stays behind you, never toward your face.',log:'setsreps',sets:4,variants:[{name:'Banded Straight-Arm Pulldown',equip:'Tube 20–30 lb, anchored high',rx:'4×12–15',cue:'Anchor overhead, arms straight out in front — sweep both arms down to your thighs keeping elbows soft, control the return. Same lat/serratus target with less loading on the shoulder end-range than the ball pullover',demo:'fly'}]},
+      {id:'sat-chest',name:'Chest — Pull-Apart / Fly',lockVar:3,pat:'fly',slot:'Push · Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 40 lb',rx:'4×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest. Third weekly chest touch, spread out from Mon/Thu so no single day carries all the volume.',demo:'fly',log:'setsreps',sets:4,
         variants:[{name:'Banded Push-up',pat:'pushup',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
                   {name:'Floor DB Press',pat:'press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'},
                   {name:'Low-Anchor Stretch Fly',pat:'fly',equip:'Tube 10–20 lb · low anchor',rx:'3×12–15',cue:'Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body',demo:'fly'}]},
-      {id:'sat-uprightrow',name:'Banded Upright Row',slot:'Pull · Traps',target:'Traps · Side Delts',equip:'Tube 20–30 lb, stand on band',rx:'4×10–12',cal:25,cue:'Stand on the band, pull the handles straight up along your body to chest height, elbows leading and staying above wrists — stop if the shoulders complain, this can be a cranky-shoulder movement for some people.',demo:'row',log:'setsreps',sets:4},
-      {id:'sat-shrug',name:'Banded Shrug',slot:'Pull · Traps',target:'Traps (upper)',equip:'Tube 20–30 lb · stand on band',rx:'4×15–20',cal:20,cue:'Straight up and down, no rolling — pause 1 sec at the top, control the lower',demo:'trap3',log:'setsreps',sets:4,
+      {id:'sat-uprightrow',name:'Banded Upright Row',lockVar:0,slot:'Pull · Traps',target:'Traps · Side Delts',equip:'Tube 20–30 lb, stand on band',rx:'4×10–12',cal:25,cue:'Stand on the band, pull the handles straight up along your body to chest height, elbows leading and staying above wrists — stop if the shoulders complain, this can be a cranky-shoulder movement for some people.',demo:'row',log:'setsreps',sets:4},
+      {id:'sat-shrug',name:'Banded Shrug',lockVar:0,slot:'Pull · Traps',target:'Traps (upper)',equip:'Tube 20–30 lb · stand on band',rx:'4×15–20',cal:20,cue:'Straight up and down, no rolling — pause 1 sec at the top, control the lower',demo:'trap3',log:'setsreps',sets:4,
         setup:'Stand on the center of the band with feet shoulder-width apart, holding a handle in each hand at your sides. Keeping arms straight, shrug your shoulders straight up toward your ears, pause a beat at the top, then lower slowly. No rolling or rotating — pure vertical movement.',
         variants:[{name:'DB Shrug',equip:'2× 10 lb dumbbells',rx:'3×15–20',cue:'Same straight-up-and-down shrug, dumbbells at your sides instead of a band — a bit more resistance at the top of the range',demo:'trap3'}]},
-      {id:'sat-inclinecurl',name:'Stability Ball Incline Curl (long head)',slot:'Pull · Biceps',target:'Biceps — Long Head',equip:'Stability ball tilted + tube band, low anchor',rx:'3×6–10',cal:20,cue:'⚠️ Highest elbow caution — lie back on the ball at an incline, arms hanging behind your torso line, curl from a deep stretch. Start with a light band or no band at all the first session. Stop immediately if elbow soreness lingers past 24h.',demo:'curl',log:'setsreps',sets:4,variants:[{name:'DB Incline Curl on Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312',cue:'Lean back over the ball so the arms hang behind the torso \u2014 curl from that deep stretch, slow negatives. Full supination (palms up) targets the long head best, but if your left wrist pops, rotate hands slightly inward toward neutral \u2014 same fix as your standing curl.',demo:'curl'},{name:'Ball Preacher Curl',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312/side',cue:'Kneel behind the ball, drape the back of your upper arm over the front at a downward angle (not flat on top) \u2014 let the arm hang almost straight at the bottom, curl up, squeeze 1 sec, then 3-sec slow lower.',demo:'curl'}]},
-      {id:'sat-ohtriceps',name:'Banded Overhead Triceps Extension',slot:'Push · Triceps',target:'Triceps — Long Head',equip:'Tube 10–20 lb, anchored underfoot',rx:'4×10–12',cal:20,cue:'Stretched-overhead triceps angle — pushdowns and skull crushers miss this position. Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Elbows stay close to your ears, no flaring out.',demo:'triceps',log:'setsreps',sets:4,
+      {id:'sat-inclinecurl',name:'Stability Ball Incline Curl (long head)',lockVar:0,slot:'Pull · Biceps',target:'Biceps — Long Head',equip:'Stability ball tilted + tube band, low anchor',rx:'3×6–10',cal:20,cue:'⚠️ Highest elbow caution — lie back on the ball at an incline, arms hanging behind your torso line, curl from a deep stretch. Start with a light band or no band at all the first session. Stop immediately if elbow soreness lingers past 24h.',demo:'curl',log:'setsreps',sets:4,variants:[{name:'DB Incline Curl on Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312',cue:'Lean back over the ball so the arms hang behind the torso \u2014 curl from that deep stretch, slow negatives. Full supination (palms up) targets the long head best, but if your left wrist pops, rotate hands slightly inward toward neutral \u2014 same fix as your standing curl.',demo:'curl'},{name:'Ball Preacher Curl',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312/side',cue:'Kneel behind the ball, drape the back of your upper arm over the front at a downward angle (not flat on top) \u2014 let the arm hang almost straight at the bottom, curl up, squeeze 1 sec, then 3-sec slow lower.',demo:'curl'}]},
+      {id:'sat-ohtriceps',name:'Banded Overhead Triceps Extension',lockVar:0,slot:'Push · Triceps',target:'Triceps — Long Head',equip:'Tube 10–20 lb, anchored underfoot',rx:'4×10–12',cal:20,cue:'Stretched-overhead triceps angle — pushdowns and skull crushers miss this position. Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Elbows stay close to your ears, no flaring out.',demo:'triceps',log:'setsreps',sets:4,
         variants:[{name:'DB Overhead Triceps Extension',equip:'1× 10 lb dumbbell, both hands',rx:'3×10–12',cue:'Hold one dumbbell overhead with both hands, lower behind the head bending only the elbows, press back to lockout — same stretched-triceps angle, no band needed',demo:'triceps'}]},
-      {id:'sat-frontsquat',name:'Heavy Band Front Squat',slot:'Squat · Quads Top-off',target:'Quads · Glutes',equip:'Clench 35–75 lb band',rx:'3×10–12 to true failure',cal:40,cue:'Added to close the weekly quad gap — Tuesday leans power/light, this is the one true near-failure quad set of the week. Stand centered on the band, handles racked at the shoulders like a front squat, sit back and down keeping the torso upright, drive up through the heels.',demo:'squat',log:'setsreps',sets:3,
+      {id:'sat-frontsquat',name:'Heavy Band Front Squat',lockVar:0,slot:'Squat · Quads Top-off',target:'Quads · Glutes',equip:'Clench 35–75 lb band',rx:'3×10–12 to true failure',cal:40,cue:'Added to close the weekly quad gap — Tuesday leans power/light, this is the one true near-failure quad set of the week. Stand centered on the band, handles racked at the shoulders like a front squat, sit back and down keeping the torso upright, drive up through the heels.',demo:'squat',log:'setsreps',sets:3,
         setup:'Step both feet onto the middle of the band, shoulder-width apart. Bring the handles up to rest at your shoulders (front-rack style), elbows up. Squat down keeping the torso upright — band tension increases the deeper you go, so control the descent. Drive up through the heels to standing. Push these sets close to true failure since this is the week\'s dedicated heavy quad stimulus.',
         variants:[{name:'Banded Bulgarian Split Squat',equip:'Tube 20–30 → 40–50 lb',rx:'3×10–12/leg to true failure',cue:'Front heel drives through the floor, torso stays tall — unilateral swap if the front squat setup or balance isn\'t working today',demo:'splitsquat'},{name:'Goblet Squat',equip:'10 lb dumbbell',rx:'3×15–20 to true failure',cue:'Hold the DB at your chest, sit back — lighter load option, push the rep count up to compensate',demo:'goblet'}]},
-      {id:'sat-hipthrust',name:'Banded Hip Thrust',slot:'Hinge · Glutes',target:'Glutes',equip:'Tube band across hips · bench or stable surface for shoulders',rx:'3×12–15',cal:30,cue:'New addition — the only direct glute isolation in the week; everything else only trains glutes as a secondary mover off squats/RDLs. Upper back braced on a bench or the piano bench, band looped across your hips and anchored under your feet, feet planted hip-width. Drive hips up until torso is in line with thighs, squeeze glutes hard at the top for a 1-count, lower under control without letting the hips touch down between reps.',demo:'bridge',log:'setsreps',sets:3,
+      {id:'sat-hipthrust',name:'Banded Hip Thrust',lockVar:0,slot:'Hinge · Glutes',target:'Glutes',equip:'Tube band across hips · bench or stable surface for shoulders',rx:'3×12–15',cal:30,cue:'New addition — the only direct glute isolation in the week; everything else only trains glutes as a secondary mover off squats/RDLs. Upper back braced on a bench or the piano bench, band looped across your hips and anchored under your feet, feet planted hip-width. Drive hips up until torso is in line with thighs, squeeze glutes hard at the top for a 1-count, lower under control without letting the hips touch down between reps.',demo:'bridge',log:'setsreps',sets:3,
         setup:'Sit with upper back against a bench edge, band looped over your hips, feet flat on the floor hip-width apart, knees bent ~90°. Drive through the heels, extending the hips up until your body forms a straight line from shoulders to knees — squeeze glutes at the top, then lower with control, keeping tension on through the whole set rather than resting at the bottom.',
         variants:[{name:'Floor Glute Bridge',equip:'Tube band across hips',rx:'3×15–20',cue:'Shoulders on the floor instead of a bench — shorter range of motion, gentler entry point while the movement feels new. Same drive-and-squeeze cue.',demo:'bridge'}]},
-      {id:'sat-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors',demo:'hollow'}]},
+      {id:'sat-hollow',name:'Hollow Body Hold',lockVar:0,slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors',demo:'hollow'}]},
       {id:'sat-ride',name:'Mountain Bike Ride',demo:'ride',slot:'Cardio · Separate Session',target:'Vigorous aerobic effort',equip:'Roadmaster · compression sleeve',rx:'30–60 min',cal:0,cue:'Do this at a different time of day than the lift above — not back-to-back — so the ride doesn\'t eat into recovery from the heavier quad/glute work. Neighborhood hills push this into vigorous zone most of the ride — that\'s expected, not a sign you\'re overdoing it. Wear the compression sleeve.',log:'cardio',perMin:4.5,defMin:43,variants:[{name:'Interval Ride',equip:'Roadmaster · compression sleeve',rx:'30–45 min · 1 min hard / 1–2 min easy, repeat',perMin:6.3,defMin:35,cue:'Push a hard, standing-effort pace for 1 min, then settle back to conversational for the recovery. Repeat for most of the ride.',demo:'ride'}]}]},
 
   sun:{title:'Sunday Recovery',sub:'Active recovery · Walk + Gentle Flow',accent:'var(--green)',
@@ -5939,9 +6006,60 @@ function dsSyncedExercise(id){
 // ── DYNAMIC PROGRAM UPDATES: evolving reps target per exercise, based on trend ──
 var DS_PROG={}; try{ DS_PROG=JSON.parse(store.get("ds_prog")||"{}"); }catch(e){ DS_PROG={}; }
 function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catch(e){} dsQueueConfigPush(); }
+// ── DOUBLE PROGRESSION ─────────────────────────────────────────────────
+// The plan's rule: work inside the rep range at 1-3 RIR, add a rep each
+// session, and once the TOP of the range is hit (not at failure) two sessions
+// in a row, move up one band step and restart at the bottom. The old logic had
+// no idea what the rep range was, cut the target by 2 reps whenever you logged
+// "near failure" (which IS the target effort), and told you to move up a band
+// after one easy set even at the bottom of the range.
+function dsRepRange(id){
+  var raw=dsRawItem(id); if(!raw||raw.log!=='setsreps') return null;
+  var v=dsViewOf(raw), rx=v.rx||'';
+  var ph=dsCurrentPhase(), po=ph&&DS_PHASE_RX[id]&&DS_PHASE_RX[id][ph];
+  if(po&&po.rx) rx=po.rx;
+  var tail=String(rx).split('\u00d7').pop();          // text after the last "×"
+  if(/\d\s*s\b|sec|min/i.test(tail)) return null;     // timed holds, not reps
+  var m=tail.match(/(\d+)\s*[\u2013\-]\s*(\d+)/);
+  if(m) return {lo:+m[1],hi:+m[2]};
+  m=tail.match(/(\d+)/);
+  return m?{lo:+m[1],hi:+m[1]}:null;
+}
+function dsProgDecision(id){
+  var lt=dsLastTime(id); if(!lt) return null;
+  var base=dsParseLastReps(lt); if(base==null) return null;
+  var rir=dsParseLastRir(lt), r=Math.round(base), rng=dsRepRange(id);
+  var raw=dsRawItem(id), band=raw?dsWantsLoad(dsViewOf(raw)):false;
+  var up=band?'move up one band step':'make it harder (3-sec lowering, a pause in the stretch, or the next harder variation)';
+  if(!rng){
+    if(rir!=null&&rir>=2.5) return {reps:r+2,note:'\u26A1 Had reps left last time \u2014 aim for '+(r+2)+'.'};
+    return {reps:r,note:null};
+  }
+  var hist=dsHistoryN(id,2);
+  var topAtTarget=function(h){ var rp=dsParseLastReps(h), ri=dsParseLastRir(h); return rp!=null&&rp>=rng.hi&&(ri==null||ri>=0.5); };
+  if(hist.length>=2&&hist.every(topAtTarget))
+    return {reps:rng.lo,bandUp:true,note:'\u25B2 Top of the range ('+rng.hi+') two sessions running \u2014 '+up+' and restart at '+rng.lo+' reps.'};
+  if(r<rng.lo)
+    return {reps:rng.lo,note:'\u2193 Came in under '+rng.lo+' last time \u2014 aim for '+rng.lo+'. Short again next time? '+(band?'Drop one band step.':'Use an easier variation.')};
+  if(r>=rng.hi)
+    return {reps:rng.hi,note:'\u2713 Hit the top ('+rng.hi+') last time \u2014 match it again with a rep or two in reserve and you move up next session.'};
+  if(rir!=null&&rir>=2.5){ var t=Math.min(rng.hi,r+2); return {reps:t,note:'\u26A1 Had reps left at '+r+' \u2014 aim for '+t+' this session.'}; }
+  if(rir!=null&&rir<0.5) return {reps:r,note:'\u2192 Hit failure at '+r+' \u2014 match '+r+' with a rep in reserve before adding more.'};
+  var t2=Math.min(rng.hi,r+1);
+  return {reps:t2,note:'\u2713 Beat last time by one \u2014 aim for '+t2+' (range '+rng.lo+'\u2013'+rng.hi+').'};
+}
 function dsProgTarget(id){
   var rec=DS_PROG[id];
   if(rec && rec.day===activeDate) return rec.reps; // already computed for today, don't recompute mid-session
+  var _dec=dsProgDecision(id);
+  if(_dec || dsRepRange(id)){
+    var _rng=dsRepRange(id);
+    var _nr=_dec?_dec.reps:(rec?rec.reps:(_rng?_rng.lo:10));
+    _nr=Math.max(1,_nr);
+    DS_PROG[id]={reps:_nr, day:activeDate, prevReps:rec?rec.reps:null, bandUp:!!(_dec&&_dec.bandUp)};
+    dsProgSave();
+    return _nr;
+  }
   var lt=dsLastTime(id);
   var baseline = lt ? dsParseLastReps(lt) : null;
   if(baseline==null) baseline = rec ? rec.reps : 10;
@@ -5951,7 +6069,7 @@ function dsProgTarget(id){
     var rirs=hist.map(dsParseLastRir).filter(function(x){return x!=null;});
     if(rirs.length>=2){
       if(rirs.every(function(r){return r>=3;})) newReps=Math.round(baseline)+2;
-      else if(rirs.every(function(r){return r<=1;})) newReps=Math.max(1,Math.round(baseline)-2);
+      else if(rirs.every(function(r){return r<0.5;})) newReps=Math.max(1,Math.round(baseline)-1);
     }
   } else if(lt){
     var avgRir=dsParseLastRir(lt);
@@ -7176,6 +7294,7 @@ function dsRenderMuscleVolume(){
 }
 function dsSuggestNext(item,lt){
   if(!lt) return null;
+  if(dsRepRange(item.id)){ var _d=dsProgDecision(item.id); return _d?_d.note:null; }
   var hist=dsHistoryN(item.id,3); // ascending: oldest..newest, up to 3 sessions
   var hasLoad=dsWantsLoad(item) && lt.load;
   if(hist.length>=2){
@@ -7985,6 +8104,18 @@ var DS_MV={
   'thu-shrug':{'Traps':1,'Shoulders':.2},
   'thu-uprightrow':{'Traps':1,'Shoulders':.7},
   'thu-ohtriceps':{'Triceps':1},
+  // Saturday Upper C moved from thu-* to sat-* ids; these were never counted.
+  'sat-ohtriceps':{'Triceps':1},
+  'sat-shrug':{'Traps':1,'Shoulders':.2},
+  'sat-uprightrow':{'Traps':1,'Shoulders':.7},
+  'sat-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
+  'sat-chest':{'Chest':1},
+  'sat-inclinecurl':{'Biceps':1},
+  'sat-frontsquat':{'Quads':1,'Glutes':.5},
+  'sat-hipthrust':{'Glutes':1,'Hamstrings':.5},
+  'mon-pressaround':{'Chest':1},
+  'mon-forearm':{'Forearms':1},
+  'thu-forearm':{'Forearms':1},
   'mon-lateral':{'Shoulders':1},
   'fri-kbswing':{'Glutes':1,'Hamstrings':.5,'Core':.5},
   'mon-standbandpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
