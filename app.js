@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v242 — 2026-09-27";
+var APP_BUILD = "v243 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5123,6 +5123,8 @@ var DS_SESSIONS={
         setup:'Sit with upper back against a bench edge, band looped over your hips, feet flat on the floor hip-width apart, knees bent ~90°. Drive through the heels, extending the hips up until your body forms a straight line from shoulders to knees — squeeze glutes at the top, then lower with control, keeping tension on through the whole set rather than resting at the bottom.',
         variants:[{name:'Floor Glute Bridge',equip:'Tube band across hips',rx:'3×15–20',cue:'Shoulders on the floor instead of a bench — shorter range of motion, gentler entry point while the movement feels new. Same drive-and-squeeze cue.',demo:'bridge'}]},
       {id:'sat-hollow',name:'Hollow Body Hold',lockVar:0,slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors',demo:'hollow'}]},
+      {id:'sat-bandcrunch',name:'Kneeling Band Crunch',slot:'Core · Loaded',target:'Abs',equip:'Tube 20–30 → 50 lb · anchored high on a door',rx:'3×12–15',cal:20,cue:'Hips stay still — curl the ribs down toward the pelvis, rounding the spine, not hinging at the hips. Exhale hard at the bottom, 1-sec squeeze, slow return to a full stretch. ⚠️ SI joint: start light and stop at any pinch low in the back.',demo:null,log:'setsreps',sets:3,
+        setup:'Anchor the tube high on a door. Kneel a step or two back, facing the door, handles held beside your head or at your temples. Keeping your hips stacked over your knees, crunch your ribcage down toward your hips until your elbows reach your thighs, then uncurl back up until the band stretches the abs. Progress by moving up a band once you hit 15 reps twice.'},
       {id:'sat-ride',name:'Mountain Bike Ride',demo:'ride',slot:'Cardio · Separate Session',target:'Vigorous aerobic effort',equip:'Roadmaster · compression sleeve',rx:'30–60 min',cal:0,cue:'Do this at a different time of day than the lift above — not back-to-back — so the ride doesn\'t eat into recovery from the heavier quad/glute work. Neighborhood hills push this into vigorous zone most of the ride — that\'s expected, not a sign you\'re overdoing it. Wear the compression sleeve.',log:'cardio',perMin:4.5,defMin:43,variants:[{name:'Interval Ride',equip:'Roadmaster · compression sleeve',rx:'30–45 min · 1 min hard / 1–2 min easy, repeat',perMin:6.3,defMin:35,cue:'Push a hard, standing-effort pace for 1 min, then settle back to conversational for the recovery. Repeat for most of the ride.',demo:'ride'}]}]},
 
   sun:{title:'Sunday Recovery',sub:'Active recovery · Walk + Gentle Flow',accent:'var(--green)',
@@ -8237,6 +8239,7 @@ var DS_MV={
   'sat-inclinecurl':{'Biceps':1},
   'sat-frontsquat':{'Quads':1,'Glutes':.5},
   'sat-hipthrust':{'Glutes':1,'Hamstrings':.5},
+  'sat-bandcrunch':{'Core':1},
   'mon-pressaround':{'Chest':1},
   'mon-forearm':{'Forearms':1},
   'thu-forearm':{'Forearms':1},
