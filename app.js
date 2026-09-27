@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v247 — 2026-09-27";
+var APP_BUILD = "v248 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -751,7 +751,7 @@ function fetchSheet(onRows, _attempt){
   _fetchSheetOnce(function(rows,ok,why){
     if(ok){ onRows(rows,ok,why); return; }
     if(_attempt < MAX_ATTEMPTS){
-      setTimeout(function(){ fetchSheet(onRows,_attempt+1); }, 1500);
+      setTimeout(function(){ fetchSheet(onRows,_attempt+1); }, 2000*_attempt);
     } else {
       onRows(rows,ok,why);
     }
@@ -760,7 +760,8 @@ function fetchSheet(onRows, _attempt){
 function _fetchSheetOnce(onRows){
   if(!SHEETS_URL){ setTimeout(function(){ onRows(null,false,"no-url"); },0); return; }
   var done = false;
-  function finish(rows, ok, why){ if(done) return; done=true; onRows(rows,ok,why); }
+  window._ftSyncInFlight=(window._ftSyncInFlight||0)+1;
+  function finish(rows, ok, why){ if(done) return; done=true; window._ftSyncInFlight=Math.max(0,(window._ftSyncInFlight||1)-1); onRows(rows,ok,why); }
 
   // Timeout after 8 seconds regardless
   var timeout = setTimeout(function(){ finish(null,false,"timeout (20s, both fetch and JSONP fallback never resolved)"); }, 20000);
@@ -3181,13 +3182,19 @@ initHealthSettings();
 // Sheet is source of truth: pull + merge on open, then re-render
 var _bn=document.getElementById("sync-banner");
 if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Tap \u2699 Settings to enter your Apps Script URL. (Tap this banner to dismiss.)"; _bn.style.color="#fbbf24"; _bn.style.display="block"; _bn.onclick=function(){ _bn.style.display="none"; }; }
-if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
-// Already set up: still check the Sheet for a newer imported exercise plan on open,
-// without re-applying every other setting.
-else if(SHEETS_URL){ pullConfig(false,function(ok,cfg){ if(ok && cfg && dsApplySyncedPlan(cfg)){ toast("Exercise plan synced from Sheet \u2014 reloading\u2026"); setTimeout(function(){ location.reload(); },900); } }); }
-fetchOverloadCache();
+// v248: startup requests run one after another instead of all at once — a
+// cold Apps Script handling three whole-sheet reads in parallel is what pushed
+// the first sync past the timeout.
+function _ftStartupFollowups(){
+  if(SHEETS_URL && !store.get("ft_name") && !store.get("ft_cal")){ pullConfig(true); }
+  // Already set up: still check the Sheet for a newer imported exercise plan on open,
+  // without re-applying every other setting.
+  else if(SHEETS_URL){ pullConfig(false,function(ok,cfg){ if(ok && cfg && dsApplySyncedPlan(cfg)){ toast("Exercise plan synced from Sheet \u2014 reloading\u2026"); setTimeout(function(){ location.reload(); },900); } }); }
+  setTimeout(fetchOverloadCache,1500);
+}
 _lastSheetPull=Date.now();
 fetchSheet(function(rows,ok,why){
+  setTimeout(_ftStartupFollowups,300);
   if(ok&&rows){ mergeRows(rows); renderAll(); if(_bn){_bn.textContent="✓ Synced with Google Sheets \u00b7 "+APP_BUILD;_bn.style.color="#4ade80"; _bn.onclick=function(){_bn.style.display="none";};} }
   else {
     renderAll();
@@ -11534,11 +11541,22 @@ if('serviceWorker' in navigator){
     // the *already loaded* page is still running old JS in memory until it
     // reloads. This closes that gap. The reloading guard prevents a loop if the
     // controller changes more than once in one page life.
-    var _swReloaded=false;
+    // v248: index.html is network-first, so a page that was JUST opened is
+    // already running the newest build — reloading it only aborted the startup
+    // sync and immediately fired a second round of Sheet requests, stacking ~6
+    // cold Apps Script executions and timing out after every deploy. Only
+    // reload when the page has been open a while (resumed from background on
+    // an old build), and never mid-sync.
+    var _swReloaded=false, _pageOpenedAt=Date.now();
     navigator.serviceWorker.addEventListener('controllerchange',function(){
       if(_swReloaded) return;
+      if(Date.now()-_pageOpenedAt < 60000) return;   // fresh open: already current
       _swReloaded=true;
-      window.location.reload();
+      var tries=0;
+      (function waitIdle(){
+        if(window._ftSyncInFlight>0 && tries++<30){ setTimeout(waitIdle,1000); return; }
+        window.location.reload();
+      })();
     });
   });
 };
