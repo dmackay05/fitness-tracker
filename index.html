@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=158">
+<link rel="stylesheet" href="styles.css?v=159">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button><span id="header-refresh-dash" style="display:flex"><button onclick="doRefresh('dash')" title="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -55,7 +55,6 @@
           <span class="past-badge" id="past-badge" style="display:none">past day</span>
           <button class="today-btn" id="btn-today" onclick="goToToday()" style="display:none">Today</button>
         </div>
-        <div class="refresh-bar" id="header-refresh-dash" style="margin-top:8px;display:flex"><button onclick="doRefresh('dash')" title="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></div>
       </div>
     </div>
   </div>
@@ -1062,6 +1061,6 @@
   </div>
 </div>
 
-<script src="app.js?v=338"></script>
+<script src="app.js?v=339"></script>
 </body>
 </html>
