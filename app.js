@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v241 — 2026-09-26";
+var APP_BUILD = "v242 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3001,7 +3001,7 @@ function applyConfig(cfg){
   WATER_GOAL=parseInt(store.get('ft_water'))||WATER_GOAL;
   try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){}
   if(typeof initHealthSettings==="function") initHealthSettings();
-  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object') DS_SWAPS=swv; }catch(e){}
+  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(typeof dsMigrateSwaps==='function'&&dsMigrateSwaps()) dsSaveSwaps(); } }catch(e){}
   // Merge (not overwrite) the four per-day/per-exercise maps below: each device may have
   // logged its own entries locally since the last sync, and a straight overwrite would
   // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
@@ -4755,7 +4755,7 @@ var DS_VARIANT_SETUPS={
   "mon-ohp::1": "Sit on a chair or stand, feet shoulder-width. 10 lb dumbbells at shoulder height, palms forward, elbows at 90°. Seated version is more stable — start there.",
   "mon-ohp::2": "Sit tall on the stability ball, feet planted wide for a stable base. Hold a 10 lb DB in each hand at shoulder height, palms forward; press straight up overhead, control the descent back to shoulder height. The ball won't let you cheat with a low-back arch.",
   "mon-curl::1": "Stand feet hip-width. 10 lb dumbbells at sides, palms rotated slightly inward (semi-neutral).",
-  "mon-curl::2": "Stand feet hip-width, dumbbells or tube handles at your sides. Curl up, then pause for 5 seconds with your forearms at 90 degrees before finishing the rep the rest of the way up.",
+  "mon-curl::2": "Stand on the tube, handles at your sides. Curl up, then pause for 5 seconds with your forearms at 90 degrees before finishing the rep the rest of the way up.",
   "mon-curl::3": "Hold a 10 lb DB in each hand and hinge forward at the hips like the start of an RDL, arms hanging straight down perpendicular to the floor. Hold that hinge and curl from the hang — the forward lean removes any ability to swing.",
   "mon-curl::4": "Anchor the tube at the bottom of a door, handles free. Face away and step forward until the band has tension with your arms hanging slightly behind your torso. Keep the elbows back and still, curl both handles to your shoulders, then lower all the way into the stretch.",
   "mon-curl::5": "Brace the back of your upper arm against a wall or chair back so the elbow cannot drift. Curl slowly with a light band, turning the pinky up at the top.",
@@ -4768,7 +4768,7 @@ var DS_VARIANT_SETUPS={
   "thu-hammer::1": "Stand tall. 10 lb dumbbells at sides, palms facing each other — neutral grip like holding hammers throughout.",
   "mon-tri::1": "Hold a 10 lb DB in each hand and hinge forward at the hips, upper arms locked parallel to the floor at your sides. Extend your forearms straight back until your arms are fully straight, squeeze 1 second, then return under control.",
   "mon-tri::2": "Hold one 10 lb dumbbell overhead with both hands (or a 2 lb DB in each hand), upper arms vertical and close to your ears. Lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn't arch — start light and stop if you feel any pull on the inside of the elbow.",
-  "mon-inclinepress::1": "Lie with your upper back on the stability ball, hips bridged up in line with your shoulders and knees like a supported bench. Hold a 10 lb DB in each hand and press straight up over your chest, lowering until your elbows are just below the ball line for a deep stretch. Keep your hips locked level — don't let them sag as you fatigue.",
+  "mon-inclinepress::1": "Anchor the tube low on a door behind you. Face away in a split stance, handles at your chest with hands about shoulder-width or slightly wider. Press up and out at an incline angle, squeeze the upper chest, then return under control.",
   "fri-slrdl::2": "Stand on the Ultra Heavy band with both feet. Hinge back at the hips, handles tracing down the front of your legs — tension peaks at lockout, so squeeze your glutes hard at the very top of the rep.",
   "tue-squat::1": "Hold the 10 lb dumbbell vertically at chest height, both hands cupping the top end. Feet shoulder-width or slightly wider, toes slightly out.",
   "tue-squat::2": "Loop the mini band above your knees, or use bodyweight. Drop all the way to the bottom of a squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in that deep stretch position the whole set.",
@@ -4797,7 +4797,7 @@ var DS_VARIANT_SETUPS={
   "thu-tri::4": "Hold one 10 lb dumbbell overhead with both hands (or a 2 lb DB in each hand), upper arms vertical and close to your ears. Lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn't arch — start light and stop if you feel any pull on the inside of the elbow.",
   "fri-bulg::1": "Step one foot back into a reverse lunge stance instead of elevating it on a surface. Stand on the tube with your front foot, handles at shoulder height. Step back, drop your back knee toward the floor, then drive up through your front heel — easier to balance than a Bulgarian split squat with the same quad demand.",
   "fri-sumo::1": "Hold a 10 lb dumbbell vertically at your chest with both hands cupping the top end. Stand with feet wider than shoulder-width, toes turned out; sit straight down between your heels, knees pushing outward.",
-  "fri-slrdl::1": "Stand on one leg with a soft bend in the knee, holding a dumbbell in the hand opposite your standing leg. Hinge at the hips, letting the free leg extend straight back for counterbalance, and lower the weight toward the floor. Keep your back flat and hips square throughout. Same hamstring stretch as the primary banded version, gentler on the SI joint since there's no spinal loading from the band.",
+  "fri-slrdl::1": "Stand on the tube with your working foot, handle in the opposite hand, soft bend in the knee. Hinge at the hips, letting the free leg extend straight back for counterbalance, and lower the handle along the standing leg. Keep your back flat and hips square throughout.",
   "fri-deadbug::1": "Get on your hands and knees on a mat, flat back. Extend one arm straight forward and the opposite leg straight back at the same time, keeping your back flat with zero rocking, then return and switch sides.",
   "fri-nordic::1": "Lie on your back with one heel resting on the stability ball, the other leg lifted or resting flat. Bridge your hips up and keep them level, then curl the ball in toward your glutes and roll back out over a slow 3-count.",
   "fri-sqpress::1": "Hold the 8 lb kettlebell at your chest in a goblet grip. Squat down, then as you stand punch the bell straight overhead in one fluid motion.",
@@ -5116,7 +5116,7 @@ var DS_SESSIONS={
       {id:'sat-inclinecurl',name:'Stability Ball Incline Curl (long head)',lockVar:0,slot:'Pull · Biceps',target:'Biceps — Long Head',equip:'Stability ball tilted + tube band, low anchor',rx:'3×6–10',cal:20,cue:'⚠️ Highest elbow caution — lie back on the ball at an incline, arms hanging behind your torso line, curl from a deep stretch. Start with a light band or no band at all the first session. Stop immediately if elbow soreness lingers past 24h.',demo:'curl',log:'setsreps',sets:4,variants:[{name:'DB Incline Curl on Ball',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312',cue:'Lean back over the ball so the arms hang behind the torso \u2014 curl from that deep stretch, slow negatives. Full supination (palms up) targets the long head best, but if your left wrist pops, rotate hands slightly inward toward neutral \u2014 same fix as your standing curl.',demo:'curl'},{name:'Ball Preacher Curl',equip:'Ball + 2\u00d7 10 lb DBs',rx:'3\u00d710\u201312/side',cue:'Kneel behind the ball, drape the back of your upper arm over the front at a downward angle (not flat on top) \u2014 let the arm hang almost straight at the bottom, curl up, squeeze 1 sec, then 3-sec slow lower.',demo:'curl'}]},
       {id:'sat-ohtriceps',name:'Banded Overhead Triceps Extension',lockVar:0,slot:'Push · Triceps',target:'Triceps — Long Head',equip:'Tube 10–20 lb, anchored underfoot',rx:'4×10–12',cal:20,cue:'Stretched-overhead triceps angle — pushdowns and skull crushers miss this position. Anchor the band under one foot, hold both ends overhead — lower behind the head by bending only the elbows, press back to lockout. Elbows stay close to your ears, no flaring out.',demo:'triceps',log:'setsreps',sets:4,
         variants:[{name:'DB Overhead Triceps Extension',equip:'1× 10 lb dumbbell, both hands',rx:'3×10–12',cue:'Hold one dumbbell overhead with both hands, lower behind the head bending only the elbows, press back to lockout — same stretched-triceps angle, no band needed',demo:'triceps'}]},
-      {id:'sat-frontsquat',name:'Heavy Band Front Squat',lockVar:0,slot:'Squat · Quads Top-off',target:'Quads · Glutes',equip:'Clench 35–75 lb band',rx:'3×10–12 to true failure',cal:40,cue:'Added to close the weekly quad gap — Tuesday leans power/light, this is the one true near-failure quad set of the week. Stand centered on the band, handles racked at the shoulders like a front squat, sit back and down keeping the torso upright, drive up through the heels.',demo:'squat',log:'setsreps',sets:3,
+      {id:'sat-frontsquat',name:'Heavy Band Front Squat',lockVar:0,slot:'Squat · Quads Top-off',target:'Quads · Glutes',equip:'Clench 35–75 lb band',rx:'3×10–12',cal:40,cue:'Your hardest quad work of the week — take these to 1 rep in reserve, not true failure (it\'s spinal-loaded). Stand centered on the band, handles racked at the shoulders like a front squat, sit back and down keeping the torso upright, drive up through the heels.',demo:'squat',log:'setsreps',sets:3,
         setup:'Step both feet onto the middle of the band, shoulder-width apart. Bring the handles up to rest at your shoulders (front-rack style), elbows up. Squat down keeping the torso upright — band tension increases the deeper you go, so control the descent. Drive up through the heels to standing. Push these sets close to true failure since this is the week\'s dedicated heavy quad stimulus.',
         variants:[{name:'Banded Bulgarian Split Squat',equip:'Tube 20–30 → 40–50 lb',rx:'3×10–12/leg to true failure',cue:'Front heel drives through the floor, torso stays tall — unilateral swap if the front squat setup or balance isn\'t working today',demo:'splitsquat'},{name:'Goblet Squat',equip:'10 lb dumbbell',rx:'3×15–20 to true failure',cue:'Hold the DB at your chest, sit back — lighter load option, push the rep count up to compensate',demo:'goblet'}]},
       {id:'sat-hipthrust',name:'Banded Hip Thrust',lockVar:0,slot:'Hinge · Glutes',target:'Glutes',equip:'Tube band across hips · bench or stable surface for shoulders',rx:'3×12–15',cal:30,cue:'New addition — the only direct glute isolation in the week; everything else only trains glutes as a secondary mover off squats/RDLs. Upper back braced on a bench or the piano bench, band looped across your hips and anchored under your feet, feet planted hip-width. Drive hips up until torso is in line with thighs, squeeze glutes hard at the top for a 1-count, lower under control without letting the hips touch down between reps.',demo:'bridge',log:'setsreps',sets:3,
@@ -5130,6 +5130,112 @@ var DS_SESSIONS={
       {id:'sun-walk',name:'Recovery Walk',demo:'walk',slot:'Cardio',target:'NEAT · circulation',equip:'Outdoors',rx:'30–45 min',cal:0,cue:'Easy pace, nose breathing — let the body recover, not work',log:'cardio',perMin:4.3,defMin:35,variants:[{name:'Rucked Walk',equip:'Loaded backpack · 10–15 lb',rx:'30–45 min',perMin:5.8,defMin:35,cue:'Sunday version stays easy — lighter load, nose breathing, tall posture',demo:'ruck'}]},
       {id:'sun-flow',name:'Gentle Mobility Flow',slot:'Mobility',target:'Whole body',equip:'Mat',rx:'15–20 min',cal:50,cue:'Move where you feel stuck — slow, breath-led, no intensity',demo:'catcow',log:'done'}]}
 };
+
+// ── STREAMLINE (v242) ─────────────────────────────────────────────────────
+// One place that (1) drops every alternate that needs the 10 lb dumbbells,
+// (2) rebuilds cards that appear on several days from ONE shared definition so
+// they read identically everywhere, and (3) swaps dumbbell-based main moves for
+// band versions. Runs once at startup, before anything reads DS_SESSIONS.
+// Each day keeps its own id, sets, rx and calories — only the card content is
+// shared. Saved swap picks are remapped BY NAME afterwards (dsMigrateSwaps), so
+// removing an alternate never shifts someone onto the wrong exercise.
+var DS_DROP_VARIANTS={
+  'mon-pushup':['Floor DB Press'],
+  'mon-ohp':['DB Overhead Press','Seated OHP on Stability Ball'],
+  'mon-curl':['DB Curl (neutral grip)','Forward Fold Curl'],
+  'mon-tri':['DB Kickbacks','DB Overhead Triceps Extension'],
+  'tue-squat':['Goblet Squat'],
+  'mon-inclinepress':['Ball DB Chest Press'],
+  'mon-standbandpress':['Ball DB Chest Press'],
+  'thu-hammer':['DB Hammer Curl'],
+  'sat-chest':['Floor DB Press'],
+  'sat-shrug':['DB Shrug'],
+  'sat-inclinecurl':['DB Incline Curl on Ball','Ball Preacher Curl'],
+  'sat-ohtriceps':['DB Overhead Triceps Extension'],
+  'sat-frontsquat':['Goblet Squat']
+};
+// Shared card definitions. Fields here replace the card's content; the day
+// keeps id / rx / sets / cal. Variants without rx inherit the day's rx.
+var DS_CARD_TEMPLATES={
+  lateral:{name:'Lateral Raise',slot:'Push · Side Delts',target:'Side Delts',equip:'Tube 10 → 30 lb · stand on it',demo:'lateralraise',
+    cue:'Lead with the elbows, not the hands — raise to shoulder height like pouring from a pitcher, 1-sec pause, slow lower. Trained Mon + Thu.',
+    variants:[{name:'Front-Angled Lateral Raise',equip:'Tube 10 lb · anchored low in front of you',cue:'Stand so the band pulls slightly from in front rather than straight down — loads the side delt earlier, right at the stretched bottom.',demo:'lateralraise'}]},
+  hollow:{name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',demo:'hollow',
+    cue:'Press the low back into the floor, ribs down — one rigid curved line. Bend the knees the moment the back starts to lift.',
+    variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',cue:'Knees bent and lifted instead of legs straight — much less pull on the low back and hip flexors. Use it whenever the SI joint feels touchy.',demo:'hollow'}]},
+  elbow:{name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',demo:'wristecc',
+    cue:'Slow on the lower — this is the part that fixes the tendon. Mild ache is fine; sharp pain means lighten it.',
+    setup:'Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. Do it even when the elbow feels fine — the loaded eccentric is the evidence-based fix for golfer\'s elbow.',
+    variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still with steady tension, no movement. Use on days the eccentric feels too aggravating — isometrics load the tendon with less irritation.',demo:'wristecc'}]},
+  forearm:{name:'Forearm Finisher — Wrist Curl',slot:'Pull · Forearms',target:'Forearm Flexors',equip:'Tube 5–10 lb · anchored under your foot',demo:'wristecc',
+    cue:'⚠️ Same tendon as the elbow rehab — this is loading, not rehab. Keep it light and end the set at the first hint of elbow ache instead of chasing failure.',
+    setup:'Seated, band under your foot, forearm across your thigh, palm up, handle in hand. Curl the wrist up, hold the top 1 second, then lower slowly until the band pulls the handle out to your fingertips. Short range, high reps (15–25).',
+    variants:[{name:'Band Wrist Curl (myo-rep)',equip:'Tube 10–20 lb · anchored under your foot',rx:'1 set near failure + 2–3 mini-sets of 5–8',cue:'First set close to failure, rest 5–15 sec, squeeze out a mini-set, repeat 2–3 times. Forearms recover fast between short rests.',demo:'wristecc'},
+              {name:'Ball Push-Off (plank press-off)',equip:'Stability ball or slam ball, low and stable',rx:'60 total reps, short breathers as needed',cue:'Angled plank with hands on the ball — press away using the wrist flexors, staying in the deep-stretch partial range. Add a few reps to the total each week.',demo:'wristecc'}]},
+  calf:{name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Step edge · bodyweight (stand on a tube once 20 reps is easy)',demo:'calf',
+    cue:'Heel off the step — full stretch at the bottom, 2-sec squeeze at the top, slow lower.',
+    variants:[{name:'Single-Leg Calf Raise',equip:'Step edge · bodyweight',cue:'One heel hangs off the step — full stretch, 2-sec squeeze. Reps are per leg.',demo:'calf'},
+              {name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb · looped over the knees',cue:'Seated, band over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Biases the soleus.',demo:'calf'}]},
+  tib:{name:'Elevated Tibialis Raise',slot:'Shins',target:'Shins · Tibialis Anterior',equip:'Wall + low block',demo:'tibraise',
+    cue:'Back to the wall, weight settled back — lift the toes as high as they go, 1-sec squeeze, slow lower. Stop when you lose range, not when it burns.',
+    variants:[{name:'Banded Tib Raise',equip:'Tube band, light · low anchor',cue:'Loop the band around a low anchor and your forefoot — pull the toes up against the band, slow release.',demo:'tibraise'}]}
+};
+var DS_CARD_MAP={
+  'mon-lateral':'lateral','thu-lateral':'lateral',
+  'mon-hollow':'hollow','thu-hollow':'hollow','sat-hollow':'hollow',
+  'mon-elbow':'elbow','thu-elbow':'elbow',
+  'mon-forearm':'forearm','thu-forearm':'forearm',
+  'mon-calf':'calf','tue-calf':'calf','fri-calf':'calf',
+  'tue-tib':'tib','fri-tib':'tib'
+};
+// Friday's calf slot has always defaulted to single-leg; keep it that way.
+var DS_LOCK_BY_NAME={'fri-calf':'Single-Leg Calf Raise'};
+// Main moves and alternates that needed the 10 lb pair, rewritten for bands /
+// bodyweight. Same names where possible so history keeps lining up.
+var DS_CARD_PATCH={
+  'fri-goblet':{name:'Banded Front Squat (light)',equip:'Tube 20–30 lb · stand on it, handles at the shoulders',demo:'squat',
+    cue:'Light top-off after the hinge work, not a max effort — sit straight down between the knees, torso tall, 2–3 reps in reserve every set.',
+    setup:'Stand on the middle of the tube, feet shoulder-width, handles resting at the front of your shoulders. Sit straight down, then drive up through the whole foot. This is only 2–3 easy sets of extra quad volume, so it doesn\'t compete with Tuesday\'s squat or pre-fatigue today\'s hinge.'},
+  'fri-slrdl':{cue:'Stand on the tube, soft knees, push the hips straight back — flat back, handles tracing down the thighs into a deep hamstring stretch, pause 2 counts, then drive the hips forward. Eyes forward, not down, to keep the spine neutral. Primary Friday hinge: work at 1–3 reps in reserve (it\'s a spinal-loaded lift, so it never gets the true-failure anchor set) and move up a band once you hit the top of the range twice.'},
+  'sat-frontsquat':{rx:'3×10–12'}
+};
+var DS_VARIANT_PATCH={
+  'fri-slrdl':{'Single-Leg RDL':{equip:'Tube 20–30 lb · stand on it with the working foot',cue:'Hinge forward as the free leg extends behind you, handle(s) tracing down the standing leg — hips stay square, slow 3-count down. Great for left/right balance.'}},
+  'fri-bulg':{'Upright Walking Lunge (short steps)':{equip:'Bodyweight (tube under the front foot to load it)'},
+              'Front-Elevated Split Squat (glute-biased)':{equip:'Yoga block or low step · bodyweight or tube under the front foot'}},
+  'mon-curl':{'Iso-Hold Curl':{equip:'Tube 10–20 lb · stand on it'}}
+};
+var DS_STREAMLINE_NAMES={}; // id -> [baseName, variantNames...] BEFORE streamlining (for swap migration)
+(function dsStreamline(){
+  var clone=function(o){ return JSON.parse(JSON.stringify(o)); };
+  var setupsByName={}, seen={};
+  Object.keys(DS_SESSIONS).forEach(function(dk){
+    (DS_SESSIONS[dk].moves||[]).forEach(function(m){
+      if(!m||!m.id||seen[m.id]) return; seen[m.id]=1;
+      var oldNames=[m.name].concat((m.variants||[]).map(function(v){return v.name;}));
+      var lockName=(m.lockVar!=null)?oldNames[m.lockVar]:null;
+      // remember variant setup text by name before indices change
+      oldNames.forEach(function(nm,i){ if(i>0&&DS_VARIANT_SETUPS[m.id+'::'+i]) setupsByName[m.id+'|'+nm]=DS_VARIANT_SETUPS[m.id+'::'+i]; delete DS_VARIANT_SETUPS[m.id+'::'+i]; });
+      var changed=false;
+      var tpl=DS_CARD_MAP[m.id]&&DS_CARD_TEMPLATES[DS_CARD_MAP[m.id]];
+      if(tpl){ Object.keys(tpl).forEach(function(k){ m[k]=clone(tpl[k]); }); if(!tpl.setup) delete m.setup; changed=true; }
+      var cp=DS_CARD_PATCH[m.id]; if(cp){ Object.keys(cp).forEach(function(k){ m[k]=cp[k]; }); changed=true; }
+      var drop=DS_DROP_VARIANTS[m.id];
+      if(drop&&m.variants){ m.variants=m.variants.filter(function(v){ return drop.indexOf(v.name)<0; }); changed=true; }
+      var vp=DS_VARIANT_PATCH[m.id];
+      if(vp&&m.variants) m.variants.forEach(function(v){ var p=vp[v.name]; if(p) Object.keys(p).forEach(function(k){ v[k]=p[k]; }); });
+      if(m.variants&&!m.variants.length) delete m.variants;
+      // tidy cue prefixes left over from source notes
+      [m].concat(m.variants||[]).forEach(function(o){ if(o.cue) o.cue=o.cue.replace(/^Clench Fitness variant\s*[—-]\s*/,''); });
+      var newNames=[m.name].concat((m.variants||[]).map(function(v){return v.name;}));
+      if(DS_LOCK_BY_NAME[m.id]) lockName=DS_LOCK_BY_NAME[m.id];
+      if(lockName!=null){ var li=newNames.indexOf(lockName); m.lockVar=(li>=0?li:0); }
+      newNames.forEach(function(nm,i){ var st=setupsByName[m.id+'|'+nm]; if(i>0&&st) DS_VARIANT_SETUPS[m.id+'::'+i]=st; });
+      if(changed||drop) DS_STREAMLINE_NAMES[m.id]=oldNames;
+    });
+  });
+})();
+
 
 // ── CUSTOM PLAN IMPORT ──────────────────────────────────────────────────
 // Lets a different person load their own Mon–Sun exercise structure instead
@@ -5982,6 +6088,24 @@ var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){
     store.set("ds_wristsi_defaults_applied","1");
   }catch(e){}
 })();
+// Remap saved swap picks by exercise NAME after the v242 streamline removed
+// alternates (indices shifted). Versioned inside DS_SWAPS so an older copy
+// arriving from the Sheet gets remapped too instead of landing on the wrong move.
+var DS_SWAPS_VER=2;
+function dsMigrateSwaps(){
+  if(!DS_SWAPS||typeof DS_SWAPS!=='object'||DS_SWAPS.__v===DS_SWAPS_VER) return false;
+  var cur={}; Object.keys(DS_SESSIONS).forEach(function(dk){ (DS_SESSIONS[dk].moves||[]).forEach(function(m){ if(m&&m.id&&!cur[m.id]) cur[m.id]=[m.name].concat((m.variants||[]).map(function(v){return v.name;})); }); });
+  Object.keys(DS_SWAPS).forEach(function(k){
+    if(k==='__v') return;
+    var id=(k.indexOf('L:')===0)?k.slice(2):k, old=DS_STREAMLINE_NAMES[id], i=DS_SWAPS[k];
+    if(!old||!i) return;
+    var ni=cur[id]?cur[id].indexOf(old[i]):-1;
+    if(ni>0) DS_SWAPS[k]=ni; else delete DS_SWAPS[k];
+  });
+  DS_SWAPS.__v=DS_SWAPS_VER;
+  return true;
+}
+try{ if(dsMigrateSwaps()) store.set("ds_swaps",JSON.stringify(DS_SWAPS)); }catch(e){}
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 // Shared debounce for anything that should ride along on the settings-sync channel
 // (see "Batch C: SETTINGS SYNC TO SHEET") so a change on one device reaches others
