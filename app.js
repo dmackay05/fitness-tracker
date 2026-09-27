@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v243 — 2026-09-27";
+var APP_BUILD = "v244 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -334,7 +334,7 @@ var DS_PHASE_RX = {
   'mon-row':{p1:{rx:'4\u20135\u00d710\u201312',sets:5,rpe:'8\u20139',rest:'2 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u20132\u00d710\u201312',sets:2,rpe:'6\u20137',rest:'1.5 min'}},
   'mon-ohp':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8',rest:'2\u20133 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'8',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8',rest:'1.5 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'6',rest:'2 min'}},
   'thu-chest':{p1:{rx:'4\u00d712\u201315',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6\u20137',rest:'1 min'}},
-  'thu-facepull':{p1:{rx:'5\u00d715\u201320',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
+  'thu-facepull':{p1:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
   'mon-lateral':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'7',rest:'1 min'}},
   'mon-curl':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
   'mon-tri':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
@@ -344,7 +344,7 @@ var DS_PHASE_RX = {
   'thu-hollow':{p1:{rx:'2\u00d730s',sets:2},p2:{rx:'1\u00d730s',sets:1},p3:{rx:'2\u00d730s',sets:2},deload:{rx:'1\u00d720s',sets:1}},
   'thu-legraise':{p1:{rx:'1\u00d710\u201312',sets:1,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'8',rest:'1 min'},p3:{rx:'2\u00d710\u201312',sets:2,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78',sets:1,rpe:'6',rest:'1 min'}},
   'tue-jump':{p1:{rx:'3\u00d73\u20135',sets:3},p2:{rx:'2\u00d73\u20135',sets:2},p3:{rx:'3\u00d73\u20135',sets:3},deload:{rx:'1\u00d73',sets:1}},
-  'tue-squat':{p1:{rx:'4\u00d712\u201315',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'4\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d712\u201315',sets:2,rpe:'6\u20137',rest:'2 min'}},
+  'tue-squat':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'4\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d712\u201315',sets:2,rpe:'6\u20137',rest:'2 min'}},
   'fri-bulg':{p1:{rx:'3\u00d710/leg',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u20138/leg',sets:2,rpe:'9',rest:'2.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'6',rest:'1.5 min'}},
   'tue-lat':{p1:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d715/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710/side',sets:1,rpe:'6',rest:'1 min'}},
   'tue-pallof':{p1:{rx:'3\u00d710/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78/side',sets:1,rpe:'6',rest:'1 min'}},
@@ -353,7 +353,7 @@ var DS_PHASE_RX = {
   'mon-inclinepress':{p1:{rx:'3\u00d710\u201312',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'6',rest:'1.5 min'}},
   'thu-lat':{p1:{rx:'4\u20135\u00d710\u201312',sets:5,rpe:'8\u20139',rest:'2 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u20132\u00d710\u201312',sets:2,rpe:'6',rest:'1.5 min'}},
   'mon-standbandpress':{p1:{rx:'3\u00d712\u201315',sets:3,rpe:'8\u20139',rest:'1.5\u20132 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6',rest:'1 min'}},
-  'mon-pullapart':{p1:{rx:'5\u00d715\u201320',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
+  'mon-pullapart':{p1:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
   'thu-lateral':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'7',rest:'1 min'}},
   'thu-uprightrow':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8',rest:'1.5 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'8',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'thu-shrug':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
@@ -5191,7 +5191,7 @@ var DS_CARD_MAP={
   'tue-tib':'tib','fri-tib':'tib'
 };
 // Friday's calf slot has always defaulted to single-leg; keep it that way.
-var DS_LOCK_BY_NAME={'fri-calf':'Single-Leg Calf Raise'};
+var DS_LOCK_BY_NAME={'fri-calf':'Single-Leg Calf Raise','tue-squat':'Heavy Band Front Squat'};
 // Main moves and alternates that needed the 10 lb pair, rewritten for bands /
 // bodyweight. Same names where possible so history keeps lining up.
 var DS_CARD_PATCH={
@@ -5199,13 +5199,17 @@ var DS_CARD_PATCH={
     cue:'Light top-off after the hinge work, not a max effort — sit straight down between the knees, torso tall, 2–3 reps in reserve every set.',
     setup:'Stand on the middle of the tube, feet shoulder-width, handles resting at the front of your shoulders. Sit straight down, then drive up through the whole foot. This is only 2–3 easy sets of extra quad volume, so it doesn\'t compete with Tuesday\'s squat or pre-fatigue today\'s hinge.'},
   'fri-slrdl':{cue:'Stand on the tube, soft knees, push the hips straight back — flat back, handles tracing down the thighs into a deep hamstring stretch, pause 2 counts, then drive the hips forward. Eyes forward, not down, to keep the spine neutral. Primary Friday hinge: work at 1–3 reps in reserve (it\'s a spinal-loaded lift, so it never gets the true-failure anchor set) and move up a band once you hit the top of the range twice.'},
-  'sat-frontsquat':{rx:'3×10–12'}
+  'sat-frontsquat':{rx:'3×10–12'},
+  // Rear delts were getting ~10 direct sets/wk on top of all the rowing — trimmed to 3+3.
+  'thu-facepull':{rx:'3×15–20',sets:3},
+  'mon-pullapart':{rx:'3×15–20',sets:3}
 };
 var DS_VARIANT_PATCH={
   'fri-slrdl':{'Single-Leg RDL':{equip:'Tube 20–30 lb · stand on it with the working foot',cue:'Hinge forward as the free leg extends behind you, handle(s) tracing down the standing leg — hips stay square, slow 3-count down. Great for left/right balance.'}},
   'fri-bulg':{'Upright Walking Lunge (short steps)':{equip:'Bodyweight (tube under the front foot to load it)'},
               'Front-Elevated Split Squat (glute-biased)':{equip:'Yoga block or low step · bodyweight or tube under the front foot'}},
-  'mon-curl':{'Iso-Hold Curl':{equip:'Tube 10–20 lb · stand on it'}}
+  'mon-curl':{'Iso-Hold Curl':{equip:'Tube 10–20 lb · stand on it'}},
+  'tue-squat':{'Heavy Band Front Squat':{equip:'Clench 35–75 lb band now → green 75–150 lb band once it arrives',rx:'4×10–12',cue:'Tuesday\'s main quad lift. Stand centered on the band, handles racked at the shoulders, torso upright — sit straight down, drive up through the whole foot. 1–2 reps in reserve. Move to the green band once you hit 12 reps twice.',setup:'Step both feet onto the middle of the band, shoulder-width apart, and bring the handles to the front of your shoulders with elbows up. Squat down with the torso upright, then drive up. Bands are lightest at the bottom and heaviest at the top, so control the descent and push hard through lockout. Wider feet on the band = more tension.'}}
 };
 var DS_STREAMLINE_NAMES={}; // id -> [baseName, variantNames...] BEFORE streamlining (for swap migration)
 (function dsStreamline(){
@@ -7600,7 +7604,8 @@ function dsRenderItem(rawItem,idx,accent){
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
   var varIdx=dsEffectiveVarIdx(rawItem);
-  var setupTxt=(varIdx>0&&DS_VARIANT_SETUPS[item.id+"::"+varIdx])||rawItem.setup||DS_SETUPS[item.id];
+  var _av=(varIdx>0&&rawItem.variants)?rawItem.variants[varIdx-1]:null;
+  var setupTxt=(_av&&(_av.setup||DS_VARIANT_SETUPS[item.id+"::"+varIdx]))||(varIdx>0?null:(rawItem.setup||DS_SETUPS[item.id]));
   if(setupTxt)h+='<div class="ds-setup">'+setupTxt+'</div>';
   if(rawItem.mistakes&&rawItem.mistakes.length){
     var _mkey=item.id, _mopen=!!st._mistakesOpen;
