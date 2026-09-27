@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=162">
+<link rel="stylesheet" href="styles.css?v=163">
 </head>
 <body>
 
@@ -266,6 +266,11 @@
       <div class="card">
         <div class="card-title">🔥 Protein Streak</div>
         <div id="dash-protein-streak" style="font-size:12px;line-height:1.5"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🧘 Meditation</div>
+        <div id="dash-med-streak" style="font-size:12px;line-height:1.5"></div>
       </div>
 
       <div class="card">
@@ -642,6 +647,7 @@
   <div class="done-title">Practice Complete</div>
   <div class="done-cal" id="done-cal">0</div>
   <div class="done-lbl">Calories Burned</div>
+  <button class="done-btn" onclick="ygCloseDone();medOpenQuick(5,'After yoga')" style="margin-bottom:10px;background:#a78bfa">🧘 5-min meditation</button>
   <button class="done-btn" onclick="ygCloseDone()">Done</button>
 </div>
 
@@ -920,7 +926,7 @@
 <div id="med-timer-overlay" style="display:none;position:fixed;inset:0;background:radial-gradient(circle at 50% 32%,#16213a,#0a0a14);z-index:9999;flex-direction:column;align-items:center;padding:18px">
   
   <div style="width:100%;display:flex;justify-content:space-between;align-items:center">
-    <button class="bs" onclick="closeMedTimer()">✕ Close</button>
+    <button class="bs" onclick="closeMedTimer();medCancelQuick()">✕ Close</button>
     <div style="font-size:13px;color:#a78bfa;font-family:'DM Mono',monospace;letter-spacing:2px;text-transform:uppercase">Meditation</div>
     <div style="width:60px"></div>
   </div>
@@ -1061,6 +1067,6 @@
   </div>
 </div>
 
-<script src="app.js?v=342"></script>
+<script src="app.js?v=343"></script>
 </body>
 </html>

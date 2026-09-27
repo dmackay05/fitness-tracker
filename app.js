@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v248 — 2026-09-27";
+var APP_BUILD = "v249 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1635,7 +1635,7 @@ function renderDash(){
   var _wg=document.getElementById("dash-water-goal"); if(_wg) _wg.textContent="oz · goal "+WATER_GOAL;
   var _cg=document.getElementById("dash-cal-goal"); if(_cg) _cg.textContent="Goal: "+GOALS.cal+" ("+calGoalLabelForKey(activeDate)+")";
   renderIntakeAverages(); renderWeightTrend(); renderTdeePanel(); renderPainSummary();
-  renderStrengthTrend(); renderProteinStreak(); renderRecoveryFlag();
+  renderStrengthTrend(); renderProteinStreak(); renderMedStreak(); renderRecoveryFlag();
 
   // Weekly Activity — primary stat is true calendar week (Mon–Sun, resets weekly);
   // rolling 7-day kept as a secondary reference line since it reads differently mid-week.
@@ -3138,6 +3138,7 @@ function openMedTimer(){
   medRenderTime(); medUpdateChips(); medUpdateBtns();
 }
 function closeMedTimer(){ medStop(); document.getElementById("med-timer-overlay").style.display="none"; }
+function medCancelQuick(){ medTimer.quick=null; }
 function medSetDur(m){ if(medTimer.running) return; medTimer.dur=m*60; medTimer.remaining=m*60; medTimer.done=false; var st=document.getElementById("med-status"); if(st) st.textContent=""; medRenderTime(); medUpdateChips(); medUpdateBtns(); }
 function medMain(){ if(medTimer.done) return medFinishLog(); if(medTimer.running) medPause(); else medStart(); }
 function medStart(){
@@ -3161,8 +3162,48 @@ function medComplete(){
   var c=document.getElementById("med-circle"); if(c) c.classList.remove("breathing");
   document.getElementById("med-status").textContent="\u2713 Session complete"; medRenderTime(); medUpdateBtns(); medWakeOff(); medBell();
 }
+// ── MEDITATION: daily habit (v249) ───────────────────────────────────────
+// Opened from the Today card or the post-yoga prompt, the timer logs the
+// session itself on Finish — no detour to the Log tab.
+var MED_DAILY_TARGET=10; // minutes suggested per day
+function medMinsForKey(k){ var d=appData[k]; return (d&&d.meditation)?d.meditation.reduce(function(a,x){return a+(+x.mins||0);},0):0; }
+function medOpenQuick(mins,label){
+  var mm=document.getElementById("med-mins"); if(mm) mm.value=mins||MED_DAILY_TARGET;
+  openMedTimer(); medTimer.quick=label||"Silent";
+}
+function medQuickLog(mins){
+  var d=getDay(); d.meditation=d.meditation||[];
+  d.meditation.push({mins:mins,type:medTimer.quick||"Silent",clarity:0});
+  saveDay(d); medTimer.quick=null;
+  var mm=document.getElementById("med-mins"); if(mm) mm.value="";
+  if(typeof toast==="function") toast("\u2713 Meditation logged \u2014 "+mins+" min");
+  try{ renderAll(); }catch(e){} try{ if(typeof dsRender==="function") dsRender(); }catch(e){}
+}
+function medStreak(){
+  var n=0, d=new Date(); if(!medMinsForKey(todayKey())) d.setDate(d.getDate()-1);
+  for(var g=0;g<400;g++){ if(medMinsForKey(localDateKey(d))>0){ n++; d.setDate(d.getDate()-1); } else break; }
+  return n;
+}
+function medWeekMins(){ var t=0,d=new Date(); for(var i=0;i<7;i++){ t+=medMinsForKey(localDateKey(d)); d.setDate(d.getDate()-1); } return t; }
+function dsMeditateCardHtml(){
+  if(dsGuestMode()) return '';
+  var done=medMinsForKey(activeDate), ok=done>0;
+  return '<div style="margin:0 0 14px;padding:14px;border-radius:12px;border:1px solid '+(ok?'#5eead455':'#a78bfa44')+';background:'+(ok?'#5eead411':'#a78bfa11')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+    +'<div><div style="font-weight:700;font-size:14px">'+(ok?'\u2713 ':'')+'\ud83e\uddd8 Meditate</div>'
+    +'<div style="font-size:11px;color:#888;margin-top:3px">'+(ok?(done+' min today \u00b7 streak '+medStreak()+' day'+(medStreak()===1?'':'s')):(MED_DAILY_TARGET+' min \u00b7 sit, breathe, let the exhale lead'))+'</div></div>'
+    +'<button class="bp" style="padding:10px 14px;font-size:12px;white-space:nowrap" onclick="medOpenQuick('+MED_DAILY_TARGET+')">'+(ok?'Another session':'\u25B7 Start')+'</button>'
+    +'</div></div>';
+}
+function renderMedStreak(){
+  var el=document.getElementById("dash-med-streak"); if(!el) return;
+  var st=medStreak(), wk=medWeekMins();
+  el.innerHTML=(st?('<span style="font-size:22px">\ud83e\uddd8</span> <b style="color:#a78bfa;font-size:18px">'+st+'</b> <span style="color:#888">day'+(st===1?'':'s')+' in a row</span>'):'<span style="color:#666">Meditate today to start a streak \u2014 the Today tab has a one-tap timer.</span>')
+    +'<div style="color:#888;margin-top:4px">'+wk+' min in the last 7 days'+(wk?' \u00b7 target '+(MED_DAILY_TARGET*7):'')+'</div>';
+}
 function medFinishLog(){
   var elapsed = medTimer.done ? Math.round(medTimer.dur/60) : Math.max(1, Math.ceil((medTimer.dur-medTimer.remaining)/60));
+  if(medTimer.quick){ closeMedTimer(); medQuickLog(elapsed); return; }
   var mm=document.getElementById("med-mins"); if(mm) mm.value=elapsed;
   closeMedTimer();
   if(typeof toast==="function") toast("Meditation: "+elapsed+" min \u2014 pick type/clarity, then Log Session");
@@ -8560,6 +8601,7 @@ function dsRender(){
       var _fallbackAccent={wed:'#c9a96e',sat:'#7dd3fc',sun:'#4ade80'}[sk]||DS_SEC_ACCENT_MAIN;
       html+=dsRenderSection('The Session','',_fallbackAccent,_moves,'');
     }
+    html+=dsMeditateCardHtml();
     var _customMoves=dsCustomMoves(sk);
     if(_customMoves.length){
       html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
