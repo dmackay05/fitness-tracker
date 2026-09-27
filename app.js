@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v249 — 2026-09-27";
+var APP_BUILD = "v250 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5648,7 +5648,7 @@ function dsRenderDayPicker(){
     var cls='ds-daypill'+(!DS_EXTRAS_ACTIVE&&d===realKey?' is-real':'')+(!DS_EXTRAS_ACTIVE&&d===activeKey?' is-active':'');
     return '<button class="'+cls+'" onclick="dsPickDay(\''+d+'\')">'+DS_DAYLABEL[d]+(d===realKey?'<span class="ds-daydot"></span>':'')+'</button>';
   }).join('');
-  html+='<button class="ds-daypill ds-daypill-extras'+(DS_EXTRAS_ACTIVE?' is-active':'')+'" onclick="dsPickDay(\'extras\')">Extra</button>';
+  // v250: Extra tab removed from the day picker.
   pickHost.innerHTML=html;
   if(bannerHost){
     if(DS_DAY_OVERRIDE && DS_DAY_OVERRIDE!==realKey){
