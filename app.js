@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v253 — 2026-09-27";
+var APP_BUILD = "v255 — 2026-09-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -56,6 +56,7 @@ var DAY_TYPE_MAP = {0:"rest", 1:"active", 2:"active", 3:"recovery", 4:"active", 
 function dayTypeForKey(dateKey){
   var d = keyToDate(dateKey);
   if(dsGuestMode()){ var gt=dsGuestDayTypes()[DS_WEEKMAP_CAL[d.getDay()]]; if(gt) return gt; }
+  if(typeof dsFullBodyOn==='function' && dsFullBodyOn()) return ({0:"rest",1:"active",2:"recovery",3:"active",4:"recovery",5:"active",6:"ride"})[d.getDay()];
   return DAY_TYPE_MAP[d.getDay()] || "active";
 }
 var DS_WEEKMAP_CAL=['sun','mon','tue','wed','thu','fri','sat'];
@@ -2734,7 +2735,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
@@ -2966,7 +2967,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -2978,7 +2979,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -3015,6 +3016,7 @@ function applyConfig(cfg){
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
+  if(store.get('ds_fullbody')!=null){ DS_FB_ON=(store.get('ds_fullbody')==='1'); dsApplyFullBody(); }
   renderAll();
   return true;
 }
@@ -3532,8 +3534,8 @@ function dsFlowPaintBar(){
   if(pauseBtn) pauseBtn.textContent=DS_FLOW.paused?'\u25B6 Resume':'\u23F8 Pause';
 }
 function dsFlowBarHtml(sk){
-  if(sk!=='wed') return '';
-  if(dsDayIsCustom('wed')) return '';   // imported plan owns Wednesday
+  if(!dsFlowDay(sk)) return '';
+  if(dsDayIsCustom(sk)) return '';   // imported plan owns Wednesday
   var _fids=dsFlowActiveIds();
   // Belt and braces: the sequences are hard-coded pose IDs. If any of them no
   // longer resolve to a real item, the flow would run through blank names, so
@@ -5626,7 +5628,7 @@ var DS_EXTRAS_ACTIVE=false; // when true, the Extras tab is showing instead of a
 function dsRealSessionKey(dk){
   var d=new Date(dk+'T12:00:00');
   var base=DS_WEEKMAP[d.getDay()];
-  if(!DS_ROTATE || dsGuestMode()) return base;
+  if(!DS_ROTATE || dsGuestMode() || (typeof dsFullBodyOn==='function'&&dsFullBodyOn())) return base;
   var slot=DS_ROTATE_POOL.indexOf(base);
   if(slot<0) return base; // wed / sat / sun are anchored
   var n=DS_ROTATE_POOL.length;
@@ -6154,6 +6156,85 @@ function dsMigrateSwaps(){
   return true;
 }
 try{ if(dsMigrateSwaps()) store.set("ds_swaps",JSON.stringify(DS_SWAPS)); }catch(e){}
+// ── FULL-BODY MODE — settings toggle, persists until turned off ─────────────
+// Swaps the Upper/Lower split for three full-body days (Mon/Wed/Fri) with the
+// yoga + walk-run recovery session on Tue/Thu, Sat ride, Sun rest. Reuses the
+// SAME exercise objects/ids as the split, so logs, progression, swaps and PRs
+// carry straight across in both directions. Each move is capped at 2–3 sets
+// per session (the id:N suffix below) since every muscle is hit 3x/week; the
+// cap also applies on top of the phase overlay. Dropped: jump squat, rotational
+// slam, obliques chop, band crunch and the duplicate hollow/forearm/tib sets. Turning it off restores the split exactly. Disabled for imported plans.
+var DS_FB_ON=false; try{ DS_FB_ON=(store.get('ds_fullbody')==='1'); }catch(e){ DS_FB_ON=false; }
+var DS_SPLIT_SESSIONS=null; // originals, captured once
+var DS_FB_CAPS={}; // id -> per-session set cap while full-body mode is on
+// "4–5×10–12" -> "3×10–12"; leaves timed/odd formats alone.
+function dsFbCapRx(rx,cap){ rx=String(rx||''); var i=rx.indexOf('\u00d7'); if(i<0) return rx; var head=rx.slice(0,i); if(!/^\s*\d+(\s*[\u2013\-]\s*\d+)?\s*$/.test(head)) return rx; var n=head.match(/\d+/g).map(Number); return (Math.min(Math.max.apply(null,n),cap))+rx.slice(i); }
+function dsFbCapOf(id){ return (dsFullBodyOn() && DS_FB_CAPS[id]) || 0; }
+var DS_FB_PLAN={
+  mon:{title:'Full Body A',sub:'Squat · Horizontal Push/Pull · Side Delts · Arms',accent:'var(--accent)',
+    warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
+    ids:['tue-squat:3','fri-slrdl:3','mon-pushup:3','mon-row:3','mon-pressaround:2','mon-lateral:3','sat-uprightrow:2','mon-curl:3','mon-tri:3','tue-calf:3','mon-hollow','mon-elbow']},
+  wed:{title:'Full Body B',sub:'Single-Leg · Glutes · Incline/Vertical · Rear Delts · Arms',accent:'var(--accent)',
+    warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
+    ids:['fri-bulg:3','sat-hipthrust:3','sat-frontsquat:2','mon-inclinepress:3','thu-lat:3','mon-ohp:3','thu-facepull:3','sat-shrug:2','thu-hammer:3','mon-slamskull:3','mon-calf:2','tue-lat:2','tue-tib:2','tue-pallof:2']},
+  fri:{title:'Full Body C',sub:'Hinge · Knee Flexion · Stretch Chest/Back · Arms',accent:'var(--accent)',
+    warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
+    ids:['fri-goodmorning:3','fri-nordic:3','fri-goblet:2','fri-add:2','mon-standbandpress:3','sat-chest:2','sat-ballpullover:3','thu-lateral:3','mon-pullapart:2','sat-inclinecurl:3','sat-ohtriceps:3','fri-calf:3','fri-plank','thu-elbow','mon-forearm:2']}
+};
+function dsFullBodyOn(){ return DS_FB_ON && !dsGuestMode(); }
+function dsFlowDay(sk){ return dsFullBodyOn() ? (sk==='tue'||sk==='thu') : sk==='wed'; }
+function dsSplitDaysMap(){ return dsFullBodyOn() ? {mon:1,wed:1,fri:1} : {mon:1,tue:1,thu:1,fri:1}; }
+function dsApplyFullBody(){
+  if(!DS_SPLIT_SESSIONS){ DS_SPLIT_SESSIONS={}; DS_PLAN_DAYS.forEach(function(d){ DS_SPLIT_SESSIONS[d]=DS_SESSIONS[d]; }); }
+  var S=DS_SPLIT_SESSIONS;
+  DS_FB_CAPS={};
+  if(!dsFullBodyOn()){ DS_PLAN_DAYS.forEach(function(d){ if(S[d]) DS_SESSIONS[d]=S[d]; }); return; }
+  var byId={};
+  DS_PLAN_DAYS.forEach(function(d){ ((S[d]&&S[d].moves)||[]).forEach(function(m){ if(m&&m.id&&!byId[m.id]) byId[m.id]=m; }); });
+  ['mon','wed','fri'].forEach(function(d){
+    var p=DS_FB_PLAN[d], moves=[];
+    p.warm.concat(p.ids).forEach(function(spec){
+      var parts=String(spec).split(':'), id=parts[0], cap=parts[1]?+parts[1]:0, m=byId[id];
+      if(!m){ console.warn('Full-body: missing move '+id); return; }
+      if(cap && m.log==='setsreps' && m.sets>cap){
+        // Shallow clone: same id (so history/progression carry over), fewer
+        // sets per session since each muscle is now trained 3x/week.
+        var c={}; for(var k in m) c[k]=m[k];
+        c.sets=cap; c.rx=dsFbCapRx(m.rx,cap); c._fbCap=cap;
+        DS_FB_CAPS[id]=cap; moves.push(c);
+      } else { if(cap) DS_FB_CAPS[id]=cap; moves.push(m); }
+    });
+    DS_SESSIONS[d]={title:p.title,sub:p.sub,accent:p.accent,moves:moves};
+  });
+  var yoga=S.wed;
+  DS_SESSIONS.tue={title:yoga.title.replace(/^Wednesday\s*/,'')||'Yoga Flow',sub:'Recovery day · yoga/mobility + walk-run intervals',accent:yoga.accent,moves:yoga.moves};
+  DS_SESSIONS.thu=DS_SESSIONS.tue;
+  var ride=byId['sat-ride'];
+  DS_SESSIONS.sat={title:'Ride Day',sub:'Mountain bike ride · no lifting in full-body mode',accent:S.sat.accent,moves:ride?[ride]:S.sat.moves};
+  DS_SESSIONS.sun=S.sun;
+}
+function dsSetFullBody(on){
+  DS_FB_ON=!!on;
+  try{ store.set('ds_fullbody', DS_FB_ON?'1':'0'); }catch(e){}
+  DS_DAY_OVERRIDE=null;
+  dsApplyFullBody();
+  dsQueueConfigPush();
+  try{ renderAll(); }catch(e){}
+  try{ dsRender(); }catch(e){}
+  dsRenderFullBodyUI(); try{ dsRenderRotatePreview(); }catch(e){}
+  toast(DS_FB_ON?'Full-body mode on — Mon/Wed/Fri full body':'Back to the Upper/Lower split');
+}
+function dsRenderFullBodyUI(){
+  var t=document.getElementById('ds-fullbody-toggle'), pv=document.getElementById('ds-fullbody-preview');
+  var guest=dsGuestMode();
+  if(t){ t.checked=dsFullBodyOn(); t.disabled=guest; }
+  if(!pv) return;
+  if(guest){ pv.textContent='Not available while an imported plan is active.'; return; }
+  var names={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+  pv.innerHTML=(dsFullBodyOn()?'Active — ':'Off — current split: ')+DS_PLAN_DAYS.map(function(d){ var s=DS_SESSIONS[d]; return names[d]+': '+((s&&s.title)||'—'); }).join(' · ')
+    +(dsFullBodyOn()?'<br>Session rotation is paused while this is on. Same exercise ids as the split, so your history and progression carry over either way.':'');
+}
+dsApplyFullBody();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 // Shared debounce for anything that should ride along on the settings-sync channel
 // (see "Batch C: SETTINGS SYNC TO SHEET") so a change on one device reaches others
@@ -7642,6 +7723,8 @@ function dsRenderItem(rawItem,idx,accent){
       sets:(_po.sets!=null?_po.sets:item.sets),
       secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants};
   }
+  var _fbc=(typeof dsFbCapOf==='function')?dsFbCapOf(item.id):0;
+  if(_fbc && _po && item.sets>_fbc){ item.sets=_fbc; item.rx=dsFbCapRx(_po.rx,_fbc)+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''); }
   var st=dsItemState(item.id); var done=dsComplete(item.id);
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
@@ -8601,9 +8684,9 @@ function dsRender(){
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
     var _flowBar=dsFlowBarHtml(sk);
-    var _flowEdit=(sk==='wed'&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
+    var _flowEdit=(dsFlowDay(sk)&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
     html=_flowBar+_flowEdit+_satHeatBtn+_tcBtn;
-    var _splitDays={mon:1,tue:1,thu:1,fri:1};
+    var _splitDays=dsSplitDaysMap();
     if(_splitDays[sk] && !dsDayIsCustom(sk)){
       var _wu=[],_core=[],_main=[];
       _moves.forEach(function(m){ var b=dsSectionBucket(m); if(b==='warmup')_wu.push(m); else if(b==='core')_core.push(m); else _main.push(m); });
