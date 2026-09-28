@@ -1611,3 +1611,17 @@ html body div.app{max-width:480px}
 .date-nav{padding:4px 6px;gap:2px;border-radius:8px}
 .date-nav .day-arrow{font-size:16px;padding:0 3px}
 .date-nav .date-label{min-width:72px}
+
+/* ── Info tab: collapsible sections ── */
+.info-sec{margin-top:12px;border:1px solid #ffffff14;border-radius:14px;background:#ffffff05;overflow:hidden}
+.info-sec:first-of-type{margin-top:0}
+.info-sec-hd{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:14px 16px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a9d8c;
+  -webkit-tap-highlight-color:transparent;user-select:none}
+.info-sec-hd::-webkit-details-marker{display:none}
+.info-sec-hd:active{background:#ffffff0a}
+.info-sec-chev{font-size:14px;color:#5eead4;transition:transform .2s ease;flex-shrink:0}
+.info-sec[open] > .info-sec-hd{color:#f0ede8;border-bottom:1px solid #ffffff10}
+.info-sec[open] > .info-sec-hd .info-sec-chev{transform:rotate(90deg)}
+.info-sec-body{padding:10px 10px 12px}
+.info-sec-body > .card:first-child{margin-top:0 !important}

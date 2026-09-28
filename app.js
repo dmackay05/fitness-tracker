@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v252 — 2026-09-27";
+var APP_BUILD = "v253 — 2026-09-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6964,7 +6964,23 @@ function miRender(){
   if(!list.length) html = '<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">No meals match those filters — try removing one.</div>';
   document.getElementById("meals-list").innerHTML = html;
 }
+// Info tab sections: collapsed by default, open/closed state remembered per section.
+function infoSecInit(){
+  var st={}; try{ st=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ st={}; }
+  document.querySelectorAll('#panel-meals details.info-sec').forEach(function(d){
+    var k=d.getAttribute('data-sec');
+    if(!d._infoBound){
+      d.open=!!st[k];
+      d.addEventListener('toggle',function(){
+        var cur={}; try{ cur=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ cur={}; }
+        cur[k]=d.open; try{ store.set("info_sec_open",JSON.stringify(cur)); }catch(e){}
+      });
+      d._infoBound=true;
+    }
+  });
+}
 function renderMealsTab(){
+  infoSecInit();
   renderFruitGuide("meals-fruit-guide");
   renderVegGuide("meals-veg-guide");
   renderNutGuide("meals-nut-guide");

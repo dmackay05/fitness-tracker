@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=166">
+<link rel="stylesheet" href="styles.css?v=167">
 </head>
 <body>
 
@@ -287,11 +287,18 @@
 
     <!-- ════════ MEALS ════════ -->
     <div class="panel" id="panel-meals">
-      <div class="ds-eyebrow">Meal Ideas &amp; Fruit Guide</div>
+      <details class="info-sec" data-sec="guides">
+        <summary class="info-sec-hd"><span>Food Guides</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
       <div class="card" id="meals-fruit-guide"></div>
       <div class="card" id="meals-veg-guide" style="margin-top:10px"></div>
       <div class="card" id="meals-nut-guide" style="margin-top:10px"></div>
       <div class="card" id="meals-myth-guide" style="margin-top:10px"></div>
+        </div>
+      </details>
+      <details class="info-sec" data-sec="meals">
+        <summary class="info-sec-hd"><span>Meal Ideas</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
       <div class="card">
         <div class="card-title" style="margin-bottom:8px">Filter</div>
         <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Tap to toggle. Combine filters to narrow down.</div>
@@ -299,8 +306,12 @@
       </div>
       <div style="margin-top:14px" id="meals-list"></div>
 
+        </div>
+      </details>
       <!-- ════════ TRAINING PHASE GUIDE ════════ -->
-      <div class="ds-eyebrow" style="margin-top:26px">Training Phase Guide</div>
+      <details class="info-sec" data-sec="phase">
+        <summary class="info-sec-hd"><span>Training Phase Guide</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
       <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Your 13-week wave, and what each phase is actually for. Toggle it on/off under Dashboard → Phase Cycle.</div>
 
       <div class="card" style="margin-top:10px;border-left:4px solid var(--accent)">
@@ -335,8 +346,12 @@
         <div style="font-size:12px;color:#888;line-height:1.5">Rehab and joint-protective work (elbow eccentric rehab, wrist curls, and other flagged movements) stays fixed at its normal prescription in every phase — it's not scaled up or down, since it's protective work rather than a hypertrophy stimulus.</div>
       </div>
 
+        </div>
+      </details>
       <!-- ════════ HYPERTROPHY SCIENCE ════════ -->
-      <div class="ds-eyebrow" style="margin-top:26px">Muscle Growth — What the Science Says</div>
+      <details class="info-sec" data-sec="hyper">
+        <summary class="info-sec-hd"><span>Muscle Growth — What the Science Says</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
       <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px;line-height:1.5">Only findings backed by multiple studies or meta-analyses. Each card is rated:<br>
         <span style="color:#4ade80">● Strong</span> — several meta-analyses agree &nbsp;·&nbsp; <span style="color:#fbbf24">● Promising</span> — consistent studies, details still being refined &nbsp;·&nbsp; <span style="color:#f87171">● Not supported</span> — popular, but the evidence says no</div>
 
@@ -451,8 +466,12 @@
         <div style="font-size:12px;color:#888;line-height:1.5">Most of this research is on young and middle-aged adults over 6–16 week studies. Treat these findings as reliable principles rather than exact numbers, and let your own log settle the details.</div>
       </div>
 
+        </div>
+      </details>
       <!-- ════════ SUPPLEMENT SCIENCE ════════ -->
-      <div class="ds-eyebrow" style="margin-top:26px">Supplements — What Actually Works</div>
+      <details class="info-sec" data-sec="supp">
+        <summary class="info-sec-hd"><span>Supplements — What Actually Works</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
       <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px;line-height:1.5">Same ratings as above. Supplements add a small amount on top of training, protein, and sleep; they don't replace any of them.</div>
 
       <div class="card" style="margin-top:10px;border-left:4px solid #4ade80">
@@ -502,6 +521,8 @@
       <div class="card" style="margin-top:10px">
         <div style="font-size:12px;color:#888;line-height:1.5">Supplements aren't tested by the FDA before they're sold, and some have been found contaminated or mislabeled. Look for third-party certification (<b>NSF Certified for Sport</b> or <b>Informed Sport</b>). Check with a doctor before starting anything if you take prescription medications.</div>
       </div>
+        </div>
+      </details>
     </div>
 
     <!-- ════════ LOG ════════ -->
@@ -1235,6 +1256,6 @@
   </div>
 </div>
 
-<script src="app.js?v=346"></script>
+<script src="app.js?v=347"></script>
 </body>
 </html>
