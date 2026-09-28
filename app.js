@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v255 — 2026-09-28";
+var APP_BUILD = "v256 — 2026-09-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3341,6 +3341,7 @@ var DS_FLOW_CUSTOM={active:true,ids:DS_FLOW_IDS_HK.slice()};
 try{ var _fcv0=JSON.parse(store.get('ds_flowcustom')||'null'); if(_fcv0&&typeof _fcv0==='object'&&Array.isArray(_fcv0.ids)){ DS_FLOW_CUSTOM.active=!!_fcv0.active; DS_FLOW_CUSTOM.ids=_fcv0.ids; } }catch(e){}
 function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){} try{dsQueueConfigPush();}catch(e){} }
 function dsFlowActiveIds(){
+  if(typeof dsFbFlowIds==='function'){ var _fb=dsFbFlowIds(); if(_fb) return _fb; }
   if(DS_FLOW_CUSTOM.active && DS_FLOW_CUSTOM.ids && DS_FLOW_CUSTOM.ids.length) return DS_FLOW_CUSTOM.ids;
   return DS_FLOW_SEQUENCES[dsFlowSeqIndex(activeDate)];
 }
@@ -3550,7 +3551,7 @@ function dsFlowBarHtml(sk){
       +'<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:4px">This week: '+_seqLabel+'</div>'
       +'<div style="font-size:11px;color:#999;margin-bottom:10px">Auto-advances through all '+n+' poses, times each hold, and marks them done as it goes</div>'
       +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c9a96e;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
-      +(DS_FLOWEDIT_OPEN?'':'<div style="margin-top:8px;font-size:11px;color:#7dd3fc;text-decoration:underline;cursor:pointer" onclick="dsFlowEditOpen()">Reorder / swap poses</div>')
+      +((DS_FLOWEDIT_OPEN||(typeof dsFbFlowIds==='function'&&dsFbFlowIds()))?'':'<div style="margin-top:8px;font-size:11px;color:#7dd3fc;text-decoration:underline;cursor:pointer" onclick="dsFlowEditOpen()">Reorder / swap poses</div>')
       +'</div>';
   }
   var raw=dsFlowCurrentItem(); var nm=raw?(raw.name+(DS_FLOW.side?' \u2014 '+(DS_FLOW.side==='L'?'Left':'Right'):'')):'';
@@ -6181,6 +6182,22 @@ var DS_FB_PLAN={
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
     ids:['fri-goodmorning:3','fri-nordic:3','fri-goblet:2','fri-add:2','mon-standbandpress:3','sat-chest:2','sat-ballpullover:3','thu-lateral:3','mon-pullapart:2','sat-inclinecurl:3','sat-ohtriceps:3','fri-calf:3','fri-plank','thu-elbow','mon-forearm:2']}
 };
+var DS_FB_FLOWS={
+  tue:{title:'Hip Mobility Flow',sub:'~21 min · recovery after Monday\u2019s squat/RDL · + walk-run intervals',
+    ids:['wed-flow-center','wed-flow-catcow','wed-flow-hk-hipcircles','wed-flow-hk-quadpull','wed-flow-dragon',
+         'wed-flow-hk-9090','wed-flow-hk-reclfigure4','wed-flow-hk-pigeon','wed-flow-hk-happybaby','wed-flow-sav']},
+  thu:{title:'Knee & Balance Flow',sub:'~22 min · recovery after Wednesday\u2019s single-leg work · + walk-run intervals',
+    ids:['wed-flow-center','wed-flow-catcow','wed-flow-hk-anklecircles','wed-flow-downdog','wed-flow-hk-tke',
+         'wed-flow-hk-clamshell','wed-flow-hk-tree','wed-flow-warrior3','wed-flow-hk-butterflyfold','wed-flow-twist',
+         'wed-flow-legsup','wed-flow-sav']}
+};
+// Guided-flow sequence for today when full-body mode owns Tue/Thu; null otherwise
+// (falls through to the custom/rotating Wednesday flow, which is left untouched).
+function dsFbFlowIds(){
+  if(!dsFullBodyOn()) return null;
+  var sk=dsSessionKey(activeDate), f=DS_FB_FLOWS[sk];
+  return f?f.ids:null;
+}
 function dsFullBodyOn(){ return DS_FB_ON && !dsGuestMode(); }
 function dsFlowDay(sk){ return dsFullBodyOn() ? (sk==='tue'||sk==='thu') : sk==='wed'; }
 function dsSplitDaysMap(){ return dsFullBodyOn() ? {mon:1,wed:1,fri:1} : {mon:1,tue:1,thu:1,fri:1}; }
@@ -6206,9 +6223,15 @@ function dsApplyFullBody(){
     });
     DS_SESSIONS[d]={title:p.title,sub:p.sub,accent:p.accent,moves:moves};
   });
+  // Short (~20 min) recovery flows instead of the full 45-50 min Wednesday flow,
+  // split so Tue follows Monday's squat/RDL with hip work and Thu follows
+  // Wednesday's single-leg day with knee/ankle/balance work. Both draw from the
+  // Hip & Knee pose set so that priority stays covered across the week.
   var yoga=S.wed;
-  DS_SESSIONS.tue={title:yoga.title.replace(/^Wednesday\s*/,'')||'Yoga Flow',sub:'Recovery day · yoga/mobility + walk-run intervals',accent:yoga.accent,moves:yoga.moves};
-  DS_SESSIONS.thu=DS_SESSIONS.tue;
+  ['tue','thu'].forEach(function(d){
+    var f=DS_FB_FLOWS[d];
+    DS_SESSIONS[d]={title:f.title,sub:f.sub,accent:yoga.accent,moves:f.ids.map(function(id){ return byId[id]; }).filter(Boolean)};
+  });
   var ride=byId['sat-ride'];
   DS_SESSIONS.sat={title:'Ride Day',sub:'Mountain bike ride · no lifting in full-body mode',accent:S.sat.accent,moves:ride?[ride]:S.sat.moves};
   DS_SESSIONS.sun=S.sun;
