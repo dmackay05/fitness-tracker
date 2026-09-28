@@ -1625,3 +1625,6 @@ html body div.app{max-width:480px}
 .info-sec[open] > .info-sec-hd .info-sec-chev{transform:rotate(90deg)}
 .info-sec-body{padding:10px 10px 12px}
 .info-sec-body > .card:first-child{margin-top:0 !important}
+
+#panel-today .ds-mtempo{font-size:12px;color:#9fd3c7;margin-top:6px;line-height:1.4;}
+#panel-today .ds-mtempo-l{display:block;color:#888;font-size:11px;margin-top:3px;}

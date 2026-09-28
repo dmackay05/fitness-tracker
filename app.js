@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v256 — 2026-09-28";
+var APP_BUILD = "v257 — 2026-09-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7589,13 +7589,15 @@ function dsSuggestNext(item,lt){
   if(dsRepRange(item.id)){ var _d=dsProgDecision(item.id); return _d?_d.note:null; }
   var hist=dsHistoryN(item.id,3); // ascending: oldest..newest, up to 3 sessions
   var hasLoad=dsWantsLoad(item) && lt.load;
+  var _band=dsIsElasticBand(item)&&item.log==='setsreps';
+  var _ladder='step back 6\u201312 in, then stack a 10 lb tube, then the next band (keep the 3-1-1 tempo)';
   if(hist.length>=2){
     var rirs=hist.map(dsParseLastRir).filter(function(x){return x!=null;});
     if(rirs.length>=2){
       var allEasy=rirs.every(function(r){return r>=3;});
       var allHard=rirs.every(function(r){return r<=1;});
       if(allEasy){
-        return '\u26A1 Trending easy the last '+rirs.length+' sessions \u2014 '+(hasLoad?'time to move up a band or add weight':'add reps or slow the tempo');
+        return '\u26A1 Trending easy the last '+rirs.length+' sessions \u2014 '+(_band?'progress: '+_ladder:(hasLoad?'time to move up a band or add weight':'add reps or slow the tempo'));
       }
       if(allHard){
         return '\u25BC Grinding at the edge for '+rirs.length+' sessions straight \u2014 hold this load, consider a lighter week';
@@ -7613,7 +7615,7 @@ function dsSuggestNext(item,lt){
   var avgRir=dsParseLastRir(lt), avgReps=dsParseLastReps(lt);
   if(avgRir!=null){
     if(avgRir>=2.5){
-      return hasLoad?'\u26A1 Last set felt easy \u2014 move up a band or add weight':'\u26A1 Last set felt easy \u2014 add 1\u20132 reps or slow the tempo';
+      return _band?'\u26A1 Last set felt easy \u2014 confirm 3-1-1 tempo, then '+_ladder:(hasLoad?'\u26A1 Last set felt easy \u2014 move up a band or add weight':'\u26A1 Last set felt easy \u2014 add 1\u20132 reps or slow the tempo');
     } else if(avgRir>=1.5){
       return '\u2713 Solid effort last time \u2014 try +1\u20132 reps at the same load';
     } else if(avgRir>=0.5){
@@ -7763,6 +7765,7 @@ function dsRenderItem(rawItem,idx,accent){
   h+='<div class="ds-mbody">';
   if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
+  if(dsIsElasticBand(item)&&item.log==='setsreps')h+='<div class="ds-mtempo">\u23f1 Tempo 3-1-1 \u2014 1 sec up, 1 sec squeeze, 3 sec down. Band taut at the start; if it snaps you back, the rep doesn\u2019t count. <span class="ds-mtempo-l">Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></div>';
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
