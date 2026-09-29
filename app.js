@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v263 — 2026-09-29";
+var APP_BUILD = "v264 — 2026-09-29";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7607,6 +7607,7 @@ function dsPic(panels,notes){
     if(p.arm2) s+='<path d="'+path(p.arm2)+'" '+body+'/>';
     (p.circles||[]).forEach(function(c){ s+='<circle cx="'+c[0]+'" cy="'+c[1]+'" r="'+c[2]+'" fill="none" stroke="#8a8aa8" stroke-width="4"/>'; });
     if(p.band) s+='<path d="'+path(p.band)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round"/>';
+    if(p.band2) s+='<path d="'+path(p.band2)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round"/>';
     (p.tags||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#2dd4a7" style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
   });
   notes.forEach(function(n,i){ s+='<text x="8" y="'+(292+i*18)+'" fill="#a8a8c0" style="font:500 12px system-ui,sans-serif">'+n+'</text>'; });
@@ -7630,7 +7631,7 @@ var DS_SETUPPICS={
 function dsSh(p,o){
   var q={}; for(var k in p) q[k]=p[k];
   function pt(a){ return [a[0]+o,a[1]]; }
-  ['torso','legs','legs2','arm','arm2','band'].forEach(function(k){ if(p[k]) q[k]=p[k].map(pt); });
+  ['torso','legs','legs2','arm','arm2','band','band2'].forEach(function(k){ if(p[k]) q[k]=p[k].map(pt); });
   if(p.head) q.head=pt(p.head);
   if(p.circles) q.circles=p.circles.map(function(c){ return [c[0]+o,c[1],c[2]]; });
   if(p.lines) q.lines=p.lines.map(function(l){ return [l[0]+o,l[1],l[2]+o,l[3]]; });
@@ -7806,6 +7807,11 @@ DS_SETUPPICS['Banded Lateral Walk']=function(){
   dsMk(q,{title:'Start (quarter squat)',legs:[[95,144],[84,194],[80,246]],legs2:[[95,144],[106,194],[110,246]],band:[[84,194],[106,194]],tags:[[4,150,'Band above knees']]}),
   dsMk(q,{title:'Step out',legs:[[95,144],[84,194],[80,246]],legs2:[[95,144],[128,194],[150,246]],band:[[84,194],[128,194]],bw:4,tags:[[4,150,'Stay low']]}),
   ['Mini band above the knees, quarter squat','Step sideways without standing up','Keep tension on the band the whole time','Trail foot follows, do not let the knees cave']); };
+
+DS_SETUPPICS['Standing Band Fly (stretch-biased)']=function(){ return dsPic2(
+  dsMk(DS_FRONT,{title:'Open (stretched)',arm:[[95,88],[60,90],[32,82]],arm2:[[95,88],[130,90],[158,82]],band:[[8,74],[32,82]],band2:[[182,74],[158,82]],bw:4,tags:[[4,150,'Band already tight']]}),
+  dsMk(DS_FRONT,{title:'Hug (hands together)',arm:[[95,88],[76,98],[94,104]],arm2:[[95,88],[114,98],[96,104]],band:[[8,74],[94,104]],band2:[[182,74],[96,104]],tags:[[4,150,'Elbows slightly bent']]}),
+  ['Anchor behind you at chest height, split stance','Step forward until the band is tight with arms wide','Slight fixed elbow bend, 1 sec pause wide','Hug the handles together, control the return','Open only as far as the shoulder is comfortable']); };
 
 function dsSuggestNext(item,lt){
   if(!lt) return null;
