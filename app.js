@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v257 — 2026-09-28";
+var APP_BUILD = "v258 — 2026-09-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -346,6 +346,7 @@ var DS_PHASE_RX = {
   'thu-legraise':{p1:{rx:'1\u00d710\u201312',sets:1,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'8',rest:'1 min'},p3:{rx:'2\u00d710\u201312',sets:2,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78',sets:1,rpe:'6',rest:'1 min'}},
   'tue-jump':{p1:{rx:'3\u00d73\u20135',sets:3},p2:{rx:'2\u00d73\u20135',sets:2},p3:{rx:'3\u00d73\u20135',sets:3},deload:{rx:'1\u00d73',sets:1}},
   'tue-squat':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'4\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d712\u201315',sets:2,rpe:'6\u20137',rest:'2 min'}},
+  'tue-legext':{p1:{rx:'3\u00d712\u201315/leg',sets:3,rpe:'8\u20139',rest:'1 min'},p2:{rx:'2\u00d78\u201312/leg',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320/leg',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712/leg',sets:1,rpe:'6\u20137',rest:'1 min'}},
   'fri-bulg':{p1:{rx:'3\u00d710/leg',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u20138/leg',sets:2,rpe:'9',rest:'2.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'6',rest:'1.5 min'}},
   'tue-lat':{p1:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d715/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710/side',sets:1,rpe:'6',rest:'1 min'}},
   'tue-pallof':{p1:{rx:'3\u00d710/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78/side',sets:1,rpe:'6',rest:'1 min'}},
@@ -5047,6 +5048,9 @@ var DS_SESSIONS={
                   {name:'Long-Length Partial Squat',equip:'Mini loop above knees or bodyweight',rx:'3×15–20',cue:'Drop to the bottom of the squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in the deep stretch the whole set; quads burn fast.',demo:'squat'},{name:'Ball Wall Squat',equip:'Stability ball against wall',rx:'3\u00d715',cue:'Ball in the low back against the wall \u2014 roll down to parallel, drive up through the heels. Very SI-friendly',demo:'squat'},
                   {name:'Heavy Band Front Squat',equip:'Clench 35–75 lb band',rx:'4×10–12',cue:'Stand centered on the band, handles racked at the shoulders like a front squat — sit back and down, drive up through the heels. Real progressive resistance now that you have a band heavy enough to load this properly',demo:'squat',setup:'Step both feet onto the middle of the band, shoulder-width apart. Bring the handles up to rest at your shoulders (front-rack style), elbows up. Squat down keeping the torso upright — the band tension increases the deeper you go, so control the descent rather than dropping into it. Drive up through the heels to standing. Start at the lower end of the band\'s range (feet closer together = less pre-tension) until you know how the resistance feels through a full squat.'},
                   {name:'Myo-Rep Partial Squat Finisher',equip:'Bodyweight or light band',rx:'1 set to ~15 reps, then 3–4 myo-rep clusters of 3–5',cue:'A quad-fatigue finisher, not a strength set — run it after your working sets, not instead of them.',demo:'squat',setup:'Take one set of shallow, partial-range squats — only come up about two-thirds of the way before sinking back down, never fully standing — to a real, near-failure effort (roughly 15-20 reps). Rest just 5–10 seconds, then squeeze out 3–5 more partial reps. Repeat that short rest + mini-set pattern 3–4 times. Keeping the range partial and the load light means you can chase real quad fatigue here without any extra load on the knees or spine — good for a day the quads need more work but the joints don\'t need more stress.'}]},
+      {id:'tue-legext',name:'Banded Leg Extension',slot:'Quads',target:'Quads \u00b7 Rectus Femoris',equip:'Tube 20\u201330 \u2192 40\u201350 lb, anchored low behind you \u00b7 piano bench',rx:'3\u00d712\u201315/leg',cal:20,cue:'Squats under-train the rectus femoris \u2014 this is the direct quad isolator. Sit tall on the bench, band looped around one ankle from a low anchor behind you, and straighten the knee until the leg is level, squeezing the quad for 1 sec. Lower over 3 sec back to a bent knee \u2014 don\u2019t let the band yank the leg back.',demo:null,log:'setsreps',sets:3,
+        setup:'Sit on the piano bench facing away from a low door anchor, band around your ankle (padded or over a sock). Scoot back or step the bench farther from the door until there is tension with the knee fully bent. Hold the bench edge, keep the thigh planted, and only move the lower leg. Do all reps on one side, then switch. Stretched-position tension is highest at the bottom, so use the full bend.',
+        variants:[{name:'Seated Two-Leg Band Extension',equip:'Tube 30\u201350 lb, anchored low behind you',rx:'3\u00d712\u201315',cue:'Same setup with the band around both ankles \u2014 faster to run, heavier total load. Switch to single-leg when both legs feel easy.'}]},
       {id:'fri-bulg',name:'Banded Bulgarian Split Squat',slot:'Unilateral Squat',target:'Quads · Balance',equip:'Tube 20–30 → 40–50 lb',rx:'3×10/leg',cal:40,cue:'Front heel drives through the floor — torso stays tall',demo:'splitsquat',log:'setsreps',sets:3,variants:[{name:'Banded Reverse Lunge',equip:'Tube 20–30 lb',rx:'3×10/leg',cue:'Step back, drop the knee, drive through the front heel — easier to balance than Bulgarians, same quad work',demo:'splitsquat'},{name:'Upright Walking Lunge (short steps)',equip:'2× 10 lb dumbbells or bodyweight',rx:'3×10–12/leg',cue:'Short steps, torso upright (not leaning forward) — front knee tracks straight over the toes, not past them. The short step + upright torso keeps this quad-dominant and pulls in adductors and calves too, unlike a long-step glute-focused lunge. Walk forward continuously, alternating legs each step.',demo:'splitsquat'},{name:'Front-Elevated Split Squat (glute-biased)',equip:'Yoga block or low step + bodyweight/dumbbells',rx:'3×10–12/leg',cue:'Front foot elevated on a block, back foot stepped far behind you — this shifts the emphasis onto the front glute and takes the front knee through a deeper range than the standard Bulgarian. Torso can lean forward slightly here (unlike the upright cue on the standard version) to load the hip more than the knee.',demo:'splitsquat'}]},
       {id:'sat-hipthrust',name:'Banded Hip Thrust',lockVar:0,slot:'Hinge · Glutes',target:'Glutes',equip:'Tube band across hips · bench or stable surface for shoulders',rx:'3×12–15',cal:30,cue:'Your only direct glute isolation of the week — on Tuesday so the glutes are fully recovered from Friday\'s hinges. Upper back braced on a bench or the piano bench, band looped across your hips and anchored under your feet, feet planted hip-width. Drive hips up until torso is in line with thighs, squeeze glutes hard at the top for a 1-count, lower under control without letting the hips touch down between reps.',demo:'bridge',log:'setsreps',sets:3,
         setup:'Sit with upper back against a bench edge, band looped over your hips, feet flat on the floor hip-width apart, knees bent ~90°. Drive through the heels, extending the hips up until your body forms a straight line from shoulders to knees — squeeze glutes at the top, then lower with control, keeping tension on through the whole set rather than resting at the bottom.',
@@ -5616,7 +5620,7 @@ function dsToggleVarRotate(on){
 // anything with an elbow/tendon caution flag (forearm work, incline curl)
 // and any heavy spinal-loaded compound (squats, RDL, good morning) — this
 // is for safe isolation/machine work only.
-var DS_ANCHOR_POOL=['mon-pressaround','mon-tri','mon-lateral','thu-hammer','thu-facepull','tue-calf','fri-calf'];
+var DS_ANCHOR_POOL=['tue-legext','mon-pressaround','mon-tri','mon-lateral','thu-hammer','thu-facepull','tue-calf','fri-calf'];
 function dsAnchorExerciseId(dk){
   var pool=DS_ANCHOR_POOL, n=pool.length; if(!n) return null;
   var w=dsWeekIndex(dk||activeDate);
@@ -6174,13 +6178,13 @@ function dsFbCapOf(id){ return (dsFullBodyOn() && DS_FB_CAPS[id]) || 0; }
 var DS_FB_PLAN={
   mon:{title:'Full Body A',sub:'Squat · Horizontal Push/Pull · Side Delts · Arms',accent:'var(--accent)',
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
-    ids:['tue-squat:3','fri-slrdl:3','mon-pushup:3','mon-row:3','mon-pressaround:2','mon-lateral:3','sat-uprightrow:2','mon-curl:3','mon-tri:3','tue-calf:3','mon-hollow','mon-elbow']},
+    ids:['tue-squat:3','tue-legext:2','fri-slrdl:3','mon-pushup:3','mon-row:3','mon-pressaround:2','mon-lateral:3','sat-uprightrow:2','mon-curl:3','mon-tri:3','tue-calf:3','mon-hollow','mon-elbow']},
   wed:{title:'Full Body B',sub:'Single-Leg · Glutes · Incline/Vertical · Rear Delts · Arms',accent:'var(--accent)',
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
     ids:['fri-bulg:3','sat-hipthrust:3','sat-frontsquat:2','mon-inclinepress:3','thu-lat:3','mon-ohp:3','thu-facepull:3','sat-shrug:2','thu-hammer:3','mon-slamskull:3','mon-calf:2','tue-lat:2','tue-tib:2','tue-pallof:2']},
   fri:{title:'Full Body C',sub:'Hinge · Knee Flexion · Stretch Chest/Back · Arms',accent:'var(--accent)',
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
-    ids:['fri-goodmorning:3','fri-nordic:3','fri-goblet:2','fri-add:2','mon-standbandpress:3','sat-chest:2','sat-ballpullover:3','thu-lateral:3','mon-pullapart:2','sat-inclinecurl:3','sat-ohtriceps:3','fri-calf:3','fri-plank','thu-elbow','mon-forearm:2']}
+    ids:['fri-goodmorning:3','fri-nordic:3','tue-legext:2','fri-goblet:2','fri-add:2','mon-standbandpress:3','sat-chest:2','sat-ballpullover:3','thu-lateral:3','mon-pullapart:2','sat-inclinecurl:3','sat-ohtriceps:3','fri-calf:3','fri-plank','thu-elbow','mon-forearm:2']}
 };
 var DS_FB_FLOWS={
   tue:{title:'Hip Mobility Flow',sub:'~21 min · recovery after Monday\u2019s squat/RDL · + walk-run intervals',
@@ -8478,6 +8482,7 @@ var DS_MV={
   'thu-inclinecurl':{'Biceps':1},
   'thu-tri':{'Triceps':1,'Forearms':.3},
   'thu-hollow':{'Core':1},
+  'tue-legext':{'Quads':1},
   'fri-bulg':{'Quads':1,'Glutes':.5},
   'fri-sumo':{'Glutes':1,'Quads':.5},
   'fri-slrdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
