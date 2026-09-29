@@ -1628,3 +1628,5 @@ html body div.app{max-width:480px}
 
 #panel-today .ds-mtempo{font-size:12px;color:#9fd3c7;margin-top:6px;line-height:1.4;}
 #panel-today .ds-mtempo-l{display:block;color:#888;font-size:11px;margin-top:3px;}
+
+#panel-today .ds-setuppic{margin:8px 0 4px;padding:8px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;}
