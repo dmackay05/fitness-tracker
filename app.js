@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v267 — 2026-09-29";
+var APP_BUILD = "v268 — 2026-09-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -397,6 +397,14 @@ var TREND_METRICS=[
   {key:"muscle",  label:"Muscle",    unit:"lbs",dir:"higher", color:"#facc15", get:function(d){return (d.bodyComp&&d.bodyComp.muscle!=null)?d.bodyComp.muscle:null;}},
   {key:"bcWater", label:"Body Water",unit:"%",  dir:"neutral",color:"#22d3ee", get:function(d){return (d.bodyComp&&d.bodyComp.water!=null)?d.bodyComp.water:null;}},
   {key:"bone",    label:"Bone Mass", unit:"lbs",dir:"neutral",color:"#c4b5fd", get:function(d){return (d.bodyComp&&d.bodyComp.bone!=null)?d.bodyComp.bone:null;}},
+  {key:"bpsys", label:"Blood Pressure \u2014 Systolic", unit:"mmHg", dir:"lower", color:"#fbbf24", goal:function(){return 120;}, get:function(d){
+    var r=_dayBpReadings(d); if(!r.length) return null;
+    return Math.round(r.reduce(function(a,x){return a+(+x.sys||0);},0)/r.length);
+  }},
+  {key:"bpdia", label:"Blood Pressure \u2014 Diastolic", unit:"mmHg", dir:"lower", color:"#fb923c", goal:function(){return 80;}, get:function(d){
+    var r=_dayBpReadings(d); if(!r.length) return null;
+    return Math.round(r.reduce(function(a,x){return a+(+x.dia||0);},0)/r.length);
+  }},
   {key:"workoutHR", label:"Workout Avg HR", unit:"bpm", dir:"neutral", color:"#fb7185", get:function(d){
     if(!d.exercises||!d.exercises.length) return null;
     var vals=d.exercises.map(function(e){return e.avgHR;}).filter(function(v){return v!=null&&!isNaN(v);});
@@ -2747,13 +2755,14 @@ function renderWeekSummary(){
   var el=document.getElementById("week-summary"); if(!el) return;
   var start=_weekStartMon(), now=new Date(), keys=[];
   for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); if(d>now) break; keys.push(localDateKey(d)); }
-  var logged=0,calSum=0,calDays=0,protSum=0,protDays=0,fibSum=0,fibDays=0,waterSum=0,waterDays=0,strength=0,rides=0;
+  var logged=0,calSum=0,calDays=0,protSum=0,protDays=0,fibSum=0,fibDays=0,waterSum=0,waterDays=0,strength=0,rides=0; var bpS=0,bpD=0,bpN=0;
   keys.forEach(function(k){
     var dd=appData[k]; if(!dd) return;
     var hasFood=dd.foods&&dd.foods.length, hasEx=dd.exercises&&dd.exercises.length, hasW=!!dd.weight;
     if(hasFood||hasEx||hasW||(dd.waterOz>0)) logged++;
     if(hasFood){ var t=dd.foods.reduce(function(a,x){return {c:a.c+(+x.cal||0),p:a.p+(+x.protein||0),fb:a.fb+(+x.fiber||0)};},{c:0,p:0,fb:0}); calSum+=t.c; calDays++; protSum+=t.p; protDays++; if(t.fb>0){fibSum+=t.fb; fibDays++;} }
     if(dd.waterOz>0){ waterSum+=dd.waterOz; waterDays++; }
+    _dayBpReadings(dd).forEach(function(r){ if(r.sys!=null&&r.dia!=null){ bpS+=+r.sys; bpD+=+r.dia; bpN++; } });
     if(hasEx && dd.exercises.some(function(e){return e.type==="strength" || (e.sets && e.sets>0);})) strength++;
     rides += Math.max(dd.rides?dd.rides.length:0, hasEx?dd.exercises.filter(function(e){return /ride/i.test(e.name||"");}).length:0);
   });
@@ -2767,6 +2776,7 @@ function renderWeekSummary(){
     tile(strength,"Workouts","#a78bfa")+
     tile(rides,"Rides","#fb923c")+
     tile(waterDays?Math.round(waterSum/waterDays)+"oz":"\u2014","Avg Water","#38bdf8")+
+    (bpN?tile(Math.round(bpS/bpN)+"/"+Math.round(bpD/bpN),"Avg BP","#fbbf24"):"")+
   '</div>';
 }
 function _series(getter){
