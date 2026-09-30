@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v265 — 2026-09-29";
+var APP_BUILD = "v267 — 2026-09-29";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8184,6 +8184,7 @@ function dsRenderItem(rawItem,idx,accent){
   if(dsIsElasticBand(item)&&item.log==='setsreps')h+='<div class="ds-mtempo">\u23f1 Tempo 3-1-1 \u2014 1 sec up, 1 sec squeeze, 3 sec down. Band taut at the start; if it snaps you back, the rep doesn\u2019t count. <span class="ds-mtempo-l">Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></div>';
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   if(typeof DS_SETUPPICS!=='undefined'&&DS_SETUPPICS[item.name])h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>';
+  else if(typeof YG_FLOWMAP!=='undefined'&&YG_FLOWMAP[item.id]){ var _yf=ygFigHtml(YG_FLOWMAP[item.id]); if(_yf) h+='<div class="ds-setuppic">'+_yf+'</div>'; }
   if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
@@ -9402,6 +9403,268 @@ function dsPRStop(id){ if(ds_pr[id]){clearInterval(ds_pr[id]); delete ds_pr[id];
 /* ═══════ block boundary ═══════ */
 
 var WEIGHT = 231;
+/* ── Yoga side-by-side pose diagrams ── */
+/* ── Yoga pose diagrams: two-panel stick figures from joint angles + 2-bone IK ──
+   Angles: 0=right, 90=up, 180=left, 270=down. Heights are measured up from the floor. */
+var YG_GY=262;
+function ygD(a){ var r=a*Math.PI/180; return [Math.cos(r),-Math.sin(r)]; }
+function ygAdd(p,a,l){ var d=ygD(a); return [p[0]+d[0]*l, p[1]+d[1]*l]; }
+function ygIK(root,tgt,l1,l2,bend){
+  var dx=tgt[0]-root[0], dy=tgt[1]-root[1], d=Math.sqrt(dx*dx+dy*dy)||0.01;
+  var mx=l1+l2-0.02, mn=Math.abs(l1-l2)+0.5;
+  if(d>mx){ var k=mx/d; dx*=k; dy*=k; d=mx; } else if(d<mn){ var k2=mn/d; dx*=k2; dy*=k2; d=mn; }
+  var a=(l1*l1-l2*l2+d*d)/(2*d), h=Math.sqrt(Math.max(0,l1*l1-a*a)), ux=dx/d, uy=dy/d;
+  return [[root[0]+ux*a-bend*uy*h, root[1]+uy*a+bend*ux*h],[root[0]+dx,root[1]+dy]];
+}
+/* spec: H (hip height), t/t2 (lower/upper spine angle), hd (head offset), arms[], legs[]
+   limb: {ik:[x,h],bend:±1,far:1}  or {fk:[a1,a2],far:1};  leg: foot:angle (default 0), arm x is relative to the shoulder, leg x to the hip */
+function ygSolve(sp){
+  var TL=30, UA=32, FA=30, TH=48, SH=48, FT=13;
+  var hip=[0,YG_GY-(sp.H||0)];
+  var t=sp.t==null?90:sp.t, t2=sp.t2==null?t:sp.t2;
+  var mid=ygAdd(hip,t,TL), sh=ygAdd(mid,t2,TL);
+  var head=ygAdd(sh,t2+(sp.hd||0),20);
+  var out={hip:hip,mid:mid,sh:sh,head:head,limbs:[]};
+  (sp.arms||[]).forEach(function(a){
+    var j,e;
+    if(a.ik){ var r=ygIK(sh,[sh[0]+a.ik[0],YG_GY-a.ik[1]],UA,FA,a.bend==null?1:a.bend); j=r[0]; e=r[1]; }
+    else { j=ygAdd(sh,a.fk[0],UA); e=ygAdd(j,a.fk[1],FA); }
+    out.limbs.push({pts:[sh,j,e],far:a.far});
+  });
+  (sp.legs||[]).forEach(function(l){
+    var j,e;
+    if(l.ik){ var r=ygIK(hip,[hip[0]+l.ik[0],YG_GY-l.ik[1]],TH,SH,l.bend==null?-1:l.bend); j=r[0]; e=r[1]; }
+    else { j=ygAdd(hip,l.fk[0],TH); e=ygAdd(j,l.fk[1],SH); }
+    var ft=ygAdd(e,l.foot==null?0:l.foot,l.ft==null?FT:l.ft);
+    out.limbs.push({pts:[hip,j,e,ft],far:l.far});
+  });
+  return out;
+}
+var YG_TOP=262;
+function ygPanel(sp,cx,title,ty){
+  if(sp.raw){ var rt=sp.rawTop||150; if(rt<YG_TOP) YG_TOP=rt; return '<text x="'+cx+'" y="'+ty+'" text-anchor="middle" fill="#f0f0f0" style="font:600 13px system-ui,sans-serif">'+title+'</text>'+sp.raw(cx); }
+  var f=ygSolve(sp), xs=[f.head[0]-12,f.head[0]+12,f.hip[0],f.sh[0]];
+  f.limbs.forEach(function(l){ l.pts.forEach(function(p){ xs.push(p[0]); }); });
+  var bb={l:Math.min.apply(null,xs), r:Math.max.apply(null,xs)};
+  var dx=cx-(bb.l+bb.r)/2+(sp.dx||0); bb.l+=dx; bb.r+=dx;
+  function P(p){ return (p[0]+dx).toFixed(1)+' '+p[1].toFixed(1); }
+  function path(pts){ return pts.map(function(p,i){ return (i?'L':'M')+P(p); }).join(' '); }
+  var wd=bb.r-bb.l, sc=wd>170?170/wd:1;
+  var top=f.head[1]-12; f.limbs.forEach(function(l){ l.pts.forEach(function(p){ if(p[1]<top) top=p[1]; }); }); top=YG_GY-(YG_GY-top)*sc;
+  if(top<YG_TOP) YG_TOP=top;
+  var s='<text x="'+cx+'" y="'+ty+'" text-anchor="middle" fill="#f0f0f0" style="font:600 13px system-ui,sans-serif">'+title+'</text>';
+  if(sc<1) s+='<g transform="translate('+cx+' '+YG_GY+') scale('+sc.toFixed(3)+') translate('+(-cx)+' '+(-YG_GY)+')">';
+  if(sp.props) s+=sp.props(bb,dx);
+  var bright='fill="none" stroke="#e8e8f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"';
+  var dim='fill="none" stroke="#8a8aa8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"';
+  f.limbs.filter(function(l){return l.far;}).forEach(function(l){ s+='<path d="'+path(l.pts)+'" '+dim+'/>'; });
+  s+='<path d="'+path([f.hip,f.mid,f.sh])+'" '+bright+'/>';
+  f.limbs.filter(function(l){return !l.far;}).forEach(function(l){ s+='<path d="'+path(l.pts)+'" '+bright+'/>'; });
+  s+='<circle cx="'+(f.head[0]+dx).toFixed(1)+'" cy="'+f.head[1].toFixed(1)+'" r="12" fill="#1a1a2e" stroke="#e8e8f0" stroke-width="5"/>';
+  if(sc<1) s+='</g>';
+  return s;
+}
+function ygPic(A,B,ta,tb,notes){
+  YG_TOP=YG_GY;
+  var pa=ygPanel(A,95,ta,0), pb=ygPanel(B,285,tb,0);
+  var vt=Math.max(0,Math.min(YG_TOP-50,YG_GY-70));           // crop empty space above the tallest figure
+  pa=pa.replace('y="0"','y="'+(vt+20)+'"'); pb=pb.replace('y="0"','y="'+(vt+20)+'"');
+  var H=YG_GY-vt+30+notes.length*18, s='<svg viewBox="0 '+vt+' 380 '+H+'" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" style="display:block;max-width:420px">';
+  s+='<line x1="8" y1="'+YG_GY+'" x2="372" y2="'+YG_GY+'" stroke="#3a3a5a" stroke-width="2"/>';
+  s+='<line x1="190" y1="'+(vt+30)+'" x2="190" y2="'+YG_GY+'" stroke="#3a3a5a" stroke-width="2" stroke-dasharray="3 5"/>';
+  s+=pa+pb;
+  notes.forEach(function(n,i){ s+='<text x="8" y="'+(YG_GY+26+i*18)+'" fill="#a8a8c0" style="font:500 12px system-ui,sans-serif">'+n+'</text>'; });
+  return s+'</svg>';
+}
+var YG_PICS={};
+
+/* ---- shared building blocks ---- */
+var YG_ST={H:95.5,t:90,legs:[{ik:[0,0]},{ik:[-5,0],far:1}]};            // standing
+function ygM(base,o){ var r={}; for(var k in base) r[k]=base[k]; for(var j in o) r[j]=o[j]; return r; }
+var YG_TT={H:48,t:14,t2:14,hd:-10,arms:[{ik:[0,0],bend:-1},{ik:[6,0],bend:-1,far:1}],legs:[{fk:[270,180],foot:180},{fk:[270,180],foot:180,far:1}]}; // tabletop
+var YG_LIE={H:5,t:180,hd:-20};                                            // lying on back, head left, feet right
+var YG_PRO={H:5,t:0,hd:20};                                              // lying on belly, head right
+
+YG_PICS['mountain']=function(){ return ygPic(
+  ygM(YG_ST,{arms:[{fk:[268,272]},{fk:[262,268],far:1}]}),
+  ygM(YG_ST,{arms:[{fk:[80,84]},{fk:[74,78],far:1}]}),
+  'Ground your feet','Reach tall',['Weight even across all four corners of the feet','Ribs stacked over hips, crown lifts']); };
+
+YG_PICS['childs']=function(){
+  var leg={H:24,legs:[{fk:[331,180],foot:180},{fk:[331,180],foot:180,far:1}]};
+  return ygPic(
+  ygM(leg,{t:90,arms:[{ik:[20,34]},{ik:[24,34],far:1}]}),
+  ygM(leg,{t:8,t2:-10,hd:-25,arms:[{ik:[70,2]},{ik:[76,2],far:1}]}),
+  'Sit back on heels','Fold forward',['Knees wide, big toes touching','Hips sink back, arms reach long']); };
+
+YG_PICS['catcow']=function(){ return ygPic(
+  ygM(YG_TT,{t:30,t2:-14,hd:-35}),
+  ygM(YG_TT,{t:-16,t2:28,hd:32}),
+  'Cat — exhale, round','Cow — inhale, open',['Hands under shoulders, knees under hips','Move with the breath, not the clock']); };
+
+YG_PICS['downdog']=function(){
+  var dd={H:78,t:-41,t2:-41,hd:-15,arms:[{ik:[0,0]},{ik:[6,0],far:1}],legs:[{ik:[-64,0],foot:0},{ik:[-64,0],foot:0,far:1}]};
+  return ygPic(
+  ygM(YG_TT,{}),
+  dd,
+  'Tabletop, toes tucked','Lift hips high',['Press the floor away, long spine','Heels reach down, knees soft is fine']); };
+
+YG_PICS['cobra']=function(){ return ygPic(
+  ygM(YG_PRO,{H:6,arms:[{ik:[-14,0],bend:1},{ik:[-10,0],bend:1,far:1}],legs:[{fk:[180,180],foot:200},{fk:[180,180],foot:200,far:1}]}),
+  ygM(YG_PRO,{H:8,t:14,t2:44,hd:14,arms:[{ik:[0,0],bend:1},{ik:[6,0],bend:1,far:1}],legs:[{fk:[180,180],foot:200},{fk:[180,180],foot:200,far:1}]}),
+  'Lie face down','Lift the chest',['Hands under shoulders, elbows hug in','Pubic bone stays down, shoulders away from ears']); };
+
+YG_PICS['bridge']=function(){
+  var legs=[{ik:[50,0],bend:-1},{ik:[54,0],bend:-1,far:1}];
+  return ygPic(
+  ygM(YG_LIE,{legs:legs,arms:[{fk:[0,0]},{fk:[0,0],far:1}]}),
+  ygM(YG_LIE,{H:48,t:226,t2:226,hd:-66,legs:[{ik:[46,0],bend:-1},{ik:[50,0],bend:-1,far:1}],arms:[{fk:[0,0]},{fk:[0,0],far:1}]}),
+  'Feet hip-width','Lift the hips',['Press through the heels, squeeze the glutes','Knees over ankles, ribs down']); };
+
+YG_PICS['corpse']=function(){ return ygPic(
+  ygM(YG_LIE,{legs:[{ik:[48,0],bend:-1},{ik:[52,0],bend:-1,far:1}],arms:[{fk:[4,4]},{fk:[8,8],far:1}]}),
+  ygM(YG_LIE,{legs:[{ik:[99,0]},{ik:[99,0],far:1}],arms:[{fk:[4,4]},{fk:[8,8],far:1}]}),
+  'Settle in, knees bent','Legs long, let go',['Palms up, arms a little away from the body','Let the floor hold your weight']); };
+
+YG_PICS['standing-forward']=function(){
+  var s2={H:94,legs:[{ik:[16,0]},{ik:[12,0],far:1}]};
+  return ygPic(
+  ygM(s2,{t:3,t2:-4,hd:-8,arms:[{fk:[272,268]},{fk:[268,264],far:1}]}),
+  ygM(s2,{t:-48,t2:-80,hd:-10,arms:[{ik:[22,2]},{ik:[28,2],far:1}]}),
+  'Hinge, flat back','Fold and hang',['Hinge from the hips, not the low back','Soft knees, let the head hang heavy']); };
+
+YG_PICS['seated-forward']=function(){
+  var sit={H:6,legs:[{ik:[98,6]},{ik:[98,6],far:1}]};
+  return ygPic(
+  ygM(sit,{t:90,arms:[{ik:[8,8]},{ik:[12,8],far:1}]}),
+  ygM(sit,{t:36,t2:8,hd:-14,arms:[{ik:[38,8]},{ik:[44,8],far:1}]}),
+  'Sit tall, legs long','Fold over the legs',['Lengthen forward before you fold','Reach for shins or feet, keep the spine long']); };
+
+/* ---- batch 2 ---- */
+var YG_WS='#8a8aa8';
+function ygLine(x1,y1,x2,y2,c,w){ return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+(c||'#e8e8f0')+'" stroke-width="'+(w||5)+'" stroke-linecap="round"/>'; }
+
+YG_PICS['low-lunge']=function(){
+  var lg=[{ik:[44,0],foot:0},{fk:[217,180],foot:180,far:1}];
+  var b={H:29,legs:lg};
+  return ygPic(
+  ygM(b,{t:74,t2:68,hd:0,arms:[{ik:[24,52]},{ik:[28,52],far:1}]}),
+  ygM(b,{t:90,arms:[{fk:[84,86]},{fk:[78,82],far:1}]}),
+  'Hands on front knee','Sink, arms up',['Front knee stacked over the ankle','Back knee down, hips sink forward']); };
+
+YG_PICS['supine-twist']=function(){
+  function fig(twist){ return function(cx){
+    var y=196, s='';
+    s+=ygLine(cx-52,y-46,cx-52,y+46,YG_WS,4);                      // arms in a T
+    s+=ygLine(cx-64,y,cx-22,y);                                      // torso
+    s+='<circle cx="'+(cx-77)+'" cy="'+y+'" r="11" fill="#1a1a2e" stroke="#e8e8f0" stroke-width="5"/>';
+    if(!twist){ s+=ygLine(cx-22,y-3,cx+70,y-3)+ygLine(cx-22,y+3,cx+70,y+3,YG_WS); }
+    else { s+='<path d="M'+(cx-22)+' '+y+' L'+(cx+4)+' '+(y+44)+' L'+(cx-32)+' '+(y+56)+'" fill="none" stroke="#e8e8f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>';
+           s+='<path d="M'+(cx-22)+' '+y+' L'+(cx+10)+' '+(y+40)+' L'+(cx-26)+' '+(y+58)+'" fill="none" stroke="'+YG_WS+'" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'; }
+    s+='<text x="'+cx+'" y="'+(y-66)+'" text-anchor="middle" fill="#6b6b88" style="font:500 10px system-ui,sans-serif">top view</text>';
+    return s; }; }
+  return ygPic({raw:fig(false),rawTop:134},{raw:fig(true),rawTop:134},'Arms in a T','Knees to one side',['Both shoulders stay heavy on the floor','Look the opposite way, breathe into the twist']); };
+
+YG_PICS['legs-up']=function(){
+  var wall=function(bb,dx){ return ygLine(dx+15,YG_GY-118,dx+15,YG_GY,YG_WS,4)+'<text x="'+(dx+22)+'" y="'+(YG_GY-60)+'" fill="#6b6b88" style="font:500 10px system-ui,sans-serif">wall</text>'; };
+  return ygPic(
+  ygM(YG_LIE,{props:wall,legs:[{ik:[10,50],foot:90,ft:9},{ik:[10,50],foot:90,ft:9,far:1}],arms:[{fk:[4,4]},{fk:[8,8],far:1}]}),
+  ygM(YG_LIE,{props:wall,legs:[{ik:[4,99],foot:90,ft:9},{ik:[4,99],foot:90,ft:9,far:1}],arms:[{fk:[4,4]},{fk:[8,8],far:1}]}),
+  'Feet on the wall','Legs up the wall',['Scoot until your hips touch the wall','Legs relaxed, palms up, breathe slowly']); };
+
+YG_PICS['happy-baby']=function(){
+  return ygPic(
+  ygM(YG_LIE,{legs:[{fk:[95,0],foot:90,ft:9},{fk:[98,0],foot:90,ft:9,far:1}],arms:[{fk:[4,4]},{fk:[8,8],far:1}]}),
+  ygM(YG_LIE,{legs:[{fk:[165,80],foot:60,ft:9},{fk:[170,84],foot:60,ft:9,far:1}],arms:[{ik:[22,64]},{ik:[26,66],far:1}]}),
+  'Knees over hips','Hold the feet',['Soles face the ceiling, ankles over knees','Pull gently down, keep the tailbone heavy']); };
+
+YG_PICS['warrior1']=function(){
+  var lg=[{ik:[48,0],foot:0},{ik:[-83,0],foot:0,far:1}];
+  var b={H:48,t:90,legs:lg};
+  return ygPic(
+  ygM(b,{arms:[{ik:[8,56]},{ik:[6,56],far:1}]}),
+  ygM(b,{arms:[{fk:[82,86]},{fk:[76,80],far:1}]}),
+  'Step back','Bend and reach up',['Front knee stacked over the ankle','Back leg strong, hips face forward']); };
+
+YG_PICS['warrior2']=function(){
+  return ygPic(
+  {H:76.5,t:90,legs:[{ik:[58,0]},{ik:[-58,0]}],arms:[{fk:[0,0]},{fk:[180,180]}]},
+  {H:48,t:90,legs:[{ik:[52,0]},{ik:[-83,0]}],arms:[{fk:[0,0]},{fk:[180,180]}]},
+  'Wide stance, arms out','Bend the front knee',['Front knee over the ankle, shin vertical','Arms reach long, shoulders over hips']); };
+
+YG_PICS['triangle']=function(){
+  var lg=[{ik:[58,0]},{ik:[-58,0]}];
+  return ygPic(
+  {H:76.5,t:90,legs:lg,arms:[{fk:[0,0]},{fk:[180,180]}]},
+  {H:76.5,t:20,t2:20,hd:50,legs:lg,arms:[{ik:[2,34]},{fk:[110,110]}]},
+  'Wide legs, arms out','Reach over the front leg',['Hinge sideways from the hip, not a slump','Arms stack in one line, chest turns open']); };
+
+YG_PICS['warrior3']=function(){
+  return ygPic(
+  {H:95.5,t:48,t2:48,hd:-10,legs:[{ik:[0,0]},{fk:[236,240],foot:270,ft:10,far:1}],arms:[{fk:[42,42]},{fk:[38,38],far:1}]},
+  {H:95.5,t:2,t2:0,hd:-8,legs:[{ik:[0,0]},{fk:[180,180],foot:90,ft:10,far:1}],arms:[{fk:[4,4]},{fk:[0,0],far:1}]},
+  'Hinge, lift the leg','Flat as a table',['Standing knee soft, hips level','Reach forward, back leg and torso in one line']); };
+
+YG_PICS['chair']=function(){
+  return ygPic(
+  {H:95.5,t:90,legs:[{ik:[0,0]},{ik:[-4,0],far:1}],arms:[{fk:[84,88]},{fk:[78,82],far:1}]},
+  {H:54,t:62,t2:72,legs:[{ik:[26,0]},{ik:[22,0],far:1}],arms:[{fk:[74,76]},{fk:[70,72],far:1}]},
+  'Feet together, arms up','Sit back like a chair',['Weight in the heels, knees over the ankles','Chest lifts, arms reach by the ears']); };
+
+YG_PICS['boat']=function(){
+  var b={H:6,t:118,t2:118,hd:0};
+  return ygPic(
+  ygM(b,{legs:[{fk:[55,0],foot:90,ft:10},{fk:[55,0],foot:90,ft:10,far:1}],arms:[{fk:[0,0]},{fk:[4,4],far:1}]}),
+  ygM(b,{legs:[{fk:[42,42],foot:90,ft:10},{fk:[42,42],foot:90,ft:10,far:1}],arms:[{fk:[8,8]},{fk:[12,12],far:1}]}),
+  'Shins level','Straighten the legs',['Balance on the sit bones, spine long','Arms reach parallel to the floor']); };
+
+YG_PICS['pyramid']=function(){
+  var lg=[{ik:[38,0]},{ik:[-38,0],far:1}];
+  var b={H:88,legs:lg};
+  return ygPic(
+  ygM(b,{t:2,t2:0,hd:0,arms:[{ik:[-6,46]},{ik:[-2,46],far:1}]}),
+  ygM(b,{t:-38,t2:-58,hd:-20,arms:[{ik:[4,4]},{ik:[8,4],far:1}]}),
+  'Half lift, flat back','Fold over front leg',['Hips square, both legs strong','Lengthen first, then fold from the hips']); };
+
+/* Today-tab yoga flow items -> pose diagram ids */
+YG_PICS['sphinx']=function(){ var lg=[{fk:[180,180],foot:200},{fk:[180,180],foot:200,far:1}]; return ygPic(
+  ygM(YG_PRO,{legs:lg,arms:[{fk:[0,0]},{fk:[4,4],far:1}]}),
+  ygM(YG_PRO,{H:6,t:12,t2:48,hd:8,legs:lg,arms:[{fk:[270,0]},{fk:[268,4],far:1}]}),
+  'Lie on your belly','Prop up on forearms',['Elbows directly under the shoulders','Pubic bone down, lengthen the neck']); };
+
+YG_PICS['upward-dog']=function(){ var lg=[{ik:[-92,4],foot:200},{ik:[-92,4],foot:200,far:1}]; return ygPic(
+  ygM(YG_PRO,{H:6,legs:lg,arms:[{ik:[-14,0],bend:1},{ik:[-10,0],bend:1,far:1}]}),
+  ygM(YG_PRO,{H:16,t:34,t2:64,hd:8,legs:lg,arms:[{ik:[0,0]},{ik:[6,0],far:1}]}),
+  'Lie face down','Press up, thighs lifted',['Only hands and tops of the feet touch','Shoulders roll back, chest opens forward']); };
+
+YG_PICS['highplank']=function(){ return ygPic(
+  ygM(YG_TT,{}),
+  {H:38,t:23.4,t2:23.4,hd:-20,legs:[{ik:[-88,0],foot:0},{ik:[-88,0],foot:0,far:1}],arms:[{ik:[0,0]},{ik:[6,0],far:1}]},
+  'Tabletop, toes tucked','Step back to plank',['Wrists under shoulders, long line heel to head','Ribs in, glutes level with the body']); };
+
+YG_PICS['tree']=function(){
+  var base={H:95.5,t:90,hd:0};
+  return ygPic(
+  ygM(base,{legs:[{ik:[0,0]},{ik:[1,66],far:1}],arms:[{ik:[10,138]},{ik:[12,138],far:1}]}),
+  ygM(base,{legs:[{ik:[0,0]},{ik:[1,66],far:1}],arms:[{fk:[88,90]},{fk:[92,90],far:1}]}),
+  'Foot to inner thigh','Arms up',['Press foot and thigh together, never on the knee','Find a fixed spot to gaze at']); };
+
+YG_PICS['reverse-warrior']=function(){
+  var lg=[{ik:[52,0]},{ik:[-83,0]}];
+  return ygPic(
+  {H:48,t:90,legs:lg,arms:[{fk:[0,0]},{fk:[180,180]}]},
+  {H:48,t:106,t2:116,hd:20,legs:lg,arms:[{fk:[112,128]},{ik:[-4,44]}]},
+  'Warrior II','Reverse — lean back',['Front knee stays over the ankle','Reach up and back, back hand rests on the leg']); };
+
+YG_PICS['dolphin']=function(){ return ygPic(
+  {H:48,t:-16,t2:-16,hd:-10,legs:[{fk:[270,180],foot:180},{fk:[270,180],foot:180,far:1}],arms:[{fk:[270,0]},{fk:[268,4],far:1}]},
+  {H:78,t:-50,t2:-50,hd:-15,legs:[{ik:[-56,0],foot:0},{ik:[-56,0],foot:0,far:1}],arms:[{fk:[270,0]},{fk:[268,4],far:1}]},
+  'Forearms down','Lift hips up',['Elbows under shoulders, forearms parallel','Press the forearms down, lengthen the spine']); };
+
+
+var YG_FLOWMAP={'wed-flow-catcow':'catcow','wed-flow-child':'childs','wed-flow-downdog':'downdog','wed-flow-dragon':'low-lunge','wed-flow-warrior1':'warrior1','wed-flow-warrior2':'warrior2','wed-flow-warrior3':'warrior3','wed-flow-trianglepose':'triangle','wed-flow-cobra':'cobra','wed-flow-fold':'standing-forward','wed-flow-twist':'supine-twist','wed-flow-bridge':'bridge','wed-flow-legsup':'legs-up','wed-flow-sav':'corpse','wed-flow-hk-sav':'corpse','wed-flow-hk-happybaby':'happy-baby','wed-flow-cat':'seated-forward','wed-flow-revwarrior':'reverse-warrior'};
+function ygFigHtml(poseId){ try{ return (typeof YG_PICS!=='undefined'&&YG_PICS[poseId])?YG_PICS[poseId]():''; }catch(e){ return ''; } }
+
 var YOGA_DEMOS={
   "mountain":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
     '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
@@ -11046,6 +11309,7 @@ function renderPoses() {
       // Detail panel
       html += '<div class="pose-detail" id="det-'+p.id+'">';
       html += '<div class="pose-demo-large">'+demoHtml+'</div>';
+      var _fg = ygFigHtml(p.id); if (_fg) html += '<div class="yg-figs">'+_fg+'</div>';
       html += '<div class="det-sec"><div class="det-lbl">About</div><div class="det-txt">'+p.desc+'</div></div>';
       html += '<div class="det-sec"><div class="det-lbl">How To</div><ol class="steps-list">';
       p.steps.forEach(function(step,i){
@@ -11261,6 +11525,7 @@ function ygLoadPose() {
   document.getElementById("sess-prog").textContent="Pose "+(sessIdx+1)+" of "+routine.length;
   var demoEl=document.getElementById("sess-demo");
   if (demoEl) demoEl.innerHTML = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : "";
+  var figEl=document.getElementById("sess-figs"); if (figEl) { var _sf=ygFigHtml(p.id); figEl.innerHTML=_sf; figEl.style.display=_sf?"block":"none"; }
   var badge=document.getElementById("sess-emoji-badge"); if(badge) badge.textContent=p.e;
   document.getElementById("sess-name").textContent=p.n;
   document.getElementById("sess-sans").textContent=p.s;

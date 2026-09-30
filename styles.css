@@ -1630,3 +1630,6 @@ html body div.app{max-width:480px}
 #panel-today .ds-mtempo-l{display:block;color:#888;font-size:11px;margin-top:3px;}
 
 #panel-today .ds-setuppic{margin:8px 0 4px;padding:8px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;}
+
+.yg-figs{margin:10px 0;padding:8px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;}
+.sess-figs{max-width:420px;margin:10px auto;}
