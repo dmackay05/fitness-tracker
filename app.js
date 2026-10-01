@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v268 — 2026-09-30";
+var APP_BUILD = "v269 — 2026-10-01";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -509,7 +509,10 @@ var CAL_REF_WEIGHT = 240;
 // prediction gets checked against reality: over a long enough window,
 // avg intake - (lb change x 3500 / days) is actual maintenance. Short windows are
 // dominated by water weight, so this stays hidden until there is enough data.
-var TDEE_WINDOW_DAYS=28, TDEE_MIN_INTAKE_DAYS=14, TDEE_MIN_SPAN=14, KCAL_PER_LB=3500;
+var TDEE_WINDOW_DAYS=28, TDEE_MIN_INTAKE_DAYS=14, TDEE_MIN_SPAN=21, KCAL_PER_LB=3500;
+// Show a single maintenance number only when its ~90% range is within +/- this
+// many kcal/day; wider than that and the weight trend can't pin it down yet.
+var TDEE_MAX_HALFWIDTH=200;
 // A day logged well below its own target is far more likely to be a log that got
 // abandoned mid-afternoon than a day of genuine near-fasting. Counting those at
 // face value is what drags a mean intake down and fakes a huge deficit.
@@ -560,29 +563,46 @@ function measuredTDEE(windowDays){
   if(pts.length<4) return {ok:false,reason:'needs 4 weigh-ins in the last '+days+' days \u2014 you have '+pts.length};
   var span=Math.round((new Date(pts[pts.length-1].key+'T00:00:00')-new Date(pts[0].key+'T00:00:00'))/86400000);
   if(span<TDEE_MIN_SPAN) return {ok:false,reason:'weigh-ins only span '+span+' days, needs '+TDEE_MIN_SPAN};
-  // Least-squares slope through every weigh-in in the window. The old
-  // first-few vs last-few average divided by the full first-to-last span, but
-  // averaging pulls each end's date inward, so the rate (and the deficit it
-  // implies) came out ~10-20% too small. A fitted slope uses every point at its
-  // real date and is just as resistant to one bloated morning.
+  // Theil-Sen slope: the median of every pairwise slope between weigh-ins. Ordinary
+  // least squares gave the newest points heavy leverage, so a single +3 lb morning
+  // near the end of the window (water/sodium/glycogen) tilted the whole line and
+  // dragged measured maintenance down by 100+ kcal. The median of pairwise slopes
+  // barely moves for one outlier, and needs no tuning or cutoffs.
   var t0=new Date(pts[0].key+'T00:00:00').getTime();
   var xs=pts.map(function(p){ return Math.round((new Date(p.key+'T00:00:00').getTime()-t0)/86400000); });
-  var mx=xs.reduce(function(a,x){return a+x;},0)/xs.length;
-  var my=pts.reduce(function(a,p){return a+p.w;},0)/pts.length;
-  var sxy=0, sxx=0;
-  for(var q=0;q<pts.length;q++){ sxy+=(xs[q]-mx)*(pts[q].w-my); sxx+=(xs[q]-mx)*(xs[q]-mx); }
-  var slope=sxx>0?sxy/sxx:0;                      // lbs per day
+  var ts=theilSen(xs, pts.map(function(p){return p.w;}));
+  var slope=ts.slope;                             // lbs per day
   var lbChange=slope*span;
   var dailyBalance=slope*KCAL_PER_LB;             // negative when losing
+  // The slope's own uncertainty, in kcal/day. If the weigh-ins are too noisy for
+  // this window to pin maintenance down, the panel says so instead of showing a
+  // single confident-looking number.
+  var tdee=Math.round(medIntake-dailyBalance);
+  var tdeeLo=Math.round(medIntake-ts.hi*KCAL_PER_LB), tdeeHi=Math.round(medIntake-ts.lo*KCAL_PER_LB);
+  var halfWidth=Math.round((tdeeHi-tdeeLo)/2);
   // Median is the headline: the failure mode here is a handful of abandoned logs,
   // which is a one-sided outlier problem the median barely notices.
   return {ok:true,
-    tdee:Math.round(medIntake-dailyBalance),
+    tdee:tdee, tdeeLo:tdeeLo, tdeeHi:tdeeHi, halfWidth:halfWidth,
+    reliable:halfWidth<=TDEE_MAX_HALFWIDTH,
     tdeeMean:Math.round(meanIntake-dailyBalance),
     medIntake:Math.round(medIntake), avgIntake:Math.round(meanIntake),
     lbChange:lbChange, span:span, nIntake:full.length, nPartial:partial.length,
     nWeights:pts.length, lbPerWeek:(lbChange/span)*7,
     all:all, partial:partial, full:full};
+}
+// Theil-Sen estimator with a distribution-free ~90% confidence interval for the
+// slope (Sen's method, normal approximation to Kendall's S). Returns lbs/day.
+function theilSen(xs, ys){
+  var sl=[], n=xs.length;
+  for(var i=0;i<n;i++) for(var j=i+1;j<n;j++){
+    var dx=xs[j]-xs[i]; if(dx>0) sl.push((ys[j]-ys[i])/dx);
+  }
+  if(!sl.length) return {slope:0,lo:0,hi:0};
+  sl.sort(function(a,b){return a-b;});
+  var N=sl.length, C=1.645*Math.sqrt(n*(n-1)*(2*n+5)/18);
+  var iLo=Math.max(0,Math.floor((N-C)/2)), iHi=Math.min(N-1,Math.ceil((N+C)/2)-1);
+  return {slope:median(sl), lo:sl[iLo], hi:sl[iHi]};
 }
 function calScale(){ var w = parseFloat(getLatestWeight()); return (w > 0) ? (w / CAL_REF_WEIGHT) : 1; }
 function calAdj(c){ return Math.round((+c || 0) * calScale()); }
@@ -1194,11 +1214,24 @@ function renderTdeePanel(){
   }
   var target=calGoalForKey(todayKey()), gap=r.tdee-target;
   var spread=Math.abs(r.tdee-r.tdeeMean);
-  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span></div>'
+  var rangeTxt=r.tdeeLo+'\u2013'+r.tdeeHi+' kcal';
+  var trendTxt='Across '+r.span+' days and '+r.nWeights+' weigh-ins you trended '
+   +(r.lbChange<0?'down ':(r.lbChange>0?'up ':'flat at '))+Math.abs(r.lbPerWeek).toFixed(2)+' lbs/week.';
+  if(!r.reliable){
+    // Weigh-in noise is too large for this window to pin maintenance down. Say so
+    // rather than show one confident-looking (and probably wrong) number.
+    var hu='<div><b style="color:#888;font-size:15px">Not enough signal yet</b> <span style="color:#666">for a maintenance number</span></div>'
+     +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal. '+trendTxt
+     +' Day-to-day scale swings are large enough that the data fits anything from '+rangeTxt+' (about \u00b1'+r.halfWidth+').</div>'
+     +'<div style="margin-top:6px;color:#777;line-height:1.45">This usually tightens up on its own as more steady weigh-ins accumulate. Until then, keep eating to plan and judge by the 7-day average rather than this card.</div>';
+    hu+=tdeeDayListHtml(r,false);
+    hu+='<div style="margin-top:6px;color:#666;line-height:1.4">Slope is a robust (Theil-Sen) fit, so one bloated morning will not move it much. A direction, not a dose.</div>';
+    el.innerHTML=hu; return;
+  }
+  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span> <span style="color:#666;font-size:11px">(likely '+rangeTxt+')</span></div>'
    +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
    +(r.nPartial?(', with '+r.nPartial+' partial '+(r.nPartial===1?'day':'days')+' set aside'):'')
-   +'. Across '+r.span+' days and '+r.nWeights+' weigh-ins you trended '
-   +(r.lbChange<0?'down ':(r.lbChange>0?'up ':'flat at '))+Math.abs(r.lbPerWeek).toFixed(2)+' lbs/week.</div>';
+   +'. '+trendTxt+'</div>';
   // When mean and median disagree, the spread is itself the finding.
   h+='<div style="color:#777;margin-top:4px;line-height:1.45">Mean-based estimate: '+r.tdeeMean+' kcal'
    +(spread>=100?' \u2014 a '+Math.round(spread)+' kcal gap, which means a few low days are still skewing the average. Trust the median.'
