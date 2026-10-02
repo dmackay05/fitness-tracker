@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v271 — 2026-10-02";
+var APP_BUILD = "v272 — 2026-10-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -800,21 +800,30 @@ function _fetchSheetOnce(onRows){
   var _dayKeys=Object.keys(appData||{}).filter(function(k){return /^\d{4}-\d{2}-\d{2}$/.test(k);}).length;
   var _range=(_dayKeys>=30)?"&days=21":"";
 
+  // v272: on phones the fetch() to Apps Script can stall (redirect hang) rather
+  // than fail, so the JSONP fallback never started and every attempt burned
+  // the full 20s. Now JSONP also starts if fetch hasn't answered within 7s,
+  // and whichever responds first wins.
+  var _jsonpStarted=false, _fetchErr="still pending after 7s";
+  function startJsonp(){
+    if(_jsonpStarted||done) return; _jsonpStarted=true;
+    var cb="ftCb_"+Date.now()+"_"+Math.floor(Math.random()*1e4);
+    window[cb]=function(rows){ clearTimeout(timeout); delete window[cb]; finish(rows,true); };
+    var s=document.createElement("script");
+    s.onerror=function(){ delete window[cb]; finish(null,false,"fetch failed (\""+_fetchErr+"\") and JSONP <script> also failed to load"); };
+    s.src=SHEETS_URL+"?callback="+cb+"&nocache="+Date.now()+_range;
+    document.head.appendChild(s);
+  }
+  var _jsonpKick=setTimeout(startJsonp,7000);
   fetch(SHEETS_URL+"?nocache="+Date.now()+_range)
     .then(function(r){
       if(!r.ok){ var e=new Error("HTTP "+r.status); e._httpStatus=r.status; throw e; }
       return r.json();
     })
-    .then(function(rows){ clearTimeout(timeout); finish(rows,true); })
+    .then(function(rows){ clearTimeout(timeout); clearTimeout(_jsonpKick); finish(rows,true); })
     .catch(function(err){
-      var fetchErr = (err && err.message) ? err.message : String(err);
-      // JSONP fallback
-      var cb="ftCb_"+Date.now();
-      window[cb]=function(rows){ clearTimeout(timeout); delete window[cb]; finish(rows,true); };
-      var s=document.createElement("script");
-      s.onerror=function(){ delete window[cb]; finish(null,false,"fetch failed (\""+fetchErr+"\") and JSONP <script> also failed to load"); };
-      s.src=SHEETS_URL+"?callback="+cb+"&nocache="+Date.now()+_range;
-      document.head.appendChild(s);
+      _fetchErr = (err && err.message) ? err.message : String(err);
+      clearTimeout(_jsonpKick); startJsonp();
     });
 }
 // v8 fix: the sheet used to only ever store two hardcoded supplements
@@ -3298,8 +3307,17 @@ fetchSheet(function(rows,ok,why){
 // ── PERIODIC BACKGROUND SYNC (every 1 minute) ──────────────────────────
 setInterval(function(){
   if(!SHEETS_URL) return;
+  if((window._ftSyncInFlight||0)>0) return; // don't pile requests onto a slow Apps Script
   fetchSheet(function(rows,ok){
-    if(ok&&rows){ mergeRows(rows); renderAll(); }
+    if(ok&&rows){
+      mergeRows(rows); renderAll();
+      // Clear a stale red "Offline" banner once a background sync gets through.
+      if(_bn && _bn.style.display!=="none" && /Offline/.test(_bn.textContent)){
+        _bn.textContent="\u2713 Synced with Google Sheets \u00b7 "+APP_BUILD; _bn.style.color="#4ade80";
+        _bn.onclick=function(){_bn.style.display="none";};
+        setTimeout(function(){ _bn.style.display="none"; },2200);
+      }
+    }
   });
 }, 60 * 1000);
 
