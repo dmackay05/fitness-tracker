@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v269 — 2026-10-01";
+var APP_BUILD = "v270 — 2026-10-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5034,7 +5034,38 @@ var DS_SATHEAT_MOVES=[
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
 var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
 function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; dsTrimDateKeys(DS_SAT_HEAT_ON,120); try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); }
-function dsSessOf(sk){ if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
+function dsSessOf(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
+
+// ── TODAY-ONLY CUSTOM SESSION ────────────────────────────────────────────────
+// Built from the Today tab. Replaces the regular session for ONE date, then
+// disappears on its own: it is keyed to the date it was built, so any other day
+// ignores it and it is purged on the next load. Device-local on purpose (never
+// pushed to the sheet/config sync) so it can't leak onto another day or device.
+var DS_ONEDAY=null; try{ DS_ONEDAY=JSON.parse(store.get('ds_oneday')||'null'); }catch(e){ DS_ONEDAY=null; }
+if(DS_ONEDAY && (!DS_ONEDAY.ids || DS_ONEDAY.date!==todayKey())){ DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
+var DS_ONEDAY_CACHE=null;
+var DS_ONEDAY_PRESET=['warmup-raise','warmup-armcircle','warmup-bandshoulder','mon-pushup','mon-curl','sat-chest','sat-ohtriceps','mon-inclinepress','thu-hammer','mon-tri','tue-pallof','sat-bandcrunch','fri-plank'];
+function dsOneDayOn(){ return !!(DS_ONEDAY && DS_ONEDAY.date===activeDate && DS_ONEDAY.ids && DS_ONEDAY.ids.length && !DS_DAY_OVERRIDE); }
+function dsOneDaySession(){
+  if(!dsOneDayOn()) return null;
+  var key=DS_ONEDAY.ids.join(',')+'|'+(typeof DS_FB_ON!=='undefined'?DS_FB_ON:'')+'|'+DS_ONEDAY.date;
+  if(DS_ONEDAY_CACHE && DS_ONEDAY_CACHE.key===key) return DS_ONEDAY_CACHE.sess;
+  var moves=DS_ONEDAY.ids.map(function(id){ return dsMasterLookup(id); }).filter(Boolean);
+  var sess=moves.length?{title:'Custom Session',sub:'Your picks \u00b7 today only \u2014 back to the regular plan tomorrow',accent:'var(--accent)',moves:moves,_oneday:true}:null;
+  DS_ONEDAY_CACHE={key:key,sess:sess};
+  return sess;
+}
+function dsOneDaySave(ids){
+  DS_ONEDAY_CACHE=null;
+  if(ids&&ids.length){ DS_ONEDAY={date:todayKey(),ids:ids.slice()}; try{ store.set('ds_oneday',JSON.stringify(DS_ONEDAY)); }catch(e){} }
+  else { DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
+}
+function dsOneDayClear(){ dsOneDaySave(null); toast('Back to the regular plan'); dsRender(); try{ renderAll(); }catch(e){} }
+function dsOneDayLoadPreset(){
+  DS_CUSTOM_PICK=DS_ONEDAY_PRESET.filter(function(id){ return !!dsMasterLookup(id); });
+  dsCustomRenderSelected(); dsCustomRenderLibrary();
+}
+function dsOneDayClearPick(){ DS_CUSTOM_PICK=[]; dsCustomRenderSelected(); dsCustomRenderLibrary(); }
 
 var DS_SESSIONS={
   mon:{title:'Upper Body A',sub:'Push · Pull alternating — Chest · Back · Shoulders',accent:'var(--accent)',
@@ -6241,7 +6272,7 @@ var DS_FB_FLOWS={
 // Guided-flow sequence for today when full-body mode owns Tue/Thu; null otherwise
 // (falls through to the custom/rotating Wednesday flow, which is left untouched).
 function dsFbFlowIds(){
-  if(!dsFullBodyOn()) return null;
+  if(!dsFullBodyOn() || dsOneDayOn()) return null;
   var sk=dsSessionKey(activeDate), f=DS_FB_FLOWS[sk];
   return f?f.ids:null;
 }
@@ -6779,6 +6810,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
+  if(typeof DS_SPLIT_SESSIONS!=='undefined' && DS_SPLIT_SESSIONS) DS_ORDER.forEach(function(d){ if(DS_SPLIT_SESSIONS[d]&&DS_SPLIT_SESSIONS[d].moves) groups.push(DS_SPLIT_SESSIONS[d].moves); });
   if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
   var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
   dsRegisterLibraryMV(libs);
@@ -6811,6 +6843,7 @@ function dsDeleteUserMove(dayKey,id){
   dsRender(); renderAll();
 }
 function dsCustomMoves(dayKey){
+  if(dsOneDayOn() && dayKey===dsSessionKey(activeDate)) return [];
   var ids=DS_CUSTOM[dayKey]||[];
   return ids.map(function(id){ return dsMasterLookup(id); }).filter(Boolean);
 }
@@ -6835,7 +6868,27 @@ function dsUserAddSubmit(){
 var DS_CUSTOM_DAYS={}; // working selection of days while builder is open: {mon:true, wed:true, ...}
 var DS_CUSTOM_PICK=[]; // working ordered list of move ids while builder is open
 
+var DS_CUSTOM_MODE='persist';
+function dsCustomSetMode(m){
+  DS_CUSTOM_MODE=m;
+  var t=m==='today';
+  var q=function(id){ return document.getElementById(id); };
+  if(q('ds-custom-title')) q('ds-custom-title').textContent=t?'\u26a1 Today\u2019s Workout':'\ud83c\udfcb\ufe0f Custom Set';
+  if(q('ds-custom-days-card')) q('ds-custom-days-card').style.display=t?'none':'';
+  if(q('ds-custom-today-tools')) q('ds-custom-today-tools').style.display=t?'':'none';
+}
+function dsOneDayOpen(){
+  DS_CUSTOM_PICK=(DS_ONEDAY && DS_ONEDAY.date===todayKey() && DS_ONEDAY.ids)?DS_ONEDAY.ids.slice():[];
+  DS_CUSTOM_PICK_ORIGINAL=null; DS_CUSTOM_DAYS={};
+  dsCustomSetMode('today');
+  document.getElementById("ds-custom-search").value="";
+  dsCustomRenderSelected();
+  dsCustomRenderLibrary();
+  document.getElementById("ds-custom-overlay").style.display="flex";
+  document.getElementById("ds-custom-overlay").scrollTop=0;
+}
 function dsCustomOpen(){
+  dsCustomSetMode('persist');
   var sk=dsSessionKey(activeDate);
   DS_CUSTOM_PICK=(DS_CUSTOM[sk]||[]).slice();
   DS_CUSTOM_PICK_ORIGINAL=DS_CUSTOM_PICK.slice();
@@ -6854,6 +6907,7 @@ function dsCustomOpen(){
   document.getElementById("ds-custom-overlay").scrollTop=0;
 }
 function dsCustomClose(){
+  if(DS_CUSTOM_MODE==='today'){ dsOneDaySave(DS_CUSTOM_PICK); DS_CUSTOM_MODE='persist'; dsCustomSetMode('persist'); document.getElementById("ds-custom-overlay").style.display="none"; dsRender(); try{ renderAll(); }catch(e){} return; }
   dsCustomCommit();
   document.getElementById("ds-custom-overlay").style.display="none";
   dsRender();
@@ -9171,11 +9225,24 @@ function dsRender(){
       var _hot=!!DS_SAT_HEAT_ON[activeDate];
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
-    var _flowBar=dsFlowBarHtml(sk);
-    var _flowEdit=(dsFlowDay(sk)&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
-    html=_flowBar+_flowEdit+_satHeatBtn+_tcBtn;
+    var _od=dsOneDayOn();
+    var _flowBar=_od?'':dsFlowBarHtml(sk);
+    var _flowEdit=(!_od&&dsFlowDay(sk)&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
+    var _odBtn='';
+    if(activeDate===todayKey() && !DS_DAY_OVERRIDE){
+      var _bs='padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;';
+      if(_od){
+        _odBtn='<div style="margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid #fbbf2466;background:#fbbf2410;">'
+          +'<div style="font-size:12px;color:#fbbf24;font-weight:700;margin-bottom:8px;">\u26a1 Custom session \u2014 today only</div>'
+          +'<div style="display:flex;gap:8px;"><button onclick="dsOneDayOpen()" style="flex:1;'+_bs+'border:1px solid #fbbf24;background:transparent;color:#fbbf24;">Edit exercises</button>'
+          +'<button onclick="dsOneDayClear()" style="flex:1;'+_bs+'border:1px solid #ffffff2a;background:transparent;color:#aaa;">Restore regular plan</button></div></div>';
+      } else {
+        _odBtn='<div style="margin:0 0 14px;"><button onclick="dsOneDayOpen()" style="width:100%;'+_bs+'border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">\u26a1 Build today\u2019s workout (today only)</button></div>';
+      }
+    }
+    html=_odBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn;
     var _splitDays=dsSplitDaysMap();
-    if(_splitDays[sk] && !dsDayIsCustom(sk)){
+    if((_splitDays[sk]||_od) && !dsDayIsCustom(sk)){
       var _wu=[],_core=[],_main=[];
       _moves.forEach(function(m){ var b=dsSectionBucket(m); if(b==='warmup')_wu.push(m); else if(b==='core')_core.push(m); else _main.push(m); });
       html+=(_wu.length?dsRenderSection('Warm-Up','',DS_SEC_ACCENT_WARMUP,_wu,''):'')

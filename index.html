@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=177">
+<link rel="stylesheet" href="styles.css?v=178">
 </head>
 <body>
 
@@ -1080,15 +1080,23 @@
 <div id="ds-custom-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
   <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
     <button class="bs" onclick="dsCustomClose()">✕ Close</button>
-    <div style="font-size:15px;font-weight:800;color:#f0f0f0">🏋️ Custom Set</div>
+    <div id="ds-custom-title" style="font-size:15px;font-weight:800;color:#f0f0f0">🏋️ Custom Set</div>
     <div style="width:60px"></div>
   </div>
   <div style="padding:18px;max-width:520px;margin:0 auto;width:100%">
 
-    <div class="card">
+    <div class="card" id="ds-custom-days-card">
       <div class="card-title">Days</div>
       <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Pick which day(s) this set shows on. You can pick more than one.</div>
       <div id="ds-custom-daypicker" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="card" id="ds-custom-today-tools" style="display:none">
+      <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;line-height:1.6;margin-bottom:10px">Pick the exercises for <b style="color:#fbbf24">today only</b>. This replaces today\u2019s regular session and goes away on its own tomorrow \u2014 your normal plan isn\u2019t touched. Close this screen to save.</div>
+      <div style="display:flex;gap:8px">
+        <button class="bs" style="flex:1;padding:9px 10px" onclick="dsOneDayLoadPreset()">Chest · Arms · Core</button>
+        <button class="bs" style="padding:9px 14px" onclick="dsOneDayClearPick()">Clear</button>
+      </div>
     </div>
 
     <div class="card" style="margin-top:10px">
@@ -1266,6 +1274,6 @@
   </div>
 </div>
 
-<script src="app.js?v=363"></script>
+<script src="app.js?v=364"></script>
 </body>
 </html>
