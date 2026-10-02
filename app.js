@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v270 — 2026-10-02";
+var APP_BUILD = "v271 — 2026-10-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5044,13 +5044,13 @@ function dsSessOf(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sa
 var DS_ONEDAY=null; try{ DS_ONEDAY=JSON.parse(store.get('ds_oneday')||'null'); }catch(e){ DS_ONEDAY=null; }
 if(DS_ONEDAY && (!DS_ONEDAY.ids || DS_ONEDAY.date!==todayKey())){ DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
 var DS_ONEDAY_CACHE=null;
-var DS_ONEDAY_PRESET=['warmup-raise','warmup-armcircle','warmup-bandshoulder','mon-pushup','mon-curl','sat-chest','sat-ohtriceps','mon-inclinepress','thu-hammer','mon-tri','tue-pallof','sat-bandcrunch','fri-plank'];
+var DS_ONEDAY_PRESET=['warmup-raise','warmup-armcircle','warmup-bandshoulder','mon-pushup#Deficit','mon-curl#Bayesian','sat-chest','sat-ohtriceps','mon-inclinepress','thu-hammer','mon-tri','tue-pallof','sat-bandcrunch','fri-plank'];
 function dsOneDayOn(){ return !!(DS_ONEDAY && DS_ONEDAY.date===activeDate && DS_ONEDAY.ids && DS_ONEDAY.ids.length && !DS_DAY_OVERRIDE); }
 function dsOneDaySession(){
   if(!dsOneDayOn()) return null;
   var key=DS_ONEDAY.ids.join(',')+'|'+(typeof DS_FB_ON!=='undefined'?DS_FB_ON:'')+'|'+DS_ONEDAY.date;
   if(DS_ONEDAY_CACHE && DS_ONEDAY_CACHE.key===key) return DS_ONEDAY_CACHE.sess;
-  var moves=DS_ONEDAY.ids.map(function(id){ return dsMasterLookup(id); }).filter(Boolean);
+  var moves=DS_ONEDAY.ids.map(dsPickResolve).filter(Boolean);
   var sess=moves.length?{title:'Custom Session',sub:'Your picks \u00b7 today only \u2014 back to the regular plan tomorrow',accent:'var(--accent)',moves:moves,_oneday:true}:null;
   DS_ONEDAY_CACHE={key:key,sess:sess};
   return sess;
@@ -5061,8 +5061,27 @@ function dsOneDaySave(ids){
   else { DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
 }
 function dsOneDayClear(){ dsOneDaySave(null); toast('Back to the regular plan'); dsRender(); try{ renderAll(); }catch(e){} }
+// A pick is 'id' (the exercise as-is) or 'id#N' (its Nth variant, 1-based), so a
+// variant like Bayesian Curl can be used today without changing the saved
+// variant choice for your regular plan.
+function dsPickResolve(e){
+  var p=String(e).split('#'), m=dsMasterLookup(p[0]); if(!m) return null;
+  if(p[1]==null||p[1]==='') return m;
+  var i=+p[1], v=m.variants&&m.variants[i-1]; if(!v) return m;
+  var c={}; for(var k in m) c[k]=m[k];
+  for(var k2 in v) c[k2]=v[k2];
+  delete c.variants; delete c.lockVar; c._varOf=m.name;
+  return c;
+}
+function dsPickNorm(e){
+  var p=String(e).split('#'); if(p[1]==null||/^\d+$/.test(p[1])) return e;
+  var m=dsMasterLookup(p[0]); if(!m) return e;
+  var q=p[1].toLowerCase(), vs=m.variants||[];
+  for(var i=0;i<vs.length;i++){ if(String(vs[i].name).toLowerCase().indexOf(q)!==-1) return p[0]+'#'+(i+1); }
+  return p[0];
+}
 function dsOneDayLoadPreset(){
-  DS_CUSTOM_PICK=DS_ONEDAY_PRESET.filter(function(id){ return !!dsMasterLookup(id); });
+  DS_CUSTOM_PICK=DS_ONEDAY_PRESET.map(dsPickNorm).filter(function(e){ return !!dsPickResolve(e); });
   dsCustomRenderSelected(); dsCustomRenderLibrary();
 }
 function dsOneDayClearPick(){ DS_CUSTOM_PICK=[]; dsCustomRenderSelected(); dsCustomRenderLibrary(); }
@@ -7298,7 +7317,7 @@ function dsCustomRenderSelected(){
   if(cnt) cnt.textContent=DS_CUSTOM_PICK.length?("("+DS_CUSTOM_PICK.length+")"):"";
   if(!DS_CUSTOM_PICK.length){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No exercises picked yet — add from the library below.</div>'; return; }
   el.innerHTML=DS_CUSTOM_PICK.map(function(id,i){
-    var m=dsMasterLookup(id); if(!m) return "";
+    var m=dsPickResolve(id); if(!m) return "";
     return '<div class="row"><div style="flex:1;min-width:0"><div class="row-name">'+m.name+'</div><div class="row-sub">'+(m.target||"")+(m.equip?(" · "+m.equip):"")+'</div></div>'+
       '<div style="display:flex;gap:6px;flex-shrink:0">'+
       (i>0?'<button class="bs" onclick="dsCustomMove('+i+',-1)" style="padding:6px 10px">↑</button>':'')+
@@ -7316,7 +7335,9 @@ function dsCustomRemove(id){
   dsCustomRenderSelected(); dsCustomRenderLibrary();
 }
 function dsCustomAdd(id){
-  if(DS_CUSTOM_PICK.indexOf(id)===-1) DS_CUSTOM_PICK.push(id);
+  var base=String(id).split('#')[0];
+  DS_CUSTOM_PICK=DS_CUSTOM_PICK.filter(function(x){ return String(x).split('#')[0]!==base; });
+  DS_CUSTOM_PICK.push(id);
   dsCustomRenderSelected(); dsCustomRenderLibrary();
 }
 function dsCustomRenderLibrary(){
@@ -7324,6 +7345,11 @@ function dsCustomRenderLibrary(){
   var q=(document.getElementById("ds-custom-search").value||"").toLowerCase().trim();
   var pool=dsMasterPool();
   if(q) pool=pool.filter(function(m){ return (m.name+" "+(m.target||"")+" "+(m.slot||"")).toLowerCase().indexOf(q)!==-1; });
+  if(q && DS_CUSTOM_MODE==='today'){
+    var _vr=[];
+    dsMasterPool().forEach(function(m){ (m.variants||[]).forEach(function(v,i){ if(String(v.name).toLowerCase().indexOf(q)!==-1) _vr.push({id:m.id+'#'+(i+1),name:v.name,target:m.target,equip:v.equip||m.equip,lib:0,_of:m.name}); }); });
+    pool=pool.concat(_vr);
+  }
   if(!pool.length){ el.innerHTML='<div style="text-align:center;color:#555;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No matches.</div>'; return; }
   var _lastGrp=null;
   el.innerHTML=pool.map(function(m){
@@ -7331,7 +7357,7 @@ function dsCustomRenderLibrary(){
     var grp=m.lib?'Gym Exercise Ideas':'From Your Plan & Extras', hdr='';
     if(!q && grp!==_lastGrp){ _lastGrp=grp; hdr='<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#5eead4;font-family:\'DM Mono\',monospace;margin:12px 0 4px">'+grp+'</div>'; }
     return hdr+'<div class="row" style="cursor:pointer" onclick="'+(picked?'dsCustomRemove':'dsCustomAdd')+'(\''+m.id+'\')">'+
-      '<div style="flex:1;min-width:0"><div class="row-name">'+m.name+'</div><div class="row-sub">'+(m.target||"")+(m.equip?(" · "+m.equip):"")+'</div></div>'+
+      '<div style="flex:1;min-width:0"><div class="row-name">'+m.name+'</div><div class="row-sub">'+(m._of?('Variant of '+m._of+' · '):'')+(m.target||"")+(m.equip?(" · "+m.equip):"")+'</div></div>'+
       '<div style="flex-shrink:0;font-size:18px;color:'+(picked?"#5eead4":"#555")+'">'+(picked?"✓":"+")+'</div></div>';
   }).join("");
 }
