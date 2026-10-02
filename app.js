@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v272 — 2026-10-02";
+var APP_BUILD = "v273 — 2026-10-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6913,6 +6913,7 @@ function dsCustomSetMode(m){
   if(q('ds-custom-title')) q('ds-custom-title').textContent=t?'\u26a1 Today\u2019s Workout':'\ud83c\udfcb\ufe0f Custom Set';
   if(q('ds-custom-days-card')) q('ds-custom-days-card').style.display=t?'none':'';
   if(q('ds-custom-today-tools')) q('ds-custom-today-tools').style.display=t?'':'none';
+  if(q('ds-oneday-preset')) q('ds-oneday-preset').style.display=(t&&!dsGuestMode())?'':'none';
 }
 function dsOneDayOpen(){
   DS_CUSTOM_PICK=(DS_ONEDAY && DS_ONEDAY.date===todayKey() && DS_ONEDAY.ids)?DS_ONEDAY.ids.slice():[];
