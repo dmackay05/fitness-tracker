@@ -1633,3 +1633,11 @@ html body div.app{max-width:480px}
 
 .yg-figs{margin:10px 0;padding:8px;background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;}
 .sess-figs{max-width:420px;margin:10px auto;}
+
+/* Tempo pacer */
+#panel-today .ds-tp-btn{margin-left:6px;padding:3px 10px;border-radius:12px;border:1px solid #9fd3c7;background:transparent;color:#9fd3c7;font-size:12px;cursor:pointer;}
+#ds-tp-bar{display:none;position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:9999;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:rgba(20,22,28,.96);box-shadow:0 6px 24px rgba(0,0,0,.45);color:#eee;}
+#ds-tp-bar .ds-tp-ph{font-weight:800;font-size:20px;letter-spacing:.06em;min-width:96px;}
+#ds-tp-bar .ds-tp-n{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;min-width:30px;text-align:center;}
+#ds-tp-bar .ds-tp-r{flex:1;font-size:12px;color:#aaa;line-height:1.3;}
+#ds-tp-bar button{padding:8px 14px;border-radius:10px;border:none;background:#e5484d;color:#fff;font-weight:700;}
