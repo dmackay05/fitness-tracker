@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v273 — 2026-10-02";
+var APP_BUILD = "v274 — 2026-10-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6323,6 +6323,7 @@ function dsApplyFullBody(){
   if(!dsFullBodyOn()){ DS_PLAN_DAYS.forEach(function(d){ if(S[d]) DS_SESSIONS[d]=S[d]; }); return; }
   var byId={};
   DS_PLAN_DAYS.forEach(function(d){ ((S[d]&&S[d].moves)||[]).forEach(function(m){ if(m&&m.id&&!byId[m.id]) byId[m.id]=m; }); });
+  (typeof DS_RESERVE_MOVES!=='undefined'?DS_RESERVE_MOVES:[]).forEach(function(m){ if(m&&m.id&&!byId[m.id]) byId[m.id]=m; });
   ['mon','wed','fri'].forEach(function(d){
     var p=DS_FB_PLAN[d], moves=[];
     p.warm.concat(p.ids).forEach(function(spec){
@@ -6372,6 +6373,49 @@ function dsRenderFullBodyUI(){
   pv.innerHTML=(dsFullBodyOn()?'Active — ':'Off — current split: ')+DS_PLAN_DAYS.map(function(d){ var s=DS_SESSIONS[d]; return names[d]+': '+((s&&s.title)||'—'); }).join(' · ')
     +(dsFullBodyOn()?'<br>Session rotation is paused while this is on. Same exercise ids as the split, so your history and progression carry over either way.':'');
 }
+
+// ── v274 SPLIT TUNE-UP — trims lower-body session volume, makes Saturday a
+// light ride day, adds a vertical pull. Runs before the split is captured for
+// full-body mode, so both modes share it. Skipped for imported plans (guests).
+// Moves taken off Saturday stay findable (full-body mode + the picker) via
+// DS_RESERVE_MOVES.
+var DS_RESERVE_MOVES=[];
+(function dsSplitTuneV274(){
+  if(dsGuestMode()) return;
+  function find(day,id){ var s=DS_SESSIONS[day]; if(!s) return null; for(var i=0;i<s.moves.length;i++){ if(s.moves[i]&&s.moves[i].id===id) return s.moves[i]; } return null; }
+  // Tuesday: drop jump squat -> ~10 quad sets
+  if(!dsDayIsCustom('tue') && DS_SESSIONS.tue){
+    DS_SESSIONS.tue.moves=DS_SESSIONS.tue.moves.filter(function(m){ if(m&&m.id==='tue-jump'){ DS_RESERVE_MOVES.push(m); return false; } return true; });
+  }
+  // Friday: RDL 6 -> 4 sets, good morning 4 -> 3 sets -> ~11 hamstring sets
+  if(!dsDayIsCustom('fri')){
+    var rdl=find('fri','fri-slrdl'); if(rdl){ rdl.sets=4; rdl.rx='4×8–12'; }
+    var gm=find('fri','fri-goodmorning'); if(gm){ gm.sets=3; gm.rx='3×10–12'; }
+  }
+  // Rear delts: default the face-pull slot to the Cross-Body Rear Delt Fly
+  var fp=find('mon','thu-facepull');
+  if(fp && fp.variants){ for(var i=0;i<fp.variants.length;i++){ if(/Cross-Body Rear Delt Fly/.test(fp.variants[i].name)){ fp.lockVar=i+1; break; } } }
+  // Thursday: add band-assisted pull-ups (vertical pull)
+  if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && typeof DS_PULLUP!=='undefined'){
+    var pu=null; DS_PULLUP.moves.forEach(function(m){ if(m.id==='pu-band') pu=m; });
+    if(pu && !find('thu','pu-band')){
+      var mv=DS_SESSIONS.thu.moves, at=-1;
+      for(var j=0;j<mv.length;j++){ if(mv[j]&&mv[j].id==='thu-lat'){ at=j+1; break; } }
+      if(at<0) at=mv.length;
+      mv.splice(at,0,pu);
+      if(typeof DS_MV!=='undefined' && !DS_MV['pu-band']) DS_MV['pu-band']={"Back":1,"Biceps":0.5,"Forearms":0.3};
+    }
+  }
+  // Saturday: light day — ride + short core, lifting moves parked in reserve
+  if(!dsDayIsCustom('sat') && DS_SESSIONS.sat){
+    var keep={'sat-ride':1,'sat-bandcrunch':1,'sat-hollow':1};
+    var kept=[];
+    DS_SESSIONS.sat.moves.forEach(function(m){ if(!m) return; if(keep[m.id]) kept.push(m); else if(!/^warmup|^wu-/.test(m.id)) DS_RESERVE_MOVES.push(m); });
+    kept.sort(function(x,y){ return (x.id==='sat-ride')-(y.id==='sat-ride'); });
+    DS_SESSIONS.sat={title:'Ride Day + Light Core',sub:'Mountain bike ride for cardio · short core finisher · no heavy lifting',accent:DS_SESSIONS.sat.accent,moves:kept};
+  }
+})();
+
 dsApplyFullBody();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 // Shared debounce for anything that should ride along on the settings-sync channel
@@ -6848,6 +6892,7 @@ function dsMasterPool(){
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
   if(typeof DS_SPLIT_SESSIONS!=='undefined' && DS_SPLIT_SESSIONS) DS_ORDER.forEach(function(d){ if(DS_SPLIT_SESSIONS[d]&&DS_SPLIT_SESSIONS[d].moves) groups.push(DS_SPLIT_SESSIONS[d].moves); });
+  if(typeof DS_RESERVE_MOVES!=='undefined' && DS_RESERVE_MOVES.length) groups.push(DS_RESERVE_MOVES);
   if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
   var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
   dsRegisterLibraryMV(libs);
