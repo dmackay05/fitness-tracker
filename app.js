@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v279 — 2026-10-03";
+var APP_BUILD = "v280 — 2026-10-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7140,7 +7140,31 @@ var MEAL_IDEAS = [
   {id:"m45", meal:"snack", name:"Banana berry 'nice cream'", protein:"~4g", tags:["fish-free","quick","produce","family","kid-friendly"],
     desc:"Frozen banana blended until creamy, blueberries or strawberries blended in. Tastes like soft-serve — an easy way to get the family excited about fruit."},
   {id:"m46", meal:"snack", name:"Veggie sticks with Greek yogurt dip", protein:"~10g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Carrots, cucumber, bell pepper strips with a Greek yogurt ranch or herb dip. Higher protein than a standard veggie plate, still easy for picky eaters to pick around."},
+    desc:"Carrots, cucumber, bell pepper strips with a Greek yogurt ranch or herb dip. Higher protein than a standard veggie plate, still easy for picky eaters to pick around."},,
+  {id:"w1", meal:"breakfast", name:"Black bean &amp; egg breakfast burritos", protein:"~24g", tags:["fish-free","quick","family","kid-friendly"],
+    desc:"Scrambled eggs, black beans, and cheese in a whole wheat tortilla. Wrap and freeze a batch Sunday; reheat for a grab-and-go breakfast. Leave the beans out of the kids' versions if needed."},
+  {id:"w2", meal:"breakfast", name:"Cottage cheese oat pancakes", protein:"~26g", tags:["fish-free","quick","produce","family","kid-friendly"],
+    desc:"Blend oats, cottage cheese, eggs, and a splash of milk, then cook like pancakes and top with berries. Grain-based, protein-heavy, and no meat."},
+  {id:"w3", meal:"lunch", name:"Lentil &amp; veggie soup with whole grain bread", protein:"~22g", tags:["fish-free","family","produce"],
+    desc:"Brown or green lentils simmered with carrots, celery, tomatoes, and spinach. A good winter-style pot that makes leftovers for several lunches."},
+  {id:"w4", meal:"lunch", name:"Chickpea, feta &amp; cucumber salad", protein:"~20g", tags:["fish-free","quick","produce","solo"],
+    desc:"Chickpeas, cucumber, cherry tomatoes, red onion, and feta with olive oil and lemon. Add a hard-boiled egg or two to push protein past 30g."},
+  {id:"w5", meal:"lunch", name:"Black bean &amp; cheese quesadillas", protein:"~24g", tags:["fish-free","quick","family","kid-friendly"],
+    desc:"Mashed black beans and cheese in a whole wheat tortilla, pan-crisped. Serve with salsa and avocado on the side."},
+  {id:"w6", meal:"dinner", name:"Lentil bolognese over whole wheat pasta", protein:"~30g", tags:["fish-free","family","kid-friendly"],
+    desc:"Red or brown lentils cooked down with tomato sauce, carrot, and onion, served over pasta with parmesan. Looks and tastes like a regular pasta night, which helps with picky eaters."},
+  {id:"w7", meal:"dinner", name:"Baked ziti with ricotta &amp; spinach", protein:"~32g", tags:["fish-free","family","kid-friendly"],
+    desc:"Whole wheat ziti, ricotta, mozzarella, marinara, and spinach folded in. Dairy-based protein with no meat, and it feeds a crowd."},
+  {id:"w8", meal:"dinner", name:"Tofu &amp; vegetable stir-fry with brown rice", protein:"~28g", tags:["fish-free","quick","solo"],
+    desc:"Pressed, cubed tofu pan-seared in olive oil with broccoli, peppers, and snap peas over brown rice. Quick solo dinner; the same sauce and veggies work for the family with whatever protein they prefer."},
+  {id:"w9", meal:"dinner", name:"Shakshuka with chickpeas", protein:"~26g", tags:["fish-free","produce","family"],
+    desc:"Eggs poached in a spiced tomato and pepper sauce with chickpeas, served with whole grain bread. Breakfast-for-dinner style that works for eggs-accepting eaters."},
+  {id:"w10", meal:"dinner", name:"Baked tilapia with lemon, rice &amp; green beans", protein:"~36g", tags:["fish","quick","family"],
+    desc:"Tilapia fillets baked with olive oil, lemon, and herbs, served over rice with green beans. Mild white fish that fits the family's fish preferences."},
+  {id:"w11", meal:"snack", name:"Warm cocoa made with milk", protein:"~8g", tags:["fish-free","quick","family","kid-friendly"],
+    desc:"Milk heated with unsweetened cocoa and a little honey. A warm, non-coffee, non-tea drink for cold evenings, with calcium and protein from the milk."},
+  {id:"w12", meal:"snack", name:"Roasted chickpeas", protein:"~7g", tags:["fish-free","quick","family"],
+    desc:"Canned chickpeas dried, tossed in olive oil and spices, and roasted until crunchy. A crunchy snack with fiber and plant protein."}
 ];
 
 var FRUIT_TIPS = [
@@ -7255,7 +7279,15 @@ function miToggleFav(id){
   store.set("mi_favs", JSON.stringify(f));
   miRender();
 }
-var MI_FILTERS=["fish-free","fish","quick","family","solo","kid-friendly","produce"];
+// Word of Wisdom: every idea above is free of alcohol, tobacco, coffee and tea.
+// "meat-light" marks ideas without poultry, beef, pork or deli meat (meat "used sparingly").
+(function(){
+  var re=/chicken|turkey|beef|pork|meatball|bacon|\bham\b|sausage|stew meat/i;
+  MEAL_IDEAS.forEach(function(m){
+    if(!re.test(m.name+" "+m.desc) && m.tags.indexOf("meat-light")<0) m.tags.push("meat-light");
+  });
+})();
+var MI_FILTERS=["fish-free","fish","quick","family","solo","kid-friendly","produce","meat-light"];
 var MI_ACTIVE_FILTERS=[];
 function miToggleFilter(tag){
   var i=MI_ACTIVE_FILTERS.indexOf(tag);
@@ -7316,12 +7348,128 @@ function infoSecInit(){
     }
   });
 }
+// ── WORD OF WISDOM (D&C 89) + GROCERY LIST ────────────────────────────
+var WOW_POINTS = {
+  avoid:[
+    {n:"Alcohol", t:"Wine, beer, spirits, and drinks made with them. Watch for alcohol in sauces and cooking wines at restaurants."},
+    {n:"Tobacco", t:"Smoking, chewing, and vaping nicotine products."},
+    {n:"Coffee &amp; tea", t:"The Church defines the \"hot drinks\" as coffee and tea, meaning brewed black, green, and other true teas. Cold brew and iced versions count too."}
+  ],
+  embrace:[
+    {n:"Fruits &amp; vegetables", t:"Wholesome herbs and fruits in their season are encouraged. This is the base of your Mediterranean/MIND/DASH pattern."},
+    {n:"Grains", t:"Called the staff of life: oats, brown rice, quinoa, whole wheat pasta, and bread."},
+    {n:"Meat, sparingly", t:"Meat is permitted but meant to be used sparingly. In practice: build meals on eggs, dairy, beans, lentils, tofu, and fish, and keep poultry or beef to one or two meals a day."}
+  ],
+  drinks:[
+    "Water, milk, and sparkling water",
+    "Herbal teas made from herbs, fruit, or flowers rather than the tea plant (peppermint, chamomile, rooibos, hibiscus, ginger)",
+    "Warm cocoa made with milk, or caffeine-free grain-based hot drinks",
+    "Fruit-infused water or diluted juice"
+  ]
+};
+function renderWowGuide(targetId){
+  var el=document.getElementById(targetId||"meals-wow-guide"); if(!el) return;
+  function rows(a,c){ return a.map(function(x){return '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:6px"><strong style="color:'+c+'">'+x.n+':</strong> '+x.t+'</div>';}).join(""); }
+  el.innerHTML =
+    '<div class="card" style="border-left:4px solid #5eead4">'+
+      '<div class="card-title">Word of Wisdom <span style="font-size:11px;color:#888;font-weight:400">— D&amp;C 89</span></div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px">A health code from the Church of Jesus Christ of Latter-day Saints. Every meal idea, drink suggestion, and grocery item in this app is built to fit it.</div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:10px;border-left:4px solid #f87171"><div class="card-title">What to avoid</div>'+rows(WOW_POINTS.avoid,"#f87171")+'</div>'+
+    '<div class="card" style="margin-top:10px;border-left:4px solid #4ade80"><div class="card-title">What to embrace</div>'+rows(WOW_POINTS.embrace,"#4ade80")+'</div>'+
+    '<div class="card" style="margin-top:10px;border-left:4px solid #fbbf24"><div class="card-title">How this fits your plan</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:6px">Your ~170g protein target does not require heavy meat. Spreading it across eggs, Greek yogurt, cottage cheese, milk, beans, lentils, tofu, tuna, and tilapia, with chicken or lean beef at one or two meals, keeps you inside the guidance. Use the <b>meat-light</b> filter under Meal Ideas to see options with no poultry, beef, pork, or deli meat.</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:6px">The scripture also mentions eating meat more in winter or in times of cold. Some members follow that more closely than others, so how you apply it in colder months is up to you.</div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:10px;border-left:4px solid #5eead4"><div class="card-title">Drinks that fit</div>'+
+      '<div style="margin-top:6px;display:flex;flex-direction:column;gap:5px">'+WOW_POINTS.drinks.map(function(d){return '<div style="font-size:12px;color:#9a9d8c;line-height:1.4">• '+d+'</div>';}).join("")+'</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:8px">The Church names coffee and tea specifically and does not list other caffeine sources, so whether to use caffeine from elsewhere (and before training) is a personal decision. See the Caffeine card under Supplements.</div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:10px;border-left:4px solid #a78bfa"><div class="card-title">The promised blessings</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:6px">D&amp;C 89:18–21 promises health, strength, wisdom, hidden treasures of knowledge, the ability to run and not be weary, and to walk and not faint. That lines up neatly with your run-walk progression and daily step goal.</div>'+
+    '</div>';
+}
+
+var GROCERY_LIST = [
+  {cat:"Produce", items:["Spinach","Mixed greens or romaine","Bell peppers","Broccoli","Zucchini","Carrots","Cucumbers","Cherry tomatoes","Sweet potatoes","Avocados","Onions &amp; garlic","Lemons","Bananas","Apples","Berries (fresh or frozen)","Oranges or grapefruit","Green beans or snap peas"]},
+  {cat:"Eggs &amp; dairy", items:["Eggs (2 dozen)","Greek yogurt","Cottage cheese","Milk","Shredded cheese","String cheese","Feta","Parmesan","Ricotta"]},
+  {cat:"Protein (meat used sparingly)", items:["Canned tuna","Tilapia fillets","Tofu","Chicken breast or thighs","Lean ground beef (90%+)"]},
+  {cat:"Grains &amp; bread", items:["Rolled oats","Steel-cut oats","Brown rice","Whole wheat pasta","Whole wheat tortillas","Whole grain bread","Quinoa","Whole grain crackers"]},
+  {cat:"Beans, nuts &amp; seeds", items:["White beans","Black beans","Chickpeas","Lentils","Hummus","Walnuts","Almonds","Almond or peanut butter","Chia seeds","Ground flax"]},
+  {cat:"Pantry", items:["Olive oil","Marinara sauce","Salsa","Honey","Chicken or vegetable broth","Dried herbs &amp; spices","Pineapple (canned in juice)"]},
+  {cat:"Drinks (no coffee or tea)", items:["Herbal tea (caffeine-free)","Unsweetened cocoa powder","Sparkling water"]}
+];
+function grState(){ try{ return JSON.parse(store.get("ft_grocery_checked")||"{}")||{}; }catch(e){ return {}; } }
+function grCustom(){ try{ return JSON.parse(store.get("ft_grocery_custom")||"[]")||[]; }catch(e){ return []; } }
+function grKey(n){ return encodeURIComponent(n).replace(/'/g,"%27"); }
+function grToggle(k){
+  var st=grState(); if(st[k]) delete st[k]; else st[k]=1;
+  try{ store.set("ft_grocery_checked", JSON.stringify(st)); }catch(e){}
+  renderGrocery();
+}
+function grClear(){ try{ store.set("ft_grocery_checked","{}"); }catch(e){} renderGrocery(); }
+function grAdd(){
+  var inp=document.getElementById("gr-add-input"); if(!inp) return;
+  var v=(inp.value||"").trim().replace(/[<>&]/g,""); if(!v) return;
+  var c=grCustom(); if(c.indexOf(v)<0) c.push(v);
+  try{ store.set("ft_grocery_custom", JSON.stringify(c)); }catch(e){}
+  renderGrocery();
+}
+function grRemoveCustom(k){
+  var n=decodeURIComponent(k), c=grCustom().filter(function(x){return x!==n;});
+  try{ store.set("ft_grocery_custom", JSON.stringify(c)); }catch(e){}
+  var st=grState(); delete st[k]; try{ store.set("ft_grocery_checked", JSON.stringify(st)); }catch(e){}
+  renderGrocery();
+}
+function grCopy(){
+  var st=grState(), out=[];
+  GROCERY_LIST.forEach(function(g){
+    var need=g.items.filter(function(n){return !st[grKey(n)];});
+    if(need.length) out.push(g.cat.replace(/&amp;/g,"&")+"\n"+need.map(function(n){return "- "+n.replace(/&amp;/g,"&");}).join("\n"));
+  });
+  var cu=grCustom().filter(function(n){return !st[grKey(n)];});
+  if(cu.length) out.push("Added\n"+cu.map(function(n){return "- "+n;}).join("\n"));
+  var txt=out.join("\n\n");
+  try{ navigator.clipboard.writeText(txt); }catch(e){}
+  var b=document.getElementById("gr-copy-btn"); if(b){ b.textContent="Copied"; setTimeout(function(){ b.textContent="Copy unchecked"; },1500); }
+}
+function renderGrocery(targetId){
+  var el=document.getElementById(targetId||"meals-grocery"); if(!el) return;
+  var st=grState(), total=0, done=0;
+  function row(n,k,custom){
+    total++; var on=!!st[k]; if(on) done++;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #ffffff0d">'+
+      '<button onclick="grToggle(\''+k+'\')" aria-label="Toggle" style="width:22px;height:22px;flex-shrink:0;border-radius:6px;border:1.5px solid '+(on?"#4ade80":"#555")+';background:'+(on?"#4ade8033":"transparent")+';color:#4ade80;font-size:14px;line-height:1;cursor:pointer">'+(on?"✓":"")+'</button>'+
+      '<span style="flex:1;font-size:13px;color:'+(on?"#666":"#d8d8d0")+';'+(on?"text-decoration:line-through;":"")+'">'+n+'</span>'+
+      (custom?'<button onclick="grRemoveCustom(\''+k+'\')" aria-label="Remove" style="background:transparent;border:none;color:#888;font-size:16px;cursor:pointer">×</button>':'')+
+    '</div>';
+  }
+  var body=GROCERY_LIST.map(function(g){
+    return '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:14px 0 2px">'+g.cat+'</div>'+
+      g.items.map(function(n){ return row(n,grKey(n),false); }).join("");
+  }).join("");
+  var cu=grCustom();
+  if(cu.length) body += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:14px 0 2px">Added by you</div>'+cu.map(function(n){ return row(n,grKey(n),true); }).join("");
+  el.innerHTML =
+    '<div class="card">'+
+      '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:10px">Weekly staples for a family of five that fit the Word of Wisdom and your meal ideas. Check items off as you shop; your checks stay on this device.</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'+
+        '<span class="tag" style="background:#4ade8016;color:#4ade80;border:1px solid #4ade8040">'+done+' / '+total+' checked</span>'+
+        '<button class="bs" id="gr-copy-btn" onclick="grCopy()">Copy unchecked</button>'+
+        '<button class="bs" onclick="grClear()">Clear checks</button>'+
+      '</div>'+
+      body+
+      '<div style="display:flex;gap:8px;margin-top:14px"><input id="gr-add-input" placeholder="Add an item" style="flex:1" onkeydown="if(event.key===\'Enter\')grAdd()"/><button class="bs" onclick="grAdd()">Add</button></div>'+
+    '</div>';
+}
 function renderMealsTab(){
   infoSecInit();
   renderFruitGuide("meals-fruit-guide");
   renderVegGuide("meals-veg-guide");
   renderNutGuide("meals-nut-guide");
   renderMythGuide("meals-myth-guide");
+  renderWowGuide("meals-wow-guide");
+  renderGrocery("meals-grocery");
   miRender();
 }
 
