@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v274 — 2026-10-02";
+var APP_BUILD = "v275 — 2026-10-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1194,9 +1194,51 @@ function renderWeighinBanner(){
   var todayDow = keyToDate(todayKey()).getDay();
   var isWeighInToday = (todayDow === WEIGHIN_DAY);
   var loggedToday = !!(getDay(todayKey()).weight);
-  if(!isWeighInToday || loggedToday){ el.innerHTML=""; return; }
-  el.innerHTML = '<div class="weighin-nudge"><div class="weighin-nudge-text">\u2696\ufe0f <b>Weigh-in day</b> \u2014 same conditions as always: morning, after bathroom, before eating.</div><button class="weighin-nudge-btn" onclick="jumpToWeighIn()">Log Now</button></div>';
+  var _mh=measureNudgeHtml();
+  if(!isWeighInToday || loggedToday){ el.innerHTML=_mh; return; }
+  el.innerHTML = '<div class="weighin-nudge"><div class="weighin-nudge-text">\u2696\ufe0f <b>Weigh-in day</b> \u2014 same conditions as always: morning, after bathroom, before eating.</div><button class="weighin-nudge-btn" onclick="jumpToWeighIn()">Log Now</button></div>'+_mh;
 }
+
+/* ===== Measurement & progress-photo reminders (v275) =====
+   Waist: due when none logged in the last 7 days (weekly Sunday habit).
+   Full tape (chest/biceps/thighs/etc) + photos: due from the first Sunday of
+   each month until done that month. Photos aren't stored in the app, so they
+   clear with a tap (device-local flag). */
+function _firstSundayKey(d){ var f=new Date(d.getFullYear(),d.getMonth(),1); f.setDate(1+((7-f.getDay())%7)); return localDateKey(f); }
+function _measSince(sinceKey,keys){
+  return Object.keys(appData||{}).some(function(k){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k) || k<sinceKey || k>todayKey()) return false;
+    var m=appData[k]&&appData[k].measurements; if(!m) return false;
+    return keys.some(function(x){ return m[x]!=null && m[x]!==""; });
+  });
+}
+function measureNudgeHtml(){
+  try{
+    var now=keyToDate(todayKey()), tk=todayKey();
+    var wk=new Date(now); wk.setDate(wk.getDate()-6);
+    var waistDue=!_measSince(localDateKey(wk),["waist"]);
+    var fs=_firstSundayKey(now), monthOn=(tk>=fs);
+    var fullDue=monthOn && !_measSince(fs,["chest","biceps","thighs","hips","neck"]);
+    var photosDue=monthOn && store.get('ft_photos_done')!==tk.slice(0,7);
+    if(!waistDue && !fullDue && !photosDue) return '';
+    var items=[];
+    if(fullDue) items.push('full tape \u2014 waist, chest, arms, thighs, hips, neck');
+    else if(waistDue) items.push('waist');
+    if(photosDue) items.push('progress photos');
+    var btns='';
+    if(waistDue||fullDue) btns+='<button class="weighin-nudge-btn" onclick="jumpToMeasure()">Log</button>';
+    if(photosDue) btns+='<button class="weighin-nudge-btn" style="margin-left:6px" onclick="markPhotosDone()">Photos \u2713</button>';
+    return '<div class="weighin-nudge" style="margin-top:8px"><div class="weighin-nudge-text">\ud83d\udccf <b>Measurements due</b> \u2014 '+items.join(' + ')+'. Morning, before eating or training.</div><div style="display:flex;flex-shrink:0">'+btns+'</div></div>';
+  }catch(e){ return ''; }
+}
+function jumpToMeasure(){
+  switchTab('log');
+  setTimeout(function(){
+    var tab=document.querySelector('.ld-tab[data-ldtab="measure"]'); if(tab) tab.click();
+    var inp=document.getElementById('m-waist'); if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth',block:'center'}); }
+  }, 60);
+}
+function markPhotosDone(){ try{ store.set('ft_photos_done', todayKey().slice(0,7)); }catch(e){} toast('Photos logged for this month'); renderWeighinBanner(); }
 
 // Trailing 7-day scale average, shown beside the raw number it should outrank.
 function renderWeightTrend(){
@@ -2173,6 +2215,7 @@ function logMeasurements(){
   saveDay(d);
   var m=document.getElementById("measure-msg"); m.textContent="✓ Measurements saved"; setTimeout(function(){m.textContent="";},2500);
   renderMeasurements();
+  try{ renderWeighinBanner(); }catch(e){}
 }
 function renderMeasurements(){
   var ms=getDay().measurements||{};
