@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v275 — 2026-10-02";
+var APP_BUILD = "v276 — 2026-10-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3140,7 +3140,7 @@ function _attachExDetail(ex,si,ri,li){
   if(s) ex.sets=s; if(r) ex.reps=r; if(l) ex.load=l;
 }
 function _clearExDetail(si,ri,li){ [si,ri,li].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; }); }
-function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load&&!e.avgHR)) return ""; var sr=(e.sets||e.reps)?((e.sets||"?")+"\u00d7"+(e.reps||"?")):""; var hr=e.avgHR?("\u2764 "+e.avgHR+(e.peakHR?("/"+e.peakHR):"")+"bpm"):""; return [sr+(e.load?(" @ "+e.load):""),hr].filter(Boolean).join(" \u00b7 ").trim(); }
+function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load&&!e.avgHR)) return ""; var sr=""; if(e.sets&&e.reps) sr=e.sets+"\u00d7"+e.reps; else if(e.sets) sr=e.sets+"\u00d7?"; else if(e.reps) sr=/^\d+$/.test(String(e.reps).trim())?(e.reps+" reps"):String(e.reps); var hr=e.avgHR?("\u2764 "+e.avgHR+(e.peakHR?("/"+e.peakHR):"")+"bpm"):""; return [sr+(e.load?(" @ "+e.load):""),hr].filter(Boolean).join(" \u00b7 ").trim(); }
 function lastExercise(name){
   if(!name) return null; name=String(name).toLowerCase().trim();
   var keys=Object.keys(appData).filter(function(k){return k!==activeDate;}).sort().reverse();
