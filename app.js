@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v284 — 2026-10-04";
+var APP_BUILD = "v285 — 2026-10-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9833,6 +9833,7 @@ function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementB
 var DS_BAND_LIB=[
   ['Tubes (single)',['10 lb tube','20 lb tube','30 lb tube','40 lb tube','50 lb tube']],
   ['Tubes stacked on handles',['30+20 tubes (~50)','50+20 tubes (~70)','50+30 tubes (~80)','50+40 tubes (~90)','50+40+30 tubes (~120)','All 5 tubes (~150)']],
+  ['Fabric loops (41in, stretchy)',['Fabric loop 41in (pink)','Fabric loop 41in (gray-blue)']],
   ['Loop bands (heavy)',['Clench 75 loop (black 41in)','Reebok Ultra Heavy loop (~75+, a bit above Clench 75)','Clench green loop (75\u2013150)']],
   ['Light / activation',['Clench mini loop 13in','Theraband red (light)']]
 ];
