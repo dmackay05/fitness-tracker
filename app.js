@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v281 — 2026-10-03";
+var APP_BUILD = "v282 — 2026-10-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1728,6 +1728,69 @@ function renderIntakeAverages(){
   }
   el.innerHTML=h;
 }
+// ── DASHBOARD FOCUS: Weight vs Muscle ───────────────────────────────────
+// Muscle focus puts waist and strength first, drops the progress-toward-goal
+// lines, and keeps weekly average weight only as a guardrail. Display only:
+// no targets or calorie math change when you switch.
+var DASH_FOCUS = store.get('ft_dash_focus') || 'muscle';
+function dashFocusSet(v){
+  DASH_FOCUS=(v==='weight')?'weight':'muscle';
+  try{ store.set('ft_dash_focus',DASH_FOCUS); }catch(e){}
+  renderDashFocus(); renderWeightTargets();
+}
+function dashDateShift(key,days){
+  var d=new Date(key+'T00:00:00'); d.setDate(d.getDate()+days); return localDateKey(d);
+}
+function muscleCardHtml(){
+  var wk=Object.keys(appData).filter(function(k){ return _meas(appData[k]||{},'waist')!=null; }).sort();
+  var h='<div class="card-title" style="margin-bottom:8px">Muscle progress</div>';
+  if(!wk.length){
+    h+='<div style="font-size:12px;color:#9a9d8c;line-height:1.5">No waist measurements yet. Waist is the best simple check that fat is not creeping up while you build.</div>'
+     +'<div style="margin-top:8px"><button class="bs" onclick="jumpToMeasure()">Log waist</button></div>';
+  } else {
+    var last=wk[wk.length-1], cur=_meas(appData[last],'waist');
+    var cutoff=dashDateShift(last,-21), prior=null;
+    wk.forEach(function(k){ if(k<=cutoff) prior=k; });
+    var first=wk[0];
+    function delta(fromKey){
+      if(!fromKey||fromKey===last) return '';
+      var dlt=cur-_meas(appData[fromKey],'waist'), col=dlt<=0?'#5eead4':'#fbbf24';
+      return '<span style="color:'+col+'">'+(dlt>0?'+':'')+dlt.toFixed(1)+' in</span>';
+    }
+    h+='<div style="display:flex;gap:12px;align-items:baseline"><div class="big-num" style="color:#38bdf8;font-size:32px">'+cur+'</div>'
+     +'<div style="font-size:12px;color:#666;font-family:\'DM Mono\',monospace">in waist · '+prettyDate(last)+'</div></div>';
+    if(prior) h+='<div style="font-size:12px;color:#9a9d8c;margin-top:4px">'+delta(prior)+' vs '+prettyDate(prior)+' (about 4+ weeks back)</div>';
+    if(first!==last&&first!==prior) h+='<div style="font-size:12px;color:#9a9d8c;margin-top:2px">'+delta(first)+' since '+prettyDate(first)+'</div>';
+    if(wk.length<2) h+='<div style="font-size:11px;color:#666;margin-top:6px">Log it weekly and the trend will show here.</div>';
+  }
+  var now=weightAvgWindow(7), then=weightAvgWindow(7,dashDateShift(todayKey(),-28));
+  if(now){
+    h+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid #ffffff10;font-size:12px;color:#9a9d8c;line-height:1.5">'
+     +'<b style="color:#d8d8d0">Guardrail — weekly average weight:</b> '+now.avg.toFixed(1)+' lb'
+     +(then?(' (4 weeks ago '+then.avg.toFixed(1)+' lb)'):'')
+     +'. If it climbs more than about 0.5 lb a week for 3+ weeks while your waist also grows, trim calories by 150–250.</div>';
+  }
+  return h;
+}
+function renderDashFocus(){
+  var bar=document.getElementById('dash-focus-bar'); if(!bar) return;
+  var m=DASH_FOCUS==='muscle';
+  function btn(v,label){
+    var on=(v==='muscle')===m;
+    return '<button onclick="dashFocusSet(\''+v+'\')" style="flex:1;padding:8px 10px;border-radius:10px;font-size:12px;cursor:pointer;'
+      +'font-family:\'DM Mono\',monospace;background:'+(on?'#5eead422':'transparent')+';color:'+(on?'#5eead4':'#888')
+      +';border:1px solid '+(on?'#5eead4':'#3a3a58')+'">'+label+'</button>';
+  }
+  bar.innerHTML='<div style="display:flex;gap:6px;margin:10px 0">'+btn('weight','Weight focus')+btn('muscle','Muscle focus')+'</div>';
+  var card=document.getElementById('dash-muscle-card'), str=document.getElementById('dash-strength-card'),
+      home=document.getElementById('strength-home'), lost=document.getElementById('dash-lost');
+  if(card){ card.style.display=m?'':'none'; if(m) card.innerHTML=muscleCardHtml(); }
+  if(str&&home&&card){
+    if(m){ if(card.nextElementSibling!==str) card.parentNode.insertBefore(str, card.nextSibling); }
+    else { if(home.nextElementSibling!==str) home.parentNode.insertBefore(str, home.nextSibling); }
+  }
+  if(lost) lost.style.display=m?'none':'';
+}
 function renderDash(){
   renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
@@ -1810,6 +1873,7 @@ function renderDash(){
   renderTrends();
   renderTrackSummary();
   dsRenderProteinMeal();
+  try{ renderDashFocus(); }catch(e){ console.warn("focus render",e); }
   try{ if(typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume(); }catch(e){}
 }
 function renderRadials(items){
@@ -2784,7 +2848,7 @@ if(typeof ldInit==="function"){ try{ldInit();}catch(e){} }
 function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function renderWeightTargets(){
   var el=document.getElementById("weight-targets"); if(!el) return;
-  el.textContent="Start: "+START_WEIGHT+" lbs"+(GOAL_WEIGHT?" \u00b7 Goal: "+GOAL_WEIGHT+" lbs":"");
+  el.textContent="Start: "+START_WEIGHT+" lbs"+((GOAL_WEIGHT&&DASH_FOCUS!=="muscle")?" \u00b7 Goal: "+GOAL_WEIGHT+" lbs":"");
 }
 function renderLabs(){
   var card=document.getElementById("labs-card"); if(!card) return;
