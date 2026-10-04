@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=188">
+<link rel="stylesheet" href="styles.css?v=189">
 </head>
 <body>
 
@@ -256,6 +256,10 @@
       <div class="card">
         <div class="card-title">Measured Maintenance</div>
         <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="bs" onclick="exportCalWeight()">Export calories vs weight (CSV)</button>
+          <button class="bs" onclick="copyCalWeight()">Copy as text</button>
+        </div>
       </div>
 
       <div class="card">
@@ -1287,6 +1291,6 @@
   </div>
 </div>
 
-<script src="app.js?v=374"></script>
+<script src="app.js?v=375"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v280 — 2026-10-03";
+var APP_BUILD = "v281 — 2026-10-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1294,6 +1294,56 @@ function renderTdeePanel(){
   h+=tdeeDayListHtml(r,false);
   h+='<div style="margin-top:6px;color:#666;line-height:1.4">An estimate built on the 3500 kcal/lb convention and on how completely intake got logged. A direction, not a dose.</div>';
   el.innerHTML=h;
+}
+// ── EXPORT: calories vs weight by day ───────────────────────────────────
+// One row per day that has either logged food or a weigh-in, oldest first, so a
+// suspicious maintenance number can be audited outside the app.
+function calWeightRows(){
+  var keys=Object.keys(appData).filter(function(k){
+    var d=appData[k]; if(!d||!/^\d{4}-\d{2}-\d{2}$/.test(k)) return false;
+    var hasFood=d.foods&&d.foods.some(function(f){return (+f.cal||0)>0;});
+    var w=parseFloat(d.weight);
+    return hasFood||(isFinite(w)&&w>0);
+  }).sort();
+  return keys.map(function(k){
+    var d=appData[k], foods=d.foods||[];
+    var cal=Math.round(foods.reduce(function(a,f){return a+(+f.cal||0);},0));
+    var pro=Math.round(foods.reduce(function(a,f){return a+(+f.protein||0);},0));
+    var w=parseFloat(d.weight); w=(isFinite(w)&&w>0)?w:null;
+    var avg=weightAvgWindow(7,k);
+    var complete=cal>0&&cal>=tdeeDayFloor(k);
+    return {date:k, cal:cal||'', protein:pro||'', goal:calGoalForKey(k)||'',
+            items:foods.length, complete:cal>0?(complete?'yes':'partial'):'',
+            weight:w==null?'':w, avg7:avg?(Math.round(avg.avg*10)/10):''};
+  });
+}
+function calWeightCsv(){
+  var rows=calWeightRows();
+  var head=['date','calories','protein_g','calorie_goal','foods_logged','day_complete','weight_lb','weight_7day_avg_lb'];
+  var lines=[head.join(',')];
+  rows.forEach(function(r){
+    lines.push([r.date,r.cal,r.protein,r.goal,r.items,r.complete,r.weight,r.avg7].join(','));
+  });
+  return {text:lines.join('\n'), n:rows.length};
+}
+function exportCalWeight(){
+  var c=calWeightCsv();
+  if(!c.n){ toast('Nothing to export yet — log some food or a weigh-in first'); return; }
+  try{
+    var blob=new Blob([c.text],{type:'text/csv'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='calories-vs-weight-'+todayKey()+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Exported '+c.n+' days');
+  }catch(e){ toast('Could not download — try Copy instead'); }
+}
+function copyCalWeight(){
+  var c=calWeightCsv();
+  if(!c.n){ toast('Nothing to copy yet — log some food or a weigh-in first'); return; }
+  try{
+    navigator.clipboard.writeText(c.text).then(function(){ toast('Copied '+c.n+' days'); },
+      function(){ toast('Could not copy — try Export instead'); });
+  }catch(e){ toast('Could not copy — try Export instead'); }
 }
 // Collapsible day-by-day intake so a suspicious average can actually be audited.
 var TDEE_LIST_OPEN=false;
