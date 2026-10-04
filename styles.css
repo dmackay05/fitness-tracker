@@ -1641,3 +1641,7 @@ html body div.app{max-width:480px}
 #ds-tp-bar .ds-tp-n{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;min-width:30px;text-align:center;}
 #ds-tp-bar .ds-tp-r{flex:1;font-size:12px;color:#aaa;line-height:1.3;}
 #ds-tp-bar button{padding:8px 14px;border-radius:10px;border:none;background:#e5484d;color:#fff;font-weight:700;}
+
+/* Band picker next to the load box (elastic-band exercises) */
+#panel-today .ds-bandpick{height:30px;max-width:66px;margin-left:4px;border-radius:8px;border:1px solid rgba(159,211,199,.35);background:transparent;color:#9fd3c7;font-size:12px;padding:0 2px;}
+#panel-today .ds-bandpick option,#panel-today .ds-bandpick optgroup{color:#111;background:#fff;}
