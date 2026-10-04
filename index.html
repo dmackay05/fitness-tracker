@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=190">
+<link rel="stylesheet" href="styles.css?v=191">
 </head>
 <body>
 
@@ -163,10 +163,10 @@
       <div id="weighin-banner"></div>
       <div class="dash-strip" id="dash-averages"></div>
       <div class="card" id="dash-pain" style="display:none"></div>
-      <div id="dash-focus-bar"></div>
-      <div class="card" id="dash-muscle-card" style="display:none"></div>
+      <div id="dash-view-bar"></div>
 
-      <!-- Nutrition -->
+      <!-- DAILY VIEW: what you check every day -->
+      <div id="dash-view-daily">
       <div class="card">
         <div class="card-title" id="cal-title">Today's Calories</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px">
@@ -192,11 +192,6 @@
       <div id="dash-protein-meal"></div>
 
       <div class="card">
-        <div class="card-title">Intake Averages</div>
-        <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
-      </div>
-
-      <div class="card">
         <div class="card-title" style="color:#38bdf8">💧 Water</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
           <div class="big-num" id="dash-water-oz" style="color:#38bdf8;font-size:32px">0</div>
@@ -207,7 +202,6 @@
 
       <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
 
-      <!-- Training -->
       <div class="card">
         <div class="card-title" style="color:#fb923c">🏃 Weekly Activity</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
@@ -226,17 +220,24 @@
       </div>
 
       <div class="card">
-        <div class="card-title">📊 Weekly Volume &amp; Training Load</div>
-        <div id="volume-needs-attention"></div>
-        <div id="volume-tab-host"></div>
+        <div class="card-title">🛌 Recovery Check</div>
+        <div id="dash-recovery" style="font-size:12px;line-height:1.5"></div>
       </div>
 
       <div class="card">
-        <div class="card-title">🚴 Distance · last 7 days</div>
-        <div id="dash-distance" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
+        <div class="card-title">Streaks</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:2px">🔥 Protein</div>
+        <div id="dash-protein-streak" style="font-size:12px;line-height:1.5"></div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin:10px 0 2px">🧘 Meditation</div>
+        <div id="dash-med-streak" style="font-size:12px;line-height:1.5"></div>
+      </div>
       </div>
 
-      <!-- Body / Trends -->
+      <!-- PROGRESS VIEW: trends and weekly checks -->
+      <div id="dash-view-progress" style="display:none">
+      <div id="dash-focus-bar"></div>
+      <div class="card" id="dash-muscle-card" style="display:none"></div>
+
       <div class="card">
         <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div class="card-title" style="margin-bottom:0">Weight</div>
@@ -250,12 +251,24 @@
         <div style="font-size:10px;color:#555;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
       </div>
 
-      <div class="card">
+      <div class="card" data-cid="wtrend" data-default="open">
         <div class="card-title">Weight Trend</div>
         <div id="dash-weight-trend" style="font-size:12px;line-height:1.5"></div>
       </div>
 
-      <div class="card">
+      <div id="strength-home" style="display:none"></div>
+      <div class="card" id="dash-strength-card" data-cid="strength" data-default="open">
+        <div class="card-title">🏋️ Strength Trend</div>
+        <div id="dash-strength-trend" style="font-size:12px;line-height:1.5"></div>
+      </div>
+
+      <div class="card" data-cid="trends" data-default="open">
+        <div class="card-title">📈 Trends</div>
+        <div id="trend-chips" style="margin-bottom:12px"></div>
+        <div id="trend-chart"></div>
+      </div>
+
+      <div class="card" data-cid="maint" data-default="closed">
         <div class="card-title">Measured Maintenance</div>
         <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -264,31 +277,21 @@
         </div>
       </div>
 
-      <div id="strength-home" style="display:none"></div>
-      <div class="card" id="dash-strength-card">
-        <div class="card-title">🏋️ Strength Trend</div>
-        <div id="dash-strength-trend" style="font-size:12px;line-height:1.5"></div>
+      <div class="card" data-cid="volume" data-default="closed">
+        <div class="card-title">📊 Weekly Volume &amp; Training Load</div>
+        <div id="volume-needs-attention"></div>
+        <div id="volume-tab-host"></div>
       </div>
 
-      <div class="card">
-        <div class="card-title">🔥 Protein Streak</div>
-        <div id="dash-protein-streak" style="font-size:12px;line-height:1.5"></div>
+      <div class="card" data-cid="intakeavg" data-default="closed">
+        <div class="card-title">Intake Averages</div>
+        <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
       </div>
 
-      <div class="card">
-        <div class="card-title">🧘 Meditation</div>
-        <div id="dash-med-streak" style="font-size:12px;line-height:1.5"></div>
+      <div class="card" data-cid="distance" data-default="closed">
+        <div class="card-title">🚴 Distance · last 7 days</div>
+        <div id="dash-distance" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
       </div>
-
-      <div class="card">
-        <div class="card-title">🛌 Recovery Check</div>
-        <div id="dash-recovery" style="font-size:12px;line-height:1.5"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">📈 Trends</div>
-        <div id="trend-chips" style="margin-bottom:12px"></div>
-        <div id="trend-chart"></div>
       </div>
     </div>
 
@@ -1294,6 +1297,6 @@
   </div>
 </div>
 
-<script src="app.js?v=376"></script>
+<script src="app.js?v=377"></script>
 </body>
 </html>

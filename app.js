@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v282 — 2026-10-03";
+var APP_BUILD = "v283 — 2026-10-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1791,6 +1791,56 @@ function renderDashFocus(){
   }
   if(lost) lost.style.display=m?'none':'';
 }
+// ── DASHBOARD VIEWS: Daily / Progress, plus collapsible Progress cards ──
+// Display only. Every card keeps its element ids, so every renderer still works
+// whichever view is showing.
+var DASH_VIEW = store.get('ft_dash_view') || 'daily';
+function dashViewSet(v){
+  DASH_VIEW=(v==='progress')?'progress':'daily';
+  try{ store.set('ft_dash_view',DASH_VIEW); }catch(e){}
+  applyDashView();
+  try{ renderDash(); }catch(e){ console.warn('dash view render',e); }
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+function applyDashView(){
+  var bar=document.getElementById('dash-view-bar'); if(!bar) return;
+  var p=DASH_VIEW==='progress';
+  function btn(v,label){
+    var on=(v==='progress')===p;
+    return '<button onclick="dashViewSet(\''+v+'\')" style="flex:1;padding:10px 12px;border-radius:10px;font-size:13px;cursor:pointer;'
+      +'font-family:\'DM Mono\',monospace;background:'+(on?'#5eead4':'transparent')+';color:'+(on?'#0f1020':'#9a9d8c')
+      +';border:1px solid '+(on?'#5eead4':'#3a3a58')+';font-weight:'+(on?'700':'400')+'">'+label+'</button>';
+  }
+  bar.innerHTML='<div style="display:flex;gap:6px;margin:10px 0 12px">'+btn('daily','Daily')+btn('progress','Progress')+'</div>';
+  var d=document.getElementById('dash-view-daily'), g=document.getElementById('dash-view-progress');
+  if(d) d.style.display=p?'none':'';
+  if(g) g.style.display=p?'':'none';
+}
+function dashCollapseState(){ try{ return JSON.parse(store.get('ft_dash_collapse')||'{}')||{}; }catch(e){ return {}; } }
+function dashCollapseInit(){
+  var st=dashCollapseState();
+  document.querySelectorAll('#dash-view-progress .card[data-cid]').forEach(function(c){
+    if(c._cbound) return;
+    var t=c.querySelector('.card-title'); if(!t) return;
+    c._cbound=true;
+    var body=document.createElement('div'); body.className='card-collapse-body';
+    var kids=[]; for(var n=t.nextSibling;n;n=n.nextSibling) kids.push(n);
+    kids.forEach(function(k){ body.appendChild(k); });
+    c.appendChild(body);
+    var id=c.getAttribute('data-cid'), closed=(id in st)?!!st[id]:(c.getAttribute('data-default')==='closed');
+    var chev=document.createElement('span'); chev.style.cssText='color:#5eead4;font-size:14px;margin-left:10px';
+    t.style.cssText+=';cursor:pointer;display:flex;justify-content:space-between;align-items:center';
+    t.appendChild(chev);
+    function paint(){ body.style.display=closed?'none':''; chev.textContent=closed?'▸':'▾'; t.style.marginBottom=closed?'0':''; }
+    t.addEventListener('click',function(){
+      closed=!closed;
+      var s2=dashCollapseState(); s2[id]=closed; try{ store.set('ft_dash_collapse',JSON.stringify(s2)); }catch(e){}
+      paint();
+      if(!closed){ try{ renderDash(); }catch(e){} }
+    });
+    paint();
+  });
+}
 function renderDash(){
   renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
@@ -1874,6 +1924,8 @@ function renderDash(){
   renderTrackSummary();
   dsRenderProteinMeal();
   try{ renderDashFocus(); }catch(e){ console.warn("focus render",e); }
+  try{ dashCollapseInit(); }catch(e){ console.warn("collapse init",e); }
+  try{ applyDashView(); }catch(e){ console.warn("view apply",e); }
   try{ if(typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume(); }catch(e){}
 }
 function renderRadials(items){
