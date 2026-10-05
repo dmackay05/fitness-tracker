@@ -1,3 +1,111 @@
+// ── THEMES (v294) ───────────────────────────────────────────────────────
+// Dark is the native palette. Gray and Light are produced by remapping every
+// color in the app at runtime — stylesheet rules, inline styles (including the
+// thousands of inline styles app.js generates), and SVG fill/stroke — through a
+// lightness transform that keeps each color's hue. That way no screen has to be
+// hand-themed and new features pick the theme up automatically.
+//   light: lightness is mirrored (dark bg → near-white, light text → dark),
+//          accents darken just enough to stay readable on white.
+//   gray:  near-black surfaces lift to a neutral charcoal and lose their navy
+//          tint; mid-grays lift slightly to keep text contrast.
+// Switching themes reloads the page so the remap always starts from the
+// original dark values.
+var FT_THEME=(function(){ try{ var t=localStorage.getItem('ft_theme'); return (t==='light'||t==='gray')?t:'dark'; }catch(e){ return 'dark'; } })();
+function ftSetTheme(t){ try{ if(t==='dark') localStorage.removeItem('ft_theme'); else localStorage.setItem('ft_theme',t); }catch(e){} location.reload(); }
+(function(){
+  if(FT_THEME==='dark') return;
+  var root=document.documentElement;
+  function clamp(x){ return x<0?0:x>1?1:x; }
+  function rgb2hsl(r,g,b){ r/=255; g/=255; b/=255; var mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, h=0, s=0;
+    if(mx!==mn){ var d=mx-mn; s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+      h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4; h/=6; } return [h,s,l]; }
+  function hue(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
+  function hsl2rgb(h,s,l){ if(s===0){ var v=Math.round(l*255); return [v,v,v]; }
+    var q=l<0.5?l*(1+s):l+s-l*s, p=2*l-q; return [Math.round(hue(p,q,h+1/3)*255),Math.round(hue(p,q,h)*255),Math.round(hue(p,q,h-1/3)*255)]; }
+  function mapHSL(h,s,l){
+    if(FT_THEME==='light'){
+      var nl=1-l;
+      if(s>0.35 && nl>0.3 && nl<0.75) nl=Math.min(nl,0.42);      // accents: keep them dark enough for white bg
+      if(l<0.12) nl=0.985-l*0.6, s=s*0.35;                        // page/surface backgrounds → soft off-white
+      return [h,s,clamp(nl)];
+    }
+    // gray
+    if(l<0.3) return [h,s*0.25,0.155+l*0.6];
+    if(l<0.65) return [h,s,clamp(l+0.08*(1-(l-0.3)/0.35))];
+    return [h,s,l];
+  }
+  var cache={};
+  function mapColor(r,g,b,a){
+    var k=r+','+g+','+b+','+a; if(cache[k]) return cache[k];
+    var hsl=rgb2hsl(r,g,b), m=mapHSL(hsl[0],hsl[1],hsl[2]), c=hsl2rgb(m[0],m[1],m[2]);
+    var out=(a>=1)?'rgb('+c[0]+', '+c[1]+', '+c[2]+')':'rgba('+c[0]+', '+c[1]+', '+c[2]+', '+(+a.toFixed(3))+')';
+    cache[k]=out; return out;
+  }
+  var RE=/#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[,\/]\s*([\d.]+%?))?\s*\)|\b(white|black)\b/g;
+  function mapValue(v){
+    if(!v || v.indexOf('var(')>=0 && !/#|rgb|white|black/.test(v)) return v;
+    return v.replace(RE,function(all,hex,r,g,b,a,named){
+      if(named) return named==='white'?mapColor(255,255,255,1):mapColor(0,0,0,1);
+      if(hex){ var x=hex; if(x.length<=4) x=x.split('').map(function(c){return c+c;}).join('');
+        var al=x.length===8?parseInt(x.slice(6,8),16)/255:1;
+        return mapColor(parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16),al); }
+      var A=a==null?1:(/%$/.test(a)?parseFloat(a)/100:parseFloat(a));
+      return mapColor(+r,+g,+b,A);
+    });
+  }
+  var PROP=/color|background|border|fill|stroke|shadow|outline|caret|column-rule|text-decoration/;
+  function mapDecl(st){
+    for(var i=0;i<st.length;i++){
+      var p=st[i]; if(p.indexOf('--')!==0 && !PROP.test(p)) continue;
+      var v=st.getPropertyValue(p), nv=mapValue(v);
+      if(nv!==v) st.setProperty(p,nv,st.getPropertyPriority(p));
+    }
+  }
+  function mapRules(rules){
+    for(var i=0;i<rules.length;i++){ var r=rules[i];
+      if(r.style) mapDecl(r.style);
+      if(r.cssRules) mapRules(r.cssRules);
+    }
+  }
+  var seenSheet=new WeakSet();
+  function mapSheets(){
+    for(var i=0;i<document.styleSheets.length;i++){ var sh=document.styleSheets[i];
+      if(seenSheet.has(sh)) continue; var rules; try{ rules=sh.cssRules; }catch(e){ continue; }
+      seenSheet.add(sh); mapRules(rules); }
+  }
+  var done=new WeakMap(), doneA=new WeakMap();
+  var ATTRS=['fill','stroke','stop-color','flood-color','color'];
+  function mapEl(el){
+    if(el.nodeType!==1 || el===root || (el.classList&&el.classList.contains('th-sw'))) return;
+    var s=el.getAttribute('style');
+    if(s && done.get(el)!==s){ mapDecl(el.style); done.set(el,el.getAttribute('style')); }
+    if(el.namespaceURI==='http://www.w3.org/2000/svg' || el.tagName==='FONT'){
+      var dm=doneA.get(el)||{};
+      for(var i=0;i<ATTRS.length;i++){ var a=el.getAttribute(ATTRS[i]);
+        if(a && dm[ATTRS[i]]!==a){ var na=mapValue(a); if(na!==a) el.setAttribute(ATTRS[i],na); dm[ATTRS[i]]=na; } }
+      doneA.set(el,dm);
+    }
+    if(el.tagName==='STYLE') mapSheets();
+  }
+  function mapTree(node){
+    if(node.nodeType!==1) return; mapEl(node);
+    var all=node.querySelectorAll('[style],svg *,svg,style'); for(var i=0;i<all.length;i++) mapEl(all[i]);
+  }
+  function run(){
+    mapSheets(); mapTree(document.documentElement);
+    var meta=document.querySelector('meta[name=theme-color]'); if(meta) meta.setAttribute('content',FT_THEME==='light'?'#f6f6f8':'#27272b');
+    new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ var m=muts[i];
+        if(m.type==='attributes') mapEl(m.target);
+        else for(var j=0;j<m.addedNodes.length;j++) mapTree(m.addedNodes[j]);
+      }
+    }).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['style','fill','stroke']});
+    root.style.background=''; root.classList.remove('th-pending');
+  }
+  root.style.colorScheme=FT_THEME==='light'?'light':'dark';
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run); else run();
+})();
+
 
 var SUPPS = []; // loaded from store after the storage layer is defined (see config block)
 // ═══════════════════════════════════════════════════════════════════════
@@ -25,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v293 — 2026-10-05";
+var APP_BUILD = "v294 — 2026-10-05";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3033,7 +3141,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 // v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
 // Off by default. The Revert button is never hidden while a custom plan is active,

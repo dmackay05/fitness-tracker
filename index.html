@@ -13,7 +13,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=198">
+<link rel="stylesheet" href="styles.css?v=199">
+<script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
+<style>html.th-pending body{visibility:hidden}</style>
 </head>
 <body>
 
@@ -1118,8 +1120,17 @@
         </div>
       </details>
       <details class="set-group" id="set-app">
-        <summary><span class="sg-ic">🔊</span><span class="sg-t">App<span class="sg-sub">Sound, simple settings</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">🔊</span><span class="sg-t">App<span class="sg-sub">Theme, sound, simple settings</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
+      <div class="card">
+        <div class="card-title">🎨 Theme</div>
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Saved on this device. The app reloads to apply it.</div>
+        <div class="th-pick" id="th-pick">
+          <button data-th="dark" onclick="ftSetTheme('dark')"><span class="th-sw" style="background:#0d0d1a"></span>Dark</button>
+          <button data-th="gray" onclick="ftSetTheme('gray')"><span class="th-sw" style="background:#3a3a40"></span>Gray</button>
+          <button data-th="light" onclick="ftSetTheme('light')"><span class="th-sw" style="background:#f6f6f8"></span>Light</button>
+        </div>
+      </div>
       <div class="card">
         <div class="card-title">🧹 Simple Settings</div>
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Hides the multi-user and plan-import tools (Import/Sync/Export plan, missing-day behavior, Custom Exercise Set, Plan Source) so Settings only shows what you use. Nothing is deleted — turn this off to bring them back. If a custom plan is ever loaded, the Revert button stays visible regardless.</div>
@@ -1342,6 +1353,6 @@
   </div>
 </div>
 
-<script src="app.js?v=387"></script>
+<script src="app.js?v=388"></script>
 </body>
 </html>

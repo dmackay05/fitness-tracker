@@ -1700,3 +1700,9 @@ html body div.app{max-width:480px}
 #panel-today .ds-daypick{display:block;overflow:visible}
 .ds-dp select{text-overflow:ellipsis;white-space:nowrap}
 #settings-overlay .mu-hide{display:none!important}
+
+/* v294 theme picker */
+.th-pick{display:flex;gap:8px}
+.th-pick button{flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid #2a2a45;background:transparent;color:#b8b8c8;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer}
+.th-pick button.on{border-color:#5eead4;color:#5eead4;background:#5eead414}
+.th-sw{width:22px;height:22px;border-radius:50%;border:1px solid #ffffff33;display:block}
