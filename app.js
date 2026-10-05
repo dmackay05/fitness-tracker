@@ -25,7 +25,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v286 — 2026-10-04";
+var APP_BUILD = "v287 — 2026-10-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3034,6 +3034,7 @@ function dsGuestSettingsText(){
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
 function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 

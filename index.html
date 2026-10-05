@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=193">
+<link rel="stylesheet" href="styles.css?v=194">
 </head>
 <body>
 
@@ -914,6 +914,33 @@
     <button class="bp" onclick="saveAndClose()">Save</button>
   </div>
   <div style="padding:18px;max-width:520px;margin:0 auto;width:100%">
+      <nav class="set-jump" aria-label="Settings sections"><a href="#set-sync" onclick="dsSetJump('sync');return false">Sync</a><a href="#set-profile" onclick="dsSetJump('profile');return false">Profile</a><a href="#set-training" onclick="dsSetJump('training');return false">Training</a><a href="#set-program" onclick="dsSetJump('program');return false">Program</a><a href="#set-nutrition" onclick="dsSetJump('nutrition');return false">Nutrition</a><a href="#set-app" onclick="dsSetJump('app');return false">App</a></nav>
+      <details class="set-group" id="set-sync" open>
+        <summary><span class="sg-ic">☁️</span><span class="sg-t">Sync &amp; Backup<span class="sg-sub">Backup, Google Sheet, PIN</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
+      <div class="card">
+        <div class="card-title">Backup</div>
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:14px;line-height:1.6">Edits auto-sync a few seconds after you make them. Tap below to force a backup now.</div>
+        <button class="bp bfull" id="bk-btn" onclick="doBackup()" style="margin-top:0">Backup Now</button>
+        <button class="bo bfull" id="ft-open-sheet-btn" style="margin-top:8px;display:none" onclick="openHealthSheet()">&#128202; Open Google Sheet</button>
+        <button class="bo bfull" style="margin-top:8px" onclick="pullConfigManual()">&#11015; Load settings from Sheet</button>
+        <div class="bk-status" id="bk-status"></div>
+        <div class="bk-last" id="bk-last"></div>
+        <div id="bk-today-row"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Google Sheets &amp; Security</div>
+        <div class="rlbl" style="margin-top:0">Apps Script URL</div>
+        <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
+        <div class="rlbl">PIN (optional, 4 digits)</div>
+        <input type="number" inputmode="decimal" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
+        <div id="ft-settings-msg" style="font-size:11px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
+      </div>
+        </div>
+      </details>
+      <details class="set-group" id="set-profile">
+        <summary><span class="sg-ic">👤</span><span class="sg-t">Profile &amp; Targets<span class="sg-sub">Name, weights, weigh-in day, labs</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
       <div class="card">
         <div class="card-title">Profile</div>
         <input type="text" id="ft-name-input" placeholder="Your name" style="margin-bottom:8px" />
@@ -921,8 +948,118 @@
           <div><div class="rlbl" style="margin-top:0">Starting weight (lbs)</div><input type="number" inputmode="decimal" id="ft-start-weight" placeholder="e.g. 200" step="0.1" style="margin-bottom:0"/></div>
           <div><div class="rlbl" style="margin-top:0">Goal weight (lbs)</div><input type="number" inputmode="decimal" id="ft-goal-weight" placeholder="e.g. 180" step="0.1" style="margin-bottom:0"/></div>
         </div>
+        <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#8b8b9c">(weight + body comp reminder)</span></div>
+        <select id="ft-weighin-day" style="margin-bottom:0" onchange="setWeighinDay(this.value)">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
       </div>
-      <div class="card" style="margin-top:10px">
+      <div class="card">
+        <div class="card-title">Lab Targets</div>
+        <div id="ft-labs"></div>
+        <button class="bs bfull" onclick="addLabRow()" style="margin-top:8px">+ Add Lab</button>
+      </div>
+        </div>
+      </details>
+      <details class="set-group" id="set-training">
+        <summary><span class="sg-ic">📈</span><span class="sg-t">Training Cycle<span class="sg-sub">Phases, deload, split, rotation</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
+      <div class="card">
+        <div class="card-title">📈 Training Phase Cycle</div>
+        <div id="ds-phase-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">13-week wave adapted from Jeff Nippard's Ultimate PPL: Phase 1 Base (wk 1-6, moderate volume, RPE 8-9/9-10) → Phase 2 Max Effort (wk 7-10, 1-2 sets, RPE 9-10) → Phase 3 Supercompensation (wk 11-12, high volume, 15-20 reps) → Deload (wk 13), then repeats. Every exercise's sets/reps/RPE/rest updates automatically as the weeks pass. Rehab and joint-flagged movements (elbow work, wrist curls, SI-flagged moves) are excluded on purpose — they stay fixed no matter the phase.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Phase cycle active</span>
+          <input type="checkbox" id="ds-phase-toggle" onchange="dsSetPhaseCycleStart(this.checked)" style="width:20px;height:20px;accent-color:#c084fc;cursor:pointer" />
+        </label>
+        <div id="ds-phase-preview" style="font-size:11px;color:#c084fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div class="rlbl" style="margin-top:12px">Manual phase override (optional)</div>
+        <select id="ds-phase-manual-select" onchange="dsSetPhaseManual(this.value)" style="width:100%;padding:8px;border-radius:8px;background:#1a1a24;color:#f0f0f0;border:1px solid #333;font-family:'DM Mono',monospace;font-size:12px">
+          <option value="">Auto (follow the calendar above)</option>
+          <option value="p1">Pin to Phase 1 — Base</option>
+          <option value="p2">Pin to Phase 2 — Max Effort</option>
+          <option value="p3">Pin to Phase 3 — Supercompensation</option>
+          <option value="deload">Pin to Deload</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="card-title">⏸️ Deload Week</div>
+        <div id="ds-deload-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Deload week active</span>
+          <input type="checkbox" id="ds-deload-toggle" onchange="dsSetDeload(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-deload-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🏋️ Full-Body Mode</div>
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Swaps the Upper/Lower split for full-body sessions Mon · Wed · Fri, with short ~20-min yoga flows + walk-run recovery Tue · Thu, ride Saturday, rest Sunday. Same exercises and ids, so logs and progression carry over. Each exercise is capped at 2–3 sets per session since every muscle gets hit three times a week. Toggle back any time.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Full-body mode</span>
+          <input type="checkbox" id="ds-fullbody-toggle" onchange="dsSetFullBody(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-fullbody-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔁 Session Rotation</div>
+        <div id="ds-rotate-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate weekly</span>
+          <input type="checkbox" id="ds-rotate-toggle" onchange="dsToggleRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-rotate-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔄 Variant Rotation</div>
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Auto-cycles each exercise's variants (including the base move) one slot per week, so options you never manually swap to still get used. On by default — this overrides any manual swap, so turn it off if you need to lock an exercise to a specific variant (e.g. avoiding one for your elbow or SI joint).</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate variants weekly</span>
+          <input type="checkbox" id="ds-var-rotate-toggle" onchange="dsToggleVarRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
+        </label>
+        <div id="ds-var-rotate-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+      </div>
+        </div>
+      </details>
+      <details class="set-group" id="set-program">
+        <summary><span class="sg-ic">🗓️</span><span class="sg-t">Exercise Program<span class="sg-sub">Weekly plan, custom set, plan source</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
+      <div class="card">
+        <div class="card-title">🗓️ Exercise Plan (Mon–Sun)</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
+        <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
+        <button class="bp bfull" onclick="dsPlanEditorOpen()" style="margin-top:0">✎ Edit Plan</button>
+        <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()" style="margin-top:6px">⬆ Import Plan (JSON)</button>
+        <button class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
+        <div id="ds-plan-sync-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
+        <div style="margin-top:10px"><label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer"><span style="font-size:11px;color:#ccc;font-family:'DM Mono',monospace">Show built-in home extras</span><input type="checkbox" id="ds-guest-extras-toggle" onchange="dsSetGuestExtras(this.checked)" style="width:20px;height:20px;accent-color:#5eead4"/></label></div>
+        <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
+        <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
+        <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
+        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🏋️ Custom Exercise Set</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
+        <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Plan Source</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
+        <div class="rlbl" style="margin-top:0">Plan JSON URL (optional)</div>
+        <input type="text" id="ft-plan-url" placeholder="leave blank for plan.json" style="font-size:11px;margin-bottom:4px" />
+        <button class="bs bfull" onclick="planReload()" style="margin-top:6px">↻ Reload Plan</button>
+      </div>
+        </div>
+      </details>
+      <details class="set-group" id="set-nutrition">
+        <summary><span class="sg-ic">🍽</span><span class="sg-t">Nutrition<span class="sg-sub">Calories, macros, phase, supplements</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
+      <div class="card">
         <div class="card-title">Daily Goals</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Calories vary by day type to support muscle building in a mild deficit. Protein and other macros stay constant.</div>
         <div class="rlbl" style="margin-top:0">Rest day calories <span style="color:#8b8b9c" id="ds-cal-days-rest">(Sun)</span></div><input type="number" inputmode="decimal" id="ft-cal-rest" style="margin-bottom:8px"/>
@@ -944,94 +1081,9 @@
           <div><div class="rlbl">Max HR (blank = est. from age)</div><input type="number" inputmode="decimal" id="ft-maxhr" style="margin-bottom:0"/></div>
         </div>
         <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:6px">Cadence default is 105 steps/min. Check your phone's Health app (iPhone) or Google Fit (Android) after a walk, divide steps by minutes, and enter your real number here for more accurate estimates.</div>
-        <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#8b8b9c">(weight + body comp reminder)</span></div>
-        <select id="ft-weighin-day" style="margin-bottom:0" onchange="setWeighinDay(this.value)">
-          <option value="0">Sunday</option>
-          <option value="1">Monday</option>
-          <option value="2">Tuesday</option>
-          <option value="3">Wednesday</option>
-          <option value="4">Thursday</option>
-          <option value="5">Friday</option>
-          <option value="6">Saturday</option>
-        </select>
       </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">Supplements</div>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 1 (e.g. Vitamin D)" style="margin-bottom:8px"/>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 2" style="margin-bottom:8px"/>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 3" style="margin-bottom:8px"/>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 4" style="margin-bottom:8px"/>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 5 (e.g. Creatine)" style="margin-bottom:8px"/>
-        <input type="text" class="ft-sup-inp" placeholder="Supplement 6" style="margin-bottom:0"/>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">Lab Targets</div>
-        <div id="ft-labs"></div>
-        <button class="bs bfull" onclick="addLabRow()" style="margin-top:8px">+ Add Lab</button>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">🏋️ Custom Exercise Set</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
-        <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">📋 Plan Source</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
-        <div class="rlbl" style="margin-top:0">Plan JSON URL (optional)</div>
-        <input type="text" id="ft-plan-url" placeholder="leave blank for plan.json" style="font-size:11px;margin-bottom:4px" />
-        <button class="bs bfull" onclick="planReload()" style="margin-top:6px">↻ Reload Plan</button>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">🗓️ Exercise Plan (Mon–Sun)</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
-        <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
-        <button class="bp bfull" onclick="dsPlanEditorOpen()" style="margin-top:0">✎ Edit Plan</button>
-        <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()" style="margin-top:6px">⬆ Import Plan (JSON)</button>
-        <button class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
-        <div id="ds-plan-sync-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
-        <div style="margin-top:10px"><label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer"><span style="font-size:11px;color:#ccc;font-family:'DM Mono',monospace">Show built-in home extras</span><input type="checkbox" id="ds-guest-extras-toggle" onchange="dsSetGuestExtras(this.checked)" style="width:20px;height:20px;accent-color:#5eead4"/></label></div>
-        <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
-        <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
-        <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
-        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <div class="card-title">Google Sheets &amp; Security</div>
-        <div class="rlbl" style="margin-top:0">Apps Script URL</div>
-        <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
-        <div class="rlbl">PIN (optional, 4 digits)</div>
-        <input type="number" inputmode="decimal" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
-        <div id="ft-settings-msg" style="font-size:11px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
-      </div>
-      <div class="te-section-hdr">📈 Training Phase Cycle</div>
       <div class="card">
-        <div id="ds-phase-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">13-week wave adapted from Jeff Nippard's Ultimate PPL: Phase 1 Base (wk 1-6, moderate volume, RPE 8-9/9-10) → Phase 2 Max Effort (wk 7-10, 1-2 sets, RPE 9-10) → Phase 3 Supercompensation (wk 11-12, high volume, 15-20 reps) → Deload (wk 13), then repeats. Every exercise's sets/reps/RPE/rest updates automatically as the weeks pass. Rehab and joint-flagged movements (elbow work, wrist curls, SI-flagged moves) are excluded on purpose — they stay fixed no matter the phase.</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Phase cycle active</span>
-          <input type="checkbox" id="ds-phase-toggle" onchange="dsSetPhaseCycleStart(this.checked)" style="width:20px;height:20px;accent-color:#c084fc;cursor:pointer" />
-        </label>
-        <div id="ds-phase-preview" style="font-size:11px;color:#c084fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
-        <div class="rlbl" style="margin-top:12px">Manual phase override (optional)</div>
-        <select id="ds-phase-manual-select" onchange="dsSetPhaseManual(this.value)" style="width:100%;padding:8px;border-radius:8px;background:#1a1a24;color:#f0f0f0;border:1px solid #333;font-family:'DM Mono',monospace;font-size:12px">
-          <option value="">Auto (follow the calendar above)</option>
-          <option value="p1">Pin to Phase 1 — Base</option>
-          <option value="p2">Pin to Phase 2 — Max Effort</option>
-          <option value="p3">Pin to Phase 3 — Supercompensation</option>
-          <option value="deload">Pin to Deload</option>
-        </select>
-      </div>
-      <div class="te-section-hdr">⏸️ Deload Week</div>
-      <div class="card">
-        <div id="ds-deload-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">For a high-volume or joint-stress week. Drops your step goal ~35% for 7 days as a visual reminder — you're still responsible for cutting lift load ~30-40%, skipping deep stretch-position work, keeping rides easy/flat, and leaning into yoga. Auto-turns off after 7 days.</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Deload week active</span>
-          <input type="checkbox" id="ds-deload-toggle" onchange="dsSetDeload(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
-        </label>
-        <div id="ds-deload-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
-      </div>
-      <div class="te-section-hdr">▶️ Maintenance Mode</div>
-      <div class="card">
+        <div class="card-title">▶️ Maintenance Mode</div>
         <div id="ds-maint-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A maintenance block — sits at your measured maintenance instead of the deficit, for as long as you leave it on. Counters metabolic adaptation from sustained dieting and lets training intensity/recovery catch up. Tracks your measured maintenance as it updates, and stays on until you manually turn it off. Keep protein at 170g+ and train as normal.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Maintenance mode active</span>
@@ -1039,8 +1091,8 @@
         </label>
         <div id="ds-maint-preview" style="font-size:11px;color:#7dd3fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
-      <div class="te-section-hdr">⬆️ Bulk Phase</div>
       <div class="card">
+        <div class="card-title">⬆️ Bulk Phase</div>
         <div id="ds-bulk-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A deliberate muscle-building surplus — sits at your measured maintenance plus a modest surplus (default +350 kcal) for as long as you leave it on, and bumps protein to 190g. Keep the surplus lean-leaning (fiber-dense carbs, unsaturated fats) over saturated fat/added sugar. Mutually exclusive with Maintenance Mode. Stays on until you turn it off — check in with your doctor/dietitian on A1c and cholesterol during this phase.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;margin-bottom:12px">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Surplus (kcal over maintenance)</span>
@@ -1052,49 +1104,32 @@
         </label>
         <div id="ds-bulk-preview" style="font-size:11px;color:#fb923c;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
-      <div class="te-section-hdr">🏋️ Full-Body Mode</div>
       <div class="card">
-        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Swaps the Upper/Lower split for full-body sessions Mon · Wed · Fri, with short ~20-min yoga flows + walk-run recovery Tue · Thu, ride Saturday, rest Sunday. Same exercises and ids, so logs and progression carry over. Each exercise is capped at 2–3 sets per session since every muscle gets hit three times a week. Toggle back any time.</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Full-body mode</span>
-          <input type="checkbox" id="ds-fullbody-toggle" onchange="dsSetFullBody(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
-        </label>
-        <div id="ds-fullbody-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div class="card-title">Supplements</div>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 1 (e.g. Vitamin D)" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 2" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 3" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 4" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 5 (e.g. Creatine)" style="margin-bottom:8px"/>
+        <input type="text" class="ft-sup-inp" placeholder="Supplement 6" style="margin-bottom:0"/>
       </div>
-      <div class="te-section-hdr">🔁 Session Rotation</div>
+        </div>
+      </details>
+      <details class="set-group" id="set-app">
+        <summary><span class="sg-ic">🔊</span><span class="sg-t">App<span class="sg-sub">Sound</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
       <div class="card">
-        <div id="ds-rotate-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate weekly</span>
-          <input type="checkbox" id="ds-rotate-toggle" onchange="dsToggleRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
-        </label>
-        <div id="ds-rotate-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
-      </div>
-      <div class="te-section-hdr">🔄 Variant Rotation</div>
-      <div class="card">
-        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Auto-cycles each exercise's variants (including the base move) one slot per week, so options you never manually swap to still get used. On by default — this overrides any manual swap, so turn it off if you need to lock an exercise to a specific variant (e.g. avoiding one for your elbow or SI joint).</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate variants weekly</span>
-          <input type="checkbox" id="ds-var-rotate-toggle" onchange="dsToggleVarRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
-        </label>
-        <div id="ds-var-rotate-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
-      </div>
-      <div class="te-section-hdr">🔊 Sound</div>
-      <div class="card">
+        <div class="card-title">🔊 Sound</div>
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Rest-timer beeps use the Web Audio API. Browsers block audio until you tap the screen once. Use this to confirm sound is working on this device.</div>
         <button class="bp bfull" style="margin-top:0" onclick="dsTestSound()">▶ Test Beep</button>
         <div id="ds-sound-status" style="font-size:11px;color:#5eead4;text-align:center;margin-top:8px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
-      <div class="te-section-hdr">☁️ Backup &amp; Data</div>
-      <div class="card">
-        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:14px;line-height:1.6">Edits auto-sync a few seconds after you make them. Tap below to force a backup now.</div>
-        <button class="bp bfull" id="bk-btn" onclick="doBackup()" style="margin-top:0">Backup Now</button>
-        <button class="bo bfull" id="ft-open-sheet-btn" style="margin-top:8px;display:none" onclick="openHealthSheet()">&#128202; Open Google Sheet</button>
-        <button class="bo bfull" style="margin-top:8px" onclick="pullConfigManual()">&#11015; Load settings from Sheet</button>
-        <button class="bo bfull" style="margin-top:8px;border-color:#f87171;color:#f87171" onclick="clearLocalData()">🗑 Clear Local Data</button>
-        <div class="bk-status" id="bk-status"></div>
-        <div class="bk-last" id="bk-last"></div>
-        <div id="bk-today-row"></div>
+        </div>
+      </details>
+      <div class="card set-danger">
+        <div class="card-title" style="color:#f87171">Danger Zone</div>
+        <div style="font-size:11px;color:#b8b8c8;margin-bottom:10px;line-height:1.5">Wipes this device’s copy. Anything already backed up to your Sheet can be pulled back.</div>
+       <button class="bo bfull" style="margin-top:0;border-color:#f87171;color:#f87171" onclick="clearLocalData()">🗑 Clear Local Data</button>
       </div>
   </div>
 </div>
@@ -1297,6 +1332,6 @@
   </div>
 </div>
 
-<script src="app.js?v=380"></script>
+<script src="app.js?v=381"></script>
 </body>
 </html>
