@@ -1696,3 +1696,6 @@ html body div.app{max-width:480px}
 .ds-mf.on select{color:#5eead4}
 .ds-mf::after{content:'\25BE';position:absolute;right:14px;pointer-events:none;color:#5eead4;font-size:14px}
 .ds-mf select option{background:#13131f;color:#f0f0f0}
+/* v290: day dropdown reuses the .ds-mf style */
+#panel-today .ds-daypick{display:block;overflow:visible}
+.ds-dp select{text-overflow:ellipsis;white-space:nowrap}

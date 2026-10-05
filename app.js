@@ -6016,10 +6016,14 @@ function dsRenderDayPicker(){
   if(!pickHost)return;
   var realKey=dsRealSessionKey(activeDate);
   var activeKey=DS_DAY_OVERRIDE||realKey;
-  var html=DS_ORDER.map(function(d){
-    var cls='ds-daypill'+(!DS_EXTRAS_ACTIVE&&d===realKey?' is-real':'')+(!DS_EXTRAS_ACTIVE&&d===activeKey?' is-active':'');
-    return '<button class="'+cls+'" onclick="dsPickDay(\''+d+'\')">'+DS_DAYLABEL[d]+(d===realKey?'<span class="ds-daydot"></span>':'')+'</button>';
-  }).join('');
+  // v290: dropdown instead of 7 pills. Each option shows the session title so you
+  // can see what's on each day without switching to it; today is tagged.
+  var html='<div class="ds-mf ds-dp'+(activeKey!==realKey?' on':'')+'"><label for="ds-dp-sel">Day</label>'
+    +'<select id="ds-dp-sel" onchange="dsPickDay(this.value)">'
+    +DS_ORDER.map(function(d){
+      var t=''; try{ var S=dsSessOf(d); t=S&&S.title?' \u2014 '+S.title:''; }catch(e){}
+      return '<option value="'+d+'"'+(d===activeKey?' selected':'')+'>'+DS_DAYLABEL[d]+(d===realKey?' (today)':'')+t+'</option>';
+    }).join('')+'</select></div>';
   // v250: Extra tab removed from the day picker.
   pickHost.innerHTML=html;
   if(bannerHost){
