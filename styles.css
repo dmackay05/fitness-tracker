@@ -1687,3 +1687,12 @@ html body div.app{max-width:480px}
 .sg-body>.card{margin-top:0;margin-bottom:10px}
 .sg-body>.card:last-child{margin-bottom:0}
 .set-danger{margin-top:18px;border-color:#f8717133}
+
+/* v289: Today muscle filter dropdown */
+.ds-mf{position:relative;display:flex;align-items:center;gap:10px;margin:8px 0 4px;padding:0 12px;min-height:44px;border:1px solid #ffffff1a;border-radius:12px;background:transparent}
+.ds-mf.on{border-color:#5eead4;background:#5eead414}
+.ds-mf label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8b8b9c;flex:none}
+.ds-mf select{flex:1;min-height:42px;margin:0;padding:0 24px 0 0;background:transparent;border:none;color:#f0f0f0;font-family:'DM Mono',monospace;font-size:14px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.ds-mf.on select{color:#5eead4}
+.ds-mf::after{content:'\25BE';position:absolute;right:14px;pointer-events:none;color:#5eead4;font-size:14px}
+.ds-mf select option{background:#13131f;color:#f0f0f0}

@@ -8703,18 +8703,21 @@ function dsChipLabelFor(q){
   return 'matching';
 }
 function dsSetMuscleFilter(q){
-  DS_SEARCH=q; DS_CHIP_MODE=true;
+  DS_SEARCH=q; DS_CHIP_MODE=!!q;
   var inp=document.getElementById('ds-search'); if(inp)inp.value=q;
   var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=q?'block':'none';
   dsRenderMuscleChips(); dsRender();
 }
 function dsRenderMuscleChips(){
+  // v289: muscle filter is a dropdown instead of 14 wrapping chips — same filter
+  // behavior (dsSetMuscleFilter / chip-mode word-boundary matching), far less space.
   var host=document.getElementById('ds-muscle-chips'); if(!host)return;
-  var active=(DS_SEARCH||'').trim().toLowerCase();
-  host.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px">'+DS_MUSCLE_CHIPS.map(function(c){
-    var isOn=active===c.q;
-    return '<button onclick="dsSetMuscleFilter(\''+(isOn?'':c.q)+'\')" style="padding:6px 12px;border-radius:20px;font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:.02em;cursor:pointer;border:1px solid '+(isOn?'#5eead4':'#ffffff1a')+';background:'+(isOn?'#5eead422':'transparent')+';color:'+(isOn?'#5eead4':'#999')+';">'+c.label+'</button>';
-  }).join('')+'</div>';
+  var active=DS_CHIP_MODE?(DS_SEARCH||'').trim().toLowerCase():'';
+  host.innerHTML='<div class="ds-mf'+(active?' on':'')+'"><label for="ds-mf-sel">Muscle</label>'
+    +'<select id="ds-mf-sel" onchange="dsSetMuscleFilter(this.value)">'
+    +'<option value="">All muscles</option>'
+    +DS_MUSCLE_CHIPS.map(function(c){ return '<option value="'+c.q+'"'+(active===c.q?' selected':'')+'>'+c.label+'</option>'; }).join('')
+    +'</select></div>';
 }
 var DS_SEARCH_HITS=0;
 function dsMainFieldsMatch(item,q){
