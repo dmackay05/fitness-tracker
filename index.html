@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=192">
+<link rel="stylesheet" href="styles.css?v=193">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:9px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button><span id="header-refresh-dash" style="display:flex"><button onclick="doRefresh('dash')" title="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" aria-label="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" aria-label="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button><span id="header-refresh-dash" style="display:none"><button onclick="doRefresh('dash')" title="Refresh" aria-label="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -59,17 +59,17 @@
     </div>
   </div>
 
-  <div class="tab-bar">
-    <button class="tab-btn active" data-tab="dash"><span class="tab-icon">◈</span>Dashboard</button>
-    <button class="tab-btn" data-tab="log"><span class="tab-icon">✎</span>Log</button>
-    <button class="tab-btn" data-tab="yoga"><span class="tab-icon">🧘</span>Yoga</button>
-    <button class="tab-btn" data-tab="today"><span class="tab-icon">▶</span>Today</button>
-    <button class="tab-btn" data-tab="meals"><span class="tab-icon">🍽</span>Info</button>
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" data-tab="today" role="tab" aria-label="Today"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>Today</button>
+    <button class="tab-btn" data-tab="log" role="tab" aria-label="Log"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></span>Log</button>
+    <button class="tab-btn" data-tab="dash" role="tab" aria-label="Dashboard"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Dashboard</button>
+    <button class="tab-btn" data-tab="yoga" role="tab" aria-label="Yoga"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 8v6M5 11l7 3 7-3M7 20c2-3 3-4 5-6 2 2 3 3 5 6"/></svg></span>Yoga</button>
+    <button class="tab-btn" data-tab="meals" role="tab" aria-label="Info"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>Info</button>
   </div>
 
   <div class="content">
 
-<div class="panel" id="panel-today">
+<div class="panel active" id="panel-today">
   <div class="ds-eyebrow" id="ds-eyebrow">Today</div>
   <div class="ds-daypick" id="ds-daypick"></div>
   <div id="ds-dayswitched-wrap"></div>
@@ -97,7 +97,7 @@
           <div class="eff-btn" id="trk-run" onclick="setTrackActivity('run')">🏃 Run</div>
           <div class="eff-btn" id="trk-ruck" onclick="setTrackActivity('ruck')">🎒 Ruck</div>
         </div>
-        <input type="number" id="trk-ruck-lb" placeholder="pack weight (lb)" style="display:none;width:100%;margin-bottom:14px;font-size:13px;padding:9px"/>
+        <input type="number" inputmode="decimal" id="trk-ruck-lb" placeholder="pack weight (lb)" style="display:none;width:100%;margin-bottom:14px;font-size:13px;padding:9px"/>
         <div id="ivl-panel" style="border:1px solid #2a2a45;border-radius:12px;padding:10px 12px;margin-bottom:14px">
           <div class="rlbl" style="margin-top:0">⚡ Intervals — <span id="ivl-hint">Optional push/ease surges</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -107,21 +107,21 @@
             <button class="ivl-preset" id="ivl-preset-walk1" onclick="ivlSetPreset('walk1')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">1:00/1:30 ×9 (walk)</button>
           </div>
           <div style="display:flex;gap:6px;align-items:center">
-            <input type="number" id="ivl-c-work" placeholder="push sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
-            <input type="number" id="ivl-c-rest" placeholder="ease sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
-            <input type="number" id="ivl-c-rounds" placeholder="rounds" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
+            <input type="number" inputmode="decimal" id="ivl-c-work" placeholder="push sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
+            <input type="number" inputmode="decimal" id="ivl-c-rest" placeholder="ease sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
+            <input type="number" inputmode="decimal" id="ivl-c-rounds" placeholder="rounds" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
             <button onclick="ivlSetCustom()" style="padding:8px 12px;border-radius:10px;border:1px solid #5eead440;background:#5eead410;color:#5eead4;font-size:11px;cursor:pointer">Set</button>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-            <div id="ivl-status" style="font-size:11px;font-family:'DM Mono',monospace;color:#555"></div>
-            <button onclick="ivlOff()" style="font-size:10px;color:#666;background:transparent;border:none;cursor:pointer;text-decoration:underline">clear</button>
+            <div id="ivl-status" style="font-size:11px;font-family:'DM Mono',monospace;color:#8b8b9c"></div>
+            <button onclick="ivlOff()" style="font-size:11px;color:#8b8b9c;background:transparent;border:none;cursor:pointer;text-decoration:underline">clear</button>
           </div>
-          <div style="font-size:9px;color:#555;font-family:'DM Mono',monospace;text-align:center;margin-top:6px">A tone + vibration marks every push/ease switch — no need to watch the screen</div>
+          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:6px">A tone + vibration marks every push/ease switch — no need to watch the screen</div>
         </div>
         <div style="text-align:center;margin:6px 0 10px">
           <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px">
             <div class="big-num" id="trk-dist" style="color:#fb923c;font-size:48px">0.00</div>
-            <div style="font-size:14px;color:#666;margin-bottom:10px;font-family:'DM Mono',monospace">mi</div>
+            <div style="font-size:14px;color:#8b8b9c;margin-bottom:10px;font-family:'DM Mono',monospace">mi</div>
           </div>
           <div style="display:flex;justify-content:center;gap:22px;margin-top:4px;font-family:'DM Mono',monospace;font-size:12px;color:#aaa">
             <span>⏱ <span id="trk-time">0:00</span></span>
@@ -133,17 +133,17 @@
           <button id="trk-pause" onclick="trkTogglePause()" style="flex:1;display:none;background:#fbbf24;color:#0d0d1a;font-size:15px;padding:11px 14px;border-radius:10px">Pause</button>
           <button class="bw" style="flex:1;display:none" id="trk-finish" onclick="trkFinish()">Finish</button>
         </div>
-        <div id="trk-status" style="font-size:10px;color:#666;font-family:'DM Mono',monospace;text-align:center;margin-top:10px;min-height:14px">GPS ready · keep the screen on while tracking</div>
-        <div style="font-size:9px;color:#555;font-family:'DM Mono',monospace;text-align:center;margin-top:2px">Walks auto-add estimated steps to today's count (cadence-based, calibrate in Settings)</div>
+        <div id="trk-status" style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:10px;min-height:14px">GPS ready · keep the screen on while tracking</div>
+        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:2px">Walks auto-add estimated steps to today's count (cadence-based, calibrate in Settings)</div>
         <div style="border-top:1px solid #1e1e35;margin-top:14px;padding-top:12px">
           <div class="rlbl" style="margin-top:0">Manual entry (no GPS)</div>
           <div style="display:flex;gap:8px">
-            <input type="number" id="trk-m-miles" placeholder="miles" step="0.1" style="flex:1;margin-bottom:0"/>
-            <input type="number" id="trk-m-min" placeholder="minutes" style="flex:1;margin-bottom:0"/>
-            <input type="number" id="trk-m-hr" placeholder="avg HR" style="flex:0 0 72px;margin-bottom:0"/>
+            <input type="number" inputmode="decimal" id="trk-m-miles" placeholder="miles" step="0.1" style="flex:1;margin-bottom:0"/>
+            <input type="number" inputmode="decimal" id="trk-m-min" placeholder="minutes" style="flex:1;margin-bottom:0"/>
+            <input type="number" inputmode="decimal" id="trk-m-hr" placeholder="avg HR" style="flex:0 0 72px;margin-bottom:0"/>
             <button class="bp" onclick="trkSaveManual()">Save</button>
           </div>
-          <div style="font-size:9px;color:#555;font-family:'DM Mono',monospace;text-align:center;margin-top:4px">Avg HR is optional \u2014 used to classify the ride into a heart-rate zone (Zone 2 = ~60\u201370% of max HR). Set your age or max HR in Settings first.</div>
+          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:4px">Avg HR is optional \u2014 used to classify the ride into a heart-rate zone (Zone 2 = ~60\u201370% of max HR). Set your age or max HR in Settings first.</div>
         </div>
       </div>
   </div>
@@ -157,7 +157,7 @@
 
 
     <!-- ════════ DASHBOARD ════════ -->
-    <div class="panel active" id="panel-dash">
+    <div class="panel" id="panel-dash">
 
       <!-- Alerts -->
       <div id="weighin-banner"></div>
@@ -171,7 +171,7 @@
         <div class="card-title" id="cal-title">Today's Calories</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px">
           <div class="big-num" id="net-cal" style="color:#5eead4">0</div>
-          <div style="font-size:13px;color:#666;margin-bottom:8px;font-family:'DM Mono',monospace">net kcal</div>
+          <div style="font-size:13px;color:#8b8b9c;margin-bottom:8px;font-family:'DM Mono',monospace">net kcal</div>
         </div>
         <div class="cal-meta"><span id="eaten-lbl">🍽 0 eaten</span><span id="burned-lbl">🔥 0 burned</span><span id="rem-lbl" style="color:#5eead4">— left</span><span id="time-lbl">🕐 0 min trained</span></div>
         <div class="pbar-wrap"><div class="pbar" id="cal-bar" style="width:0%"></div></div>
@@ -195,7 +195,7 @@
         <div class="card-title" style="color:#38bdf8">💧 Water</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
           <div class="big-num" id="dash-water-oz" style="color:#38bdf8;font-size:32px">0</div>
-          <div style="font-size:12px;color:#666;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-water-goal">oz · goal --</div>
+          <div style="font-size:12px;color:#8b8b9c;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-water-goal">oz · goal --</div>
         </div>
         <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
       </div>
@@ -206,11 +206,11 @@
         <div class="card-title" style="color:#fb923c">🏃 Weekly Activity</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
           <div class="big-num" id="dash-activity-min" style="color:#fb923c;font-size:32px">0</div>
-          <div style="font-size:12px;color:#666;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-activity-goal">min · goal 300</div>
+          <div style="font-size:12px;color:#8b8b9c;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-activity-goal">min · goal 300</div>
         </div>
         <div class="water-bar-wrap"><div class="water-bar" id="dash-activity-bar" style="width:0%;background:linear-gradient(90deg,#fb923c,#fbbf24)"></div></div>
-        <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:6px" id="dash-activity-window">This week (Mon–Sun) · lift + bike + yoga</div>
-        <div style="font-size:10px;color:#555;font-family:'DM Mono',monospace;margin-top:2px" id="dash-activity-rolling">Rolling 7 days: 0 min</div>
+        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:6px" id="dash-activity-window">This week (Mon–Sun) · lift + bike + yoga</div>
+        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:2px" id="dash-activity-rolling">Rolling 7 days: 0 min</div>
       </div>
 
       <div class="card">
@@ -220,7 +220,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">🛌 Recovery Check</div>
+        <div class="card-title">🛌 Readiness</div>
         <div id="dash-recovery" style="font-size:12px;line-height:1.5"></div>
       </div>
 
@@ -245,10 +245,10 @@
         </div>
         <div style="display:flex;gap:16px;align-items:baseline">
           <div class="big-num" id="dash-wt" style="color:#a78bfa;font-size:36px">--</div>
-          <div style="font-size:13px;color:#666;font-family:'DM Mono',monospace">lbs</div>
+          <div style="font-size:13px;color:#8b8b9c;font-family:'DM Mono',monospace">lbs</div>
           <div style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace" id="dash-lost"></div>
         </div>
-        <div style="font-size:10px;color:#555;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
+        <div style="font-size:11px;color:#8b8b9c;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
       </div>
 
       <div class="card" data-cid="wtrend" data-default="open">
@@ -317,7 +317,7 @@
         <div class="info-sec-body">
       <div class="card">
         <div class="card-title" style="margin-bottom:8px">Filter</div>
-        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Tap to toggle. Combine filters to narrow down.</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Tap to toggle. Combine filters to narrow down.</div>
         <div id="meals-filters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
       <div style="margin-top:14px" id="meals-list"></div>
@@ -570,15 +570,15 @@
           <div class="ld-pane-hdr"><span class="ld-ic">🕘</span>Food History</div>
           <div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5">Search everything you've ever logged — not just Favorites or the last few Recent items.</div>
           <input type="text" id="fh-q" placeholder="e.g. salmon, greek yogurt…" style="margin-bottom:10px" oninput="fhSearch(this.value)"/>
-          <div id="fh-status" style="font-size:10px;color:#888;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:4px"></div>
+          <div id="fh-status" style="font-size:11px;color:#888;font-family:'DM Mono',monospace;min-height:14px;margin-bottom:4px"></div>
           <div id="fh-results"></div>
         </div>
         <div class="ld-pane" data-ldpane="custom">
           <div class="ld-pane-hdr"><span class="ld-ic">✏️</span>Custom</div>
           <input type="text" id="cf-name" placeholder="Food name"/>
-          <div class="g2"><input type="number" id="cf-cal" placeholder="Calories"/><input type="number" id="cf-protein" placeholder="Protein (g)"/><input type="number" id="cf-carbs" placeholder="Carbs (g)"/><input type="number" id="cf-fat" placeholder="Fat (g)"/></div>
-          <div class="g2" style="margin-top:8px"><input type="number" id="cf-fiber" placeholder="Fiber (g) — optional"/><input type="number" id="cf-sodium" placeholder="Sodium (mg) — optional"/></div>
-          <div class="g2" style="margin-top:8px"><input type="number" id="cf-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" id="cf-chol" placeholder="Cholesterol (mg) — optional"/></div>
+          <div class="g2"><input type="number" inputmode="decimal" id="cf-cal" placeholder="Calories"/><input type="number" inputmode="decimal" id="cf-protein" placeholder="Protein (g)"/><input type="number" inputmode="decimal" id="cf-carbs" placeholder="Carbs (g)"/><input type="number" inputmode="decimal" id="cf-fat" placeholder="Fat (g)"/></div>
+          <div class="g2" style="margin-top:8px"><input type="number" inputmode="decimal" id="cf-fiber" placeholder="Fiber (g) — optional"/><input type="number" inputmode="decimal" id="cf-sodium" placeholder="Sodium (mg) — optional"/></div>
+          <div class="g2" style="margin-top:8px"><input type="number" inputmode="decimal" id="cf-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" inputmode="decimal" id="cf-chol" placeholder="Cholesterol (mg) — optional"/></div>
           <button class="bp bfull" onclick="addCustomFood()">Add to Log</button>
         </div>
       </div>
@@ -586,7 +586,7 @@
       <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">📥 Import Food JSON</div>
         <div style="font-size:11px;color:#888;margin-bottom:8px">Uploads and <b>replaces</b> that day's food log. Format:<br>
-          <code style="font-size:10px">{"date":"2026-08-13","meals":{"breakfast":[{"name":"Overnight Oats","calories":300,"protein":20,"carbs":45,"fat":8}]}}</code>
+          <code style="font-size:11px">{"date":"2026-08-13","meals":{"breakfast":[{"name":"Overnight Oats","calories":300,"protein":20,"carbs":45,"fat":8}]}}</code>
         </div>
         <input type="file" id="food-import-input" accept=".json,application/json" onchange="importFoodFile(this)" style="width:100%"/>
       </div>
@@ -608,10 +608,10 @@
             </select>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="number" id="walk-min" placeholder="Minutes" style="flex:1;margin-bottom:0"/>
+            <input type="number" inputmode="decimal" id="walk-min" placeholder="Minutes" style="flex:1;margin-bottom:0"/>
             <button class="bp" onclick="logCustomWalk()">+ Log</button>
           </div>
-          <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-top:6px" id="cardio-hint">~4.3 kcal/min · e.g. 40 min ≈ 170 kcal</div>
+          <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-top:6px" id="cardio-hint">~4.3 kcal/min · e.g. 40 min ≈ 170 kcal</div>
       </div>
       <div class="card"><div class="card-title">🔥 Today's Exercise Log <span id="burned-lbl2" style="float:right;font-weight:400;color:#888;font-size:11px"></span></div><div id="ex-log"><div class="empty">No workouts logged yet</div></div></div>
 
@@ -628,25 +628,25 @@
 
         <div class="ld-pane" data-ldpane="water">
           <div class="ld-pane-hdr"><span class="ld-ic">💧</span>Water <span style="font-size:12px;color:#38bdf899;font-weight:400;margin-left:6px" id="water-inline">0 oz logged</span></div>
-          <div style="font-size:11px;color:#666;margin-bottom:12px">Full total &amp; goal progress live on the Dashboard — this is just for logging.</div>
+          <div style="font-size:11px;color:#8b8b9c;margin-bottom:12px">Full total &amp; goal progress live on the Dashboard — this is just for logging.</div>
           <div class="water-btns"><button class="bw" style="flex:1" onclick="addWater(8)">+ 8 oz</button><button class="bw" onclick="addWater(16)">+ 16 oz</button><button class="bw" onclick="addWater(32)">+ 32 oz</button><button class="bs" onclick="removeWater(8)" style="font-size:13px">&#8722;</button></div>
-          <div style="display:flex;gap:8px;margin-top:10px"><input type="number" id="water-custom" placeholder="Enter oz..." style="flex:1;margin-bottom:0;background:#0d2235;border:1px solid #38bdf833;color:#38bdf8;border-radius:10px;padding:10px 14px;font-size:14px;outline:none;-webkit-appearance:none" onkeydown="if(event.key==='Enter')addCustomWater()"/><button class="bw" onclick="addCustomWater()">+ Add</button></div>
+          <div style="display:flex;gap:8px;margin-top:10px"><input type="number" inputmode="decimal" id="water-custom" placeholder="Enter oz..." style="flex:1;margin-bottom:0;background:#0d2235;border:1px solid #38bdf833;color:#38bdf8;border-radius:10px;padding:10px 14px;font-size:14px;outline:none;-webkit-appearance:none" onkeydown="if(event.key==='Enter')addCustomWater()"/><button class="bw" onclick="addCustomWater()">+ Add</button></div>
           <div class="water-hint" id="water-hint"></div>
         </div>
 
         <div class="ld-pane" data-ldpane="weight">
           <div class="ld-pane-hdr"><span class="ld-ic">⚖️</span>Weight</div>
-          <div class="card-title">Log Weight</div><div style="display:flex;gap:10px"><input type="number" id="wt-input" placeholder="e.g. 229.5" step="0.1" style="flex:1;margin-bottom:0"/><button class="bp" onclick="logWeight()">Save</button></div><div style="font-size:10px;color:#555;margin-top:8px;font-family:'DM Mono',monospace">Same time each morning, after bathroom, before eating</div>
+          <div class="card-title">Log Weight</div><div style="display:flex;gap:10px"><input type="number" inputmode="decimal" id="wt-input" placeholder="e.g. 229.5" step="0.1" style="flex:1;margin-bottom:0"/><button class="bp" onclick="logWeight()">Save</button></div><div style="font-size:11px;color:#8b8b9c;margin-top:8px;font-family:'DM Mono',monospace">Same time each morning, after bathroom, before eating</div>
           <div id="wt-history" style="margin-top:12px"></div>
           <div class="rlbl" style="margin-top:16px">Body Comp (optional — from smart scale)</div>
           <div class="g2" style="gap:10px">
-            <div><div class="rlbl" style="margin:0 0 4px">Body Fat %</div><input type="number" id="bc-bodyfat" placeholder="e.g. 25.1" step="0.1" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Muscle (lb)</div><input type="number" id="bc-muscle" placeholder="e.g. 79.2" step="0.1" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Water %</div><input type="number" id="bc-water" placeholder="e.g. 54.6" step="0.1" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Bone (lb)</div><input type="number" id="bc-bone" placeholder="e.g. 8.2" step="0.1" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Body Fat %</div><input type="number" inputmode="decimal" id="bc-bodyfat" placeholder="e.g. 25.1" step="0.1" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Muscle (lb)</div><input type="number" inputmode="decimal" id="bc-muscle" placeholder="e.g. 79.2" step="0.1" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Water %</div><input type="number" inputmode="decimal" id="bc-water" placeholder="e.g. 54.6" step="0.1" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Bone (lb)</div><input type="number" inputmode="decimal" id="bc-bone" placeholder="e.g. 8.2" step="0.1" style="margin-bottom:0"/></div>
           </div>
           <button class="bp bfull" onclick="logBodyComp()" style="margin-top:10px">Save Body Comp</button>
-          <div id="bc-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
+          <div id="bc-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
           <div id="bc-history" style="margin-top:12px"></div>
         </div>
 
@@ -654,47 +654,47 @@
           <div class="ld-pane-hdr"><span class="ld-ic">💡</span>Wellness</div>
           <div class="rlbl" style="margin-top:0">Energy</div><div class="rating-row" id="row-energy"><button class="rbtn" data-field="energy" data-val="1">1</button><button class="rbtn" data-field="energy" data-val="2">2</button><button class="rbtn" data-field="energy" data-val="3">3</button><button class="rbtn" data-field="energy" data-val="4">4</button><button class="rbtn" data-field="energy" data-val="5">5</button></div><div class="range-hint"><span>Drained</span><span>Energized</span></div>
           <div class="rlbl">Mood</div><div class="rating-row" id="row-mood"><button class="rbtn" data-field="mood" data-val="1">😞</button><button class="rbtn" data-field="mood" data-val="2">😟</button><button class="rbtn" data-field="mood" data-val="3">😐</button><button class="rbtn" data-field="mood" data-val="4">🙂</button><button class="rbtn" data-field="mood" data-val="5">😁</button></div>
-          <div class="rlbl">Resting Heart Rate</div><div style="display:flex;gap:8px;align-items:center"><input type="number" id="rhr-in" class="winput" placeholder="e.g. 62" min="30" max="150"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">bpm</div><button class="bp" style="padding:8px 14px;white-space:nowrap" onclick="addRhrReading()">+ Add</button></div>
+          <div class="rlbl">Resting Heart Rate</div><div style="display:flex;gap:8px;align-items:center"><input type="number" inputmode="decimal" id="rhr-in" class="winput" placeholder="e.g. 62" min="30" max="150"/><div style="font-size:11px;color:#888;font-family:'DM Mono',monospace">bpm</div><button class="bp" style="padding:8px 14px;white-space:nowrap" onclick="addRhrReading()">+ Add</button></div>
           <div id="rhr-history" style="margin-top:6px"></div>
           <div class="rlbl">Blood Pressure</div><div style="display:flex;gap:8px;align-items:center">
-            <input type="number" id="bp-sys-in" class="winput" placeholder="120" min="60" max="250" style="max-width:70px" oninput="liveBpCheck()"/>
+            <input type="number" inputmode="decimal" id="bp-sys-in" class="winput" placeholder="120" min="60" max="250" style="max-width:70px" oninput="liveBpCheck()"/>
             <div style="font-size:14px;color:#888">/</div>
-            <input type="number" id="bp-dia-in" class="winput" placeholder="80" min="40" max="150" style="max-width:70px" oninput="liveBpCheck()"/>
-            <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">mmHg</div>
+            <input type="number" inputmode="decimal" id="bp-dia-in" class="winput" placeholder="80" min="40" max="150" style="max-width:70px" oninput="liveBpCheck()"/>
+            <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace">mmHg</div>
             <div id="bp-live-tag" style="font-size:11px;font-weight:600"></div>
             <button class="bp" style="padding:8px 14px;white-space:nowrap;margin-left:auto" onclick="addBpReading()">+ Add</button>
           </div>
           <div id="bp-history" style="margin-top:6px"></div>
           <button class="bp bfull" style="margin-top:14px" onclick="saveWellness()">Save Wellness</button>
-          <div id="well-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
+          <div id="well-msg" style="text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
         </div>
 
         <div class="ld-pane" data-ldpane="med">
           <div class="ld-pane-hdr"><span class="ld-ic">🧘</span>Meditate</div>
           <div class="rlbl" style="margin-top:0">Duration</div>
-          <div style="display:flex;gap:8px;align-items:center"><input type="number" id="med-mins" class="winput" placeholder="e.g. 10" min="1" max="120"/><div style="font-size:10px;color:#888;font-family:'DM Mono',monospace">min</div></div>
+          <div style="display:flex;gap:8px;align-items:center"><input type="number" inputmode="decimal" id="med-mins" class="winput" placeholder="e.g. 10" min="1" max="120"/><div style="font-size:11px;color:#888;font-family:'DM Mono',monospace">min</div></div>
           <button class="ba bfull" style="margin-top:10px" onclick="openMedTimer()">▷ Meditation Timer</button>
           <div class="rlbl">Type</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="med-type-btn" data-type="Breathwork" onclick="setMedType(this)">Breathwork</button><button class="med-type-btn" data-type="Guided" onclick="setMedType(this)">Guided</button><button class="med-type-btn" data-type="Silent" onclick="setMedType(this)">Silent</button><button class="med-type-btn" data-type="Body Scan" onclick="setMedType(this)">Body Scan</button></div>
           <div class="rlbl">Clarity After</div><div class="rating-row" id="row-medClarity"><button class="rbtn" data-field="medClarity" data-val="1">1</button><button class="rbtn" data-field="medClarity" data-val="2">2</button><button class="rbtn" data-field="medClarity" data-val="3">3</button><button class="rbtn" data-field="medClarity" data-val="4">4</button><button class="rbtn" data-field="medClarity" data-val="5">5</button></div><div class="range-hint"><span>Foggy</span><span>Clear</span></div>
           <button class="bp bfull" style="margin-top:14px" onclick="saveMeditation()">Log Session</button>
-          <div id="med-msg" style="text-align:center;font-size:10px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
+          <div id="med-msg" style="text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:#5eead4;margin-top:8px;min-height:14px"></div>
           <div id="med-history" style="margin-top:8px"></div>
         </div>
 
         <div class="ld-pane" data-ldpane="measure">
           <div class="ld-pane-hdr"><span class="ld-ic">📏</span>Measurements</div>
-          <div style="font-size:10px;color:#555;font-family:'DM Mono',monospace;margin-bottom:14px">All in inches. Measure every 2 weeks. These sync to the sheet.</div>
+          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-bottom:14px">All in inches. Measure every 2 weeks. These sync to the sheet.</div>
           <div class="g2" style="gap:10px">
-            <div><div class="rlbl" style="margin:0 0 4px">Waist</div><input type="number" id="m-waist" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Chest</div><input type="number" id="m-chest" placeholder="e.g. 44.0" step="0.25" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Hips</div><input type="number" id="m-hips" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Thighs</div><input type="number" id="m-thighs" placeholder="e.g. 25.0" step="0.25" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Neck</div><input type="number" id="m-neck" placeholder="e.g. 17.0" step="0.25" style="margin-bottom:0"/></div>
-            <div><div class="rlbl" style="margin:0 0 4px">Biceps</div><input type="number" id="m-biceps" placeholder="e.g. 14.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Waist</div><input type="number" inputmode="decimal" id="m-waist" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Chest</div><input type="number" inputmode="decimal" id="m-chest" placeholder="e.g. 44.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Hips</div><input type="number" inputmode="decimal" id="m-hips" placeholder="e.g. 42.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Thighs</div><input type="number" inputmode="decimal" id="m-thighs" placeholder="e.g. 25.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Neck</div><input type="number" inputmode="decimal" id="m-neck" placeholder="e.g. 17.0" step="0.25" style="margin-bottom:0"/></div>
+            <div><div class="rlbl" style="margin:0 0 4px">Biceps</div><input type="number" inputmode="decimal" id="m-biceps" placeholder="e.g. 14.0" step="0.25" style="margin-bottom:0"/></div>
           </div>
           <button class="bp bfull" onclick="logMeasurements()" style="margin-top:14px">Save Measurements</button>
-          <div id="measure-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
+          <div id="measure-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
           <div id="measurements-history" style="margin-top:12px"></div>
         </div>
 
@@ -713,7 +713,7 @@
         <div style="padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:300;color:#f0ede8;letter-spacing:-0.5px">Yoga Guide</div>
-            <div style="font-size:9px;color:#c9a96e;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Your Practice</div>
+            <div style="font-size:11px;color:#c9a96e;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Your Practice</div>
           </div>
           <div class="routine-pill" onclick="yogaSwitchTab('routine')" style="cursor:pointer">
             <div><div class="rp-count" id="rp-count">0</div><div class="rp-lbl">Routine</div></div>
@@ -753,7 +753,7 @@
         <div class="yg-panel active" id="yg-panel-presets">
           <div style="padding:14px 16px 8px">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:300;margin-bottom:4px;color:#f0ede8">Preset Routines</div>
-            <div style="font-size:10px;color:#888">Tap Load to fill your routine instantly. Calories calculated for your weight.</div>
+            <div style="font-size:11px;color:#888">Tap Load to fill your routine instantly. Calories calculated for your weight.</div>
           </div>
           <div class="presets-grid" id="presets-grid"></div>
         </div>
@@ -783,19 +783,19 @@
             <div style="padding:10px 20px 0">
               <div style="display:flex;gap:8px">
                 <input type="text" id="routine-name" placeholder="Name this routine..." style="flex:1;margin-bottom:0;background:#1a1a28;border:1px solid #ffffff1a;border-radius:10px;padding:10px 14px;color:#f0ede8;font-size:13px;font-family:'DM Mono',monospace;outline:none;-webkit-appearance:none"/>
-                <button onclick="saveRoutine()" style="background:#7fb09a22;border:1px solid #7fb09a44;border-radius:10px;padding:10px 16px;color:#a8d4c2;font-size:10px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;white-space:nowrap">Save ✦</button>
+                <button onclick="saveRoutine()" style="background:#7fb09a22;border:1px solid #7fb09a44;border-radius:10px;padding:10px 16px;color:#a8d4c2;font-size:11px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;white-space:nowrap">Save ✦</button>
               </div>
-              <div id="save-msg" style="font-size:10px;color:#7fb09a;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
+              <div id="save-msg" style="font-size:11px;color:#7fb09a;font-family:'DM Mono',monospace;text-align:center;margin-top:8px;min-height:14px"></div>
             </div>
           </div>
         </div>
         <div class="yg-panel" id="yg-panel-saved">
           <div style="padding:14px 16px 8px">
             <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:300;margin-bottom:4px;color:#f0ede8">Saved Routines</div>
-            <div style="font-size:10px;color:#888">Your custom routines. Tap Load to restore any routine.</div>
+            <div style="font-size:11px;color:#888">Your custom routines. Tap Load to restore any routine.</div>
           </div>
           <div id="saved-list" style="padding:8px 16px;display:flex;flex-direction:column;gap:10px">
-            <div style="text-align:center;padding:40px 0;color:#555;font-size:12px;font-family:'DM Mono',monospace" id="saved-empty">No saved routines yet.<br><br>Build a routine and tap Save.</div>
+            <div style="text-align:center;padding:40px 0;color:#8b8b9c;font-size:12px;font-family:'DM Mono',monospace" id="saved-empty">No saved routines yet.<br><br>Build a routine and tap Save.</div>
           </div>
         </div>
       </div>
@@ -831,7 +831,7 @@
     #sess-info{display:none;margin-top:10px;padding:12px 14px;border-radius:12px;
       background:#ffffff08;border:1px solid var(--border,#ffffff10);text-align:left}
     #sess-info.open{display:block}
-    #sess-info .si-lbl{font-family:var(--font-mono,'DM Mono',monospace);font-size:9px;
+    #sess-info .si-lbl{font-family:var(--font-mono,'DM Mono',monospace);font-size:11px;
       letter-spacing:.18em;text-transform:uppercase;color:#c6f24e;margin-bottom:5px}
     #sess-info .si-sec{margin-bottom:12px}
     #sess-info .si-sec:last-child{margin-bottom:0}
@@ -840,7 +840,7 @@
     #sess-info ol li{font-size:12px;line-height:1.65;color:var(--text,#f0ede8);margin-bottom:5px}
     #sess-info .si-chip{display:inline-block;padding:3px 9px;margin:3px 4px 0 0;border-radius:20px;
       background:#c6f24e18;border:1px solid #c6f24e33;color:#c6f24e;
-      font-family:var(--font-mono,'DM Mono',monospace);font-size:10px}
+      font-family:var(--font-mono,'DM Mono',monospace);font-size:11px}
   </style>
   <button class="sess-info-tog" id="sess-info-tog" onclick="ygToggleInfo()">▾ Pose details</button>
   <div id="sess-info"></div>
@@ -867,7 +867,7 @@
 <div class="modal-bg" id="wt-modal" style="display:none">
   <div class="modal-card">
     <div class="card-title">Log Weight</div>
-    <input type="number" id="wt-modal-in" placeholder="e.g. 229.5" step="0.1"/>
+    <input type="number" inputmode="decimal" id="wt-modal-in" placeholder="e.g. 229.5" step="0.1"/>
     <div style="display:flex;gap:10px">
       <button class="bs" style="flex:1" onclick="closeWtModal()">Cancel</button>
       <button class="bp" style="flex:1" onclick="logWeightModal()">Save</button>
@@ -879,9 +879,9 @@
   <div class="modal-card">
     <div class="card-title">Edit Food</div>
     <input type="text" id="ef-name" placeholder="Food name"/>
-    <div class="g2"><input type="number" id="ef-cal" placeholder="Calories"/><input type="number" id="ef-protein" placeholder="Protein (g)"/><input type="number" id="ef-carbs" placeholder="Carbs (g)"/><input type="number" id="ef-fat" placeholder="Fat (g)"/></div>
-    <div class="g2" style="margin-top:8px"><input type="number" id="ef-fiber" placeholder="Fiber (g) — optional"/><input type="number" id="ef-sodium" placeholder="Sodium (mg) — optional"/></div>
-    <div class="g2" style="margin-top:8px"><input type="number" id="ef-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" id="ef-chol" placeholder="Cholesterol (mg) — optional"/></div>
+    <div class="g2"><input type="number" inputmode="decimal" id="ef-cal" placeholder="Calories"/><input type="number" inputmode="decimal" id="ef-protein" placeholder="Protein (g)"/><input type="number" inputmode="decimal" id="ef-carbs" placeholder="Carbs (g)"/><input type="number" inputmode="decimal" id="ef-fat" placeholder="Fat (g)"/></div>
+    <div class="g2" style="margin-top:8px"><input type="number" inputmode="decimal" id="ef-fiber" placeholder="Fiber (g) — optional"/><input type="number" inputmode="decimal" id="ef-sodium" placeholder="Sodium (mg) — optional"/></div>
+    <div class="g2" style="margin-top:8px"><input type="number" inputmode="decimal" id="ef-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" inputmode="decimal" id="ef-chol" placeholder="Cholesterol (mg) — optional"/></div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="bs" style="flex:1" onclick="closeFoodEdit()">Cancel</button>
       <button class="bp" style="flex:1" onclick="saveFoodEdit()">Save</button>
@@ -893,10 +893,10 @@
   <div class="modal-card">
     <div class="card-title">Edit Exercise</div>
     <input type="text" id="ee-name" placeholder="Exercise name"/>
-    <input type="number" id="ee-cal" placeholder="Calories burned"/>
+    <input type="number" inputmode="decimal" id="ee-cal" placeholder="Calories burned"/>
     <div style="display:flex;gap:10px;margin-top:8px">
-      <input type="number" id="ee-avghr" placeholder="Avg HR (bpm)" min="30" max="220" style="flex:1"/>
-      <input type="number" id="ee-peakhr" placeholder="Peak HR (bpm)" min="30" max="220" style="flex:1"/>
+      <input type="number" inputmode="decimal" id="ee-avghr" placeholder="Avg HR (bpm)" min="30" max="220" style="flex:1"/>
+      <input type="number" inputmode="decimal" id="ee-peakhr" placeholder="Peak HR (bpm)" min="30" max="220" style="flex:1"/>
     </div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="bs" style="flex:1" onclick="closeExEdit()">Cancel</button>
@@ -918,33 +918,33 @@
         <div class="card-title">Profile</div>
         <input type="text" id="ft-name-input" placeholder="Your name" style="margin-bottom:8px" />
         <div class="g2">
-          <div><div class="rlbl" style="margin-top:0">Starting weight (lbs)</div><input type="number" id="ft-start-weight" placeholder="e.g. 200" step="0.1" style="margin-bottom:0"/></div>
-          <div><div class="rlbl" style="margin-top:0">Goal weight (lbs)</div><input type="number" id="ft-goal-weight" placeholder="e.g. 180" step="0.1" style="margin-bottom:0"/></div>
+          <div><div class="rlbl" style="margin-top:0">Starting weight (lbs)</div><input type="number" inputmode="decimal" id="ft-start-weight" placeholder="e.g. 200" step="0.1" style="margin-bottom:0"/></div>
+          <div><div class="rlbl" style="margin-top:0">Goal weight (lbs)</div><input type="number" inputmode="decimal" id="ft-goal-weight" placeholder="e.g. 180" step="0.1" style="margin-bottom:0"/></div>
         </div>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">Daily Goals</div>
-        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Calories vary by day type to support muscle building in a mild deficit. Protein and other macros stay constant.</div>
-        <div class="rlbl" style="margin-top:0">Rest day calories <span style="color:#666" id="ds-cal-days-rest">(Sun)</span></div><input type="number" id="ft-cal-rest" style="margin-bottom:8px"/>
-        <div class="rlbl"><span id="ds-cal-lbl-recovery">Active recovery calories</span> <span style="color:#666" id="ds-cal-days-recovery">(Wed · yoga + walk/ride)</span></div><input type="number" id="ft-cal-recovery" style="margin-bottom:8px"/>
-        <div class="rlbl">Active/lift day calories <span style="color:#666" id="ds-cal-days-active">(Mon · Tue · Thu · Fri)</span></div><input type="number" id="ft-cal-active" style="margin-bottom:8px"/>
-        <div class="rlbl"><span id="ds-cal-lbl-ride">Ride day calories</span> <span style="color:#666" id="ds-cal-days-ride">(Sat)</span></div><input type="number" id="ft-cal-ride" style="margin-bottom:8px"/>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Calories vary by day type to support muscle building in a mild deficit. Protein and other macros stay constant.</div>
+        <div class="rlbl" style="margin-top:0">Rest day calories <span style="color:#8b8b9c" id="ds-cal-days-rest">(Sun)</span></div><input type="number" inputmode="decimal" id="ft-cal-rest" style="margin-bottom:8px"/>
+        <div class="rlbl"><span id="ds-cal-lbl-recovery">Active recovery calories</span> <span style="color:#8b8b9c" id="ds-cal-days-recovery">(Wed · yoga + walk/ride)</span></div><input type="number" inputmode="decimal" id="ft-cal-recovery" style="margin-bottom:8px"/>
+        <div class="rlbl">Active/lift day calories <span style="color:#8b8b9c" id="ds-cal-days-active">(Mon · Tue · Thu · Fri)</span></div><input type="number" inputmode="decimal" id="ft-cal-active" style="margin-bottom:8px"/>
+        <div class="rlbl"><span id="ds-cal-lbl-ride">Ride day calories</span> <span style="color:#8b8b9c" id="ds-cal-days-ride">(Sat)</span></div><input type="number" inputmode="decimal" id="ft-cal-ride" style="margin-bottom:8px"/>
         <div class="g2">
-          <div><div class="rlbl" style="margin-top:0">Protein (g)</div><input type="number" id="ft-protein" style="margin-bottom:0"/></div>
-          <div><div class="rlbl" style="margin-top:0">Carbs (g)</div><input type="number" id="ft-carbs" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Fat (g)</div><input type="number" id="ft-fat" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Fiber (g)</div><input type="number" id="ft-fiber" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Sodium limit (mg)</div><input type="number" id="ft-sodium" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Sat Fat limit (g)</div><input type="number" id="ft-satfat" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Cholesterol limit (mg)</div><input type="number" id="ft-chol" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Burn target</div><input type="number" id="ft-burned" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Water (oz)</div><input type="number" id="ft-water" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Activity (min/wk)</div><input type="number" id="ft-activity" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Age (for HR zones)</div><input type="number" id="ft-age" style="margin-bottom:0"/></div>
-          <div><div class="rlbl">Max HR (blank = est. from age)</div><input type="number" id="ft-maxhr" style="margin-bottom:0"/></div>
+          <div><div class="rlbl" style="margin-top:0">Protein (g)</div><input type="number" inputmode="decimal" id="ft-protein" style="margin-bottom:0"/></div>
+          <div><div class="rlbl" style="margin-top:0">Carbs (g)</div><input type="number" inputmode="decimal" id="ft-carbs" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Fat (g)</div><input type="number" inputmode="decimal" id="ft-fat" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Fiber (g)</div><input type="number" inputmode="decimal" id="ft-fiber" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Sodium limit (mg)</div><input type="number" inputmode="decimal" id="ft-sodium" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Sat Fat limit (g)</div><input type="number" inputmode="decimal" id="ft-satfat" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Cholesterol limit (mg)</div><input type="number" inputmode="decimal" id="ft-chol" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Burn target</div><input type="number" inputmode="decimal" id="ft-burned" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Water (oz)</div><input type="number" inputmode="decimal" id="ft-water" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Activity (min/wk)</div><input type="number" inputmode="decimal" id="ft-activity" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Age (for HR zones)</div><input type="number" inputmode="decimal" id="ft-age" style="margin-bottom:0"/></div>
+          <div><div class="rlbl">Max HR (blank = est. from age)</div><input type="number" inputmode="decimal" id="ft-maxhr" style="margin-bottom:0"/></div>
         </div>
-        <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:6px">Cadence default is 105 steps/min. Check your phone's Health app (iPhone) or Google Fit (Android) after a walk, divide steps by minutes, and enter your real number here for more accurate estimates.</div>
-        <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#666">(weight + body comp reminder)</span></div>
+        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:6px">Cadence default is 105 steps/min. Check your phone's Health app (iPhone) or Google Fit (Android) after a walk, divide steps by minutes, and enter your real number here for more accurate estimates.</div>
+        <div class="rlbl" style="margin-top:14px">Weigh-in day <span style="color:#8b8b9c">(weight + body comp reminder)</span></div>
         <select id="ft-weighin-day" style="margin-bottom:0" onchange="setWeighinDay(this.value)">
           <option value="0">Sunday</option>
           <option value="1">Monday</option>
@@ -971,38 +971,38 @@
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">🏋️ Custom Exercise Set</div>
-        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
         <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">📋 Plan Source</div>
-        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
         <div class="rlbl" style="margin-top:0">Plan JSON URL (optional)</div>
         <input type="text" id="ft-plan-url" placeholder="leave blank for plan.json" style="font-size:11px;margin-bottom:4px" />
         <button class="bs bfull" onclick="planReload()" style="margin-top:6px">↻ Reload Plan</button>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">🗓️ Exercise Plan (Mon–Sun)</div>
-        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
-        <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
         <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
         <button class="bp bfull" onclick="dsPlanEditorOpen()" style="margin-top:0">✎ Edit Plan</button>
         <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()" style="margin-top:6px">⬆ Import Plan (JSON)</button>
         <button class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
-        <div id="ds-plan-sync-msg" style="font-size:10px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
+        <div id="ds-plan-sync-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
         <div style="margin-top:10px"><label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer"><span style="font-size:11px;color:#ccc;font-family:'DM Mono',monospace">Show built-in home extras</span><input type="checkbox" id="ds-guest-extras-toggle" onchange="dsSetGuestExtras(this.checked)" style="width:20px;height:20px;accent-color:#5eead4"/></label></div>
         <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
         <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
         <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
-        <div style="font-size:10px;color:#666;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
+        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
       </div>
       <div class="card" style="margin-top:10px">
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
         <div class="rlbl">PIN (optional, 4 digits)</div>
-        <input type="number" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
-        <div id="ft-settings-msg" style="font-size:10px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
+        <input type="number" inputmode="decimal" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
+        <div id="ft-settings-msg" style="font-size:11px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">📈 Training Phase Cycle</div>
       <div class="card">
@@ -1011,7 +1011,7 @@
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Phase cycle active</span>
           <input type="checkbox" id="ds-phase-toggle" onchange="dsSetPhaseCycleStart(this.checked)" style="width:20px;height:20px;accent-color:#c084fc;cursor:pointer" />
         </label>
-        <div id="ds-phase-preview" style="font-size:10px;color:#c084fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-phase-preview" style="font-size:11px;color:#c084fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
         <div class="rlbl" style="margin-top:12px">Manual phase override (optional)</div>
         <select id="ds-phase-manual-select" onchange="dsSetPhaseManual(this.value)" style="width:100%;padding:8px;border-radius:8px;background:#1a1a24;color:#f0f0f0;border:1px solid #333;font-family:'DM Mono',monospace;font-size:12px">
           <option value="">Auto (follow the calendar above)</option>
@@ -1028,7 +1028,7 @@
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Deload week active</span>
           <input type="checkbox" id="ds-deload-toggle" onchange="dsSetDeload(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
         </label>
-        <div id="ds-deload-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-deload-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">▶️ Maintenance Mode</div>
       <div class="card">
@@ -1037,20 +1037,20 @@
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Maintenance mode active</span>
           <input type="checkbox" id="ds-maint-toggle" onchange="dsSetMaint(this.checked)" style="width:20px;height:20px;accent-color:#7dd3fc;cursor:pointer" />
         </label>
-        <div id="ds-maint-preview" style="font-size:10px;color:#7dd3fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-maint-preview" style="font-size:11px;color:#7dd3fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">⬆️ Bulk Phase</div>
       <div class="card">
         <div id="ds-bulk-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A deliberate muscle-building surplus — sits at your measured maintenance plus a modest surplus (default +350 kcal) for as long as you leave it on, and bumps protein to 190g. Keep the surplus lean-leaning (fiber-dense carbs, unsaturated fats) over saturated fat/added sugar. Mutually exclusive with Maintenance Mode. Stays on until you turn it off — check in with your doctor/dietitian on A1c and cholesterol during this phase.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;margin-bottom:12px">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Surplus (kcal over maintenance)</span>
-          <input type="number" id="ds-bulk-surplus" value="350" step="25" onchange="dsSetBulkSurplus(this.value)" style="width:70px;background:#1a1a2e;border:1px solid #333;border-radius:6px;color:#f0f0f0;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;text-align:right" />
+          <input type="number" inputmode="decimal" id="ds-bulk-surplus" value="350" step="25" onchange="dsSetBulkSurplus(this.value)" style="width:70px;background:#1a1a2e;border:1px solid #333;border-radius:6px;color:#f0f0f0;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;text-align:right" />
         </label>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Bulk phase active</span>
           <input type="checkbox" id="ds-bulk-toggle" onchange="dsSetBulk(this.checked)" style="width:20px;height:20px;accent-color:#fb923c;cursor:pointer" />
         </label>
-        <div id="ds-bulk-preview" style="font-size:10px;color:#fb923c;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-bulk-preview" style="font-size:11px;color:#fb923c;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">🏋️ Full-Body Mode</div>
       <div class="card">
@@ -1059,7 +1059,7 @@
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Full-body mode</span>
           <input type="checkbox" id="ds-fullbody-toggle" onchange="dsSetFullBody(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
         </label>
-        <div id="ds-fullbody-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-fullbody-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">🔁 Session Rotation</div>
       <div class="card">
@@ -1068,7 +1068,7 @@
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate weekly</span>
           <input type="checkbox" id="ds-rotate-toggle" onchange="dsToggleRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
         </label>
-        <div id="ds-rotate-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-rotate-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">🔄 Variant Rotation</div>
       <div class="card">
@@ -1077,13 +1077,13 @@
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate variants weekly</span>
           <input type="checkbox" id="ds-var-rotate-toggle" onchange="dsToggleVarRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
         </label>
-        <div id="ds-var-rotate-preview" style="font-size:10px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+        <div id="ds-var-rotate-preview" style="font-size:11px;color:#5eead4;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">🔊 Sound</div>
       <div class="card">
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Rest-timer beeps use the Web Audio API. Browsers block audio until you tap the screen once. Use this to confirm sound is working on this device.</div>
         <button class="bp bfull" style="margin-top:0" onclick="dsTestSound()">▶ Test Beep</button>
-        <div id="ds-sound-status" style="font-size:10px;color:#5eead4;text-align:center;margin-top:8px;min-height:14px;font-family:'DM Mono',monospace"></div>
+        <div id="ds-sound-status" style="font-size:11px;color:#5eead4;text-align:center;margin-top:8px;min-height:14px;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="te-section-hdr">☁️ Backup &amp; Data</div>
       <div class="card">
@@ -1110,7 +1110,7 @@
 
     <div class="card" id="ds-custom-days-card">
       <div class="card-title">Days</div>
-      <div style="font-size:10px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Pick which day(s) this set shows on. You can pick more than one.</div>
+      <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Pick which day(s) this set shows on. You can pick more than one.</div>
       <div id="ds-custom-daypicker" style="display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
 
@@ -1126,7 +1126,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div class="card-title" style="margin-bottom:0">Your Set <span id="ds-custom-count" style="color:#888;font-weight:400"></span></div>
       </div>
-      <div id="ds-custom-selected"><div style="text-align:center;color:#555;font-size:12px;font-family:'DM Mono',monospace;padding:14px 0">No exercises picked yet — add from the library below.</div></div>
+      <div id="ds-custom-selected"><div style="text-align:center;color:#8b8b9c;font-size:12px;font-family:'DM Mono',monospace;padding:14px 0">No exercises picked yet — add from the library below.</div></div>
     </div>
 
     <div class="card" style="margin-top:10px">
@@ -1249,8 +1249,8 @@
   }
   #timer-widget.active{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
   .tw-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
-  #timer-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#c6f24e}
-  #timer-name{font-size:10px;color:var(--muted,#888);text-align:right;
+  #timer-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#c6f24e}
+  #timer-name{font-size:11px;color:var(--muted,#888);text-align:right;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
   #timer-display{font-size:38px;font-weight:700;line-height:1;color:var(--text,#f0ede8);
     letter-spacing:.02em;transition:color .2s ease}
@@ -1274,8 +1274,8 @@
   <div id="timer-display">0:00</div>
   <div class="tw-track"><div id="timer-bar"></div></div>
   <div class="tw-btns">
-    <button class="tw-btn" id="t-pause" onclick="pauseTimer()">⏸</button>
-    <button class="tw-btn" onclick="restartTimer()">↻</button>
+    <button class="tw-btn" id="t-pause" aria-label="Pause" onclick="pauseTimer()">⏸</button>
+    <button class="tw-btn" aria-label="Restart" onclick="restartTimer()">↻</button>
     <button class="tw-btn close" onclick="closeTimer()">Skip</button>
   </div>
 </div>
@@ -1297,6 +1297,6 @@
   </div>
 </div>
 
-<script src="app.js?v=379"></script>
+<script src="app.js?v=380"></script>
 </body>
 </html>
