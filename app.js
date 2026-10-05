@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v294 — 2026-10-05";
+var APP_BUILD = "v295 — 2026-10-05";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5422,8 +5422,8 @@ var DS_WARMUP_BANDSHOULDER={id:'warmup-bandshoulder',name:'Banded Shoulder Pass-
 // movement before the joint-specific work is the standard piece that was missing.
 var DS_WARMUP_RAISE={id:'warmup-raise',name:'Jump Rope — General Warm-up',demo:'walk',slot:'Warm-up',target:'General · Heart Rate & Tissue Temp',equip:'Jump rope',rx:'60–90 sec',cal:15,cue:'Easy, steady pace — the goal is raising your heart rate and warming the tissues, not a cardio effort.',log:'time',secs:75,
   variants:[{name:'March or Jog in Place',equip:'Bodyweight',rx:'60–90 sec',cue:'No rope needed — march or light jog in place, knees driving up, same intent: get the heart rate up a little before the mobility work below.',demo:'walk'}]};
-var DS_WARMUP_HIPCARS={id:'wu-hip-cars',name:'Hip CARs',demo:'hipcircle',slot:'Warm-up · Prehab',target:'Hip Joint · SI Joint Prep',equip:'Wall or chair for balance',rx:'3 circles each direction, each leg',cal:10,cue:'Stand tall holding a wall. Lift one knee to hip height, then draw the biggest, slowest circle you can with that knee — out to the side, around behind you, back to front. About 5 seconds per circle. Brace your core and keep the rest of your body still; only the hip moves. 3 each direction, then switch legs.',log:'time',secs:75};
-var DS_WARMUP_SHOULDERCARS={id:'wu-shoulder-cars',name:'Shoulder CARs',demo:'shouldercar',slot:'Warm-up · Prehab',target:'Shoulder Joint',equip:'Bodyweight',rx:'3 circles each direction, each arm',cal:8,cue:'Stand tall, make a fist and squeeze the rest of your body tight. Reach the arm forward and up overhead, then rotate the palm out and sweep it down and behind you in the biggest, slowest circle you can — about 5 seconds per circle. Only the shoulder moves; ribs stay down, no leaning. 3 each direction, then switch arms. Go extra slow on the right side through any spot that clicks.',log:'time',secs:60};
+var DS_WARMUP_HIPCARS={id:'wu-hip-cars',name:'Hip CARs',demo:'hipcircle',slot:'Warm-up · Prehab',target:'Hip Joint · SI Joint Prep',equip:'Wall or chair for balance',rx:'3×/way/leg',cal:10,cue:'Stand tall holding a wall. Lift one knee to hip height, then draw the biggest, slowest circle you can with that knee — out to the side, around behind you, back to front. About 5 seconds per circle. Brace your core and keep the rest of your body still; only the hip moves. 3 each direction, then switch legs.',log:'time',secs:75};
+var DS_WARMUP_SHOULDERCARS={id:'wu-shoulder-cars',name:'Shoulder CARs',demo:'shouldercar',slot:'Warm-up · Prehab',target:'Shoulder Joint',equip:'Bodyweight',rx:'3×/way/arm',cal:8,cue:'Stand tall, make a fist and squeeze the rest of your body tight. Reach the arm forward and up overhead, then rotate the palm out and sweep it down and behind you in the biggest, slowest circle you can — about 5 seconds per circle. Only the shoulder moves; ribs stay down, no leaning. 3 each direction, then switch arms. Go extra slow on the right side through any spot that clicks.',log:'time',secs:60};
 var DS_WALK30={id:'post-walk',name:'Post-session Walk',demo:'walk',slot:'Cardio',target:'Zone 2 · HDL & calorie gap',equip:'None',rx:'~30 min brisk',cal:170,cue:'Brisk but easy — conversational pace. This is your main HDL lever, so consistency beats intensity here',log:'done',variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'~30 min brisk',cal:230,cue:'Pack rides high between the shoulder blades, straps cinched tight — posture tall, no forward lean. Start ~15 lb; if the SI joint complains, drop weight, not the walk',demo:'ruck'},{name:'Interval Walk (low-impact HIIT)',equip:'None',rx:'~20 min · 1 min fast / 1–2 min easy, repeat',cal:180,cue:'Push the pace hard for 1 min — not a jog, just a fast, purposeful walk — then ease off and recover. Repeat 8–10 rounds. Same interval-training effect on visceral fat as Tabata/circuits, zero impact on the knees.',demo:'walk'}]};
 var DS_RIDE20={id:'post-ride',name:'Easy Ride',demo:'ride',slot:'Cardio',target:'Zone 2 · HDL & calorie gap',equip:'Indoor recumbent bike (display dead — pace by Fitbit HR)',rx:'~25 min easy spin · Fitbit in Zone 2 (~60–70% max HR)',cal:150,cue:'Recumbent bike, no console readout — go by Fitbit heart rate instead. Keep it in Zone 2: conversational pace, not gasping. If HR creeps above Zone 2, ease off resistance rather than stopping. Zone 2 volume is what moves HDL over time',log:'done'};
 var DS_ACTIVEREST={id:'active-rest',name:'Active Rest Intervals',slot:'Cardio',target:'Extra calorie burn between sets',equip:'Jump rope or light band',rx:'3–5 min total, spread across rest periods',cal:40,cue:'Light jump rope or low-resistance band work between sets — heart rate up, not a second workout',log:'done',setup:'Instead of standing still between sets, spend 3–5 min total (30–45s at a time) on light jump rope or a low-resistance band exercise. Keep it easy enough that it doesn\\u2019t eat into your strength sets — the point is extra burn, not extra fatigue.',variants:[{name:'Banded Circuit Intervals (HIIT-style)',equip:'Tube band, light resistance',rx:'20–30s hard / 30–40s rest, cycle 3–4 band moves for 10–12 min',cal:90,cue:'Pick 3–4 light-resistance moves you already know (banded squat, row, press) and cycle through them fast for 20–30s each, resting just enough to reset form. This mimics Tabata-style intervals without the jumping or impact — do it as a standalone finisher after your main lifts, not squeezed between working sets.',demo:'squat'}]};
@@ -8925,6 +8925,19 @@ function dsItemMatchesSearch(rawItem,q){
   return false;
 }
 
+// v295: Compound-lift badge — multi-joint movements (presses, rows, pulldowns,
+// squats, lunges, hinges, thrusts) get a "Compound" tag so they stand out from
+// isolation work. Name/slot based so it covers plan variants and custom moves too.
+var DS_COMPOUND_RE=/\b(press|push-?ups?|rows?|pulldowns?|pull-?ups?|chin-?ups?|squats?|lunges?|split squat|deadlifts?|rdl|hinge|hip thrusts?|glute bridge|step-?ups?|dips?|good mornings?|swings?|thrusters?)\b/i;
+var DS_ISOLATION_RE=/\b(fly|flye|raises?|curls?|extensions?|kickbacks?|pushdowns?|pull-?aparts?|face pulls?|skull|crusher|crunch|plank|hold|cars|circles|rehab|walk|ride|jog|rope|pallof|calf|tib)\b/i;
+function dsIsCompound(item){
+  if(!item) return false;
+  var slot=item.slot||'';
+  if(/warm|rehab|core|flow|mobility|cardio|yoga|prehab/i.test(slot)) return false;
+  var n=item.name||'';
+  if(DS_ISOLATION_RE.test(n)) return false;
+  return DS_COMPOUND_RE.test(n) || /hinge|squat|vertical pull|horizontal pull|horizontal push|vertical push/i.test(slot);
+}
 function dsRenderItem(rawItem,idx,accent){
   var item=dsViewOf(rawItem);
   var _phase=dsCurrentPhase(); var _po=_phase && DS_PHASE_RX[item.id] && DS_PHASE_RX[item.id][_phase];
@@ -8941,13 +8954,13 @@ function dsRenderItem(rawItem,idx,accent){
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
-  var _isAnchor=dsIsAnchorSet(item.id);
-  var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+'" id="ds-move-'+item.id+'"'+(accent?' style="border-left:4px solid '+accent+'"':'')+'><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
+  var _isAnchor=dsIsAnchorSet(item.id); var _isComp=dsIsCompound(item);
+  var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+(_isComp?' ds-compound':'')+'" id="ds-move-'+item.id+'"'+(accent?' style="border-left:4px solid '+accent+'"':'')+'><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
   h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+'</div>';
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
-  h+='<div class="ds-mtags">'+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+'</div></div>';
+  h+='<div class="ds-mtags">'+(_isComp?'<span class="ds-comp-tag">\u25C6 Compound</span>':'')+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+'</div></div>';
   h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div></div>';
   h+='<div class="ds-mbody">';
   if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
