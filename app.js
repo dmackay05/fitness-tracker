@@ -3033,8 +3033,22 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ initHealthSettings(); dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
+// v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
+// Off by default. The Revert button is never hidden while a custom plan is active,
+// so you can't lock yourself into an imported plan with no visible way out.
+function dsSimpleSettingsOn(){ return store.get('ft_simple_settings')==='1'; }
+function dsSetSimpleSettings(on){ if(on) store.set('ft_simple_settings','1'); else store.remove('ft_simple_settings'); dsApplySimpleSettings(); }
+function dsApplySimpleSettings(){
+  var on=dsSimpleSettingsOn(), guest=dsGuestMode();
+  var t=document.getElementById('ds-simple-toggle'); if(t) t.checked=on;
+  document.querySelectorAll('#settings-overlay [data-mu]').forEach(function(el){
+    var keep=guest && /dsResetCustomPlan/.test(el.getAttribute('onclick')||'');
+    el.classList.toggle('mu-hide',on&&!keep);
+  });
+  var sub=document.getElementById('sg-program-sub'); if(sub) sub.textContent=on?'Weekly plan editor':'Weekly plan, custom set, plan source';
+}
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 

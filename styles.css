@@ -1699,3 +1699,4 @@ html body div.app{max-width:480px}
 /* v290: day dropdown reuses the .ds-mf style */
 #panel-today .ds-daypick{display:block;overflow:visible}
 .ds-dp select{text-overflow:ellipsis;white-space:nowrap}
+#settings-overlay .mu-hide{display:none!important}

@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=197">
+<link rel="stylesheet" href="styles.css?v=198">
 </head>
 <body>
 
@@ -1029,29 +1029,29 @@
         </div>
       </details>
       <details class="set-group" id="set-program">
-        <summary><span class="sg-ic">🗓️</span><span class="sg-t">Exercise Program<span class="sg-sub">Weekly plan, custom set, plan source</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">🗓️</span><span class="sg-t">Exercise Program<span class="sg-sub" id="sg-program-sub">Weekly plan, custom set, plan source</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
       <div class="card">
         <div class="card-title">🗓️ Exercise Plan (Mon–Sun)</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:6px" id="ds-plan-status">Using default plan</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
+        <div data-mu="1" style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Replace the built-in Mon–Sun workout structure with your own — a different person can run this same app with their own days, exercises, and sets/reps. Upload a JSON file shaped like the built-in plan (ask your developer for the template). Days you don't include keep the default. <b style="color:#5eead4">Imports save to your Google Sheet</b> — on another device, connect the same Apps Script URL and the plan loads automatically (or tap Load Settings from Sheet).</div>
         <input type="file" id="ds-plan-file" accept="application/json,.json" style="display:none" onchange="dsImportPlanFile(this)" />
         <button class="bp bfull" onclick="dsPlanEditorOpen()" style="margin-top:0">✎ Edit Plan</button>
-        <button class="bs bfull" onclick="document.getElementById('ds-plan-file').click()" style="margin-top:6px">⬆ Import Plan (JSON)</button>
-        <button class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
-        <div id="ds-plan-sync-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
-        <div style="margin-top:10px"><label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer"><span style="font-size:11px;color:#ccc;font-family:'DM Mono',monospace">Show built-in home extras</span><input type="checkbox" id="ds-guest-extras-toggle" onchange="dsSetGuestExtras(this.checked)" style="width:20px;height:20px;accent-color:#5eead4"/></label></div>
-        <button class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
-        <button class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
-        <button class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
-        <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
+        <button data-mu="1" class="bs bfull" onclick="document.getElementById('ds-plan-file').click()" style="margin-top:6px">⬆ Import Plan (JSON)</button>
+        <button data-mu="1" class="bs bfull" onclick="dsPullPlanManual()" style="margin-top:6px">☁ Sync Plan from Sheet</button>
+        <div data-mu="1" id="ds-plan-sync-msg" style="font-size:11px;color:#5eead4;font-family:'DM Mono',monospace;margin-top:6px;min-height:12px;line-height:1.5"></div>
+        <div data-mu="1" style="margin-top:10px"><label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer"><span style="font-size:11px;color:#ccc;font-family:'DM Mono',monospace">Show built-in home extras</span><input type="checkbox" id="ds-guest-extras-toggle" onchange="dsSetGuestExtras(this.checked)" style="width:20px;height:20px;accent-color:#5eead4"/></label></div>
+        <button data-mu="1" class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
+        <button data-mu="1" class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
+        <button data-mu="1" class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
+        <div data-mu="1" style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
       </div>
-      <div class="card">
+      <div class="card" data-mu="1">
         <div class="card-title">🏋️ Custom Exercise Set</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
         <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
       </div>
-      <div class="card">
+      <div class="card" data-mu="1">
         <div class="card-title">📋 Plan Source</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
         <div class="rlbl" style="margin-top:0">Plan JSON URL (optional)</div>
@@ -1118,8 +1118,16 @@
         </div>
       </details>
       <details class="set-group" id="set-app">
-        <summary><span class="sg-ic">🔊</span><span class="sg-t">App<span class="sg-sub">Sound</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">🔊</span><span class="sg-t">App<span class="sg-sub">Sound, simple settings</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
+      <div class="card">
+        <div class="card-title">🧹 Simple Settings</div>
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Hides the multi-user and plan-import tools (Import/Sync/Export plan, missing-day behavior, Custom Exercise Set, Plan Source) so Settings only shows what you use. Nothing is deleted — turn this off to bring them back. If a custom plan is ever loaded, the Revert button stays visible regardless.</div>
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Hide multi-user tools</span>
+          <input type="checkbox" id="ds-simple-toggle" onchange="dsSetSimpleSettings(this.checked)" style="width:20px;height:20px;accent-color:#5eead4;cursor:pointer" />
+        </label>
+      </div>
       <div class="card">
         <div class="card-title">🔊 Sound</div>
         <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Rest-timer beeps use the Web Audio API. Browsers block audio until you tap the screen once. Use this to confirm sound is working on this device.</div>
@@ -1334,6 +1342,6 @@
   </div>
 </div>
 
-<script src="app.js?v=384"></script>
+<script src="app.js?v=385"></script>
 </body>
 </html>
