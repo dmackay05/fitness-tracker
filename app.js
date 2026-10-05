@@ -3328,7 +3328,7 @@ function applyConfig(cfg){
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){}
-  try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
+  try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
   if(store.get('ds_fullbody')!=null){ DS_FB_ON=(store.get('ds_fullbody')==='1'); dsApplyFullBody(); }
@@ -3592,7 +3592,7 @@ try{ trkTryRestore(); }catch(e){}
 // One tap in the Guide marks the yoga flow complete in eg_done (streak,
 // week view, auto-push to Workout Log) AND logs a 130 cal exercise entry
 // to TODAY's tracker day (Calories Burned, dashboards, Exercises column).
-var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=200, TG_YOGA_NAME="Wednesday Yoga Flow — Hip & Knee Focus (45-60 min)";
+var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=110, TG_YOGA_NAME="Wednesday Yoga Flow — Focus (~30 min)";
 function tgYogaRefresh(){
   var b=document.getElementById("yoga-complete-btn"); if(!b) return;
   var on=(typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID);
@@ -3606,7 +3606,7 @@ function tgYogaToggle(){
   var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
   if(on){
     if(!day.exercises.some(function(e){return e.id===exId;})){
-      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId,actualSecs:2760});
+      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId,actualSecs:1800});
     }
   } else {
     day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
@@ -3641,6 +3641,18 @@ var DS_FLOW_IDS_HK=['wed-flow-center','wed-flow-catcow','wed-flow-hk-hipcircles'
   'wed-flow-hk-butterflyfold','wed-flow-hk-reclfigure4','wed-flow-hk-wallsit','wed-flow-hk-tke','wed-flow-bridge',
   'wed-flow-hk-slbridge','wed-flow-hk-clamshell','wed-flow-hk-tree','wed-flow-hk-standfigure4','wed-flow-warrior3',
   'wed-flow-hk-pigeon','wed-flow-hk-happybaby','wed-flow-twist','wed-flow-hk-sav'];
+// v292: Wednesday Focus Flow — replaces the 23-pose Hip & Knee flow as the default.
+// ~25 min, 11 poses, recovery only (the strength/stability moves — wall sit, TKE,
+// clamshells, SL bridge — are training stimulus, not recovery, and were cut). Each
+// pose earns its spot against the week's actual stress:
+//   desk sitting + Tue quad day → hip flexors (Dragon)
+//   hip rotation / glutes / SI   → 90/90 switches, Pigeon
+//   pulldowns + pressing         → lats/T-spine (Child's side reach), Cobra, Down Dog
+//   Fri hinge day ahead          → hamstrings (Down Dog pedal, Caterpillar)
+// One transition path: seated → all fours → down dog → lunge → floor → back.
+var DS_FLOW_IDS_FOCUS=['wed-flow-center','wed-flow-catcow','wed-flow-child','wed-flow-downdog',
+  'wed-flow-dragon','wed-flow-hk-9090','wed-flow-hk-pigeon','wed-flow-cobra','wed-flow-cat',
+  'wed-flow-twist','wed-flow-sav'];
 var DS_FLOW_SEQUENCES=[DS_FLOW_IDS_A,DS_FLOW_IDS_B,DS_FLOW_IDS_C];
 var DS_FLOW_SEQ_LABELS=['Grounding Flow','Warrior Flow','Balance Flow'];
 function dsFlowSeqIndex(dk){
@@ -3658,12 +3670,21 @@ var DS_FLOW_POOL=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-fl
   'wed-flow-hk-firehydrant','wed-flow-hk-frog','wed-flow-hk-butterflyfold','wed-flow-hk-reclfigure4',
   'wed-flow-hk-wallsit','wed-flow-hk-tke','wed-flow-hk-slbridge','wed-flow-hk-clamshell','wed-flow-hk-tree',
   'wed-flow-hk-standfigure4','wed-flow-hk-pigeon','wed-flow-hk-happybaby','wed-flow-hk-sav'];
-// Default on first load: Hip & Knee Focus replaces the Grounding/Warrior/Balance rotation
+// (v292: default is now DS_FLOW_IDS_FOCUS.) Previously: Hip & Knee Focus replaced the Grounding/Warrior/Balance rotation
 // as the active Wednesday flow (current weak-point priority). Anyone who already saved
 // their own custom flow keeps it — this only sets the default for a fresh install.
-var DS_FLOW_CUSTOM={active:true,ids:DS_FLOW_IDS_HK.slice()};
+var DS_FLOW_CUSTOM={active:true,ids:DS_FLOW_IDS_FOCUS.slice()};
 try{ var _fcv0=JSON.parse(store.get('ds_flowcustom')||'null'); if(_fcv0&&typeof _fcv0==='object'&&Array.isArray(_fcv0.ids)){ DS_FLOW_CUSTOM.active=!!_fcv0.active; DS_FLOW_CUSTOM.ids=_fcv0.ids; } }catch(e){}
+// v292 one-time migration: move existing installs off the old default onto the Focus Flow.
+// The Flow editor's "save as default" still works afterward if you want to change it.
+function dsFlowIsOldDefault(ids){ return Array.isArray(ids) && ids.join(',')===DS_FLOW_IDS_HK.join(','); }
+function dsMigrateFlow292(){
+  if(store.get('ds_flow_mig292')) return;
+  DS_FLOW_CUSTOM.active=true; DS_FLOW_CUSTOM.ids=DS_FLOW_IDS_FOCUS.slice();
+  store.set('ds_flow_mig292','1'); dsSaveFlowCustom();
+}
 function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){} try{dsQueueConfigPush();}catch(e){} }
+try{ setTimeout(function(){ try{dsMigrateFlow292();}catch(e){} },0); }catch(e){}
 function dsFlowActiveIds(){
   if(typeof dsFbFlowIds==='function'){ var _fb=dsFbFlowIds(); if(_fb) return _fb; }
   if(DS_FLOW_CUSTOM.active && DS_FLOW_CUSTOM.ids && DS_FLOW_CUSTOM.ids.length) return DS_FLOW_CUSTOM.ids;
@@ -5314,7 +5335,23 @@ var DS_SATHEAT_MOVES=[
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
 var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
 function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; dsTrimDateKeys(DS_SAT_HEAT_ON,120); try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); }
-function dsSessOf(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; return DS_SESSIONS[sk]; }
+function dsSessOf(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+// v292: the Wednesday list used to show every pose in the library (37) even though
+// the guided flow only runs the active sequence. Show just the active flow, in flow
+// order; anything non-flow on Wednesday (user-added moves) stays at the end.
+var _DS_WED_CACHE=null;
+function dsWedFocusSession(){
+  var S=DS_SESSIONS.wed; if(!S||!S.moves||(typeof dsDayIsCustom==='function'&&dsDayIsCustom('wed'))) return null;
+  if(!S.moves.some(function(m){return m&&m.id&&m.id.indexOf('wed-flow-')===0;})) return null;
+  var ids; try{ ids=dsFlowActiveIds(); }catch(e){ return null; } if(!ids||!ids.length) return null;
+  var key=ids.join(',')+'|'+S.moves.length;
+  if(_DS_WED_CACHE&&_DS_WED_CACHE.key===key&&_DS_WED_CACHE.src===S) return _DS_WED_CACHE.sess;
+  var byId={}; S.moves.forEach(function(m){ if(m&&m.id) byId[m.id]=m; });
+  var moves=ids.map(function(id){return byId[id];}).filter(Boolean)
+    .concat(S.moves.filter(function(m){return !(m&&m.id&&m.id.indexOf('wed-flow-')===0);}));
+  var sess={}; for(var k in S) sess[k]=S[k]; sess.moves=moves;
+  _DS_WED_CACHE={key:key,src:S,sess:sess}; return sess;
+}
 
 // ── TODAY-ONLY CUSTOM SESSION ────────────────────────────────────────────────
 // Built from the Today tab. Replaces the regular session for ONE date, then
@@ -5436,7 +5473,7 @@ var DS_SESSIONS={
         variants:[{name:'Banded Tib Raise',equip:'Tube band, light',rx:'3\u00d715\u201320',cue:'Loop the band around a low anchor and your forefoot \u2014 pull the toes up against the band tension, slow release. Same muscle, different stimulus than the wall version',demo:'tibraise'}]},
       {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]}]},
 
-  wed:{title:'Wednesday Yoga Flow',sub:'Full-body mobility · no bands · Charlie Follows + Moves',accent:'var(--purple)',
+  wed:{title:'Wednesday Yoga Flow',sub:'Focus flow · 11 poses · ~30 min · hips, hamstrings, T-spine',accent:'var(--purple)',
     moves:[
       {id:'wed-flow-center',name:'Seated Centering Breath',slot:'Flow · 1',target:'Breath · Nervous System',equip:'Mat',rx:'2 min',cal:5,cue:'Sit tall, eyes closed — inhale 4 counts, exhale 6. Let the exhale set the pace for the whole flow',demo:'seated',log:'time',secs:120},
       {id:'wed-flow-catcow',name:'Cat-Cow — breath-led',slot:'Flow · 2',target:'Spine',equip:'Mat',rx:'2 min',cal:8,cue:'Inhale arch, exhale round — the breath moves you, not the other way around. Ease onto hands and knees from your seated breath',demo:'catcow',log:'time',secs:120},
