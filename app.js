@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v295 — 2026-10-05";
+var APP_BUILD = "v296 — 2026-10-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -636,10 +636,11 @@ function median(arr){
   return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
 }
 // Every logged day in the window, with its total and whether it looks complete.
-function intakeDaysDetail(windowDays){
+function intakeDaysDetail(windowDays, endKeyOpt){
   var days=windowDays||TDEE_WINDOW_DAYS;
-  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
-  var startKey=localDateKey(startD), endKey=todayKey();
+  var endKey=endKeyOpt||todayKey();
+  var startD=new Date(endKey+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD);
   return Object.keys(appData).filter(function(k){
     if(k<startKey||k>endKey) return false;
     var d=appData[k]; if(!d||!d.foods||!d.foods.length) return false;
@@ -653,12 +654,13 @@ function intakeDaysDetail(windowDays){
             complete:cal>=floor, items:foods.length};
   });
 }
-function measuredTDEE(windowDays){
+function tdeeWindowRaw(windowDays, endKeyOpt){
   var days=windowDays||TDEE_WINDOW_DAYS;
-  var startD=new Date(todayKey()+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
-  var startKey=localDateKey(startD), endKey=todayKey();
-  // Today's log is still in progress, so it never counts as a complete day.
-  var all=intakeDaysDetail(days).filter(function(d){ return d.key<endKey; });
+  var endKey=endKeyOpt||todayKey();
+  var startD=new Date(endKey+'T00:00:00'); startD.setDate(startD.getDate()-(days-1));
+  var startKey=localDateKey(startD);
+  // The end day's log may still be in progress, so it never counts as a complete day.
+  var all=intakeDaysDetail(days, endKey).filter(function(d){ return d.key<endKey; });
   if(all.length<TDEE_MIN_INTAKE_DAYS) return {ok:false,reason:'needs '+TDEE_MIN_INTAKE_DAYS+' days of logged intake in the last '+days+' \u2014 you have '+all.length};
   var full=all.filter(function(d){return d.complete;});
   var partial=all.filter(function(d){return !d.complete;});
@@ -697,7 +699,69 @@ function measuredTDEE(windowDays){
     medIntake:Math.round(medIntake), avgIntake:Math.round(meanIntake),
     lbChange:lbChange, span:span, nIntake:full.length, nPartial:partial.length,
     nWeights:pts.length, lbPerWeek:(lbChange/span)*7,
-    all:all, partial:partial, full:full};
+    windowDays:days, all:all, partial:partial, full:full};
+}
+// ── SMOOTHED MEASURED MAINTENANCE ──────────────────────────────────────────
+// A single window recomputed from scratch each day can't tell water from fat: a
+// 3-4 lb glycogen/water swing that straddles the window edge reads as a real
+// slope, and x3500 turns it into a 300-500 kcal error (Sept 2026: the 28-day
+// window said ~1660 while 42/56-day windows said ~2035/2207). So:
+//  1. Seed from a long (56-day) window ending TDEE_SMOOTH_DAYS ago.
+//  2. Walk forward one day at a time, nudging the estimate a small step
+//     (TDEE_SMOOTH_ALPHA) toward that day's 42-day window estimate. A two-week
+//     water swing moves it ~100 kcal; a real change shows up over 4-6 weeks.
+//  3. Stability check: if the 28/42/56-day windows disagree by more than
+//     TDEE_STABLE_SPREAD, the card says "settling" and shows the range instead
+//     of one confident number.
+var TDEE_LONG_WINDOW=42, TDEE_SEED_WINDOW=56, TDEE_SMOOTH_DAYS=42, TDEE_SMOOTH_ALPHA=0.05;
+var TDEE_STABLE_SPREAD=200, TDEE_CHECK_WINDOWS=[28,42,56];
+var _tdeeCache=null;
+function measuredTDEE(){
+  // Cheap memo: calGoalForKey() and several panels ask for this in one render.
+  var now=Date.now();
+  if(_tdeeCache && _tdeeCache.day===todayKey() && now-_tdeeCache.t<3000) return _tdeeCache.r;
+  var r=_measuredTDEEUncached();
+  _tdeeCache={day:todayKey(), t:now, r:r};
+  return r;
+}
+function _measuredTDEEUncached(){
+  var today=todayKey();
+  // Headline window: 42 days if it has enough data, otherwise the old 28-day rules.
+  var base=tdeeWindowRaw(TDEE_LONG_WINDOW, today);
+  if(!base.ok) base=tdeeWindowRaw(TDEE_WINDOW_DAYS, today);
+  if(!base.ok) return base;
+  // Carried-forward estimate.
+  var keyBack=function(n){ var d=new Date(today+'T00:00:00'); d.setDate(d.getDate()-n); return localDateKey(d); };
+  var seedR=tdeeWindowRaw(TDEE_SEED_WINDOW, keyBack(TDEE_SMOOTH_DAYS));
+  if(!seedR.ok) seedR=tdeeWindowRaw(TDEE_LONG_WINDOW, keyBack(TDEE_SMOOTH_DAYS));
+  var smooth=null, steps=0;
+  if(seedR.ok){
+    smooth=seedR.tdee;
+    for(var i=TDEE_SMOOTH_DAYS-1;i>=0;i--){
+      var im=tdeeWindowRaw(TDEE_LONG_WINDOW, keyBack(i));
+      if(im.ok){ smooth+=TDEE_SMOOTH_ALPHA*(im.tdee-smooth); steps++; }
+    }
+    smooth=Math.round(smooth);
+  }
+  // Stability check across window lengths.
+  var checks=TDEE_CHECK_WINDOWS.map(function(n){
+    var c=tdeeWindowRaw(n, today); return {days:n, ok:c.ok, tdee:c.ok?c.tdee:null};
+  });
+  var okVals=checks.filter(function(c){return c.ok;}).map(function(c){return c.tdee;});
+  var spreadLo=okVals.length?Math.min.apply(null,okVals):base.tdee;
+  var spreadHi=okVals.length?Math.max.apply(null,okVals):base.tdee;
+  var settling=okVals.length>=2 && (spreadHi-spreadLo)>TDEE_STABLE_SPREAD;
+  // Lag is the point of smoothing, but it should never sit outside what every
+  // current window says (e.g. still remembering a water drop that has since
+  // reversed). Clamp it into the range of the window estimates.
+  if(smooth!=null && okVals.length) smooth=Math.max(spreadLo, Math.min(spreadHi, smooth));
+  var r=Object.assign({}, base);
+  r.rawTdee=base.tdee;
+  r.smoothed=smooth!=null;
+  if(smooth!=null) r.tdee=smooth;
+  r.checks=checks; r.spreadLo=spreadLo; r.spreadHi=spreadHi; r.settling=settling;
+  r.reliable=base.reliable && !settling;
+  return r;
 }
 // Theil-Sen estimator with a distribution-free ~90% confidence interval for the
 // slope (Sen's method, normal approximation to Kendall's S). Returns lbs/day.
@@ -1376,6 +1440,18 @@ function renderTdeePanel(){
   var rangeTxt=r.tdeeLo+'\u2013'+r.tdeeHi+' kcal';
   var trendTxt='Across '+r.span+' days and '+r.nWeights+' weigh-ins you trended '
    +(r.lbChange<0?'down ':(r.lbChange>0?'up ':'flat at '))+Math.abs(r.lbPerWeek).toFixed(2)+' lbs/week.';
+  if(r.settling){
+    // Window lengths disagree: a water/glycogen swing is sitting inside some of
+    // them. Show the carried-forward estimate as a range, not a confident number.
+    var chk=r.checks.filter(function(c){return c.ok;}).map(function(c){return c.days+'-day: '+c.tdee;}).join(' · ');
+    var hs='<div><b style="color:#fbbf24;font-size:15px">Settling — likely '+r.spreadLo+'–'+r.spreadHi+' kcal</b></div>'
+     +(r.smoothed?'<div style="color:#888;margin-top:3px;line-height:1.45">Smoothed estimate: <b>≈'+r.tdee+' kcal</b>. This is the number Maintenance/Bulk mode uses; it moves slowly on purpose.</div>':'')
+     +'<div style="color:#888;margin-top:3px;line-height:1.45">Different window lengths disagree ('+chk+'). That almost always means a few pounds of water came on or off inside the shorter windows and are being read as fat. '+trendTxt+'</div>'
+     +'<div style="margin-top:6px;color:#8b8b9c;line-height:1.45">Judge by the 7-day average for now. This tightens as the swing ages out of the windows.</div>';
+    if(dsMaintActive()||dsBulkActive()) hs+='<div style="margin-top:6px;color:#888;line-height:1.45">'+(dsBulkActive()?'Bulk':'Maintenance')+' mode is on and uses the smoothed estimate.</div>';
+    hs+=tdeeDayListHtml(r,false);
+    el.innerHTML=hs; return;
+  }
   if(!r.reliable){
     // Weigh-in noise is too large for this window to pin maintenance down. Say so
     // rather than show one confident-looking (and probably wrong) number.
@@ -1387,7 +1463,7 @@ function renderTdeePanel(){
     hu+='<div style="margin-top:6px;color:#8b8b9c;line-height:1.4">Slope is a robust (Theil-Sen) fit, so one bloated morning will not move it much. A direction, not a dose.</div>';
     el.innerHTML=hu; return;
   }
-  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance</span> <span style="color:#8b8b9c;font-size:11px">(likely '+rangeTxt+')</span></div>'
+  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance'+(r.smoothed?' (smoothed)':'')+'</span> <span style="color:#8b8b9c;font-size:11px">(likely '+rangeTxt+')</span></div>'
    +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
    +(r.nPartial?(', with '+r.nPartial+' partial '+(r.nPartial===1?'day':'days')+' set aside'):'')
    +'. '+trendTxt+'</div>';
@@ -1400,6 +1476,7 @@ function renderTdeePanel(){
   else h+='<div style="margin-top:6px;color:#fbbf24;line-height:1.45">Today\'s target of '+target+' is at or above measured maintenance. If loss has stalled, this is the first number to look at.</div>';
   if(r.tdee<1900) h+='<div style="margin-top:6px;color:#fb923c;line-height:1.45">This lands below a plausible resting rate for your size, which usually means calories are going unlogged rather than unburned \u2014 cooking oil and estimated dinner portions are the usual pair.</div>';
   h+=tdeeDayListHtml(r,false);
+  if(r.smoothed&&Math.abs(r.rawTdee-r.tdee)>=50) h+='<div style="margin-top:4px;color:#8b8b9c;line-height:1.45">Latest window alone says '+r.rawTdee+' kcal; the smoothed number drifts toward it gradually so short water swings don\'t whipsaw your targets.</div>';
   h+='<div style="margin-top:6px;color:#8b8b9c;line-height:1.4">An estimate built on the 3500 kcal/lb convention and on how completely intake got logged. A direction, not a dose.</div>';
   el.innerHTML=h;
 }
