@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v300 — 2026-10-06";
+var APP_BUILD = "v301 — 2026-10-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -13997,4 +13997,17 @@ function qtChime() {
       setTimeout(function(){ fn(1100, 0.3, 0.55); }, 560);
     }
   } catch(e) {}
+}
+// Acronym dictionary filter (Info tab)
+function acroFilter(q){
+  q=(q||"").trim().toLowerCase(); var any=false;
+  document.querySelectorAll('#panel-meals .acro-cat').forEach(function(c){
+    var vis=0;
+    c.querySelectorAll('.acro-row').forEach(function(r){
+      var m=!q||r.textContent.toLowerCase().indexOf(q)>-1;
+      r.style.display=m?"":"none"; if(m) vis++;
+    });
+    c.style.display=vis?"":"none"; if(vis) any=true;
+  });
+  var n=document.getElementById("acro-none"); if(n) n.style.display=any?"none":"";
 }

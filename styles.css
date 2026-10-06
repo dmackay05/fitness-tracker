@@ -1709,3 +1709,14 @@ html body div.app{max-width:480px}
 /* v295 compound badge */
 #panel-today .ds-mtags span.ds-comp-tag{background:#5eead41f;color:#5eead4;font-weight:700;letter-spacing:.04em}
 #panel-today .ds-move.ds-compound .ds-midx{border-color:#5eead4;color:#5eead4}
+
+/* Acronym dictionary (Info tab) */
+.acro-q{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid #ffffff1f;background:#ffffff08;color:#f0ede8;font-size:14px;font-family:inherit}
+.acro-q:focus{outline:none;border-color:#5eead4}
+.acro-none{font-size:12px;color:#888;margin-top:10px;font-family:'DM Mono',monospace}
+.acro-row{display:flex;gap:10px;padding:7px 0;border-top:1px solid #ffffff0d}
+.acro-row:first-of-type{border-top:none}
+.acro-a{flex:0 0 92px;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:#5eead4;word-break:break-word}
+.acro-t{flex:1;min-width:0}
+.acro-f{font-size:13px;color:#f0ede8;line-height:1.4}
+.acro-d{font-size:12px;color:#999;line-height:1.45;margin-top:2px}
