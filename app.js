@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v297 — 2026-10-06";
+var APP_BUILD = "v298 — 2026-10-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2304,6 +2304,28 @@ function saveFoodEdit(){
   var _fh=+document.getElementById("ef-chol").value||0; if(_fh) f.chol=_fh; else delete f.chol;
   saveDay(day); closeFoodEdit(); renderAll();
 }
+// ── MACRO SOURCES: tap a bar in Macro Breakdown to see what fed it ─────────
+var _macroOpen=null;
+function toggleMacroSource(k){ _macroOpen=(_macroOpen===k)?null:k; renderFoodLog(); }
+function macroSourceHtml(day,m){
+  var dec=(m.k==='fiber'||m.k==='satfat')?1:0, rd=function(v){var p=Math.pow(10,dec);return Math.round(v*p)/p;};
+  var foods=(day.foods||[]).map(function(f){return {name:f.name, tag:f.mealTag||'', v:+f[m.k]||0};}).filter(function(x){return x.v>0;});
+  if(!foods.length) return '<div style="font-size:11px;color:#8b8b9c;margin:6px 0 2px">Nothing logged today has '+m.l.toLowerCase()+' data.</div>';
+  var tot=foods.reduce(function(a,x){return a+x.v;},0);
+  foods.sort(function(a,b){return b.v-a.v;});
+  var meals={}; foods.forEach(function(x){ var t=x.tag||'Untagged'; meals[t]=(meals[t]||0)+x.v; });
+  var order=(typeof DS_FOOD_EXPORT_ORDER!=='undefined'?DS_FOOD_EXPORT_ORDER:[]).concat(['Untagged']);
+  var mealLine=order.filter(function(t){return meals[t];}).map(function(t){return t+' '+rd(meals[t])+m.u+' ('+Math.round(meals[t]/tot*100)+'%)';}).join(' \u00b7 ');
+  var h='<div onclick="event.stopPropagation()" style="margin:8px 0 4px;padding:8px 10px;background:#ffffff08;border-radius:8px;font-size:12px">';
+  h+='<div style="color:#8b8b9c;margin-bottom:6px;line-height:1.4">'+mealLine+'</div>';
+  foods.forEach(function(x){
+    var pct=Math.round(x.v/tot*100);
+    h+='<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid #ffffff0d">'
+     +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+x.name+(x.tag?' <span style="color:#6b6b80;font-size:10px">'+x.tag+'</span>':'')+'</span>'
+     +'<span style="color:'+m.c+';white-space:nowrap">'+rd(x.v)+m.u+' <span style="color:#6b6b80">'+pct+'%</span></span></div>';
+  });
+  return h+'</div>';
+}
 function renderFoodLog(){
   var day=getDay(), el=document.getElementById("food-log");
   document.getElementById("log-title").textContent=isToday()?"Today's Food Log":prettyDate(activeDate)+" Food";
@@ -2314,14 +2336,14 @@ function renderFoodLog(){
       '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></details>';}).join("");
   var t=getTotals();
   document.getElementById("macro-bars").innerHTML=[
-    {l:"Calories",v:t.cal,g:GOALS.cal,c:"#5eead4",u:""},{l:"Protein",v:Math.round(t.protein),g:GOALS.protein,c:"#a78bfa",u:"g"},
-    {l:"Carbs",v:Math.round(t.carbs),g:GOALS.carbs,c:"#fbbf24",u:"g"},{l:"Fat",v:Math.round(t.fat),g:GOALS.fat,c:"#fb923c",u:"g"},
-    {l:"Fiber",v:Math.round(t.fiber*10)/10,g:GOALS.fiber,c:"#4ade80",u:"g",hi:true},
-    {l:"Sodium",v:Math.round(t.sodium),g:GOALS.sodium,c:"#f472b6",u:"mg"},
-    {l:"Sat Fat",v:Math.round(t.satfat*10)/10,g:GOALS.satfat,c:"#f87171",u:"g"},
-    {l:"Cholesterol",v:Math.round(t.chol),g:GOALS.chol,c:"#fb7185",u:"mg"}
-  ].map(function(m){return '<div class="mrow"><div class="mlrow"><span>'+m.l+'</span><span>'+m.v+m.u+' / '+m.g+m.u+'</span></div>'+
-    '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g&&!m.hi?"#ff6b6b":m.c)+'"></div></div></div>';}).join("")+
+    {k:"cal",l:"Calories",v:t.cal,g:GOALS.cal,c:"#5eead4",u:""},{k:"protein",l:"Protein",v:Math.round(t.protein),g:GOALS.protein,c:"#a78bfa",u:"g"},
+    {k:"carbs",l:"Carbs",v:Math.round(t.carbs),g:GOALS.carbs,c:"#fbbf24",u:"g"},{k:"fat",l:"Fat",v:Math.round(t.fat),g:GOALS.fat,c:"#fb923c",u:"g"},
+    {k:"fiber",l:"Fiber",v:Math.round(t.fiber*10)/10,g:GOALS.fiber,c:"#4ade80",u:"g",hi:true},
+    {k:"sodium",l:"Sodium",v:Math.round(t.sodium),g:GOALS.sodium,c:"#f472b6",u:"mg"},
+    {k:"satfat",l:"Sat Fat",v:Math.round(t.satfat*10)/10,g:GOALS.satfat,c:"#f87171",u:"g"},
+    {k:"chol",l:"Cholesterol",v:Math.round(t.chol),g:GOALS.chol,c:"#fb7185",u:"mg"}
+  ].map(function(m){var open=_macroOpen===m.k;return '<div class="mrow" onclick="toggleMacroSource(\''+m.k+'\')" style="cursor:pointer" title="Tap to see where this came from"><div class="mlrow"><span>'+m.l+' <span style="color:#6b6b80;font-size:10px">'+(open?'\u25B4':'\u25BE')+'</span></span><span>'+m.v+m.u+' / '+m.g+m.u+'</span></div>'+
+    '<div class="mbar-wrap"><div class="mbar" style="width:'+Math.min((m.v/m.g)*100,100)+'%;background:'+(m.v>m.g&&!m.hi?"#ff6b6b":m.c)+'"></div></div>'+(open?macroSourceHtml(day,m):'')+'</div>';}).join("")+
     '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-top:10px;text-align:center">Net carbs '+(Math.round(Math.max(0,t.carbs-t.fiber)*10)/10)+'g (carbs − fiber)</div>';
 }
 
