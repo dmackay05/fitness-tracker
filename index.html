@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=201">
+<link rel="stylesheet" href="styles.css?v=202">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -178,8 +178,6 @@
         <div class="cal-meta"><span id="eaten-lbl">🍽 0 eaten</span><span id="burned-lbl">🔥 0 burned</span><span id="rem-lbl" style="color:#5eead4">— left</span><span id="time-lbl">🕐 0 min trained</span></div>
         <div class="pbar-wrap"><div class="pbar" id="cal-bar" style="width:0%"></div></div>
         <div class="bar-lbls"><span>eaten</span><span id="dash-cal-goal">Goal: --</span></div>
-        <button class="refresh-btn-sm" style="margin-top:10px;width:100%" onclick="dsShowHealthExport()">📋 Copy Today's Workout for Google Health</button>
-        <button class="refresh-btn-sm" style="margin-top:8px;width:100%" onclick="dsShowFoodExport()">🍽️ Copy Today's Food Log for Google Health</button>
       </div>
 
       <div class="card">
@@ -218,7 +216,6 @@
       <div class="card">
         <div class="card-title">📅 This Week</div>
         <div id="week-summary"></div>
-        <button class="refresh-btn-sm" style="margin-top:8px;width:100%" onclick="dsShowWeekExport()">📆 Copy This Week's Workout</button>
       </div>
 
       <div class="card">
@@ -273,10 +270,6 @@
       <div class="card" data-cid="maint" data-default="closed">
         <div class="card-title">Measured Maintenance</div>
         <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="bs" onclick="exportCalWeight()">Export calories vs weight (CSV)</button>
-          <button class="bs" onclick="copyCalWeight()">Copy as text</button>
-        </div>
       </div>
 
       <div class="card" data-cid="volume" data-default="closed">
@@ -916,7 +909,7 @@
     <button class="bp" onclick="saveAndClose()">Save</button>
   </div>
   <div style="padding:18px;max-width:520px;margin:0 auto;width:100%">
-      <nav class="set-jump" aria-label="Settings sections"><a href="#set-sync" onclick="dsSetJump('sync');return false">Sync</a><a href="#set-profile" onclick="dsSetJump('profile');return false">Profile</a><a href="#set-training" onclick="dsSetJump('training');return false">Training</a><a href="#set-program" onclick="dsSetJump('program');return false">Program</a><a href="#set-nutrition" onclick="dsSetJump('nutrition');return false">Nutrition</a><a href="#set-app" onclick="dsSetJump('app');return false">App</a></nav>
+      <nav class="set-jump" aria-label="Settings sections"><a href="#set-sync" onclick="dsSetJump('sync');return false">Sync</a><a href="#set-profile" onclick="dsSetJump('profile');return false">Profile</a><a href="#set-training" onclick="dsSetJump('training');return false">Training</a><a href="#set-program" onclick="dsSetJump('program');return false">Program</a><a href="#set-nutrition" onclick="dsSetJump('nutrition');return false">Nutrition</a><a href="#set-exports" onclick="dsSetJump('exports');return false">Exports</a><a href="#set-app" onclick="dsSetJump('app');return false">App</a></nav>
       <details class="set-group" id="set-sync" open>
         <summary><span class="sg-ic">☁️</span><span class="sg-t">Sync &amp; Backup<span class="sg-sub">Backup, Google Sheet, PIN</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
@@ -1116,6 +1109,26 @@
         <input type="text" class="ft-sup-inp" placeholder="Supplement 4" style="margin-bottom:8px"/>
         <input type="text" class="ft-sup-inp" placeholder="Supplement 5 (e.g. Creatine)" style="margin-bottom:8px"/>
         <input type="text" class="ft-sup-inp" placeholder="Supplement 6" style="margin-bottom:0"/>
+      </div>
+        </div>
+      </details>
+      <details class="set-group" id="set-exports">
+        <summary><span class="sg-ic">⬇</span><span class="sg-t">Data &amp; Exports<span class="sg-sub">Strength log, workouts, food, calories vs weight</span></span><span class="sg-chev">›</span></summary>
+        <div class="sg-body">
+      <div class="card">
+        <div class="card-title">🏋️ Strength Log (CSV)</div>
+        <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:10px;line-height:1.6">Every logged exercise, oldest first: date, exercise, band, reps, sets, RIR, and muscle map. Use this for volume-over-time analysis.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="bs" onclick="exportOverload()">⬇ Download CSV</button><button class="bs" onclick="copyOverload()">Copy as text</button></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Workouts</div>
+        <button class="refresh-btn-sm" style="width:100%" onclick="dsShowHealthExport()">Selected Day's Workout (Google Health)</button>
+        <button class="refresh-btn-sm" style="margin-top:8px;width:100%" onclick="dsShowWeekExport()">📆 This Week's Workout</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🍽️ Food</div>
+        <button class="refresh-btn-sm" style="width:100%" onclick="dsShowFoodExport()">Selected Day's Food Log (Google Health)</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="bs" onclick="exportCalWeight()">⬇ Calories vs weight (CSV)</button><button class="bs" onclick="copyCalWeight()">Copy as text</button></div>
       </div>
         </div>
       </details>
@@ -1341,7 +1354,7 @@
      visible — a hidden ancestor panel hides its descendants regardless of
      their own display value. Moved to a top-level sibling of every panel so
      it opens correctly no matter which tab you're on. -->
-<div id="ds-health-export-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;padding:16px">
+<div id="ds-health-export-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:16px">
   <div style="background:#1a1a1a;border-radius:12px;padding:16px;max-width:420px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:10px">
     <div style="font-weight:600;color:#5eead4" id="ds-health-export-title">Today's Workout</div>
     <textarea id="ds-health-export-text" readonly style="flex:1;min-height:220px;background:#0d0d0d;color:#e5e5e5;border:1px solid #333;border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:12px;resize:vertical"></textarea>
@@ -1353,6 +1366,6 @@
   </div>
 </div>
 
-<script src="app.js?v=390"></script>
+<script src="app.js?v=391"></script>
 </body>
 </html>

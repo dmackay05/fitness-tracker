@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v296 — 2026-10-06";
+var APP_BUILD = "v297 — 2026-10-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1529,6 +1529,43 @@ function copyCalWeight(){
     navigator.clipboard.writeText(c.text).then(function(){ toast('Copied '+c.n+' days'); },
       function(){ toast('Could not copy — try Export instead'); });
   }catch(e){ toast('Could not copy — try Export instead'); }
+}
+
+// ── EXPORT: full strength log (Progressive Overload history) ─────────────
+// One row per exercise per day, oldest first, with the muscle map so weekly
+// volume per muscle can be analysed outside the app.
+function overloadCsv(){
+  var rows=[];
+  Object.keys(appData).filter(function(k){return /^\d{4}-\d{2}-\d{2}$/.test(k);}).sort().forEach(function(k){
+    (appData[k].exercises||[]).forEach(function(e){
+      if(!e||!e.id||String(e.id).indexOf('sess_')!==0) return;
+      if(!e.sets&&!e.reps&&!e.load) return;
+      var id=String(e.id).slice(5);
+      var mv=(typeof DS_MV!=='undefined'&&DS_MV[id])?Object.keys(DS_MV[id]).map(function(m){return m+':'+DS_MV[id][m];}).join(';'):'';
+      rows.push([k,id,e.name||id.replace(/-/g,' '),e.load||'',e.reps!=null?e.reps:'',e.sets!=null?e.sets:'',e.rir!=null?e.rir:'',mv]);
+    });
+  });
+  var esc=function(v){v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  var lines=['date,exercise_id,exercise,band_lb,reps,sets,rir,muscles'];
+  rows.forEach(function(r){lines.push(r.map(esc).join(','));});
+  return {text:lines.join('\n'), n:rows.length};
+}
+function exportOverload(){
+  var c=overloadCsv();
+  if(!c.n){ toast('No strength sets logged yet'); return; }
+  try{
+    var blob=new Blob([c.text],{type:'text/csv'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='strength-log-'+todayKey()+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Exported '+c.n+' exercise entries');
+  }catch(e){ toast('Could not download — try Copy instead'); }
+}
+function copyOverload(){
+  var c=overloadCsv();
+  if(!c.n){ toast('No strength sets logged yet'); return; }
+  try{ navigator.clipboard.writeText(c.text).then(function(){toast('Copied '+c.n+' entries');},function(){toast('Could not copy — try Download');}); }
+  catch(e){ toast('Could not copy — try Download'); }
 }
 // Collapsible day-by-day intake so a suspicious average can actually be audited.
 var TDEE_LIST_OPEN=false;
