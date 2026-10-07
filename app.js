@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v303 — 2026-10-07";
+var APP_BUILD = "v304 — 2026-10-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6982,7 +6982,6 @@ var DS_RESERVE_MOVES=[];
   if(dsGuestMode()) return;
   var DROP={
     mon:['warmup-armcircle','mon-calf','mon-highfly','mon-forearm'],   // dup shoulder warm-up · calves on an upper day · 2-set junk fly · wrist curl right after wrist rehab
-    tue:['tue-lat'],                                                    // abductors already worked by the banded squat
     thu:['warmup-armcircle','pu-band','thu-hollow','thu-forearm'],      // dup warm-up · second vertical pull · core/forearm dups
     fri:['wed-rotslam'],                                                // duplicates the obliques slot
     sat:['sat-hollow']                                                  // hollow stays on Monday
@@ -7029,6 +7028,15 @@ var DS_RESERVE_MOVES=[];
     if(dsDayIsCustom(d)||!DS_SESSIONS[d]) return;
     (DS_SESSIONS[d].moves||[]).forEach(function(m){ if(m&&SETS[m.id]) setSets(m,SETS[m.id]); });
   });
+  // Upper traps: shrugs on Thursday (after the pull-apart) — the only direct top-of-trap work.
+  if(!dsDayIsCustom('thu') && DS_SESSIONS.thu){
+    var tm=DS_SESSIONS.thu.moves, sh=null;
+    DS_RESERVE_MOVES=DS_RESERVE_MOVES.filter(function(m){ if(m&&m.id==='sat-shrug'){ sh=m; return false; } return true; });
+    if(sh && !tm.some(function(x){return x&&x.id==='sat-shrug';})){
+      var at=-1; for(var q=0;q<tm.length;q++){ if(tm[q]&&tm[q].id==='mon-pullapart'){ at=q+1; break; } }
+      tm.splice(at<0?tm.length:at,0,sh); setSets(sh,3);
+    }
+  }
   var fg=null; (DS_SESSIONS.fri&&DS_SESSIONS.fri.moves||[]).forEach(function(m){ if(m&&m.id==='fri-goblet') fg=m; });
   if(fg) fg.slot='Quads';
 })();
