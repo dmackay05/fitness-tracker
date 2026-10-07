@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v302 — 2026-10-07";
+var APP_BUILD = "v303 — 2026-10-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6995,7 +6995,7 @@ var DS_RESERVE_MOVES=[];
     // legs: small bump
     'tue-legext':4,'sat-hipthrust':4,'fri-goblet':3,
     // Saturday pump work (re-added below)
-    'sat-chest':3,'sat-inclinecurl':3
+    'mon-highfly':3,'sat-inclinecurl':3
   };
   function setSets(m,n){
     if(!m||m.log!=='setsreps') return;
@@ -7012,9 +7012,10 @@ var DS_RESERVE_MOVES=[];
       return true;
     });
   });
-  // Saturday: ride + a short chest/biceps pump + loaded core (3rd weekly hit for the priority muscles)
+  // Saturday: ride + a short chest/biceps pump + loaded core (3rd weekly hit for the priority muscles).
+  // High-to-low fly = the week's only downward chest line (Mon/Thu already cover upward + straight-out).
   if(!dsDayIsCustom('sat') && DS_SESSIONS.sat){
-    var add=['sat-chest','sat-inclinecurl'], mv=DS_SESSIONS.sat.moves;
+    var add=['mon-highfly','sat-inclinecurl'], mv=DS_SESSIONS.sat.moves;
     DS_RESERVE_MOVES=DS_RESERVE_MOVES.filter(function(m){
       if(m&&add.indexOf(m.id)>=0&&!mv.some(function(x){return x&&x.id===m.id;})){ mv.splice(Math.max(0,mv.length-1),0,m); return false; }
       return true;
@@ -7022,7 +7023,7 @@ var DS_RESERVE_MOVES=[];
     // ride last
     mv.sort(function(x,y){ return (x.id==='sat-ride')-(y.id==='sat-ride'); });
     DS_SESSIONS.sat.title='Ride Day + Chest/Arm Pump';
-    DS_SESSIONS.sat.sub='Mountain bike ride · short stretch fly + incline curl · band crunch';
+    DS_SESSIONS.sat.sub='Mountain bike ride · high-to-low fly + incline curl · band crunch';
   }
   DS_PLAN_DAYS.forEach(function(d){
     if(dsDayIsCustom(d)||!DS_SESSIONS[d]) return;
