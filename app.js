@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v301 — 2026-10-06";
+var APP_BUILD = "v302 — 2026-10-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3562,7 +3562,7 @@ function applyConfig(cfg){
   WATER_GOAL=parseInt(store.get('ft_water'))||WATER_GOAL;
   try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){}
   if(typeof initHealthSettings==="function") initHealthSettings();
-  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(typeof dsMigrateSwaps==='function'&&dsMigrateSwaps()) dsSaveSwaps(); } }catch(e){}
+  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(typeof dsMigrateSwaps==='function'&&dsMigrateSwaps()) dsSaveSwaps(); if(typeof dsSwapShiftV302==='function'&&dsSwapShiftV302()) dsSaveSwaps(); } }catch(e){}
   // Merge (not overwrite) the four per-day/per-exercise maps below: each device may have
   // logged its own entries locally since the last sync, and a straight overwrite would
   // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
@@ -5691,8 +5691,8 @@ var DS_SESSIONS={
       {id:'mon-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Bodyweight or step edge',rx:'3×15–20',cal:15,cue:'Rise onto the toes, 2-sec squeeze at the top, slow controlled lower',demo:'calf',log:'setsreps',sets:3,variants:[{name:'Single-Leg Calf Raise',equip:'Step edge, bodyweight',rx:'3×12–15/leg',cue:'One heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top — unilateral load builds strength faster than bilateral once bodyweight gets easy',demo:'calf'}]},
       {id:'mon-hollow',name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',rx:'2×30s holds',cal:20,cue:'Press low back into floor, ribs down — one rigid curved line',demo:'hollow',log:'time',secs:30,sets:2,variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',rx:'2×30s',cue:'Same exhale-and-press-flat cue, but knees bent and lifted instead of legs straight — less pull on the low back/hip flexors, good swap on days the SI joint feels touchy',demo:'hollow'}]},
       {id:'mon-elbow',name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',rx:'3×15',cal:12,cue:'Slow on the lower — this is the rehab that actually works',demo:'wristecc',log:'setsreps',sets:3,
-        setup:'Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. 3×15, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer\'s elbow — do it even when the elbow feels fine.',
-        variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating',demo:'wristecc'}]},
+        setup:'Forearm resting on your thigh, palm up, light band under your foot with the end in your hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. 3×15, most days. A mild ache through the forearm is fine; sharp pain means lighten it. This loaded eccentric is the evidence-based fix for golfer\'s elbow — do it even when the elbow feels fine.',
+        variants:[{name:'Isometric Wrist Flexion Hold',equip:'Red Theraband or light tube',rx:'3×20–30s',cue:'Hold still — no movement, just steady tension. Use on days the eccentric feels too aggravating',demo:'wristecc'}]},
       {id:'mon-forearm',name:'Forearm Finisher — Wrist Curl',slot:'Pull · Forearms',target:'Forearm Flexors',equip:'2–10 lb dumbbells',rx:'2×15–25',cal:15,cue:'⚠️ Same flexor tendon as the elbow rehab above — this is loading, not rehab, so keep it light and stop the set the moment you feel elbow ache rather than pushing to true failure.',demo:'wristecc',log:'setsreps',sets:2,
         setup:'Seated, forearm resting across your thigh, palm up, dumbbell in hand. Curl the wrist up and hold the peak contraction 1 second, then lower slow enough that the weight rolls all the way out to your fingertips before curling back up. High reps (15–25) — the range of motion is short, so light weight and volume builds the pump, not load.',
         variants:[{name:'One-Arm Bench Wrist Curl (alternating)',equip:'2–10 lb dumbbell',rx:'2×15–17/arm, rest-free',cue:'Off the edge of the piano bench, one arm at a time, same peak-hold-and-slow-lower as above. Start with your weaker arm, count the reps to near-failure, then immediately switch to the other arm for the same count — alternate back and forth without resting.',demo:'wristecc'},
@@ -5867,7 +5867,9 @@ var DS_DROP_VARIANTS={
   'sat-shrug':['DB Shrug'],
   'sat-inclinecurl':['DB Incline Curl on Ball','Ball Preacher Curl'],
   'sat-ohtriceps':['DB Overhead Triceps Extension'],
-  'sat-frontsquat':['Goblet Squat']
+  'sat-frontsquat':['Goblet Squat'],
+  // v302: last dumbbell alternate in the split
+  'mon-pressaround':['Standing Cross-Body Cable Fly (light DB)']
 };
 // Shared card definitions. Fields here replace the card's content; the day
 // keeps id / rx / sets / cal. Variants without rx inherit the day's rx.
@@ -5878,7 +5880,7 @@ var DS_CARD_TEMPLATES={
   hollow:{name:'Hollow Body Hold',slot:'Core',target:'Core',equip:'Bodyweight',demo:'hollow',
     cue:'Press the low back into the floor, ribs down — one rigid curved line. Bend the knees the moment the back starts to lift.',
     variants:[{name:'Bent-Knee Hollow Hold',equip:'Bodyweight',cue:'Knees bent and lifted instead of legs straight — much less pull on the low back and hip flexors. Use it whenever the SI joint feels touchy.',demo:'hollow'}]},
-  elbow:{name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'2 lb dumbbell or light band',demo:'wristecc',
+  elbow:{name:'Elbow — Eccentric Wrist Rehab',slot:'Rehab',target:'Medial epicondyle (golfer\'s elbow)',equip:'Red Theraband or light tube · under your foot',demo:'wristecc',
     cue:'Slow on the lower — this is the part that fixes the tendon. Mild ache is fine; sharp pain means lighten it.',
     setup:'Forearm resting on your thigh, palm up, light weight in hand. Help it up with the other hand, then lower the wrist slowly over 3–4 seconds using only the working side. Do it even when the elbow feels fine — the loaded eccentric is the evidence-based fix for golfer\'s elbow.',
     variants:[{name:'Isometric Wrist Flexion Hold',equip:'2 lb dumbbell or light band',rx:'3×20–30s',cue:'Hold still with steady tension, no movement. Use on days the eccentric feels too aggravating — isometrics load the tendon with less irritation.',demo:'wristecc'}]},
@@ -6971,6 +6973,73 @@ var DS_RESERVE_MOVES=[];
     DS_SESSIONS.sat={title:'Ride Day + Light Core',sub:'Mountain bike ride for cardio · short core finisher · no heavy lifting',accent:DS_SESSIONS.sat.accent,moves:kept};
   }
 })();
+
+// ── v302 EXERCISE AUDIT — chest + arms first, legs nudged up, redundancy out.
+// Removed moves go to DS_RESERVE_MOVES so full-body mode, one-day picks and
+// history still resolve them. Runs before the split is captured, so both
+// modes share it. Skipped for imported plans (guests).
+(function dsSplitTuneV302(){
+  if(dsGuestMode()) return;
+  var DROP={
+    mon:['warmup-armcircle','mon-calf','mon-highfly','mon-forearm'],   // dup shoulder warm-up · calves on an upper day · 2-set junk fly · wrist curl right after wrist rehab
+    tue:['tue-lat'],                                                    // abductors already worked by the banded squat
+    thu:['warmup-armcircle','pu-band','thu-hollow','thu-forearm'],      // dup warm-up · second vertical pull · core/forearm dups
+    fri:['wed-rotslam'],                                                // duplicates the obliques slot
+    sat:['sat-hollow']                                                  // hollow stays on Monday
+  };
+  var SETS={
+    // chest: ~20 direct sets/wk
+    'mon-pressaround':4,'mon-inclinepress':4,'mon-standbandpress':4,
+    // triceps up; side delts + overhead press down so the time goes to chest/arms
+    'mon-tri':4,'mon-slamskull':4,'mon-ohp':3,'mon-lateral':3,'thu-lateral':3,
+    // legs: small bump
+    'tue-legext':4,'sat-hipthrust':4,'fri-goblet':3,
+    // Saturday pump work (re-added below)
+    'sat-chest':3,'sat-inclinecurl':3
+  };
+  function setSets(m,n){
+    if(!m||m.log!=='setsreps') return;
+    m.sets=n;
+    if(m.rx) m.rx=String(m.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×');
+    var pr=(typeof DS_PHASE_RX!=='undefined')&&DS_PHASE_RX[m.id];
+    if(pr&&pr.p1){ pr.p1.sets=n; pr.p1.rx=String(pr.p1.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×'); }
+  }
+  var reserved={}; DS_RESERVE_MOVES.forEach(function(m){ if(m&&m.id) reserved[m.id]=m; });
+  Object.keys(DROP).forEach(function(d){
+    if(dsDayIsCustom(d)||!DS_SESSIONS[d]) return;
+    DS_SESSIONS[d].moves=DS_SESSIONS[d].moves.filter(function(m){
+      if(m&&DROP[d].indexOf(m.id)>=0){ if(!reserved[m.id]){ reserved[m.id]=m; DS_RESERVE_MOVES.push(m); } return false; }
+      return true;
+    });
+  });
+  // Saturday: ride + a short chest/biceps pump + loaded core (3rd weekly hit for the priority muscles)
+  if(!dsDayIsCustom('sat') && DS_SESSIONS.sat){
+    var add=['sat-chest','sat-inclinecurl'], mv=DS_SESSIONS.sat.moves;
+    DS_RESERVE_MOVES=DS_RESERVE_MOVES.filter(function(m){
+      if(m&&add.indexOf(m.id)>=0&&!mv.some(function(x){return x&&x.id===m.id;})){ mv.splice(Math.max(0,mv.length-1),0,m); return false; }
+      return true;
+    });
+    // ride last
+    mv.sort(function(x,y){ return (x.id==='sat-ride')-(y.id==='sat-ride'); });
+    DS_SESSIONS.sat.title='Ride Day + Chest/Arm Pump';
+    DS_SESSIONS.sat.sub='Mountain bike ride · short stretch fly + incline curl · band crunch';
+  }
+  DS_PLAN_DAYS.forEach(function(d){
+    if(dsDayIsCustom(d)||!DS_SESSIONS[d]) return;
+    (DS_SESSIONS[d].moves||[]).forEach(function(m){ if(m&&SETS[m.id]) setSets(m,SETS[m.id]); });
+  });
+  var fg=null; (DS_SESSIONS.fri&&DS_SESSIONS.fri.moves||[]).forEach(function(m){ if(m&&m.id==='fri-goblet') fg=m; });
+  if(fg) fg.slot='Quads';
+})();
+// v302 dropped the first mon-pressaround alternate -> shift saved swap picks down one.
+function dsSwapShiftV302(){
+  try{
+    if(!DS_SWAPS||typeof DS_SWAPS!=='object'||DS_SWAPS.__v302) return false;
+    ['mon-pressaround','L:mon-pressaround'].forEach(function(k){ var i=DS_SWAPS[k]; if(i==null) return; if(i===1) delete DS_SWAPS[k]; else if(i>1) DS_SWAPS[k]=i-1; });
+    DS_SWAPS.__v302=1; store.set('ds_swaps',JSON.stringify(DS_SWAPS)); return true;
+  }catch(e){ return false; }
+}
+dsSwapShiftV302();
 
 dsApplyFullBody();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
