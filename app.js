@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v309 — 2026-10-07";
+var APP_BUILD = "v310 — 2026-10-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8689,6 +8689,13 @@ DS_SETUPPICS['Standing Band Chest Press']=function(){
   dsMk(stag,{title:'Start (at chest)',arm:[[100,88],[88,110],[112,100]],band:[[8,98],[112,100]],tags:[[4,196,'Anchor at chest']]}),
   dsMk(stag,{title:'Top (arms straight)',arm:[[100,88],[130,94],[160,98]],band:[[8,98],[160,98]],bw:4,tags:[[4,196,'Staggered stance']]}),
   ['Anchor at chest height behind you','Staggered stance, slight forward lean','Press straight out and squeeze the chest',DS_TW]); };
+DS_SETUPPICS['Standing Band Chest Press (pyramid)']=function(){
+  var stag={head:[102,60],torso:[[100,76],[95,138]],legs:[[95,138],[112,192],[118,246],[135,246]]};
+  return dsPic2(
+  dsMk(stag,{title:'Start (stretch)',arm:[[100,88],[88,110],[112,100]],band:[[8,98],[112,100]],tags:[[4,196,'Anchor at chest']]}),
+  dsMk(stag,{title:'Top (arms straight)',arm:[[100,88],[130,94],[160,98]],band:[[8,98],[160,98]],bw:4,tags:[[4,196,'Staggered stance']]}),
+  ['Anchor at chest height behind you, tension at the bottom','Elbows about 45°, inner biceps to pecs at lockout','Pyramid: 15 light · 10–12 heavier · 8–10 heaviest','3 sec down · 1 sec squeeze at lockout']); };
+DS_SETUPPICS['Banded Chest Press (anchor)']=DS_SETUPPICS['Standing Band Chest Press'];
 DS_SETUPPICS['Banded Hip Thrust']=function(){
   var bn={lines:[[14,190,72,190],[22,190,22,252],[64,190,64,252]],head:[36,168]};
   return dsPic2(
