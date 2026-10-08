@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v308 — 2026-10-07";
+var APP_BUILD = "v309 — 2026-10-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6971,6 +6971,26 @@ var DS_RESERVE_MOVES=[];
     DS_SESSIONS.sat.moves.forEach(function(m){ if(!m) return; if(keep[m.id]) kept.push(m); else if(!/^warmup|^wu-/.test(m.id)) DS_RESERVE_MOVES.push(m); });
     kept.sort(function(x,y){ return (x.id==='sat-ride')-(y.id==='sat-ride'); });
     DS_SESSIONS.sat={title:'Ride Day + Light Core',sub:'Mountain bike ride for cardio · short core finisher · no heavy lifting',accent:DS_SESSIONS.sat.accent,moves:kept};
+  }
+})();
+// v309 lock-in trim: cut overlapping accessories so each lifting day centers on
+// the compound lifts. Cut moves stay findable via DS_RESERVE_MOVES.
+(function dsLockInTrimV309(){
+  if(dsGuestMode()) return;
+  var CUT={mon:['mon-lateral','mon-pressaround','mon-legraise'],tue:['tue-lat'],thu:['mon-pullapart','thu-legraise'],fri:['fri-goblet']};
+  var pallof=null;
+  if(!dsDayIsCustom('tue') && DS_SESSIONS.tue){
+    DS_SESSIONS.tue.moves=DS_SESSIONS.tue.moves.filter(function(m){ if(m&&m.id==='tue-pallof'){ pallof=m; return false; } return true; });
+  }
+  Object.keys(CUT).forEach(function(d){
+    if(dsDayIsCustom(d) || !DS_SESSIONS[d]) return;
+    DS_SESSIONS[d].moves=DS_SESSIONS[d].moves.filter(function(m){ if(m&&CUT[d].indexOf(m.id)>=0){ DS_RESERVE_MOVES.push(m); return false; } return true; });
+  });
+  // Friday: Pallof press replaces obliques/rotation (one anti-rotation move per week)
+  if(pallof){
+    var f=(!dsDayIsCustom('fri') && DS_SESSIONS.fri)?DS_SESSIONS.fri.moves:null, done=false;
+    if(f){ for(var i=0;i<f.length;i++){ if(f[i]&&f[i].id==='fri-obliques'){ DS_RESERVE_MOVES.push(f[i]); f[i]=pallof; done=true; break; } } }
+    if(!done) DS_RESERVE_MOVES.push(pallof);
   }
 })();
 
