@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v316 — 2026-10-08";
+var APP_BUILD = "v317 — 2026-10-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -12418,8 +12418,8 @@ function renderPoses() {
       html += '</div></div>';
       // Detail panel
       html += '<div class="pose-detail" id="det-'+p.id+'">';
-      html += '<div class="pose-demo-large">'+demoHtml+'</div>';
-      var _fg = ygFigHtml(p.id); if (_fg) html += '<div class="yg-figs">'+_fg+'</div>';
+      var _fg = ygFigHtml(p.id);
+      if (_fg) html += '<div class="yg-figs">'+_fg+'</div>'; else html += '<div class="pose-demo-large">'+demoHtml+'</div>';
       html += '<div class="det-sec"><div class="det-lbl">About</div><div class="det-txt">'+p.desc+'</div></div>';
       html += '<div class="det-sec"><div class="det-lbl">How To</div><ol class="steps-list">';
       p.steps.forEach(function(step,i){
@@ -12634,8 +12634,10 @@ function ygLoadPose() {
   var p=item.pose;
   document.getElementById("sess-prog").textContent="Pose "+(sessIdx+1)+" of "+routine.length;
   var demoEl=document.getElementById("sess-demo");
-  if (demoEl) demoEl.innerHTML = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : "";
-  var figEl=document.getElementById("sess-figs"); if (figEl) { var _sf=ygFigHtml(p.id); figEl.innerHTML=_sf; figEl.style.display=_sf?"block":"none"; }
+  var _sf=ygFigHtml(p.id);
+  // v317: when a pose has the side-by-side figure, it replaces the old animated stick figure
+  if (demoEl) { demoEl.innerHTML = (!_sf && typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : ""; demoEl.style.display=_sf?"none":""; }
+  var figEl=document.getElementById("sess-figs"); if (figEl) { figEl.innerHTML=_sf; figEl.style.display=_sf?"block":"none"; }
   var badge=document.getElementById("sess-emoji-badge"); if(badge) badge.textContent=p.e;
   document.getElementById("sess-name").textContent=p.n;
   document.getElementById("sess-sans").textContent=p.s;
