@@ -1766,3 +1766,19 @@ html body div.app{max-width:480px}
 .ig-two .ig-ul{padding-left:14px}
 .ig-two .ig-ul li{font-size:12px}
 @media (max-width:360px){.ig-two{grid-template-columns:1fr}}
+
+/* v316 crash box, update banner, weekly review */
+.ft-crash{margin:12px 0;padding:14px;border:1px solid #ef444455;border-radius:12px;background:#ef44440f}
+.ft-crash-t{font:700 14px 'DM Sans',sans-serif;color:#f0ede8}
+.ft-crash-s{font-size:12px;color:#c8c6c0;margin-top:4px;line-height:1.5}
+.ft-crash-b{display:flex;gap:8px;margin-top:10px}
+.ft-crash-b button,.ft-upd button{padding:8px 14px;border-radius:10px;border:1px solid #5eead4;background:#5eead4;color:#0d0d1a;font:700 12px 'DM Sans',sans-serif;cursor:pointer}
+.ft-crash-b button+button{background:transparent;color:#5eead4}
+.ft-crash-e{font:500 10px 'DM Mono',monospace;color:#888;margin-top:8px;word-break:break-word}
+.ft-upd{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#14141f;border:1px solid #5eead466;box-shadow:0 8px 24px #0008;color:#f0ede8;font:600 13px 'DM Sans',sans-serif}
+.ft-wr{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ft-wr-s{padding:8px;border-radius:10px;background:#ffffff08;border:1px solid #ffffff12}
+.ft-wr-s b{display:block;font:700 22px 'DM Sans',sans-serif;color:#5eead4}
+.ft-wr-s b small{font-size:12px;color:#888;margin-left:2px}
+.ft-wr-s span{display:block;font-size:10.5px;color:#a8a8c0;line-height:1.35;margin-top:2px}
+.ft-wr-n{font-size:12px;color:#c8c6c0;margin-top:8px;line-height:1.45}

@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v315 — 2026-10-08";
+var APP_BUILD = "v316 — 2026-10-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14220,3 +14220,110 @@ function mmRender(){
   root.innerHTML=h;
 }
 try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{mmRender();}catch(e){} }); else mmRender(); }catch(e){}
+
+/* ── v316: crash protection · update banner · lock-in guard · weekly review ── */
+// 1) Crash protection: if a screen fails to draw, show a reload box instead of a blank page.
+function ftCrashBox(host,err,where){
+  try{ console.error('['+where+']',err); }catch(e){}
+  if(!host) return;
+  host.innerHTML='<div class="ft-crash"><div class="ft-crash-t">Something went wrong drawing this screen.</div>'+
+    '<div class="ft-crash-s">Your logged data is safe. Try reloading — if it keeps happening, tap Force update.</div>'+
+    '<div class="ft-crash-b"><button onclick="location.reload()">Reload</button><button onclick="ftForceUpdate()">Force update</button></div>'+
+    '<div class="ft-crash-e">'+String((err&&err.message)||err).replace(/</g,'&lt;').slice(0,160)+' · '+(typeof APP_BUILD!=='undefined'?APP_BUILD:'')+'</div></div>';
+}
+(function(){
+  function wrap(name,hostId){
+    var orig=window[name]; if(typeof orig!=='function'||orig._ftWrapped) return;
+    var w=function(){ try{ return orig.apply(this,arguments); }catch(e){ ftCrashBox(document.getElementById(hostId),e,name); } };
+    w._ftWrapped=true; window[name]=w;
+  }
+  wrap('dsRender','ds-session');
+  wrap('renderDash','dash-averages');
+  wrap('renderLog','log-list');
+})();
+// 2) Update banner: check for a newer deploy and offer a one-tap update.
+function ftForceUpdate(){
+  var go=function(){ location.replace(location.pathname+'?u='+Date.now()); };
+  try{
+    var p=[];
+    if(window.caches) p.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
+    Promise.all(p).then(go,go); setTimeout(go,2500);
+  }catch(e){ go(); }
+}
+var _ftUpdLast=0;
+function ftCheckUpdate(){
+  try{
+    if(Date.now()-_ftUpdLast<60000) return; _ftUpdLast=Date.now();
+    var s=document.querySelector('script[src*="app.js?v="]'); if(!s) return;
+    var cur=parseInt((s.getAttribute('src').match(/v=(\d+)/)||[])[1],10); if(!cur) return;
+    fetch('index.html?nc='+Date.now(),{cache:'no-store'}).then(function(r){ return r.ok?r.text():''; }).then(function(t){
+      var nv=parseInt((t.match(/app\.js\?v=(\d+)/)||[])[1],10);
+      if(nv&&nv>cur&&!document.getElementById('ft-upd')){
+        var b=document.createElement('div'); b.id='ft-upd'; b.className='ft-upd';
+        b.innerHTML='<span>✨ New version ready</span><button onclick="ftForceUpdate()">Update</button>';
+        document.body.appendChild(b);
+      }
+    }).catch(function(){});
+  }catch(e){}
+}
+try{
+  setTimeout(ftCheckUpdate,4000);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') ftCheckUpdate(); });
+  if(/[?&]u=\d+/.test(location.search) && window.history && history.replaceState) history.replaceState(null,'',location.pathname);
+}catch(e){}
+// 3) Lock-in guard: gentle check before editing the program mid-block.
+var FT_LOCK_WEEKS=8;
+function ftLockStart(){ try{ return store.get('ft_lockin_start')||'2026-10-07'; }catch(e){ return '2026-10-07'; } }
+function ftLockInfo(){
+  var st=keyToDate(ftLockStart()), days=Math.floor((Date.now()-st.getTime())/86400000);
+  if(days<0) return null; var wk=Math.floor(days/7)+1; if(wk>FT_LOCK_WEEKS) return null;
+  return {week:wk,total:FT_LOCK_WEEKS,start:st};
+}
+(function(){
+  var orig=window.dsCustomOpen; if(typeof orig!=='function') return;
+  window.dsCustomOpen=function(){
+    try{
+      var li=(typeof dsGuestMode==='function'&&dsGuestMode())?null:ftLockInfo();
+      if(li && !window._ftLockAck){
+        var msg='You’re in week '+li.week+' of your '+li.total+'-week lock-in (started '+li.start.toLocaleDateString(undefined,{month:'short',day:'numeric'})+').\n\nChanging exercises now resets the comparison and makes progress harder to see. If something hurts, swap just that one exercise.\n\nOpen the editor anyway?';
+        if(!window.confirm(msg)) return;
+        window._ftLockAck=true;
+      }
+    }catch(e){}
+    return orig.apply(this,arguments);
+  };
+})();
+// 4) Weekly review card on the Dashboard.
+function ftWeeklyReview(){
+  var el=document.getElementById('dash-weekly-review'); if(!el) return;
+  try{
+    var keys=dsMVDateKeysCalendarWeek(), tk=todayKey(), done=0, planned=0, proHit=0, proDays=0, proSum=0;
+    var dayIdx={0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
+    keys.forEach(function(k){
+      if(k>tk) return;
+      var d=appData[k]||{}, sk=dayIdx[keyToDate(k).getDay()];
+      if(sk==='mon'||sk==='tue'||sk==='thu'||sk==='fri') planned++;
+      if(d.exercises&&d.exercises.some(function(e){ return e&&e.id&&String(e.id).indexOf('sess_')===0&&(e.sets||e.reps||e.done); })) done++;
+      if(d.foods&&d.foods.length){ var p=d.foods.reduce(function(a,f){return a+(+f.protein||0);},0); proDays++; proSum+=p; if(p>=(GOALS.protein-PROTEIN_BAND)) proHit++; }
+    });
+    var up=0, upNames=[];
+    try{ strengthTrendData().forEach(function(x){ if(x.cmp&&x.cmp.kind==='up'&&x.cmp.cur&&keys.indexOf(x.cmp.cur.date)>=0){ up++; if(upNames.length<3) upNames.push(x.name); } }); }catch(e){}
+    var low=[];
+    try{ var v=dsMVWeek(keys); Object.keys(MUSCLE_LANDMARKS).forEach(function(m){ if(v[m]!=null&&v[m]<MUSCLE_LANDMARKS[m][0]) low.push(m); }); }catch(e){}
+    var isSun=(new Date().getDay()===0);
+    var h='<div class="card-title">'+(isSun?'📋 Week in Review':'📋 This Week So Far')+'</div><div class="ft-wr">';
+    h+='<div class="ft-wr-s"><b>'+done+'</b><span>workouts logged'+(planned?' (of '+planned+' lift days so far)':'')+'</span></div>';
+    h+='<div class="ft-wr-s"><b>'+up+'</b><span>lifts improved</span></div>';
+    h+='<div class="ft-wr-s"><b>'+(proDays?Math.round(proSum/proDays):'—')+'<small>g</small></b><span>avg protein · goal hit '+proHit+'/'+proDays+' days</span></div></div>';
+    if(upNames.length) h+='<div class="ft-wr-n">▲ '+upNames.join(' · ')+'</div>';
+    if(isSun&&low.length) h+='<div class="ft-wr-n" style="color:#fbbf24">Below minimum volume this week: '+low.join(', ')+'</div>';
+    var li=ftLockInfo(); if(li) h+='<div class="ft-wr-n">🔒 Lock-in week '+li.week+' of '+li.total+' — keep the plan steady.</div>';
+    el.innerHTML=h; el.style.display='';
+  }catch(e){ el.style.display='none'; }
+}
+(function(){
+  var orig=window.renderDash; if(typeof orig!=='function') return;
+  var w=function(){ var r=orig.apply(this,arguments); try{ ftWeeklyReview(); }catch(e){} return r; };
+  w._ftWrapped=orig._ftWrapped; window.renderDash=w;
+})();
+try{ ftWeeklyReview(); }catch(e){}
