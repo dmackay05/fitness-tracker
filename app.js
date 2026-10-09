@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v312 — 2026-10-08";
+var APP_BUILD = "v313 — 2026-10-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14116,3 +14116,96 @@ function acroFilter(q){
   });
   var n=document.getElementById("acro-none"); if(n) n.style.display=any?"none":"";
 }
+
+/* ── v313: Muscle Map (Info tab) — tap a muscle to learn what it does + which of YOUR exercises train it ── */
+var MM_EXTRA={'tue-tib':{'Shins':1},'fri-tib':{'Shins':1},'fri-add':{'Adductors':1}};
+var MM_INFO={
+  'Chest':{name:'Chest (pecs)',does:'Pulls your arms across your body and pushes things away from you. The upper fibers (near the collarbone) help press up at an angle; the larger lower part handles flat pressing.',feel:'Press your palms together hard in front of your chest — that tightening is your pecs. On presses, think "bring the inner biceps toward the chest" at lockout.',tip:'Grows best from deep stretch under load — the bottom of the deficit push-up and the band press with tension at the start.'},
+  'Shoulders':{name:'Front & side delts',does:'The front delt lifts your arm forward and helps every press. The side delt lifts your arm out to the side — it is what makes shoulders look wider.',feel:'Lift your arm straight out to the side and touch the top of your shoulder — that round muscle firming up is the side delt.',tip:'Presses cover the front delt well. Lateral raises are the main driver for side-delt width.'},
+  'Rear Delts':{name:'Rear delts',does:'Pull your arm backward and rotate it outward. Small, but key for shoulder health and posture after years of desk work.',feel:'Arms out wide, pull your elbows back like you are spreading a big towel — the back of the shoulder tightens.',tip:'Light weight and high reps work well here. Keep the elbows high on face pulls.'},
+  'Biceps':{name:'Biceps & brachialis',does:'Bend the elbow and turn the palm up. The brachialis sits underneath and pushes the biceps up — hammer curls hit it hard, which makes the whole arm look thicker.',feel:'Curl your arm and squeeze the top — the peak bunches up. Palms-up curls favor the biceps; thumbs-up curls favor the brachialis.',tip:'The stretched position matters: behind-the-body (Bayesian-style) curls load the biceps at full length.'},
+  'Triceps':{name:'Triceps',does:'Straighten the elbow. They make up about two-thirds of your upper-arm size, so they matter more than biceps for bigger arms.',feel:'Straighten your arm hard and flex — the horseshoe on the back of the arm pops out.',tip:'The long head only gets fully stretched with the arm overhead — that is why skull crushers and overhead extensions are in the plan.'},
+  'Forearms':{name:'Forearms & grip',does:'Grip, wrist control, and turning the hand. They work in almost every pulling exercise.',feel:'Squeeze a handle as hard as you can — the whole forearm tightens.',tip:'Mostly trained indirectly by rows, pulldowns, and hammer curls. The wrist rehab also strengthens the elbow tendons.'},
+  'Core':{name:'Abs & obliques',does:'The abs brace the spine and stop it from over-arching. The obliques on your sides resist twisting and side-bending.',feel:'Cough or brace like someone is about to poke your stomach — that firm wall is your core.',tip:'Bracing work (hollow hold, plank, Pallof press) trains the core the way it is actually used: holding the spine still under load.'},
+  'Traps':{name:'Traps',does:'Lift and steady the shoulder blades. The upper traps shrug; the middle and lower parts pull the blades together and down.',feel:'Shrug your shoulders toward your ears and hold — the muscle between neck and shoulder hardens.',tip:'Shrugs train the upper traps directly; rows and pulldowns cover the middle and lower parts.'},
+  'Back':{name:'Lats & upper back',does:'The lats pull your arms down and back. They are the big V-shape muscles. The upper back squeezes the shoulder blades together. The lower back (spinal erectors) keeps your spine straight when you hinge.',feel:'Pull your elbows down into your back pockets — the area under your armpit tightens. That is the lats.',tip:'Let the arms go all the way up on pulldowns for a full lat stretch, then drive the elbows down.'},
+  'Glutes':{name:'Glutes',does:'Drive the hips forward (standing up, climbing, hinging) and keep the knees from caving in. The biggest muscle in the body.',feel:'Squeeze your butt hard while standing tall — that is a glute contraction. Hip thrusts should end with that same squeeze.',tip:'Hip thrusts load them at the top; split squats and RDLs load them in the stretch.'},
+  'Quads':{name:'Quads',does:'Straighten the knee. Four muscles on the front of the thigh that power squats, stairs, and pedaling your bike.',feel:'Sit with your leg straight and tighten the front of the thigh — the kneecap pulls up.',tip:'Split squats and deep squats load them in the stretch; leg extensions isolate them.'},
+  'Hamstrings':{name:'Hamstrings',does:'Bend the knee and help the glutes extend the hip. They run down the back of the thigh.',feel:'At the bottom of an RDL you feel a strong pull behind the thigh — that stretch is the hamstrings working.',tip:'You need both jobs: hinges (RDL, good morning) for hip extension and leg curls for knee bending.'},
+  'Adductors':{name:'Adductors (inner thigh)',does:'Pull the legs together and help stabilize the hips and knees in squats and lunges.',feel:'Squeeze your knees together around a pillow — the inner thigh tightens.',tip:'Squats also work them in the deep position; the side-lying raise adds direct work.'},
+  'Calves':{name:'Calves',does:'Point the foot and push you off the ground on every step, run, and ride.',feel:'Rise onto your toes and hold — the back of the lower leg bulges.',tip:'Calves respond best to a full stretch at the bottom and a 2-second squeeze at the top.'},
+  'Shins':{name:'Shins (tibialis)',does:'Lift the toes and control the foot as it lands. Strong shins protect the knees and help prevent shin splints when running.',feel:'Pull your toes up toward your shin — the muscle beside the shin bone tightens.',tip:'Tibialis raises balance all the calf and running work.'}
+};
+var MM_SEL=null;
+function mmWeights(m){ var w=(typeof DS_MV!=='undefined'&&DS_MV[m.id])||MM_EXTRA[m.id]||null; return w; }
+function mmUses(group){
+  var out=[], names={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+  if(typeof DS_SESSIONS==='undefined') return out;
+  Object.keys(names).forEach(function(d){
+    var s=DS_SESSIONS[d]; if(!s||!s.moves) return;
+    s.moves.forEach(function(m){ if(!m) return; var w=mmWeights(m); if(w&&w[group]) out.push({day:names[d],name:m.name,w:w[group],sets:m.sets||0}); });
+  });
+  return out;
+}
+function mmBody(){
+  var r=function(g,shape){ return shape.replace('/>',' class="mm-m'+(MM_SEL===g?' mm-on':'')+'" data-m="'+g+'" onclick="mmPick(\''+g+'\')"/>'); };
+  var e=function(cx,cy,rx,ry,rot){ return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'"'+(rot?' transform="rotate('+rot+' '+cx+' '+cy+')"':'')+'/>'; };
+  var p=function(d){ return '<path d="'+d+'"/>'; };
+  var s='<svg viewBox="0 0 400 340" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Muscle map, front and back" style="display:block;max-width:440px;margin:0 auto">';
+  // silhouettes
+  [100,300].forEach(function(cx){
+    s+='<g class="mm-sil"><circle cx="'+cx+'" cy="28" r="16"/><rect x="'+(cx-7)+'" y="42" width="14" height="12" rx="4"/>'+
+      p('M'+(cx-30)+',56 Q'+cx+',50 '+(cx+30)+',56 L'+(cx+26)+',168 Q'+cx+',176 '+(cx-26)+',168 Z')+
+      e(cx-38,104,10,24,8)+e(cx+38,104,10,24,-8)+e(cx-45,150,8,24,10)+e(cx+45,150,8,24,-10)+
+      '<circle cx="'+(cx-50)+'" cy="180" r="7"/><circle cx="'+(cx+50)+'" cy="180" r="7"/>'+
+      e(cx-12,220,13,42)+e(cx+12,220,13,42)+e(cx-12,284,9,30)+e(cx+12,284,9,30)+
+      e(cx-14,318,10,5)+e(cx+14,318,10,5)+'</g>';
+  });
+  var F=100;
+  s+=r('Traps',p('M'+(F-8)+',52 L'+(F+8)+',52 L'+(F+24)+',60 L'+(F-24)+',60 Z'));
+  s+=r('Shoulders',e(F-33,70,11,13))+r('Shoulders',e(F+33,70,11,13));
+  s+=r('Chest',p('M'+(F-1)+',62 L'+(F-22)+',63 Q'+(F-29)+',78 '+(F-22)+',94 Q'+(F-10)+',99 '+(F-1)+',94 Z'));
+  s+=r('Chest',p('M'+(F+1)+',62 L'+(F+22)+',63 Q'+(F+29)+',78 '+(F+22)+',94 Q'+(F+10)+',99 '+(F+1)+',94 Z'));
+  s+=r('Biceps',e(F-39,104,7,17,8))+r('Biceps',e(F+39,104,7,17,-8));
+  s+=r('Forearms',e(F-45,150,6,19,10))+r('Forearms',e(F+45,150,6,19,-10));
+  s+=r('Core','<rect x="'+(F-11)+'" y="100" width="22" height="58" rx="6"/>');
+  s+=r('Core',p('M'+(F-14)+',104 L'+(F-24)+',106 L'+(F-23)+',158 L'+(F-14)+',160 Z'))+r('Core',p('M'+(F+14)+',104 L'+(F+24)+',106 L'+(F+23)+',158 L'+(F+14)+',160 Z'));
+  s+=r('Quads',e(F-14,218,10,36))+r('Quads',e(F+14,218,10,36));
+  s+=r('Adductors',e(F-3,200,3,16))+r('Adductors',e(F+3,200,3,16));
+  s+=r('Shins',e(F-13,284,5,24))+r('Shins',e(F+13,284,5,24));
+  var B=300;
+  s+=r('Traps',p('M'+B+',46 L'+(B+24)+',60 L'+B+',100 L'+(B-24)+',60 Z'));
+  s+=r('Rear Delts',e(B-33,70,11,13))+r('Rear Delts',e(B+33,70,11,13));
+  s+=r('Back',p('M'+(B-6)+',84 L'+(B-26)+',72 Q'+(B-28)+',110 '+(B-14)+',138 L'+(B-5)+',134 Z'));
+  s+=r('Back',p('M'+(B+6)+',84 L'+(B+26)+',72 Q'+(B+28)+',110 '+(B+14)+',138 L'+(B+5)+',134 Z'));
+  s+=r('Back','<rect x="'+(B-4)+'" y="104" width="8" height="58" rx="3"/>');
+  s+=r('Triceps',e(B-39,104,7,17,8))+r('Triceps',e(B+39,104,7,17,-8));
+  s+=r('Forearms',e(B-45,150,6,19,10))+r('Forearms',e(B+45,150,6,19,-10));
+  s+=r('Glutes',e(B-12,178,12,14))+r('Glutes',e(B+12,178,12,14));
+  s+=r('Hamstrings',e(B-13,226,9,28))+r('Hamstrings',e(B+13,226,9,28));
+  s+=r('Calves',e(B-13,280,8,22))+r('Calves',e(B+13,280,8,22));
+  s+='<text x="100" y="336" text-anchor="middle" class="mm-lbl">FRONT</text><text x="300" y="336" text-anchor="middle" class="mm-lbl">BACK</text>';
+  return s+'</svg>';
+}
+function mmPick(g){ MM_SEL=(MM_SEL===g?null:g); mmRender(); }
+function mmRender(){
+  var root=document.getElementById('mm-root'); if(!root) return;
+  var h='<div class="mm-hint">Tap a muscle on the body (or a name below) to see what it does and which of your exercises train it.</div>'+mmBody();
+  h+='<div class="mm-chips">'+Object.keys(MM_INFO).map(function(g){ return '<button class="mm-chip'+(MM_SEL===g?' mm-chip-on':'')+'" onclick="mmPick(\''+g+'\')">'+MM_INFO[g].name.split(' (')[0]+'</button>'; }).join('')+'</div>';
+  if(MM_SEL&&MM_INFO[MM_SEL]){
+    var I=MM_INFO[MM_SEL], u=mmUses(MM_SEL), main=u.filter(function(x){return x.w>=1;}), help=u.filter(function(x){return x.w<1;});
+    var sets=0; main.forEach(function(x){ sets+=x.sets; }); help.forEach(function(x){ sets+=x.sets*0.5; });
+    var li=function(arr){ return arr.map(function(x){ return '<li><span class="mm-day">'+x.day+'</span>'+x.name+'</li>'; }).join(''); };
+    h+='<div class="mm-card"><div class="mm-title">'+I.name+'</div>'+
+      '<div class="mm-k">What it does</div><div class="mm-t">'+I.does+'</div>'+
+      '<div class="mm-k">How to feel it</div><div class="mm-t">'+I.feel+'</div>'+
+      '<div class="mm-k">Training note</div><div class="mm-t">'+I.tip+'</div>'+
+      '<div class="mm-k">In your current plan</div>'+
+      (main.length?'<div class="mm-sub">Main target</div><ul class="mm-ul">'+li(main)+'</ul>':'')+
+      (help.length?'<div class="mm-sub">Also helps</div><ul class="mm-ul">'+li(help)+'</ul>':'')+
+      (u.length?'<div class="mm-sets">≈ '+Math.round(sets)+' effective sets / week (assisting sets count as half)</div>':'<div class="mm-t">Not directly trained in your current week.</div>')+
+      '</div>';
+  }
+  root.innerHTML=h;
+}
+try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{mmRender();}catch(e){} }); else mmRender(); }catch(e){}
