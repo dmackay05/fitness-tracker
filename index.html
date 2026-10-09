@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=222">
+<link rel="stylesheet" href="styles.css?v=223">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -1417,6 +1417,7 @@
         <div class="card-title">Google Sheets &amp; Security</div>
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
+        <div style="font-size:10px;color:#888;margin-bottom:8px">This app sends a random install ID and a last-opened time to the developer so he can tell if it's being used. It never sends your workouts, food, weight or sheet data.</div>
         <div class="rlbl">PIN (optional, 4 digits)</div>
         <input type="number" inputmode="decimal" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:11px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
@@ -1856,6 +1857,6 @@
   </div>
 </div>
 
-<script src="app.js?v=411"></script>
+<script src="app.js?v=412"></script>
 </body>
 </html>

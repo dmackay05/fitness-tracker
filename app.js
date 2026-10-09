@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v317 — 2026-10-08";
+var APP_BUILD = "v318 — 2026-10-09";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14329,3 +14329,35 @@ function ftWeeklyReview(){
   w._ftWrapped=orig._ftWrapped; window.renderDash=w;
 })();
 try{ ftWeeklyReview(); }catch(e){}
+
+// ── LAST-USED PING ──────────────────────────────────────────────────────
+// Sends only a random install ID, the app build and a timestamp to the
+// developer's tiny "last opened" endpoint. No workout, health or sheet data.
+// Does nothing while USAGE_PING_URL is empty. Fire-and-forget; never blocks
+// the app and fails silently when offline.
+var USAGE_PING_URL = "https://script.google.com/macros/s/AKfycbyQEVBRw2_yuuq-WmdeN1emH4QLItDqCbtYwWtq5OA2E5dAH01n0N4EtKdK73tz1w0qEg/exec";
+(function(){
+  try{
+    if(!USAGE_PING_URL) return;
+    var MIN_GAP = 6*60*60*1000; // at most one ping per 6 hours
+    function installId(){
+      var id=store.get('ft_install_id');
+      if(!id){
+        id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,'').slice(0,12):Math.random().toString(36).slice(2,14);
+        store.set('ft_install_id',id);
+      }
+      return id;
+    }
+    function ping(){
+      try{
+        if(navigator.onLine===false) return;
+        var last=+store.get('ft_last_ping')||0, now=Date.now();
+        if(now-last<MIN_GAP) return;
+        var q='?id='+encodeURIComponent(installId())+'&build='+encodeURIComponent(String(APP_BUILD).split(' ')[0])+'&t='+now;
+        fetch(USAGE_PING_URL+q,{method:'GET',mode:'no-cors',keepalive:true}).then(function(){ store.set('ft_last_ping',String(now)); }).catch(function(){});
+      }catch(e){}
+    }
+    setTimeout(ping,3000);
+    document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') ping(); });
+  }catch(e){}
+})();
