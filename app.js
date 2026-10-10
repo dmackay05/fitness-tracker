@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v318 — 2026-10-09";
+var APP_BUILD = "v319 — 2026-10-09";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8594,15 +8594,18 @@ function dsRenderMuscleVolume(){
     +'</div>';
 }
 /* ── Stick-figure setup diagrams (side view). Keyed by exercise/variant NAME. ── */
+var DS_PIC_THUMB=false;  // v319: exercise-library thumbnails — no titles, tags or notes, cropped tight
 function dsPic(panels,notes){
+  var _th=DS_PIC_THUMB; if(_th) notes=[];
   var H=286+notes.length*18;
-  var s='<svg viewBox="0 0 380 '+H+'" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" style="display:block;max-width:420px">';
+  var s=_th?'<svg viewBox="0 26 380 232" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" style="display:block">'
+    :'<svg viewBox="0 0 380 '+H+'" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" style="display:block;max-width:420px">';
   var _ng=panels.some(function(p){ return p.noGround; });
   if(!_ng) s+='<line x1="8" y1="252" x2="372" y2="252" stroke="#3a3a5a" stroke-width="2"/>';
   s+='<line x1="190" y1="34" x2="190" y2="252" stroke="#3a3a5a" stroke-width="2" stroke-dasharray="3 5"/>';
   function path(pts){ return pts.map(function(p,i){ return (i?'L':'M')+p[0]+' '+p[1]; }).join(' '); }
   panels.forEach(function(p){
-    s+='<text x="'+p.cx+'" y="22" text-anchor="middle" fill="#f0f0f0" style="font:600 13px system-ui,sans-serif">'+p.title+'</text>';
+    if(!_th) s+='<text x="'+p.cx+'" y="22" text-anchor="middle" fill="#f0f0f0" style="font:600 13px system-ui,sans-serif">'+p.title+'</text>';
     (p.lines||[]).forEach(function(l){ s+='<line x1="'+l[0]+'" y1="'+l[1]+'" x2="'+l[2]+'" y2="'+l[3]+'" stroke="#8a8aa8" stroke-width="4" stroke-linecap="round"/>'; });
     var body='fill="none" stroke="#e8e8f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"';
     s+='<circle cx="'+p.head[0]+'" cy="'+p.head[1]+'" r="13" '+body+'/>';
@@ -8614,7 +8617,7 @@ function dsPic(panels,notes){
     (p.circles||[]).forEach(function(c){ s+='<circle cx="'+c[0]+'" cy="'+c[1]+'" r="'+c[2]+'" fill="none" stroke="#8a8aa8" stroke-width="4"/>'; });
     if(p.band) s+='<path d="'+path(p.band)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round"/>';
     if(p.band2) s+='<path d="'+path(p.band2)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round"/>';
-    (p.tags||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#2dd4a7" style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
+    if(!_th) (p.tags||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#2dd4a7" style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
   });
   notes.forEach(function(n,i){ s+='<text x="8" y="'+(292+i*18)+'" fill="#a8a8c0" style="font:500 12px system-ui,sans-serif">'+n+'</text>'; });
   return s+'</svg>';
@@ -14361,3 +14364,67 @@ var USAGE_PING_URL = "https://script.google.com/macros/s/AKfycbyQEVBRw2_yuuq-Wmd
     document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') ping(); });
   }catch(e){}
 })();
+
+/* ── v319: Exercise Library (Info tab) — compound movements only, thumbnail of the side-by-side
+   setup diagram + name. Built from DS_SETUPPICS so every new diagram shows up here automatically. ── */
+var XL_LIST=[], XL_OPEN=null, XL_Q='', XL_BUILT=false;
+var XL_GROUPS=['Push','Pull','Squat & lunge','Hinge & hips'];
+function xlGroup(n){
+  if(/press|push-?up/i.test(n)) return 'Push';
+  if(/\brow|pulldown/i.test(n)) return 'Pull';
+  if(/squat|lunge/i.test(n)) return 'Squat & lunge';
+  return 'Hinge & hips';
+}
+function xlBuild(){
+  var out=[];
+  Object.keys(DS_SETUPPICS||{}).forEach(function(n){
+    if(/straight-arm/i.test(n)) return;               // lat isolation, not a compound
+    var ok=false; try{ ok=dsIsCompound({name:n,slot:''}); }catch(e){}
+    if(ok) out.push({name:n,group:xlGroup(n)});
+  });
+  out.sort(function(a,b){ return XL_GROUPS.indexOf(a.group)-XL_GROUPS.indexOf(b.group) || (a.name<b.name?-1:1); });
+  XL_LIST=out; XL_BUILT=true;
+}
+function xlPic(name,thumb){
+  DS_PIC_THUMB=!!thumb;
+  try{ return DS_SETUPPICS[name](); }catch(e){ return ''; }
+  finally{ DS_PIC_THUMB=false; }
+}
+function xlEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function xlToggle(i){ XL_OPEN=(XL_OPEN===i?null:i); xlRenderGrid(); }
+function xlSearch(v){ XL_Q=(v||'').toLowerCase().trim(); XL_OPEN=null; xlRenderGrid(); }
+function xlRenderGrid(){
+  var g=document.getElementById('xl-grid'); if(!g) return;
+  if(!XL_BUILT) xlBuild();
+  var h='', shown=0;
+  XL_GROUPS.forEach(function(grp){
+    var cards='';
+    XL_LIST.forEach(function(it,i){
+      if(it.group!==grp) return;
+      if(XL_Q && it.name.toLowerCase().indexOf(XL_Q)<0) return;
+      shown++;
+      var open=(XL_OPEN===i);
+      cards+='<button type="button" class="xl-card'+(open?' xl-on':'')+'" onclick="xlToggle('+i+')" aria-expanded="'+open+'">'+
+        '<span class="xl-pic">'+xlPic(it.name,true)+'</span><span class="xl-name">'+xlEsc(it.name)+'</span></button>';
+      if(open) cards+='<div class="xl-full">'+xlPic(it.name,false)+'</div>';
+    });
+    if(cards) h+='<div class="xl-grp">'+grp+'</div><div class="xl-grid">'+cards+'</div>';
+  });
+  if(!shown) h='<div class="xl-empty">No compound movements match that search.</div>';
+  g.innerHTML=h;
+}
+function xlRender(){
+  var root=document.getElementById('xl-root'); if(!root) return;
+  if(!XL_BUILT) xlBuild();
+  root.innerHTML='<div class="ig-intro">Compound movements only ('+XL_LIST.length+'). Tap one for the full start/finish diagram and setup notes.</div>'+
+    '<input type="search" id="xl-q" class="xl-search" placeholder="Search exercises" oninput="xlSearch(this.value)" value="'+xlEsc(XL_Q)+'" autocomplete="off">'+
+    '<div id="xl-grid"></div>';
+  xlRenderGrid();
+}
+function xlInit(){
+  var d=document.querySelector('details[data-sec="exlib"]'); if(!d||d._xlBound) return;
+  d._xlBound=true;
+  var go=function(){ if(d.open && !d._xlDone){ d._xlDone=true; try{ xlRender(); }catch(e){} } };
+  d.addEventListener('toggle',go); go();
+}
+try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{xlInit();}catch(e){} }); else xlInit(); }catch(e){}
