@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v320 — 2026-10-10";
+var APP_BUILD = "v321 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5608,7 +5608,7 @@ function dsWedFocusSession(){
 var DS_ONEDAY=null; try{ DS_ONEDAY=JSON.parse(store.get('ds_oneday')||'null'); }catch(e){ DS_ONEDAY=null; }
 if(DS_ONEDAY && (!DS_ONEDAY.ids || DS_ONEDAY.date!==todayKey())){ DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
 var DS_ONEDAY_CACHE=null;
-var DS_ONEDAY_PRESET=['warmup-raise','warmup-armcircle','warmup-bandshoulder','mon-pushup#Deficit','mon-curl#Bayesian','sat-chest','sat-ohtriceps','mon-inclinepress','thu-hammer','mon-tri','tue-pallof','sat-bandcrunch','fri-plank'];
+var DS_ONEDAY_PRESET=['warmup-armcircle','warmup-bandshoulder','mon-pushup#Deficit','mon-curl#Bayesian','sat-chest','sat-ohtriceps','mon-inclinepress','thu-hammer','mon-tri','tue-pallof','sat-bandcrunch','mon-hollow'];
 function dsOneDayOn(){ return !!(DS_ONEDAY && DS_ONEDAY.date===activeDate && DS_ONEDAY.ids && DS_ONEDAY.ids.length && !DS_DAY_OVERRIDE); }
 function dsOneDaySession(){
   if(!dsOneDayOn()) return null;
