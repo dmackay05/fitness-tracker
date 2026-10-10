@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v319 — 2026-10-09";
+var APP_BUILD = "v320 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14365,66 +14365,81 @@ var USAGE_PING_URL = "https://script.google.com/macros/s/AKfycbyQEVBRw2_yuuq-Wmd
   }catch(e){}
 })();
 
-/* ── v319: Exercise Library (Info tab) — compound movements only, thumbnail of the side-by-side
-   setup diagram + name. Built from DS_SETUPPICS so every new diagram shows up here automatically. ── */
-var XL_LIST=[], XL_OPEN=null, XL_Q='', XL_BUILT=false;
-var XL_GROUPS=['Push','Pull','Squat & lunge','Hinge & hips'];
-function xlGroup(n){
-  if(/press|push-?up/i.test(n)) return 'Push';
-  if(/\brow|pulldown/i.test(n)) return 'Pull';
-  if(/squat|lunge/i.test(n)) return 'Squat & lunge';
-  return 'Hinge & hips';
-}
-function xlBuild(){
-  var out=[];
-  Object.keys(DS_SETUPPICS||{}).forEach(function(n){
-    if(/straight-arm/i.test(n)) return;               // lat isolation, not a compound
-    var ok=false; try{ ok=dsIsCompound({name:n,slot:''}); }catch(e){}
-    if(ok) out.push({name:n,group:xlGroup(n)});
-  });
-  out.sort(function(a,b){ return XL_GROUPS.indexOf(a.group)-XL_GROUPS.indexOf(b.group) || (a.name<b.name?-1:1); });
-  XL_LIST=out; XL_BUILT=true;
-}
+/* ── v320: Exercise Libraries (Info tab) — thumbnail of the side-by-side setup diagram + name, for
+   movements that use the DOOR ANCHOR only. One section for compounds, one for isolation. Built from
+   DS_SETUPPICS, so a new anchored diagram shows up here automatically. ── */
+var XL_CFG={
+  comp:{sec:'exlib',root:'xl-root',groups:['Push','Pull','Squat & lunge','Hinge & hips'],
+    pick:function(n){ return !/straight-arm/i.test(n) && dsIsCompound({name:n,slot:''}); },
+    group:function(n){
+      if(/press|push-?up/i.test(n)) return 'Push';
+      if(/\brow|pulldown/i.test(n)) return 'Pull';
+      if(/squat|lunge/i.test(n)) return 'Squat & lunge';
+      return 'Hinge & hips'; },
+    intro:'Compound movements that use the door anchor'},
+  iso:{sec:'exlib-iso',root:'xli-root',groups:['Chest','Shoulders & back','Arms','Legs','Core'],
+    pick:function(n){ return /straight-arm/i.test(n) || !dsIsCompound({name:n,slot:''}); },
+    group:function(n){
+      if(/pallof|crunch/i.test(n)) return 'Core';
+      if(/rear delt|face pull|lateral raise|straight-arm/i.test(n)) return 'Shoulders & back';
+      if(/fly/i.test(n)) return 'Chest';
+      if(/leg (curl|extension)|hamstring/i.test(n)) return 'Legs';
+      return 'Arms'; },
+    intro:'Isolation movements that use the door anchor'}
+};
+var XL_ST={};   // per-kind state: {list, open, q}
 function xlPic(name,thumb){
   DS_PIC_THUMB=!!thumb;
   try{ return DS_SETUPPICS[name](); }catch(e){ return ''; }
   finally{ DS_PIC_THUMB=false; }
 }
 function xlEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function xlToggle(i){ XL_OPEN=(XL_OPEN===i?null:i); xlRenderGrid(); }
-function xlSearch(v){ XL_Q=(v||'').toLowerCase().trim(); XL_OPEN=null; xlRenderGrid(); }
-function xlRenderGrid(){
-  var g=document.getElementById('xl-grid'); if(!g) return;
-  if(!XL_BUILT) xlBuild();
+function xlUsesAnchor(n){ return /anchor|door/i.test((xlPic(n,false).match(/>([^<]+)</g)||[]).join(' ')); }
+function xlBuild(kind){
+  var C=XL_CFG[kind], out=[], seen=[];
+  Object.keys(DS_SETUPPICS||{}).forEach(function(n){
+    var fn=DS_SETUPPICS[n]; if(seen.indexOf(fn)>=0) return;   // alias of a diagram already listed
+    var ok=false; try{ ok=C.pick(n) && xlUsesAnchor(n); }catch(e){}
+    if(ok){ seen.push(fn); out.push({name:n,group:C.group(n)}); }
+  });
+  out.sort(function(a,b){ return C.groups.indexOf(a.group)-C.groups.indexOf(b.group) || (a.name<b.name?-1:1); });
+  XL_ST[kind]={list:out,open:null,q:''};
+}
+function xlToggle(kind,i){ var S=XL_ST[kind]; S.open=(S.open===i?null:i); xlRenderGrid(kind); }
+function xlSearch(kind,v){ var S=XL_ST[kind]; S.q=(v||'').toLowerCase().trim(); S.open=null; xlRenderGrid(kind); }
+function xlRenderGrid(kind){
+  var C=XL_CFG[kind], S=XL_ST[kind], g=document.getElementById(C.root+'-grid'); if(!g) return;
   var h='', shown=0;
-  XL_GROUPS.forEach(function(grp){
+  C.groups.forEach(function(grp){
     var cards='';
-    XL_LIST.forEach(function(it,i){
+    S.list.forEach(function(it,i){
       if(it.group!==grp) return;
-      if(XL_Q && it.name.toLowerCase().indexOf(XL_Q)<0) return;
+      if(S.q && it.name.toLowerCase().indexOf(S.q)<0) return;
       shown++;
-      var open=(XL_OPEN===i);
-      cards+='<button type="button" class="xl-card'+(open?' xl-on':'')+'" onclick="xlToggle('+i+')" aria-expanded="'+open+'">'+
+      var open=(S.open===i);
+      cards+='<button type="button" class="xl-card'+(open?' xl-on':'')+'" onclick="xlToggle(\''+kind+'\','+i+')" aria-expanded="'+open+'">'+
         '<span class="xl-pic">'+xlPic(it.name,true)+'</span><span class="xl-name">'+xlEsc(it.name)+'</span></button>';
       if(open) cards+='<div class="xl-full">'+xlPic(it.name,false)+'</div>';
     });
     if(cards) h+='<div class="xl-grp">'+grp+'</div><div class="xl-grid">'+cards+'</div>';
   });
-  if(!shown) h='<div class="xl-empty">No compound movements match that search.</div>';
+  if(!shown) h='<div class="xl-empty">Nothing matches that search.</div>';
   g.innerHTML=h;
 }
-function xlRender(){
-  var root=document.getElementById('xl-root'); if(!root) return;
-  if(!XL_BUILT) xlBuild();
-  root.innerHTML='<div class="ig-intro">Compound movements only ('+XL_LIST.length+'). Tap one for the full start/finish diagram and setup notes.</div>'+
-    '<input type="search" id="xl-q" class="xl-search" placeholder="Search exercises" oninput="xlSearch(this.value)" value="'+xlEsc(XL_Q)+'" autocomplete="off">'+
-    '<div id="xl-grid"></div>';
-  xlRenderGrid();
+function xlRender(kind){
+  var C=XL_CFG[kind], root=document.getElementById(C.root); if(!root) return;
+  xlBuild(kind); var S=XL_ST[kind];
+  root.innerHTML='<div class="ig-intro">'+C.intro+' ('+S.list.length+'). Tap one for the full start/finish diagram and setup notes.</div>'+
+    '<input type="search" class="xl-search" placeholder="Search exercises" oninput="xlSearch(\''+kind+'\',this.value)" autocomplete="off">'+
+    '<div id="'+C.root+'-grid"></div>';
+  xlRenderGrid(kind);
 }
 function xlInit(){
-  var d=document.querySelector('details[data-sec="exlib"]'); if(!d||d._xlBound) return;
-  d._xlBound=true;
-  var go=function(){ if(d.open && !d._xlDone){ d._xlDone=true; try{ xlRender(); }catch(e){} } };
-  d.addEventListener('toggle',go); go();
+  Object.keys(XL_CFG).forEach(function(kind){
+    var d=document.querySelector('details[data-sec="'+XL_CFG[kind].sec+'"]'); if(!d||d._xlBound) return;
+    d._xlBound=true;
+    var go=function(){ if(d.open && !d._xlDone){ d._xlDone=true; try{ xlRender(kind); }catch(e){} } };
+    d.addEventListener('toggle',go); go();
+  });
 }
 try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{xlInit();}catch(e){} }); else xlInit(); }catch(e){}
