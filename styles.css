@@ -116,9 +116,8 @@ html,body{height:100%;background:#0d0d1a;color:#f0f0f0;font-family:'DM Sans',san
 .panel{display:none;animation:fadeIn 0.2s ease}
 .panel.active{display:block}
 @media (min-width:701px){
-  #panel-dash.active{column-count:2;column-gap:14px}
-  #panel-dash.active .card{break-inside:avoid;margin:0 0 14px}
-  #panel-dash.active #dash-averages{column-span:all}
+  #panel-dash.active .dash-sec-body{column-count:2;column-gap:14px}
+  #panel-dash.active .dash-sec-body .card,#panel-dash.active .dash-item{break-inside:avoid}
 
   /* Today tab: move cards flow into a 2-column grid. Grid (not multi-column) on purpose here —
      these cards expand/collapse in place, and toggling a card's column-span dynamically inside
@@ -1814,3 +1813,18 @@ html body div.app{max-width:480px}
 #panel-meals .info-sec-body [style*="margin-bottom:6px"]{margin-bottom:12px !important}
 #panel-meals .card .card-title{font-size:15px}
 #panel-meals .info-sec-body{padding:14px 14px 16px}
+
+/* Dashboard sections + jump bar (v332) */
+.dash-jump{position:sticky;top:58px;z-index:9;display:flex;gap:8px;overflow-x:auto;padding:10px 2px;margin:4px 0 12px;
+  background:linear-gradient(var(--bg,#0d0d1a) 85%,#0d0d1a00);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.dash-jump::-webkit-scrollbar{display:none}
+.dash-chip{flex:0 0 auto;padding:8px 14px;border-radius:999px;border:1px solid #3a3a58;background:#15151f;color:#dcdccf;
+  font-size:13px;font-family:'DM Mono',monospace;cursor:pointer;white-space:nowrap}
+.dash-chip:active{background:#5eead422;border-color:#5eead4;color:#5eead4}
+#panel-dash .dash-sec .info-sec-hd{font-size:15px}
+#panel-dash .dash-sec-body .card{margin:0 0 14px}
+#panel-dash .dash-item{scroll-margin-top:var(--djump,130px)}
+#panel-dash .dash-sec{scroll-margin-top:var(--djump,130px)}
+/* The page scrolls on body, not .content; .content's overflow:auto would otherwise trap the sticky jump bar. */
+.content:has(#panel-dash.active){overflow:visible}
+#dash-strength-card{scroll-margin-top:var(--djump,130px)}

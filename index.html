@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=235">
+<link rel="stylesheet" href="styles.css?v=236">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -164,12 +164,13 @@
       <!-- Alerts -->
       <div id="weighin-banner"></div>
       <div class="dash-strip" id="dash-averages"></div>
-      <div class="card" id="dash-weekly-review" style="display:none"></div>
       <div class="card" id="dash-pain" style="display:none"></div>
       <div id="dash-view-bar"></div>
 
-      <!-- DAILY VIEW: what you check every day -->
-      <div id="dash-view-daily">
+<details class="info-sec dash-sec" data-dsec="today" open>
+<summary class="info-sec-hd"><span>Today</span><span class="info-sec-chev">▸</span></summary>
+<div class="info-sec-body dash-sec-body">
+<div class="dash-item" id="dj-cal">
       <div class="card">
         <div class="card-title" id="cal-title">Today's Calories</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px">
@@ -180,29 +181,30 @@
         <div class="pbar-wrap"><div class="pbar" id="cal-bar" style="width:0%"></div></div>
         <div class="bar-lbls"><span>eaten</span><span id="dash-cal-goal">Goal: --</span></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-macros">
       <div class="card">
         <div class="card-title">Macros</div>
         <div class="radials" id="radials"></div>
         <div class="hint-box" id="protein-hint" style="display:none"></div>
         <div class="hint-box" id="burned-note" style="opacity:.75;font-size:12px;"></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-mbreak">
       <div class="card"><div class="card-title">Macro Breakdown</div><div id="macro-bars"></div></div>
-
+</div>
+<div class="dash-item" id="dj-pmeal">
       <div id="dash-protein-meal"></div>
-
-      <div class="card">
-        <div class="card-title" style="color:#38bdf8">💧 Water</div>
-        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
-          <div class="big-num" id="dash-water-oz" style="color:#38bdf8;font-size:32px">0</div>
-          <div style="font-size:12px;color:#8b8b9c;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-water-goal">oz · goal --</div>
-        </div>
-        <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
-      </div>
-
-      <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-
+</div>
+</div>
+</details>
+<details class="info-sec dash-sec" data-dsec="week" open>
+<summary class="info-sec-hd"><span>This Week</span><span class="info-sec-chev">▸</span></summary>
+<div class="info-sec-body dash-sec-body">
+<div class="dash-item" id="dj-review">
+      <div class="card" id="dash-weekly-review" style="display:none"></div>
+</div>
+<div class="dash-item" id="dj-activity">
       <div class="card">
         <div class="card-title" style="color:#fb923c">🏃 Weekly Activity</div>
         <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
@@ -213,17 +215,14 @@
         <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:6px" id="dash-activity-window">This week (Mon–Sun) · lift + bike + yoga</div>
         <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:2px" id="dash-activity-rolling">Rolling 7 days: 0 min</div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-thisweek">
       <div class="card">
         <div class="card-title">📅 This Week</div>
         <div id="week-summary"></div>
       </div>
-
-      <div class="card">
-        <div class="card-title">🛌 Readiness</div>
-        <div id="dash-recovery" style="font-size:12px;line-height:1.5"></div>
-      </div>
-
+</div>
+<div class="dash-item" id="dj-streaks">
       <div class="card">
         <div class="card-title">Streaks</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:2px">🔥 Protein</div>
@@ -231,13 +230,41 @@
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin:10px 0 2px">🧘 Meditation</div>
         <div id="dash-med-streak" style="font-size:12px;line-height:1.5"></div>
       </div>
+</div>
+</div>
+</details>
+<details class="info-sec dash-sec" data-dsec="checkins">
+<summary class="info-sec-hd"><span>Check-ins</span><span class="info-sec-chev">▸</span></summary>
+<div class="info-sec-body dash-sec-body">
+<div class="dash-item" id="dj-water">
+      <div class="card">
+        <div class="card-title" style="color:#38bdf8">💧 Water</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
+          <div class="big-num" id="dash-water-oz" style="color:#38bdf8;font-size:32px">0</div>
+          <div style="font-size:12px;color:#8b8b9c;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-water-goal">oz · goal --</div>
+        </div>
+        <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
       </div>
-
-      <!-- PROGRESS VIEW: trends and weekly checks -->
-      <div id="dash-view-progress" style="display:none">
+</div>
+<div class="dash-item" id="dj-supps">
+      <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+</div>
+<div class="dash-item" id="dj-readiness">
+      <div class="card">
+        <div class="card-title">🛌 Readiness</div>
+        <div id="dash-recovery" style="font-size:12px;line-height:1.5"></div>
+      </div>
+</div>
+</div>
+</details>
+<details class="info-sec dash-sec" data-dsec="progress">
+<summary class="info-sec-hd"><span>Progress</span><span class="info-sec-chev">▸</span></summary>
+<div class="info-sec-body dash-sec-body">
       <div id="dash-focus-bar"></div>
+<div class="dash-item" id="dj-muscle">
       <div class="card" id="dash-muscle-card" style="display:none"></div>
-
+</div>
+<div class="dash-item" id="dj-weight">
       <div class="card">
         <div class="flex-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div class="card-title" style="margin-bottom:0">Weight</div>
@@ -250,45 +277,59 @@
         </div>
         <div style="font-size:11px;color:#8b8b9c;margin-top:6px;font-family:'DM Mono',monospace" id="weight-targets">Start: -- · Goal: --</div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-wtrend">
       <div class="card" data-cid="wtrend" data-default="open">
         <div class="card-title">Weight Trend</div>
         <div id="dash-weight-trend" style="font-size:12px;line-height:1.5"></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-strength">
       <div id="strength-home" style="display:none"></div>
       <div class="card" id="dash-strength-card" data-cid="strength" data-default="open">
         <div class="card-title">🏋️ Strength Trend</div>
         <div id="dash-strength-trend" style="font-size:12px;line-height:1.5"></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-trends">
       <div class="card" data-cid="trends" data-default="open">
         <div class="card-title">📈 Trends</div>
         <div id="trend-chips" style="margin-bottom:12px"></div>
         <div id="trend-chart"></div>
       </div>
-
+</div>
+</div>
+</details>
+<details class="info-sec dash-sec" data-dsec="deep">
+<summary class="info-sec-hd"><span>Deep Dive</span><span class="info-sec-chev">▸</span></summary>
+<div class="info-sec-body dash-sec-body">
+<div class="dash-item" id="dj-maint">
       <div class="card" data-cid="maint" data-default="closed">
         <div class="card-title">Measured Maintenance</div>
         <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-volume">
       <div class="card" data-cid="volume" data-default="closed">
         <div class="card-title">📊 Weekly Volume &amp; Training Load</div>
         <div id="volume-needs-attention"></div>
         <div id="volume-tab-host"></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-intake">
       <div class="card" data-cid="intakeavg" data-default="closed">
         <div class="card-title">Intake Averages</div>
         <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
       </div>
-
+</div>
+<div class="dash-item" id="dj-distance">
       <div class="card" data-cid="distance" data-default="closed">
         <div class="card-title">🚴 Distance · last 7 days</div>
         <div id="dash-distance" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
       </div>
-      </div>
+</div>
+</div>
+</details>
     </div>
 
     <!-- ════════ MEALS ════════ -->
@@ -1867,6 +1908,6 @@
   </div>
 </div>
 
-<script src="app.js?v=425"></script>
+<script src="app.js?v=426"></script>
 </body>
 </html>

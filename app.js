@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v331 — 2026-10-10";
+var APP_BUILD = "v332 — 2026-10-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2061,24 +2061,31 @@ function dashViewSet(v){
   try{ renderDash(); }catch(e){ console.warn('dash view render',e); }
   try{ window.scrollTo(0,0); }catch(e){}
 }
+var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['streaks','Streaks','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep'],['volume','Volume','deep'],['intake','Intake avg','deep'],['distance','Distance','deep']];
+function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ return {}; } }
+function dashJump(id,sec){
+  var d=document.querySelector('#panel-dash details[data-dsec="'+sec+'"]'); if(d&&!d.open){ d.open=true; }
+  var el=(id==='strength'&&document.getElementById('dash-strength-card'))||document.getElementById('dj-'+id); if(!el) return;
+  var c=el.querySelector('.card[data-cid]'); if(c){ var b=c.querySelector('.card-collapse-body'); if(b&&b.style.display==='none'){ var t=c.querySelector('.card-title'); if(t) t.click(); } }
+  setTimeout(function(){ try{ el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ el.scrollIntoView(); } },60);
+}
 function applyDashView(){
   var bar=document.getElementById('dash-view-bar'); if(!bar) return;
-  var p=DASH_VIEW==='progress';
-  function btn(v,label){
-    var on=(v==='progress')===p;
-    return '<button onclick="dashViewSet(\''+v+'\')" style="flex:1;padding:10px 12px;border-radius:10px;font-size:13px;cursor:pointer;'
-      +'font-family:\'DM Mono\',monospace;background:'+(on?'#5eead4':'transparent')+';color:'+(on?'#0f1020':'#9a9d8c')
-      +';border:1px solid '+(on?'#5eead4':'#3a3a58')+';font-weight:'+(on?'700':'400')+'">'+label+'</button>';
+  try{ var tb=document.querySelector('.tab-bar'); var th=tb?tb.getBoundingClientRect().height:0; bar.style.top=Math.round(th)+'px'; document.getElementById('panel-dash').style.setProperty('--djump',Math.round(th+64)+'px'); }catch(e){}
+  if(!bar._built){
+    bar._built=true; bar.className='dash-jump';
+    bar.innerHTML=DASH_JUMPS.map(function(j){ return '<button type="button" class="dash-chip" onclick="dashJump(\''+j[0]+'\',\''+j[2]+'\')">'+j[1]+'</button>'; }).join('');
+    var st=dashSecState();
+    document.querySelectorAll('#panel-dash details.dash-sec').forEach(function(d){
+      var k=d.getAttribute('data-dsec'); if(k in st) d.open=!!st[k];
+      d.addEventListener('toggle',function(){ var s2=dashSecState(); s2[k]=d.open; try{ store.set('ft_dash_secs',JSON.stringify(s2)); }catch(e){} if(d.open){ try{ renderDash(); }catch(e){} } });
+    });
   }
-  bar.innerHTML='<div style="display:flex;gap:6px;margin:10px 0 12px">'+btn('daily','Daily')+btn('progress','Progress')+'</div>';
-  var d=document.getElementById('dash-view-daily'), g=document.getElementById('dash-view-progress');
-  if(d) d.style.display=p?'none':'';
-  if(g) g.style.display=p?'':'none';
 }
 function dashCollapseState(){ try{ return JSON.parse(store.get('ft_dash_collapse')||'{}')||{}; }catch(e){ return {}; } }
 function dashCollapseInit(){
   var st=dashCollapseState();
-  document.querySelectorAll('#dash-view-progress .card[data-cid]').forEach(function(c){
+  document.querySelectorAll('#panel-dash .card[data-cid]').forEach(function(c){
     if(c._cbound) return;
     var t=c.querySelector('.card-title'); if(!t) return;
     c._cbound=true;
