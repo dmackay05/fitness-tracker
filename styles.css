@@ -1794,3 +1794,23 @@ html body div.app{max-width:480px}
 .xl-full{grid-column:1/-1;padding:8px;background:#1a1a2e;border:1px solid #5eead4;border-radius:10px}
 .xl-empty{padding:18px 0;text-align:center;font-size:12px;color:#8b8b9c}
 @media (min-width:560px){.xl-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Info tab readability (v331): larger text, more line spacing, brighter body color.
+   Renderers use inline styles, so these overrides need !important. */
+#panel-meals .info-sec-body [style*="font-size:10px"],
+#panel-meals .info-sec-body [style*="font-size:11px"],
+#panel-meals .info-sec-body [style*="font-size:12px"],
+#panel-meals .info-sec-body [style*="font-size:13px"]{font-size:15px !important;line-height:1.65 !important}
+#panel-meals .info-sec-body summary[style*="font-size"]{font-size:14px !important;padding:6px 0}
+#panel-meals .info-sec-body [style*="color:#9a9d8c"],
+#panel-meals .info-sec-body [style*="color:#8b8b9c"],
+#panel-meals .info-sec-body [style*="color:#888"],
+#panel-meals .info-sec-body [style*="color:#999"],
+#panel-meals .info-sec-body [style*="color:#aaa"]{color:#dcdccf !important}
+#panel-meals .info-sec-body [style*="color:#ccc"]{color:#ffffff !important}
+#panel-meals .info-sec-body [style*="gap:4px"],
+#panel-meals .info-sec-body [style*="gap:6px"]{gap:14px !important}
+#panel-meals .info-sec-body [style*="margin-bottom:4px"],
+#panel-meals .info-sec-body [style*="margin-bottom:6px"]{margin-bottom:12px !important}
+#panel-meals .card .card-title{font-size:15px}
+#panel-meals .info-sec-body{padding:14px 14px 16px}
