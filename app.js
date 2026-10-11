@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v323 — 2026-10-10";
+var APP_BUILD = "v324 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7863,7 +7863,21 @@ var MYTH_TIPS = [
   {name:"Detox foods", tip:"No food or juice 'detoxes' you — your liver and kidneys already do that; diet quality matters, but not through a specific detox food.", emoji:"🥤"},
   {name:"Protein timing", tip:"The 'anabolic window' is wider than people think — total daily protein intake matters far more than eating it within 30 minutes of training.", emoji:"⏰"},
   {name:"Egg yolks", tip:"Whole eggs aren't a cardiovascular risk for most people — dietary cholesterol has a much smaller effect on blood cholesterol than once believed.", emoji:"🥚"},
-  {name:"Sweating = fat loss", tip:"How much you sweat doesn't reflect how much fat you're burning — it's mostly about temperature regulation and hydration, not calorie burn.", emoji:"💧"}
+  {name:"Sweating = fat loss", tip:"How much you sweat doesn't reflect how much fat you're burning — it's mostly about temperature regulation and hydration, not calorie burn.", emoji:"💧"},
+  {name:"Protein per meal cap", tip:"The '30 g per meal' limit is a myth — larger doses keep muscle protein synthesis going longer; daily total spread over 3–5 meals matters most.", emoji:"🥩"},
+  {name:"Protein and kidneys", tip:"High-protein diets haven't been shown to harm healthy kidneys — the concern applies to people with existing kidney disease.", emoji:"🫘"},
+  {name:"Metabolic damage", tip:"Dieting doesn't 'break' your metabolism — expenditure dips a bit more than weight loss predicts, but it's modest and reversible; stalls usually come from intake creep or lower NEAT.", emoji:"🔥"},
+  {name:"Small frequent meals", tip:"Six small meals don't 'stoke the metabolism' — digestion costs about the same total calories whether you eat 2 meals or 6; pick the frequency that controls hunger.", emoji:"🍽️"},
+  {name:"Sodium and the scale", tip:"A salty meal can add 1–3 lb overnight — that's water, not fat, and it's gone in a few days. Don't panic over one weigh-in.", emoji:"🧂"},
+  {name:"White potatoes", tip:"Boiled potatoes are among the most filling foods per calorie ever tested — the fries and toppings are the problem, not the potato.", emoji:"🥔"},
+  {name:"Glycemic index", tip:"A food's GI changes in a mixed meal with protein, fat, and fiber — overall diet quality matters more than individual GI numbers.", emoji:"🍌"},
+  {name:"Plant protein", tip:"Plant protein builds muscle too — use a slightly larger dose or mix sources to match leucine; soy and blends compare closely with whey.", emoji:"🌱"},
+  {name:"Frozen & canned produce", tip:"Frozen and canned produce is often as nutritious as fresh — it's processed at peak ripeness, while fresh loses some vitamins in transport and storage.", emoji:"🥫"},
+  {name:"'Healthy' snacks", tip:"Organic, gluten-free, or keto labels say nothing about calories — granola, trail mix, and protein bars can be as calorie-dense as candy.", emoji:"🍫"},
+  {name:"Coffee dehydrates", tip:"For regular drinkers, coffee counts toward daily fluids — the mild diuretic effect largely fades with habitual use.", emoji:"☕"},
+  {name:"Breakfast", tip:"Breakfast isn't 'the most important meal' — controlled trials show no fat-loss advantage either way; eat it or skip it based on hunger and schedule.", emoji:"🍳"},
+  {name:"Lifting makes you bulky", tip:"Resistance training in a deficit doesn't make you bulky — it preserves muscle so the weight you lose is mostly fat.", emoji:"🏋️"},
+  {name:"Daily weigh-ins", tip:"Daily swings of 2–4 lb are normal — watch the 7-day average trend, not any single reading.", emoji:"⚖️"}
 ];
 function mythTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
