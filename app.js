@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v329 — 2026-10-10";
+var APP_BUILD = "v330 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14396,13 +14396,14 @@ function ftWeeklyReview(){
       if(d.foods&&d.foods.length){ var p=d.foods.reduce(function(a,f){return a+(+f.protein||0);},0); proDays++; proSum+=p; if(p>=(GOALS.protein-PROTEIN_BAND)) proHit++; }
     });
     var up=0, upNames=[], upKinds={up:0,bandup:0,upvol:0};
-    try{ strengthTrendData().forEach(function(x){ var c=x.cmp; if(c&&c.cur&&upKinds.hasOwnProperty(c.kind)&&keys.indexOf(c.cur.date)>=0){ up++; upKinds[c.kind]++; if(upNames.length<4) upNames.push(x.name+(c.kind==='bandup'?' (heavier band)':c.kind==='upvol'?' (more volume)':' (more reps)')); } }); }catch(e){}
+    try{ strengthTrendData().forEach(function(x){ var c=x.cmp; if(c&&c.cur&&upKinds.hasOwnProperty(c.kind)&&keys.indexOf(c.cur.date)>=0){ up++; upKinds[c.kind]++; upNames.push({k:c.kind,t:x.name+(c.kind==='bandup'?' (heavier band)':c.kind==='upvol'?' (more volume)':' (more reps)')}); } }); }catch(e){}
+    var _ord={bandup:0,up:1,upvol:2}; upNames=upNames.sort(function(p,q){return _ord[p.k]-_ord[q.k];}).map(function(o){return o.t;});
     var upParts=[]; if(upKinds.up) upParts.push(upKinds.up+' more reps'); if(upKinds.bandup) upParts.push(upKinds.bandup+' heavier band'); if(upKinds.upvol) upParts.push(upKinds.upvol+' more volume');
     var low=[];
     try{ var v=dsMVWeek(keys); Object.keys(MUSCLE_LANDMARKS).forEach(function(m){ if(v[m]!=null&&v[m]<MUSCLE_LANDMARKS[m][0]) low.push(m); }); }catch(e){}
     var isSun=(new Date().getDay()===0);
     var h='<div class="card-title">'+(isSun?'📋 Week in Review':'📋 This Week So Far')+'</div><div class="ft-wr">';
-    h+='<div class="ft-wr-s"><b>'+done+'</b><span>workouts logged'+(planned?' (of '+planned+' lift days so far)':'')+'</span></div>';
+    h+='<div class="ft-wr-s"><b>'+done+'</b><span>workouts logged'+(planned?(done>planned?' · '+planned+' planned + '+(done-planned)+' extra':' (of '+planned+' lift days so far)'):'')+'</span></div>';
     h+='<div class="ft-wr-s"><b>'+up+'</b><span>lifts improved'+(upParts.length?' · '+upParts.join(' · '):'')+'</span></div>';
     h+='<div class="ft-wr-s"><b>'+(proDays?Math.round(proSum/proDays):'—')+'<small>g</small></b><span>avg protein · goal hit '+proHit+'/'+proDays+' days</span></div></div>';
     if(upNames.length) h+='<div class="ft-wr-n">▲ '+upNames.join(' · ')+'</div>';
