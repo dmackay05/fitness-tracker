@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v327 — 2026-10-10";
+var APP_BUILD = "v328 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14392,7 +14392,7 @@ function ftWeeklyReview(){
       if(k>tk) return;
       var d=appData[k]||{}, sk=dayIdx[keyToDate(k).getDay()];
       if(sk==='mon'||sk==='tue'||sk==='thu'||sk==='fri') planned++;
-      if(d.exercises&&d.exercises.some(function(e){ return e&&e.id&&String(e.id).indexOf('sess_')===0&&(e.sets||e.reps||e.done); })) done++;
+      if(d.exercises&&d.exercises.some(function(e){ if(!e||!e.id) return false; var id=String(e.id); if(id.indexOf('sess_')!==0&&id.indexOf('sheet_')!==0) return false; if(e.type==='cardio'||e.type==='yoga') return false; return !!(e.sets||e.reps||e.done); })) done++;
       if(d.foods&&d.foods.length){ var p=d.foods.reduce(function(a,f){return a+(+f.protein||0);},0); proDays++; proSum+=p; if(p>=(GOALS.protein-PROTEIN_BAND)) proHit++; }
     });
     var up=0, upNames=[];
