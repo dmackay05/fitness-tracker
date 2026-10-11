@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v332 — 2026-10-11";
+var APP_BUILD = "v333 — 2026-10-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14453,6 +14453,8 @@ var USAGE_PING_URL = "https://script.google.com/macros/s/AKfycbyQEVBRw2_yuuq-Wmd
         fetch(USAGE_PING_URL+q,{method:'GET',mode:'no-cors',keepalive:true}).then(function(){ store.set('ft_last_ping',String(now)); }).catch(function(){});
       }catch(e){}
     }
+    // Show this install's ID in Settings so it can be matched to a row in the usage sheet.
+    try{ var idEl=document.getElementById('ft-install-id'); if(idEl) idEl.textContent=installId(); }catch(e){}
     setTimeout(ping,3000);
     document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') ping(); });
   }catch(e){}
