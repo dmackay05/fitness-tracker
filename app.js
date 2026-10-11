@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v325 — 2026-10-10";
+var APP_BUILD = "v326 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7891,7 +7891,22 @@ var MYTH_TIPS = [
   {name:"Cheat meals boost metabolism", tip:"One big meal doesn't meaningfully raise metabolism — planned higher-calorie days can help adherence, but that's psychology, not metabolism.", emoji:"🧀"},
   {name:"Cooking with olive oil", tip:"Extra virgin olive oil holds up well at normal home cooking temperatures — it's more stable than its smoke point suggests.", emoji:"🫒"},
   {name:"Raw eggs for protein", tip:"Your body absorbs much more protein from cooked eggs than raw ones — and cooking removes the salmonella risk.", emoji:"🥚"},
-  {name:"Cutting out foods you love", tip:"Rigid bans tend to backfire into binges — fitting small portions into your targets is easier to sustain.", emoji:"🚫"}
+  {name:"Cutting out foods you love", tip:"Rigid bans tend to backfire into binges — fitting small portions into your targets is easier to sustain.", emoji:"🚫"},
+  {name:"Sea salt is healthier", tip:"Sea salt and table salt are both about 40% sodium by weight — the extra minerals are trace amounts, and table salt adds iodine.", emoji:"🧂"},
+  {name:"Brown sugar beats white", tip:"Brown sugar is white sugar plus a bit of molasses — calories and blood-sugar effect are nearly identical.", emoji:"🟤"},
+  {name:"Multigrain = whole grain", tip:"'Multigrain' or 'wheat' bread can be mostly refined flour — look for '100% whole grain' as the first ingredient.", emoji:"🍞"},
+  {name:"Organic is more nutritious", tip:"Organic and conventional produce have very similar nutrient content — eating more produce matters far more than which kind.", emoji:"🌿"},
+  {name:"Negative-calorie foods", tip:"Celery doesn't burn more calories to digest than it provides — it's just very low in calories, which is still useful.", emoji:"🥬"},
+  {name:"Apple cider vinegar", tip:"Apple cider vinegar doesn't melt fat — studies show tiny effects at best, small next to calorie balance.", emoji:"🍎"},
+  {name:"8 glasses a day", tip:"There's no universal 8-glass rule — food and other drinks count, and thirst plus pale urine is a decent guide.", emoji:"💦"},
+  {name:"Alkaline water", tip:"Your stomach acid and kidneys tightly control body pH — alkaline water doesn't change it.", emoji:"🧊"},
+  {name:"Microwaving kills nutrients", tip:"Microwaving often keeps more vitamins than boiling because it's quick and uses little water.", emoji:"📡"},
+  {name:"MSG is harmful", tip:"Controlled trials haven't confirmed 'MSG sensitivity' at normal amounts — and MSG has about a third of the sodium of table salt.", emoji:"🍜"},
+  {name:"Sweeteners spike insulin", tip:"Most artificial sweeteners don't meaningfully raise blood sugar or insulin — swapping them in for sugar can help cut calories.", emoji:"🍬"},
+  {name:"Muscle turns into fat", tip:"Muscle and fat are different tissues and can't convert — stop training and muscle shrinks, while fat can grow if intake stays the same.", emoji:"💪"},
+  {name:"Fasted cardio", tip:"Fasted cardio burns more fat during the session, but you compensate later — over 24 hours fat loss is about the same.", emoji:"🌅"},
+  {name:"Creatine is a steroid", tip:"Creatine is a well-studied compound found in meat — not a hormone, and safe for healthy kidneys at normal doses.", emoji:"💊"},
+  {name:"Toning", tip:"'Toning' is just building some muscle and losing fat — light weights for high reps aren't special; train with challenging effort.", emoji:"✨"}
 ];
 function mythTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
