@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v326 — 2026-10-10";
+var APP_BUILD = "v327 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7906,7 +7906,46 @@ var MYTH_TIPS = [
   {name:"Muscle turns into fat", tip:"Muscle and fat are different tissues and can't convert — stop training and muscle shrinks, while fat can grow if intake stays the same.", emoji:"💪"},
   {name:"Fasted cardio", tip:"Fasted cardio burns more fat during the session, but you compensate later — over 24 hours fat loss is about the same.", emoji:"🌅"},
   {name:"Creatine is a steroid", tip:"Creatine is a well-studied compound found in meat — not a hormone, and safe for healthy kidneys at normal doses.", emoji:"💊"},
-  {name:"Toning", tip:"'Toning' is just building some muscle and losing fat — light weights for high reps aren't special; train with challenging effort.", emoji:"✨"}
+  {name:"Toning", tip:"'Toning' is just building some muscle and losing fat — light weights for high reps aren't special; train with challenging effort.", emoji:"✨"},
+  {name:"Stretching prevents soreness", tip:"Static stretching before or after training doesn't meaningfully reduce next-day soreness — soreness fades as your muscles adapt to the work.", emoji:"🧘"},
+  {name:"No pain, no gain", tip:"Soreness and 'the burn' aren't measures of growth — progressive overload and enough effort close to failure are what drive results.", emoji:"😣"},
+  {name:"Lactic acid soreness", tip:"Lactate clears within about an hour of training — next-day soreness comes from muscle repair, not leftover lactic acid.", emoji:"🧫"},
+  {name:"Women need different training", tip:"Women build muscle and strength on the same principles as men — same exercises, same progressive overload.", emoji:"👩"},
+  {name:"Train every day", tip:"Muscles grow during recovery, not during the workout — hitting each muscle about twice a week works well for most people.", emoji:"📅"},
+  {name:"BCAAs", tip:"BCAA supplements add nothing if you already eat enough protein — whole proteins already contain them.", emoji:"🧴"},
+  {name:"Collagen builds muscle", tip:"Collagen is low in leucine and poor at stimulating muscle growth — don't count it the same as whey, eggs, or meat.", emoji:"🦵"},
+  {name:"Megadose vitamins", tip:"More isn't better — excess water-soluble vitamins are excreted, and fat-soluble ones can build up to harmful levels. Food first.", emoji:"💊"},
+  {name:"'Natural' label", tip:"'Natural' is loosely regulated on most foods and says nothing about calories or nutrition.", emoji:"🏷️"},
+  {name:"'Sugar-free' label", tip:"Sugar-free foods can still be calorie-dense — fat, flour, and sugar alcohols all add calories.", emoji:"🍪"},
+  {name:"Net carbs", tip:"'Net carbs' isn't an FDA-defined term — some fibers and sugar alcohols still contribute calories and affect blood sugar.", emoji:"🔢"},
+  {name:"Zero-calorie sprays", tip:"Anything under 5 calories per serving can be labeled 0 — with tiny serving sizes, a long spray of cooking oil adds up.", emoji:"🫙"},
+  {name:"Sports drinks", tip:"For workouts under about an hour, water is enough — sports drinks mostly add sugar and calories you don't need.", emoji:"🥤"},
+  {name:"Thirst is too late", tip:"For everyday activity, thirst is a reliable signal — you don't need to drink ahead of it except in long, hot sessions.", emoji:"🚰"},
+  {name:"Slow metabolism", tip:"Resting metabolism differs only modestly between people of similar size — underestimating intake is far more common.", emoji:"🐢"},
+  {name:"Metabolism slows at 40", tip:"A large 2021 study found metabolism stays stable from about 20 to 60 — midlife changes come mostly from less activity and muscle.", emoji:"🎂"},
+  {name:"Heavy weights only", tip:"Loads from light to heavy build similar muscle when sets are taken close to failure — heavy loads mainly matter for max strength.", emoji:"🏋️"},
+  {name:"Bands aren't real training", tip:"Resistance bands build muscle when you train close to failure and keep progressing the tension — equipment matters less than effort.", emoji:"🎗️"},
+  {name:"Squats hurt knees", tip:"Well-performed squats are well tolerated by healthy knees, and knees past the toes is fine — load and volume matter more than the angle.", emoji:"🦿"},
+  {name:"Running ruins knees", tip:"Recreational runners have lower rates of knee arthritis than sedentary people — sudden jumps in mileage cause more trouble than running itself.", emoji:"🏃"},
+  {name:"Tracker calorie burn", tip:"Wearables are good at steps and heart rate but can be off by 20% or more on calories burned — treat that number as a rough estimate.", emoji:"⌚"},
+  {name:"Muscle weighs more than fat", tip:"A pound is a pound — muscle is denser, so it takes up less space at the same weight.", emoji:"🪶"},
+  {name:"You need supplements to grow", tip:"Food covers it — protein powder and creatine are convenient, not required.", emoji:"🛒"},
+  {name:"Carb loading", tip:"Carb loading only helps endurance events longer than about 90 minutes — not regular lifting or short cardio.", emoji:"🍝"},
+  {name:"Extra protein turns to fat", tip:"Protein is the hardest macro to store as fat and the most filling — high intakes are a strength during a deficit.", emoji:"🍗"},
+  {name:"Ice baths after lifting", tip:"Regular cold-water immersion right after lifting can blunt muscle growth — save it for recovery between competitions, not hypertrophy blocks.", emoji:"🛁"},
+  {name:"Stretching prevents injury", tip:"Static stretching before lifting doesn't reliably prevent injury — a dynamic warm-up and light ramp-up sets work better.", emoji:"🔁"},
+  {name:"Alcohol calories", tip:"Alcohol has 7 calories per gram and pauses fat burning while your body clears it — drinks count toward the daily total.", emoji:"🍺"},
+  {name:"Metabolism-boosting foods", tip:"Chili, green tea, and coffee raise calorie burn by only a few calories — too small to matter for fat loss.", emoji:"🌶️"},
+  {name:"'Cholesterol-free' label", tip:"Plant foods never contain cholesterol — 'cholesterol-free' on peanut butter or oil is marketing, not a benefit.", emoji:"🥜"},
+  {name:"Nutrition labels are exact", tip:"FDA rules allow label calories to be off by about 20% — consistency in tracking matters more than precision.", emoji:"📋"},
+  {name:"Out-exercising a bad diet", tip:"A 30-minute workout burns roughly 200–400 calories, easily erased by one snack — diet drives fat loss, training shapes what's lost.", emoji:"⚖️"},
+  {name:"Too old to build muscle", tip:"People build muscle at any age, including in their 70s and 80s — progressive training works at every stage.", emoji:"👴"},
+  {name:"Losing gains on rest days", tip:"A few days or even a couple of weeks off cost little muscle — and it comes back fast once you resume.", emoji:"🛋️"},
+  {name:"Protein powder is unhealthy", tip:"Protein powder is just food protein, dried — pick a third-party tested brand and treat it like any other protein source.", emoji:"🥛"},
+  {name:"Fruit ferments after meals", tip:"Fruit doesn't 'rot' in your stomach after a meal — stomach acid and digestion handle mixed meals just fine.", emoji:"🍇"},
+  {name:"Calories vs. hormones", tip:"Hormones affect hunger and expenditure, but energy balance still governs fat loss — they work through calories, not around them.", emoji:"🧬"},
+  {name:"Body type limits you", tip:"'Ectomorph/endomorph' labels are overstated — everyone builds muscle and loses fat with training and calorie control.", emoji:"🧍"},
+  {name:"10,000 steps", tip:"10,000 steps began as a marketing slogan — benefits climb steadily to around 7,000–10,000, and any increase helps.", emoji:"👟"}
 ];
 function mythTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
