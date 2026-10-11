@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v324 — 2026-10-10";
+var APP_BUILD = "v325 — 2026-10-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7877,7 +7877,21 @@ var MYTH_TIPS = [
   {name:"Coffee dehydrates", tip:"For regular drinkers, coffee counts toward daily fluids — the mild diuretic effect largely fades with habitual use.", emoji:"☕"},
   {name:"Breakfast", tip:"Breakfast isn't 'the most important meal' — controlled trials show no fat-loss advantage either way; eat it or skip it based on hunger and schedule.", emoji:"🍳"},
   {name:"Lifting makes you bulky", tip:"Resistance training in a deficit doesn't make you bulky — it preserves muscle so the weight you lose is mostly fat.", emoji:"🏋️"},
-  {name:"Daily weigh-ins", tip:"Daily swings of 2–4 lb are normal — watch the 7-day average trend, not any single reading.", emoji:"⚖️"}
+  {name:"Daily weigh-ins", tip:"Daily swings of 2–4 lb are normal — watch the 7-day average trend, not any single reading.", emoji:"⚖️"},
+  {name:"Salads are always light", tip:"Dressing, cheese, nuts, and croutons can push a salad past a burger — the greens aren't the issue, the toppings are.", emoji:"🥗"},
+  {name:"Gluten-free is healthier", tip:"Only true for people with celiac disease or gluten sensitivity — gluten-free products are often more processed and just as calorie-dense.", emoji:"🍞"},
+  {name:"Juice = fruit", tip:"Juicing strips out most of the fiber — a glass can carry 3–4 fruits' worth of sugar with almost none of the fullness.", emoji:"🧃"},
+  {name:"Honey & maple syrup", tip:"Your body handles honey and maple syrup about the same as table sugar — the trace nutrients are too small to matter.", emoji:"🍯"},
+  {name:"Low-fat is better", tip:"Low-fat products often add sugar to make up for flavor; full-fat dairy can be more filling — compare calories and protein, not the label.", emoji:"🥛"},
+  {name:"Cardio burns muscle", tip:"Moderate cardio doesn't eat muscle when protein and lifting are in place — it can even help recovery and calorie burn.", emoji:"🦴"},
+  {name:"Diet soda", tip:"Controlled trials show swapping sugary drinks for diet soda helps weight loss — the observational link to weight gain is mostly reverse causation.", emoji:"🥤"},
+  {name:"Fat-burner supplements", tip:"'Fat burners' have tiny effects at best, mostly from caffeine — calorie balance, protein, and training do the work.", emoji:"🧪"},
+  {name:"Pasta makes you gain", tip:"Pasta in normal portions fits fine in a deficit — portion size and creamy sauces are what add up.", emoji:"🍝"},
+  {name:"Bananas are too sugary", tip:"A banana is about 105 calories with fiber and potassium — it's whole fruit, not a candy bar.", emoji:"🍌"},
+  {name:"Cheat meals boost metabolism", tip:"One big meal doesn't meaningfully raise metabolism — planned higher-calorie days can help adherence, but that's psychology, not metabolism.", emoji:"🧀"},
+  {name:"Cooking with olive oil", tip:"Extra virgin olive oil holds up well at normal home cooking temperatures — it's more stable than its smoke point suggests.", emoji:"🫒"},
+  {name:"Raw eggs for protein", tip:"Your body absorbs much more protein from cooked eggs than raw ones — and cooking removes the salmonella risk.", emoji:"🥚"},
+  {name:"Cutting out foods you love", tip:"Rigid bans tend to backfire into binges — fitting small portions into your targets is easier to sustain.", emoji:"🚫"}
 ];
 function mythTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
