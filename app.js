@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v336 — 2026-10-12";
+var APP_BUILD = "v337 — 2026-10-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7079,6 +7079,84 @@ function dsSwapShiftV302(){
 }
 dsSwapShiftV302();
 
+// v337 upper-body + core fill-in (one-time lock-in pass): side delts back to 2x/week,
+// a second vertical pull on Monday, ab/core volume up on Thursday, and one forearm-
+// extensor set to balance the flexor rehab. Existing ids keep their history; new
+// ids are clones/new moves so logs never collide. Skipped for imported plans.
+(function dsUpperCoreTuneV337(){
+  if(dsGuestMode()) return;
+  function setSets(m,n){
+    if(!m||m.log!=='setsreps') return;
+    m.sets=n;
+    if(m.rx) m.rx=String(m.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×');
+    var pr=(typeof DS_PHASE_RX!=='undefined')&&DS_PHASE_RX[m.id];
+    if(pr&&pr.p1){ pr.p1.sets=n; pr.p1.rx=String(pr.p1.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×'); }
+  }
+  function takeReserve(id){
+    var got=null;
+    DS_RESERVE_MOVES=DS_RESERVE_MOVES.filter(function(m){ if(m&&m.id===id&&!got){ got=m; return false; } return true; });
+    return got;
+  }
+  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
+  function insertAfter(d,afterId,m){
+    var mv=DS_SESSIONS[d].moves, at=-1;
+    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
+    mv.splice(at<0?mv.length:at,0,m);
+  }
+  function clone(src,newId,over){
+    var c={}; for(var k in src) c[k]=src[k];
+    c.id=newId; for(var o in over) c[o]=over[o];
+    if(typeof DS_PHASE_RX!=='undefined' && DS_PHASE_RX[src.id] && !DS_PHASE_RX[newId]){
+      var pr={}; for(var ph in DS_PHASE_RX[src.id]){ pr[ph]={}; for(var f in DS_PHASE_RX[src.id][ph]) pr[ph][f]=DS_PHASE_RX[src.id][ph][f]; }
+      DS_PHASE_RX[newId]=pr;
+    }
+    return c;
+  }
+  var srcCrunch=null, srcPull=null;
+  ['sat','thu','mon'].forEach(function(d){ if(!srcCrunch) srcCrunch=findIn(d,'sat-bandcrunch'); if(!srcPull) srcPull=findIn(d,'thu-lat'); });
+  if(!srcCrunch) DS_RESERVE_MOVES.forEach(function(m){ if(m&&m.id==='sat-bandcrunch') srcCrunch=m; });
+
+  // ── Monday (Upper A) ──
+  if(!dsDayIsCustom('mon') && DS_SESSIONS.mon){
+    var mon=DS_SESSIONS.mon.moves;
+    var curl=findIn('mon','mon-curl'); if(curl) setSets(curl,4);            // biceps already ~13/wk
+    if(!findIn('mon','mon-pulldown') && srcPull){
+      var pd=clone(srcPull,'mon-pulldown',{
+        name:'Overhand Pulldown', rx:'3×10–12', sets:3,
+        cue:'Monday’s vertical pull — palms-away grip shifts the work toward the lats (Thursday’s underhand version leans on biceps). Drive the elbows down toward your back pockets, chest up, slight lean back.',
+        variants:[ {name:'Deep-Stretch Pulldown',equip:'Tube 20–30 → stacked 90 · high anchor',rx:'3×10–12',cue:'Kneel farther back from the anchor than usual for a longer overhead starting stretch before pulling down',demo:'pulldown'} ]
+      });
+      setSets(pd,3);
+      insertAfter('mon','mon-ohp',pd);
+    }
+    if(!findIn('mon','mon-lateral')){
+      var lr=takeReserve('mon-lateral');
+      if(lr){ setSets(lr,3); insertAfter('mon','mon-pulldown',lr); if(!findIn('mon','mon-lateral')) insertAfter('mon','mon-ohp',lr); }
+    }
+  }
+
+  // ── Thursday (Upper B) ──
+  if(!dsDayIsCustom('thu') && DS_SESSIONS.thu){
+    // forearm extensors (balances the flexor rehab), right after the rehab slot
+    if(!findIn('thu','thu-wristext')){
+      var we={id:'thu-wristext',name:'Forearm — Band Wrist Extension',slot:'Pull · Forearm Extensors',target:'Wrist extensors · Lateral forearm',
+        equip:'Light band · under your foot',rx:'2×15–20',cal:8,demo:'wristecc',log:'setsreps',sets:2,
+        cue:'Same rig as the wrist curl, palm down. Light and smooth — this balances the flexor work, it is not a max-effort set.',
+        setup:'Sit with a light band looped under your foot, forearm resting on your knee, palm DOWN, handle in hand. Lift the back of the hand up, then lower it over about 3 seconds. 2×15–20. Keep the band light; stop short of any ache on the outer elbow.'};
+      insertAfter('thu','thu-elbow',we);
+    }
+    // core: kneeling band crunch (4) + leg raise (3) at the end of the day
+    if(!findIn('thu','thu-bandcrunch') && srcCrunch){
+      var bc=clone(srcCrunch,'thu-bandcrunch',{ cue:'Thursday’s ab-flexion work (Saturday has the other session). '+(srcCrunch.cue||'') });
+      setSets(bc,4); DS_SESSIONS.thu.moves.push(bc);
+    }
+    if(!findIn('thu','thu-legraise')){
+      var lg=takeReserve('thu-legraise');
+      if(lg){ setSets(lg,3); DS_SESSIONS.thu.moves.push(lg); }
+    }
+  }
+})();
+
 dsApplyFullBody();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 // Shared debounce for anything that should ride along on the settings-sync channel
@@ -9988,6 +10066,9 @@ var DS_MV={
   'mon-forearm':{'Forearms':1},
   'thu-forearm':{'Forearms':1},
   'mon-lateral':{'Shoulders':1},
+  'mon-pulldown':{'Back':1,'Biceps':.4,'Forearms':.3},
+  'thu-bandcrunch':{'Core':1},
+  'thu-wristext':{'Forearms':.5},
   'fri-kbswing':{'Glutes':1,'Hamstrings':.5,'Core':.5},
   'mon-standbandpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-slamskull':{'Triceps':1},
