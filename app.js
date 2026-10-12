@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v335 — 2026-10-12";
+var APP_BUILD = "v336 — 2026-10-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9568,7 +9568,9 @@ function dsBuildHealthExportText(key){
   var day = getDay(key);
   var list = (day.exercises||[]).slice();
   var label = (key===todayKey()) ? "Today" : prettyDate(key);
-  if(!list.length){
+  var medList = (day.meditation||[]).filter(function(s){return +s.mins>0;});
+  var medMins = medList.reduce(function(a,s){return a+(+s.mins||0);},0);
+  if(!list.length && !medList.length){
     return label+" ("+key+")\nNo completed exercises logged yet.";
   }
   // Group by activity type for a quick top-line summary (how Google Health's Add Workout screen wants it)
@@ -9591,6 +9593,8 @@ function dsBuildHealthExportText(key){
     var g = groups[type];
     lines.push("\u2022 "+type+" \u2014 "+dsFormatTrainingTime(g.secs)+" \u2014 "+Math.round(g.cal)+" kcal");
   });
+  if(medList.length) lines.push("\u2022 Meditation \u2014 "+medMins+" min");
+  if(list.length){
   lines.push("");
   lines.push("Total: "+dsFormatTrainingTime(dsDailyTrainingSeconds(key))+" \u2014 "+Math.round(totalCal)+" kcal");
   lines.push("");
@@ -9603,6 +9607,14 @@ function dsBuildHealthExportText(key){
     var tr=dsFmtTimeRange(ex); if(tr) bits.push(tr);
     lines.push("\u2022 "+bits.join(" \u2014 "));
   });
+  }
+  if(medList.length){
+    lines.push("");
+    lines.push("MEDITATION DETAIL (not in the kcal total):");
+    medList.forEach(function(s){
+      lines.push("\u2022 "+(s.type||"Silent")+" \u2014 "+s.mins+" min"+(s.clarity?" \u2014 clarity "+s.clarity+"/5":""));
+    });
+  }
   return lines.join("\n");
 }
 // ── PER-EXERCISE PROGRESS VIEW ──────────────────────────────────────────
@@ -9703,13 +9715,14 @@ function dsDownloadHealthExport(){
 function dsBuildWeekExportText(){
   var start=_weekStartMon(), now=new Date(), keys=[];
   for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); if(d>now) break; keys.push(localDateKey(d)); }
-  var totalCal=0, totalSecs=0, workoutDays=0;
+  var totalCal=0, totalSecs=0, workoutDays=0, medTotal=0;
   var dayBlocks=[];
   keys.forEach(function(k){
     var dd=appData[k]; var list=(dd&&dd.exercises)?dd.exercises.slice():[];
     var strengthList=list.filter(function(e){return e.sets || (e.type==='strength');});
-    if(!list.length) return;
-    workoutDays++;
+    var medL=(dd&&dd.meditation)?dd.meditation.filter(function(s){return +s.mins>0;}):[];
+    if(!list.length && !medL.length) return;
+    if(list.length) workoutDays++;
     var dayCal=0;
     list.forEach(function(e){ dayCal+=Math.round(e.calories||0); });
     totalCal+=dayCal;
@@ -9725,15 +9738,20 @@ function dsBuildWeekExportText(){
       var tr=dsFmtTimeRange(ex); if(tr) bits.push(tr);
       lines.push("  \u2022 "+bits.join(" \u2014 "));
     });
+    if(medL.length){
+      var dm=medL.reduce(function(a,s){return a+(+s.mins||0);},0);
+      medTotal+=dm;
+      lines.push("  \u2022 Meditation \u2014 "+dm+" min"+(medL.length>1?" ("+medL.length+" sessions)":""));
+    }
     dayBlocks.push(lines.join("\n"));
   });
-  if(!workoutDays){
+  if(!dayBlocks.length){
     return "This week ("+prettyDate(localDateKey(start))+" \u2192 "+prettyDate(localDateKey(now))+")\nNo completed exercises logged yet.";
   }
   var out=[];
   out.push("Weekly Workout Export \u2014 "+prettyDate(localDateKey(start))+" \u2192 "+prettyDate(localDateKey(now)));
   out.push("");
-  out.push("TOTALS: "+workoutDays+" day"+(workoutDays===1?"":"s")+" logged \u2014 "+dsFormatTrainingTime(totalSecs)+" \u2014 "+Math.round(totalCal)+" kcal");
+  out.push("TOTALS: "+workoutDays+" day"+(workoutDays===1?"":"s")+" logged \u2014 "+dsFormatTrainingTime(totalSecs)+" \u2014 "+Math.round(totalCal)+" kcal"+(medTotal?" \u2014 meditation "+medTotal+" min":""));
   out.push("");
   out.push(dayBlocks.join("\n\n"));
   return out.join("\n");
