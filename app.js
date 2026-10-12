@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v337 — 2026-10-12";
+var APP_BUILD = "v338 — 2026-10-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7157,6 +7157,39 @@ dsSwapShiftV302();
   }
 })();
 
+// v338 completeness pass: rotator cuff (Mon), serratus/lower-trap wall walks (Thu),
+// obliques via side plank (Sat). New ids so logs never collide; skipped for imported plans.
+(function dsUpperCoreTuneV338(){
+  if(dsGuestMode()) return;
+  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
+  function insertAfter(d,afterId,m){
+    var mv=DS_SESSIONS[d].moves, at=-1;
+    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
+    if(at<0){ if(d==='sat'){ var r=-1; for(var j=0;j<mv.length;j++){ if(mv[j]&&mv[j].id==='sat-ride'){ r=j; break; } } at=r<0?mv.length:r; } else at=mv.length; }
+    mv.splice(at,0,m);
+  }
+  if(!dsDayIsCustom('mon') && DS_SESSIONS.mon && !findIn('mon','mon-extrot')){
+    insertAfter('mon','thu-facepull',{id:'mon-extrot',name:'Band External Rotation',slot:'Pull · Rotator Cuff',target:'Rotator cuff · Rear delts',
+      equip:'Light tube 5–10 lb · door anchor at elbow height',rx:'2×15/side',cal:8,demo:'extrot',log:'setsreps',sets:2,
+      cue:'Elbow pinned to your side (small towel roll between elbow and ribs) — only the forearm rotates outward. 2 seconds out, 3 seconds back. Light enough to feel it in the back of the shoulder, not the front.',
+      setup:'Stand sideways to a door anchor set at elbow height, band in the hand farthest from the door. Pin the elbow at 90° against your side with a small towel roll. Rotate the forearm away from the door, pause 1 second, then return slowly. 2×15 each side. Keep the band light — rotator cuff work is about control, not load.'});
+  }
+  if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && !findIn('thu','thu-wallwalk')){
+    var ww=null; (DS_MOBILITY&&DS_MOBILITY.moves||[]).forEach(function(m){ if(m&&m.id==='mob-wallwalk') ww=m; });
+    if(ww){
+      var c={}; for(var k in ww) c[k]=ww[k];
+      c.id='thu-wallwalk'; c.slot='Pull · Serratus'; c.sets=2; c.rx='2×8 trips'; c.cal=10;
+      insertAfter('thu','sat-shrug',c);
+    }
+  }
+  if(!dsDayIsCustom('sat') && DS_SESSIONS.sat && !findIn('sat','sat-sideplank')){
+    insertAfter('sat','sat-bandcrunch',{id:'sat-sideplank',name:'Side Plank',slot:'Core · Obliques',target:'Obliques · Quadratus lumborum',equip:'Bodyweight',
+      rx:'2×30s — one set per side',cal:12,demo:'sideplank',log:'time',secs:30,sets:2,
+      cue:'One set per side. Hips stacked and lifted, straight line from ear to ankle — drop to the bent-knee version if the hips sag. ⚠️ SI joint: stop at any pinch low in the back.',
+      variants:[{name:'Bent-Knee Side Plank',equip:'Bodyweight',rx:'2×30s — one set per side',cue:'Knees bent and stacked — shorter lever, same hip-lift cue. Use it whenever the straight-leg version sags.',demo:'sideplank'}]});
+  }
+})();
+
 dsApplyFullBody();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 // Shared debounce for anything that should ride along on the settings-sync channel
@@ -10069,6 +10102,9 @@ var DS_MV={
   'mon-pulldown':{'Back':1,'Biceps':.4,'Forearms':.3},
   'thu-bandcrunch':{'Core':1},
   'thu-wristext':{'Forearms':.5},
+  'mon-extrot':{'Rear Delts':.5},
+  'thu-wallwalk':{'Traps':.5},
+  'sat-sideplank':{'Core':1},
   'fri-kbswing':{'Glutes':1,'Hamstrings':.5,'Core':.5},
   'mon-standbandpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-slamskull':{'Triceps':1},
