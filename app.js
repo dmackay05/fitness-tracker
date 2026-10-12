@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v338 — 2026-10-12";
+var APP_BUILD = "v339 — 2026-10-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8866,6 +8866,17 @@ var DS_TW='1 sec up · 1 sec squeeze · 3 sec down';
 var DS_STD={head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[95,192],[95,246],[112,246]]};
 var DS_HNG={head:[146,98],torso:[[129,109],[75,140]],legs:[[75,140],[88,194],[95,246],[112,246]]};
 function dsMk(base,over){ var o={}; for(var k in base) o[k]=base[k]; for(var j in over) o[j]=over[j]; return o; }
+// Band External Rotation — front view, working arm on the left, door anchor on the right at
+// elbow height. Band runs across the belly: hand starts across the body, finishes rotated out.
+DS_SETUPPICS['Band External Rotation']=function(){
+  var fr={head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[84,192],[82,246],[70,246]],legs2:[[95,138],[106,192],[108,246],[120,246]],
+    lines:[[184,96,184,156]],circles:[[184,126,4]]};
+  return dsPic2(
+  dsMk(fr,{title:'Start (hand across belly)',arm:[[95,88],[86,126],[124,126]],band:[[124,126],[180,126]],
+    tags:[[4,150,'Elbow pinned'],[4,166,'to your side'],[112,112,'Door anchor']]}),
+  dsMk(fr,{title:'Finish (rotated out)',arm:[[95,88],[86,126],[48,126]],band:[[48,126],[180,126]],bw:4,
+    tags:[[4,150,'Elbow stays put'],[4,166,'Squeeze 1 sec'],[112,112,'Door anchor']]}),
+  ['Stand sideways to a door anchor at elbow height','Elbow pinned with a towel roll, forearm across the belly','Rotate the forearm out · 2 sec out · 3 sec back','Light band — feel it in the back of the shoulder']); };
 DS_SETUPPICS['Banded Upright Row']=function(){ return dsPic2(
   dsMk(DS_STD,{title:'Bottom',arm:[[95,88],[100,120],[108,150]],band:[[108,248],[108,152]],tags:[[4,150,'Hands at thighs']]}),
   dsMk(DS_STD,{title:'Top',arm:[[95,88],[126,84],[108,106]],band:[[108,248],[108,108]],bw:4,tags:[[4,150,'Elbows lead']]}),
