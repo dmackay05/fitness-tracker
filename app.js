@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v344 — 2026-10-13";
+var APP_BUILD = "v345 — 2026-10-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8917,6 +8917,11 @@ function dsElbowRotPic(kind){
 DS_SETUPPICS['Elbow — Band Pronation/Supination']=function(){ return dsElbowRotPic(); };
 DS_SETUPPICS['Elbow — Forearm Pronation/Supination (band)']=function(){ return dsElbowRotPic(); };
 DS_SETUPPICS['Isometric Pronation Hold']=function(){ return dsElbowRotPic('iso'); };
+// v345: Single-Leg Band Extension \u2014 band on one ankle, other foot planted; panel B is the same frame shifted right.
+DS_SETUPPICS['Single-Leg Band Extension']=function(){ return dsPic2(
+  {title:'Start (knee bent)',head:[72,90],torso:[[72,106],[72,190]],legs:[[72,190],[122,190],[108,236],[126,236]],legs2:[[72,190],[122,190],[128,246],[146,246]],arm:[[72,118],[84,160],[92,196]],lines:[[40,197,112,197],[46,197,46,252],[106,197,106,252]],band:[[8,250],[110,238]],tags:[[8,268,'Low anchor'],[134,214,'Other foot'],[134,228,'planted']]},
+  {title:'Top (leg level)',head:[72,90],torso:[[72,106],[72,190]],legs:[[72,190],[122,190],[168,190],[176,190]],legs2:[[72,190],[122,190],[128,246],[146,246]],arm:[[72,118],[84,160],[92,196]],lines:[[40,197,112,197],[46,197,46,252],[106,197,106,252]],band:[[8,250],[168,192]],bw:4,tags:[[8,268,'Low anchor'],[102,172,'Squeeze 1 sec']]},
+  ['Sit tall, tube anchored low behind you, loop around ONE ankle','Only the lower leg moves \u2014 thigh stays planted','1 sec up \u00b7 1 sec squeeze \u00b7 3 sec down','All reps on one side, then switch \u2014 weaker leg first']); };
 // Band External Rotation — front view, working arm on the left, door anchor on the right at
 // elbow height. Band runs across the belly: hand starts across the body, finishes rotated out.
 DS_SETUPPICS['Band External Rotation']=function(){
