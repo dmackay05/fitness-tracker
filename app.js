@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v342 — 2026-10-12";
+var APP_BUILD = "v343 — 2026-10-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6354,7 +6354,7 @@ var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end ran
 
 DS_MOBILITY.moves.push({id:"mob-elbow",name:"Elbow \u2014 Band Wrist Curl",rx:"3\u00d715",cal:12,demo:"wristecc",log:"setsreps",sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"Light band \u00b7 under your foot",cue:"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.",setup:"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3\u00d715, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine."});
 DS_MOBILITY.moves.push({id:"mob-elbowiso",name:"Elbow \u2014 Isometric Wrist Flexion Hold",rx:"3\u00d720\u201330s",cal:8,demo:"wristecc",log:"time",secs:25,sets:3,target:"Medial epicondyle (golfer's elbow)",equip:"2 lb dumbbell or light band",cue:"Hold still \u2014 no movement, just steady tension",setup:"Same setup as the band wrist curl: forearm on your thigh, palm up, light weight in hand. Instead of lowering, just hold the wrist at a neutral-to-slightly-flexed midpoint and press up into the weight without moving. Hold 20\u201330 seconds, 3 sets. Use this on days the band curl feels too aggravating \u2014 isometrics load the tendon with much less irritation, a good lower-intensity alternative to rotate in."});
-DS_MOBILITY.moves.push({id:"mob-elbowrot",name:"Elbow \u2014 Forearm Pronation/Supination",rx:"3\u00d712/direction",cal:8,demo:"extrot",log:"setsreps",sets:3,target:"Medial epicondyle \u00b7 Forearm rotators",equip:"2 lb dumbbell (held vertically) or a hammer/lightweight tool",cue:"Elbow pinned to your side \u2014 only the forearm rotates",setup:"Sit with your forearm resting on your thigh or a table edge, elbow bent 90\u00b0, holding a light dumbbell vertically like a hammer. Slowly rotate your palm from facing up to facing down and back, keeping the elbow completely still. 3\u00d712 each direction, slow and controlled. This trains the forearm rotators that attach near the same tendon the eccentric wrist work targets \u2014 often skipped in golfer's elbow rehab even though it rounds out the protocol."});
+DS_MOBILITY.moves.push({id:"mob-elbowrot",name:"Elbow \u2014 Forearm Pronation/Supination (band)",rx:"2\u00d712\u201315/direction",cal:8,demo:"extrot",log:"setsreps",sets:2,target:"Medial epicondyle \u00b7 Forearm rotators",equip:"Orange loop 41in (5\u201315 lb)",cue:"Elbow pinned to your side \u2014 only the forearm rotates. Slow 3\u20134 sec on the return.",setup:"Sit with your forearm on your knee or a table edge, elbow bent 90\u00b0 and tucked near your side, wrist just past the edge. Loop one end of the orange band under your foot (or a low door anchor) and hold the other end in your fist. Rotate the forearm against the band, then return slowly over 3\u20134 seconds. Pronation (palm turning down) hits the inner-elbow side most; supination (palm turning up) balances it \u2014 do both, switching which side of the hand the band pulls from. Mild muscle burn is fine; sharp or pinching inner-elbow pain means a lighter stretch."});
 DS_MOBILITY.moves.push({id:"mob-elbowgrip",name:"Elbow \u2014 Grip Squeeze Hold",rx:"3\u00d710 squeezes, 3s each",cal:8,demo:"deadhang",log:"setsreps",sets:3,target:"Flexor-pronator mass \u00b7 Grip",equip:"Stress ball or light band folded in the palm",cue:"Squeeze and release with control \u2014 no ballistic snapping",setup:"Hold a stress ball (or a light band folded into your palm) and squeeze firmly for 3 seconds, then release slowly. 3\u00d710. This loads the whole flexor-pronator mass that anchors at the medial epicondyle, building tendon capacity without isolating the wrist the way the eccentric work does \u2014 a good complement, not a replacement."});
 DS_MOBILITY.moves.push({id:"mob-elbownerve",name:"Elbow \u2014 Ulnar Nerve Glide",rx:"2\u00d78 reps, gentle",cal:5,demo:"shouldercar",log:"setsreps",sets:2,target:"Ulnar nerve",equip:"Bodyweight",cue:"Gentle glide only \u2014 never pull into a stretch or force it",setup:"Arm out to the side at shoulder height, elbow bent, palm facing away. Slowly straighten the elbow while tilting your head away from that arm, then bend the elbow back while tilting your head toward it \u2014 a smooth, gentle glide, not a stretch. 2\u00d78, slow and pain-free. Only needed if you notice tingling or numbness into your ring/pinky finger, which can accompany medial elbow issues; skip this one entirely if you're not having that symptom."});
 DS_MOBILITY.moves.push({id:"mob-elbowrom",name:"Elbow \u2014 Wrist Range of Motion",rx:"3\u00d710",cal:5,demo:"wristecc",log:"setsreps",sets:3,target:"Wrist \u00b7 Medial epicondyle",equip:"Bodyweight",cue:"Gentle and pain-free \u2014 this is mobility, not a stretch to force",setup:"Bend your wrist forward (palm toward forearm) and then backward (back of hand toward forearm) as far as you comfortably can, without forcing it. 3\u00d710. Good as a warm-up before the eccentric or isometric work, or on its own during a flare-up when loaded exercise feels like too much."});
@@ -7190,6 +7190,28 @@ dsSwapShiftV302();
       cue:'One set per side. Hips stacked and lifted, straight line from ear to ankle — drop to the bent-knee version if the hips sag. ⚠️ SI joint: stop at any pinch low in the back.',
       variants:[{name:'Bent-Knee Side Plank',equip:'Bodyweight',rx:'2×30s — one set per side',cue:'Knees bent and stacked — shorter lever, same hip-lift cue. Use it whenever the straight-leg version sags.',demo:'sideplank'}]});
   }
+})();
+
+// v343 elbow rehab: band pronation/supination (orange 41in loop) in the Mon + Thu rehab slots,
+// right after the existing wrist-curl rehab card. New ids so logs never collide; skipped for imported plans.
+(function dsElbowRotV343(){
+  if(dsGuestMode()) return;
+  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
+  function insertAfter(d,afterId,m){
+    var mv=DS_SESSIONS[d].moves, at=-1;
+    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
+    mv.splice(at<0?mv.length:at,0,m);
+  }
+  function mk(id){
+    return {id:id,name:'Elbow \u2014 Band Pronation/Supination',slot:'Rehab',target:'Medial epicondyle \u00b7 Forearm rotators',
+      equip:'Orange loop 41in (5\u201315 lb) \u00b7 under your foot',rx:'2\u00d712\u201315/direction',cal:8,demo:'extrot',log:'setsreps',sets:2,
+      cue:'Elbow pinned to your side \u2014 only the forearm rotates. Slow 3\u20134 sec return. Mild muscle burn is fine; sharp inner-elbow pain means a lighter stretch.',
+      setup:'Sit with your forearm on your knee, elbow bent 90\u00b0 and tucked near your side, wrist just past the edge. Loop one end of the orange band under your foot and hold the other end in your fist. Rotate the forearm against the band (palm turning down = pronation), then return slowly over 3\u20134 seconds. Switch which side of the hand the band pulls from to train supination (palm turning up) the same way. 2\u00d712\u201315 each direction.',
+      variants:[{name:'Isometric Pronation Hold',equip:'Orange loop 41in (5\u201315 lb)',rx:'3\u00d730\u201345s',
+        cue:'Rotate to mid-range and hold still against the band \u2014 steady tension, no movement. Gentlest way to load an irritated tendon; use it on days the reps feel aggravating.',demo:'extrot'}]};
+  }
+  if(!dsDayIsCustom('mon') && DS_SESSIONS.mon && !findIn('mon','mon-elbowrot')) insertAfter('mon','mon-elbow',mk('mon-elbowrot'));
+  if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && !findIn('thu','thu-elbowrot')) insertAfter('thu','thu-elbow',mk('thu-elbowrot'));
 })();
 
 dsApplyFullBody();
@@ -10132,6 +10154,8 @@ var DS_MV={
   'thu-bandcrunch':{'Core':1},
   'thu-wristext':{'Forearms':.5},
   'mon-extrot':{'Rear Delts':.5},
+  'mon-elbowrot':{'Forearms':.5},
+  'thu-elbowrot':{'Forearms':.5},
   'thu-wallwalk':{'Traps':.5},
   'sat-sideplank':{'Core':1},
   'fri-kbswing':{'Glutes':1,'Hamstrings':.5,'Core':.5},
@@ -10568,7 +10592,8 @@ var DS_BAND_LIB=[
   ['Tubes stacked on handles',['30+20 tubes (~50)','50+20 tubes (~70)','50+30 tubes (~80)','50+40 tubes (~90)','50+40+30 tubes (~120)','All 5 tubes (~150)']],
   ['Fabric loops (41in, stretchy)',['Fabric loop 41in (pink)','Fabric loop 41in (gray-blue)']],
   ['Loop bands (heavy)',['Clench 75 loop (black 41in)','Reebok Ultra Heavy loop (~75+, a bit above Clench 75)','Clench green loop (75\u2013150)']],
-  ['Light / activation',['Clench mini loop 13in','Theraband red (light)']]
+  ['Light loop (41in)',['Orange loop 41in (5\u201315)']],
+  ['Light / activation',['Clench mini loop 13in (purple)','Green mini loop 13in (2\u201320)','Theraband red (light)']]
 ];
 function dsBandPickerHTML(id){
   var h='<select class="ds-bandpick" aria-label="Pick a band" onchange="dsPickBand(\''+id+'\',this)"><option value="">Band</option>';
