@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v343 — 2026-10-13";
+var APP_BUILD = "v344 — 2026-10-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8890,6 +8890,33 @@ var DS_TW='1 sec up · 1 sec squeeze · 3 sec down';
 var DS_STD={head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[95,192],[95,246],[112,246]]};
 var DS_HNG={head:[146,98],torso:[[129,109],[75,140]],legs:[[75,140],[88,194],[95,246],[112,246]]};
 function dsMk(base,over){ var o={}; for(var k in base) o[k]=base[k]; for(var j in over) o[j]=over[j]; return o; }
+// v344: forearm pronation/supination (band) — seated side view on the left of each panel, end-on hand view on the right.
+// End-on view = looking down the forearm toward the fingers: the long line is the palm, the small circle is the thumb.
+function dsElbowRotPic(kind){
+  var fig={head:[40,90],torso:[[40,106],[40,190]],legs:[[40,190],[92,190],[96,244],[112,244]],
+    arm:[[40,118],[54,162],[104,183]],lines:[[10,197,70,197],[14,197,14,252],[66,197,66,252]],band:[[112,246],[104,185]]};
+  function hand(palmY,thumbX,thumbY,vertical){
+    var L=vertical?[[150,114,150,166]]:[[130,palmY,170,palmY]];
+    return {lines:L,circles:[[150,140,22],[thumbX,thumbY,5]]};
+  }
+  function panel(title,h,tags){
+    var o=dsMk(fig,{title:title,lines:fig.lines.concat(h.lines),circles:h.circles,tags:tags});
+    return o;
+  }
+  if(kind==='iso'){
+    return dsPic2(
+      panel('Start (thumb up)',hand(0,150,112,true),[[120,194,'Thumb up']]),
+      panel('Hold here',hand(0,150,112,true),[[120,194,'Press into'],[120,208,'the band']]),
+      ['Elbow on your thigh, bent 90°, tucked near your side','Rotate to mid-range (thumb up) and hold steady','30–45 sec · 3–5 rounds · mild effort only','Switch the band to the other side of the hand for supination']);
+  }
+  return dsPic2(
+    panel('Start (palm up)',hand(122,172,140,false),[[120,194,'Thumb out'],[120,208,'Palm up']]),
+    panel('End (palm down)',hand(158,128,140,false),[[120,194,'Thumb in'],[120,208,'Palm down']]),
+    ['Forearm on your knee, elbow tucked near your side','Band under your foot, other end in your fist','Rotate palm up → down · 3–4 sec back','Then switch band side to train supination']);
+}
+DS_SETUPPICS['Elbow — Band Pronation/Supination']=function(){ return dsElbowRotPic(); };
+DS_SETUPPICS['Elbow — Forearm Pronation/Supination (band)']=function(){ return dsElbowRotPic(); };
+DS_SETUPPICS['Isometric Pronation Hold']=function(){ return dsElbowRotPic('iso'); };
 // Band External Rotation — front view, working arm on the left, door anchor on the right at
 // elbow height. Band runs across the belly: hand starts across the body, finishes rotated out.
 DS_SETUPPICS['Band External Rotation']=function(){
