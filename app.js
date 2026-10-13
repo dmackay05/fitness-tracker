@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v341 — 2026-10-12";
+var APP_BUILD = "v342 — 2026-10-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7149,7 +7149,7 @@ dsSwapShiftV302();
     }
     // core: kneeling band crunch (4) + leg raise (3) at the end of the day
     if(!findIn('thu','thu-bandcrunch') && srcCrunch){
-      var bc=clone(srcCrunch,'thu-bandcrunch',{ cue:'Thursday’s ab-flexion work (Saturday has the other session). '+(srcCrunch.cue||'') });
+      var bc=clone(srcCrunch,'thu-bandcrunch',{ lockVar:null, cue:'Thursday’s ab-flexion work (Saturday has the other session). '+(srcCrunch.cue||'') });
       setSets(bc,4); DS_SESSIONS.thu.moves.push(bc);
     }
     if(!findIn('thu','thu-legraise')){
