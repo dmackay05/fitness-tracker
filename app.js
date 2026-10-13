@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v345 — 2026-10-13";
+var APP_BUILD = "v346 — 2026-10-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9485,15 +9485,18 @@ function dsIsCompound(item){
 function dsRenderItem(rawItem,idx,accent){
   var item=dsViewOf(rawItem);
   var _phase=dsCurrentPhase(); var _po=_phase && DS_PHASE_RX[item.id] && DS_PHASE_RX[item.id][_phase];
+  // v346: a one-side-at-a-time variant (rx ends "/leg" or "/side") keeps that suffix when the phase
+  // prescription swaps in the parent's rep range, so the L/R rep inputs still show.
+  var _uniM=/\/(side|leg)\b/i.exec(item.rx||''); var _uniSfx=(_uniM&&_po&&!/\/(side|leg)\b/i.test(_po.rx||''))?'/'+_uniM[1].toLowerCase():'';
   if(_po){
     item={id:item.id,name:item.name,tempo:item.tempo,slot:item.slot,target:item.target,equip:item.equip,
-      rx:_po.rx+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''),
+      rx:_po.rx+_uniSfx+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''),
       cal:item.cal,cue:item.cue,demo:item.demo,log:item.log,
       sets:(_po.sets!=null?_po.sets:item.sets),
       secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants};
   }
   var _fbc=(typeof dsFbCapOf==='function')?dsFbCapOf(item.id):0;
-  if(_fbc && _po && item.sets>_fbc){ item.sets=_fbc; item.rx=dsFbCapRx(_po.rx,_fbc)+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''); }
+  if(_fbc && _po && item.sets>_fbc){ item.sets=_fbc; item.rx=dsFbCapRx(_po.rx,_fbc)+_uniSfx+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''); }
   var st=dsItemState(item.id); var done=dsComplete(item.id);
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
