@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v346 — 2026-10-13";
+var APP_BUILD = "v347 — 2026-10-13";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2292,7 +2292,21 @@ function editFood(id){
   document.getElementById("ef-sodium").value=(f.sodium||"");
   document.getElementById("ef-satfat").value=(f.satfat||"");
   document.getElementById("ef-chol").value=(f.chol||"");
+  efMealSet(f.mealTag||efGuessMeal(f));
   document.getElementById("food-edit-modal").style.display="flex";
+}
+// v347: change which meal a logged food belongs to (Breakfast/Lunch/Dinner/Snack).
+// Entries logged before meal tags existed have none, so show the time-of-day guess the app was already using.
+var editingFoodTag=null;
+function efGuessMeal(f){
+  var ts=parseInt(f&&f.id,10), h=12;
+  if(!isNaN(ts)&&ts>1e12){ var d=new Date(ts); h=d.getHours()+d.getMinutes()/60; if(h<5) h+=24; }
+  return dsMealWindowFor(h);
+}
+function efMealSet(tag){
+  editingFoodTag=tag;
+  var el=document.getElementById("ef-meal-picker");
+  if(el) Array.prototype.forEach.call(el.children,function(b){ b.classList.toggle("on", b.getAttribute("data-tag")===tag); });
 }
 function closeFoodEdit(){ editingFoodId=null; document.getElementById("food-edit-modal").style.display="none"; }
 function saveFoodEdit(){
@@ -2309,6 +2323,7 @@ function saveFoodEdit(){
   var _fn=+document.getElementById("ef-sodium").value||0; if(_fn) f.sodium=_fn; else delete f.sodium;
   var _fs=+document.getElementById("ef-satfat").value||0; if(_fs) f.satfat=_fs; else delete f.satfat;
   var _fh=+document.getElementById("ef-chol").value||0; if(_fh) f.chol=_fh; else delete f.chol;
+  if(editingFoodTag && /^(Breakfast|Lunch|Dinner|Snack)$/.test(editingFoodTag)) f.mealTag=editingFoodTag;
   saveDay(day); closeFoodEdit(); renderAll();
 }
 // ── MACRO SOURCES: tap a bar in Macro Breakdown to see what fed it ─────────
@@ -2338,7 +2353,7 @@ function renderFoodLog(){
   document.getElementById("log-title").textContent=isToday()?"Today's Food Log":prettyDate(activeDate)+" Food";
   el.innerHTML = (!day.foods.length)?'<div class="empty">Nothing logged yet</div>':
     day.foods.map(function(f){return '<details class="log-row"><summary class="log-row-sum"><span class="log-row-name">'+f.name+'</span>'+
-      '<span class="log-row-sub">'+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+(+f.sodium?' · '+Math.round(f.sodium)+'mg Na':'')+(+f.satfat?' · '+f.satfat+'g SatFat':'')+(+f.chol?' · '+Math.round(f.chol)+'mg Chol':'')+'</span></summary>'+
+      '<span class="log-row-sub">'+(f.mealTag?'<b style="color:#5eead4">'+f.mealTag+'</b> \u00b7 ':'')+f.cal+' kcal · '+(f.protein||0)+'g P · '+(f.carbs||0)+'g C · '+(f.fat||0)+'g F'+(+f.fiber?' · '+f.fiber+'g Fb':'')+(+f.sodium?' · '+Math.round(f.sodium)+'mg Na':'')+(+f.satfat?' · '+f.satfat+'g SatFat':'')+(+f.chol?' · '+Math.round(f.chol)+'mg Chol':'')+'</span></summary>'+
       '<div class="log-row-actions"><button onclick="toggleFavById(\''+f.id+'\')" title="Favorite" style="font-size:20px;line-height:1;padding:4px 12px;border-radius:8px;background:'+(isFavObj(f)?"#fbbf2422":"transparent")+';border:1px solid '+(isFavObj(f)?"#fbbf24":"#3a3a58")+';color:'+(isFavObj(f)?"#fbbf24":"#6b6b80")+'">'+(isFavObj(f)?"★":"☆")+'</button><button class="bs" onclick="editFood(\''+f.id+'\')">Edit</button>'+
       '<button class="bd" onclick="removeFood(\''+f.id+'\')">Remove</button></div></details>';}).join("");
   var t=getTotals();

@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=250">
+<link rel="stylesheet" href="styles.css?v=251">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -1415,6 +1415,13 @@
   <div class="modal-card">
     <div class="card-title">Edit Food</div>
     <input type="text" id="ef-name" placeholder="Food name"/>
+    <div style="font-size:11px;color:#8b8b9c;margin:2px 0 6px">Meal</div>
+    <div id="ef-meal-picker" style="display:flex;gap:6px;margin-bottom:10px">
+      <button type="button" class="meal-tag-btn" data-tag="Breakfast" onclick="efMealSet('Breakfast')">Breakfast</button>
+      <button type="button" class="meal-tag-btn" data-tag="Lunch" onclick="efMealSet('Lunch')">Lunch</button>
+      <button type="button" class="meal-tag-btn" data-tag="Dinner" onclick="efMealSet('Dinner')">Dinner</button>
+      <button type="button" class="meal-tag-btn" data-tag="Snack" onclick="efMealSet('Snack')">Snack</button>
+    </div>
     <div class="g2"><input type="number" inputmode="decimal" id="ef-cal" placeholder="Calories"/><input type="number" inputmode="decimal" id="ef-protein" placeholder="Protein (g)"/><input type="number" inputmode="decimal" id="ef-carbs" placeholder="Carbs (g)"/><input type="number" inputmode="decimal" id="ef-fat" placeholder="Fat (g)"/></div>
     <div class="g2" style="margin-top:8px"><input type="number" inputmode="decimal" id="ef-fiber" placeholder="Fiber (g) — optional"/><input type="number" inputmode="decimal" id="ef-sodium" placeholder="Sodium (mg) — optional"/></div>
     <div class="g2" style="margin-top:8px"><input type="number" inputmode="decimal" id="ef-satfat" placeholder="Sat Fat (g) — optional"/><input type="number" inputmode="decimal" id="ef-chol" placeholder="Cholesterol (mg) — optional"/></div>
@@ -1908,6 +1915,6 @@
   </div>
 </div>
 
-<script src="app.js?v=440"></script>
+<script src="app.js?v=441"></script>
 </body>
 </html>
