@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v347 — 2026-10-13";
+var APP_BUILD = "v348 — 2026-10-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3548,7 +3548,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3560,7 +3560,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -3594,6 +3594,7 @@ function applyConfig(cfg){
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){}
+  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } }catch(e){}
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
@@ -5604,7 +5605,64 @@ var DS_SATHEAT_MOVES=[
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
 var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
 function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; dsTrimDateKeys(DS_SAT_HEAT_ON,120); try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); }
-function dsSessOf(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+// v348: exercises the user removed from a weekday on the Today tab (per-day id list, synced).
+// Filtering happens here so the card list, done/total bar and Volume all agree.
+var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ DS_HIDDEN={}; }
+var _dsHidCache=null;
+function dsHiddenSave(){ _dsHidCache=null; try{ store.set("ds_hidden", JSON.stringify(DS_HIDDEN)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
+function dsSessOf(sk){
+  var S=dsSessOfRaw(sk), hid=DS_HIDDEN[sk];
+  if(!S || S._oneday || !hid || !hid.length || !Array.isArray(S.moves)) return S;
+  var key=sk+'|'+hid.join(',')+'|'+S.title+'|'+S.moves.length;
+  if(_dsHidCache && _dsHidCache.key===key && _dsHidCache.base===S) return _dsHidCache.sess;
+  var c={}; for(var k in S) c[k]=S[k];
+  c.moves=S.moves.filter(function(m){ return !(m && hid.indexOf(m.id)>=0); });
+  _dsHidCache={key:key,base:S,sess:c};
+  return c;
+}
+function dsHideMove(sk,id){
+  var a=(DS_HIDDEN[sk]||[]).slice(); if(a.indexOf(id)<0) a.push(id);
+  DS_HIDDEN[sk]=a; dsHiddenSave();
+}
+function dsRestoreMove(sk,id){
+  DS_HIDDEN[sk]=(DS_HIDDEN[sk]||[]).filter(function(x){ return x!==id; }); // keep [] so the restore syncs
+  dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){}
+}
+function dsRestoreAllMoves(sk){ DS_HIDDEN[sk]=[]; dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){} }
+var DS_ITEM_CTX=null; // set only while the main Today list renders, so cards show a remove button there
+function dsRemoveFromDay(id){
+  var sk=dsSessionKey(activeDate);
+  var m=null; try{ m=dsRawItem(id); }catch(e){}
+  var nm=(m&&m.name)||'this exercise';
+  if(!confirm('Remove "'+nm+'" from '+DS_DAYLABEL[sk]+'?\n\nIt stays in the library and you can restore it any time from the list at the bottom of this day.')) return;
+  var base=String(id).split('#')[0];
+  if(dsOneDayOn()){
+    var ids=DS_ONEDAY.ids.filter(function(x){ return String(x).split('#')[0]!==base; });
+    dsOneDaySave(ids.length?ids:null);
+    if(!ids.length) toast('Back to the regular plan');
+  } else if((DS_USERMOVES[sk]||[]).some(function(x){ return x.id===id; })){
+    dsDeleteUserMove(sk,id); return;
+  } else if((DS_CUSTOM[sk]||[]).indexOf(id)>=0){
+    DS_CUSTOM[sk]=DS_CUSTOM[sk].filter(function(x){ return x!==id; });
+    if(!DS_CUSTOM[sk].length) delete DS_CUSTOM[sk];
+    dsCustomSave();
+  } else {
+    dsHideMove(sk,id);
+  }
+  toast('Removed '+nm);
+  dsRender(); try{ renderAll(); }catch(e){}
+}
+function dsHiddenPanelHtml(sk){
+  var hid=DS_HIDDEN[sk]||[]; if(!hid.length) return '';
+  var rows=hid.map(function(id){
+    var nm=id, mv=(DS_SESSIONS[sk]&&DS_SESSIONS[sk].moves)||[];
+    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id){ nm=mv[i].name; break; } }
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #1e1e35"><span style="font-size:12px;color:#aaa;min-width:0">'+String(nm).replace(/</g,'&lt;')+'</span><button onclick="dsRestoreMove(\''+sk+'\',\''+id+'\')" style="flex-shrink:0;border:1px solid #5eead440;background:transparent;color:#5eead4;font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer">Restore</button></div>';
+  }).join('');
+  return '<details style="margin:0 0 14px;padding:10px 14px;border:1px solid #ffffff1a;border-radius:12px"><summary style="font-size:12px;color:#8b8b9c;cursor:pointer;font-family:\'DM Mono\',monospace">'+hid.length+' removed from '+DS_DAYLABEL[sk]+' — tap to restore</summary><div style="margin-top:8px">'+rows
+    +'<button onclick="dsRestoreAllMoves(\''+sk+'\')" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#aaa;font-size:12px;cursor:pointer">Restore all</button></div></details>';
+}
 // v292: the Wednesday list used to show every pose in the library (37) even though
 // the guided flow only runs the active sequence. Show just the active flow, in flow
 // order; anything non-flow on Wednesday (user-added moves) stays at the end.
@@ -7709,8 +7767,8 @@ function dsMasterPool(){
   if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
   var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
   dsRegisterLibraryMV(libs);
-  // Imported plan active -> gym ideas lead the list; default plan -> they trail it.
-  if(dsCustomPlanRaw()) groups.unshift(libs); else groups.push(libs);
+  // v348: gym ideas always lead the picker (plan-supplied library first, then the built-in gym list).
+  groups.unshift(libs);
   groups.forEach(function(arr){
     arr.forEach(function(m){ if(m && m.id && !seen[m.id]){ seen[m.id]=1; pool.push(m); } });
   });
@@ -7801,6 +7859,18 @@ function dsCustomOpen(){
   dsCustomRenderLibrary();
   document.getElementById("ds-custom-overlay").style.display="flex";
   document.getElementById("ds-custom-overlay").scrollTop=0;
+}
+// v348: one-tap entry from the Today tab. Opens the same picker with this day already
+// ticked, so closing it saves straight onto the day you're looking at.
+function dsAddFromLibrary(){
+  if(dsOneDayOn()){ dsOneDayOpen(); return; }
+  var sk=dsSessionKey(activeDate);
+  dsCustomOpen();
+  if(!DS_CUSTOM_PICK.length){ DS_CUSTOM_DAYS={}; DS_CUSTOM_DAYS[sk]=true; dsCustomRenderDayPicker(); }
+  else if(!DS_CUSTOM_DAYS[sk]){ DS_CUSTOM_DAYS[sk]=true; dsCustomRenderDayPicker(); }
+  var t=document.getElementById('ds-custom-title'); if(t) t.textContent='➕ Add to '+DS_DAYLABEL[sk];
+  var ov=document.getElementById('ds-custom-overlay'), lib=document.getElementById('ds-custom-library');
+  if(ov&&lib&&DS_CUSTOM_PICK.length){ setTimeout(function(){ try{ ov.scrollTop=Math.max(0,lib.getBoundingClientRect().top+ov.scrollTop-90); }catch(e){} },30); }
 }
 function dsCustomClose(){
   if(DS_CUSTOM_MODE==='today'){ dsOneDaySave(DS_CUSTOM_PICK); DS_CUSTOM_MODE='persist'; dsCustomSetMode('persist'); document.getElementById("ds-custom-overlay").style.display="none"; dsRender(); try{ renderAll(); }catch(e){} return; }
@@ -9615,6 +9685,7 @@ function dsRenderItem(rawItem,idx,accent){
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
   h+=dsPainRow(item.id);
+  if(DS_ITEM_CTX && !_q) h+='<button type="button" onclick="event.stopPropagation();dsRemoveFromDay(\''+rawItem.id+'\')" style="width:100%;margin-top:10px;padding:8px;border-radius:10px;border:1px solid #f8717144;background:transparent;color:#f87171;font-size:12px;cursor:pointer">✕ Remove from '+DS_DAYLABEL[DS_ITEM_CTX.sk]+'</button>';
   h+='</div></div>'; return h;
 }
 // Two taps: level, then site. Collapsed to one line until something is flagged.
@@ -10475,6 +10546,7 @@ function dsMvBreakdownHtml(muscle){
 
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
+  DS_ITEM_CTX=null;
   bgRefresh();
   dsRenderDayPicker();
   dsRenderMuscleChips();
@@ -10518,6 +10590,7 @@ function dsRender(){
       }
     }
     html=_odBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn;
+    DS_ITEM_CTX={sk:sk};
     var _splitDays=dsSplitDaysMap();
     if((_splitDays[sk]||_od) && !dsDayIsCustom(sk)){
       var _wu=[],_core=[],_main=[];
@@ -10542,6 +10615,9 @@ function dsRender(){
       html+=dsRenderSection('Your Custom Exercises',_userMoves.length+' added \u00b7 '+DS_DAYLABEL[sk],'#5eead4',_userMoves,'');
       html+='<div style="margin:-6px 0 14px;display:flex;flex-wrap:wrap;gap:8px">'+_userMoves.map(function(m){return '<button onclick="dsDeleteUserMove(\''+sk+'\',\''+m.id+'\')" style="border:1px solid #ffffff1a;background:transparent;color:#888;font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer">Remove &ldquo;'+m.name+'&rdquo;</button>';}).join('')+'</div>';
     }
+    DS_ITEM_CTX=null;
+    html+=dsHiddenPanelHtml(sk);
+    html+='<div style="margin:0 0 10px;"><button onclick="dsAddFromLibrary()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">+ Add from exercise library — '+(_od?'today only':DS_DAYLABEL[sk])+'</button></div>';
     if(!DS_USERADD_OPEN){
       html+='<div style="margin:0 0 18px;"><button onclick="dsUserAddToggle()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #5eead440;background:#5eead410;color:#5eead4;">+ Add Custom Exercise to '+DS_DAYLABEL[sk]+'</button></div>';
     } else {
