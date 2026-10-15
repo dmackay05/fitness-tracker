@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v348 — 2026-10-15";
+var APP_BUILD = "v349 — 2026-10-15";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5630,6 +5630,8 @@ function dsRestoreMove(sk,id){
   dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){}
 }
 function dsRestoreAllMoves(sk){ DS_HIDDEN[sk]=[]; dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){} }
+var DS_EDIT_MODE=false; // Today-tab edit mode: remove/add controls only show while on (not saved; resets on reload)
+function dsToggleEditMode(){ DS_EDIT_MODE=!DS_EDIT_MODE; dsRender(); }
 var DS_ITEM_CTX=null; // set only while the main Today list renders, so cards show a remove button there
 function dsRemoveFromDay(id){
   var sk=dsSessionKey(activeDate);
@@ -9593,7 +9595,7 @@ function dsRenderItem(rawItem,idx,accent){
   var _equip=item.equip||'';
   var _rx=item.rx||'';
   h+='<div class="ds-mtags">'+(_isComp?'<span class="ds-comp-tag">\u25C6 Compound</span>':'')+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+'</div></div>';
-  h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div></div>';
+  h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div>'+((DS_ITEM_CTX&&DS_EDIT_MODE&&!_q)?'<button type="button" aria-label="Remove from '+DS_DAYLABEL[DS_ITEM_CTX.sk]+'" onclick="event.stopPropagation();dsRemoveFromDay(\''+rawItem.id+'\')" style="flex-shrink:0;margin-left:8px;width:36px;height:36px;border-radius:10px;border:1px solid #f8717166;background:#f8717112;color:#f87171;font-size:16px;cursor:pointer">\u2715</button>':'')+'</div>';
   h+='<div class="ds-mbody">';
   if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
@@ -9685,7 +9687,6 @@ function dsRenderItem(rawItem,idx,accent){
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
   h+=dsPainRow(item.id);
-  if(DS_ITEM_CTX && !_q) h+='<button type="button" onclick="event.stopPropagation();dsRemoveFromDay(\''+rawItem.id+'\')" style="width:100%;margin-top:10px;padding:8px;border-radius:10px;border:1px solid #f8717144;background:transparent;color:#f87171;font-size:12px;cursor:pointer">✕ Remove from '+DS_DAYLABEL[DS_ITEM_CTX.sk]+'</button>';
   h+='</div></div>'; return h;
 }
 // Two taps: level, then site. Collapsed to one line until something is flagged.
@@ -10589,7 +10590,8 @@ function dsRender(){
         _odBtn='<div style="margin:0 0 14px;"><button onclick="dsOneDayOpen()" style="width:100%;'+_bs+'border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">\u26a1 Build today\u2019s workout (today only)</button></div>';
       }
     }
-    html=_odBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn;
+    var _editBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleEditMode()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_EDIT_MODE?'#5eead4':'#ffffff1a')+';background:'+(DS_EDIT_MODE?'#5eead418':'transparent')+';color:'+(DS_EDIT_MODE?'#5eead4':'#888')+';">'+(DS_EDIT_MODE?'\u2713 Done editing':'\u270E Edit exercises \u2014 remove or add')+'</button></div>';
+    html=_odBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn+_editBtn;
     DS_ITEM_CTX={sk:sk};
     var _splitDays=dsSplitDaysMap();
     if((_splitDays[sk]||_od) && !dsDayIsCustom(sk)){
@@ -10616,8 +10618,8 @@ function dsRender(){
       html+='<div style="margin:-6px 0 14px;display:flex;flex-wrap:wrap;gap:8px">'+_userMoves.map(function(m){return '<button onclick="dsDeleteUserMove(\''+sk+'\',\''+m.id+'\')" style="border:1px solid #ffffff1a;background:transparent;color:#888;font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer">Remove &ldquo;'+m.name+'&rdquo;</button>';}).join('')+'</div>';
     }
     DS_ITEM_CTX=null;
-    html+=dsHiddenPanelHtml(sk);
-    html+='<div style="margin:0 0 10px;"><button onclick="dsAddFromLibrary()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">+ Add from exercise library — '+(_od?'today only':DS_DAYLABEL[sk])+'</button></div>';
+    if(DS_EDIT_MODE) html+=dsHiddenPanelHtml(sk);
+    if(DS_EDIT_MODE) html+='<div style="margin:0 0 10px;"><button onclick="dsAddFromLibrary()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">+ Add from exercise library — '+(_od?'today only':DS_DAYLABEL[sk])+'</button></div>';
     if(!DS_USERADD_OPEN){
       html+='<div style="margin:0 0 18px;"><button onclick="dsUserAddToggle()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #5eead440;background:#5eead410;color:#5eead4;">+ Add Custom Exercise to '+DS_DAYLABEL[sk]+'</button></div>';
     } else {
