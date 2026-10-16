@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Health Tracker"/>
@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=257">
+<link rel="stylesheet" href="styles.css?v=258">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -44,7 +44,7 @@
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" aria-label="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><button onclick="openSettings()" title="Settings" aria-label="Settings" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1">⚙</button><span id="header-refresh-dash" style="display:none"><button onclick="doRefresh('dash')" title="Refresh" aria-label="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" aria-label="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><span id="header-refresh-dash" style="display:none"><button onclick="doRefresh('dash')" title="Refresh" aria-label="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -61,12 +61,13 @@
     </div>
   </div>
 
-  <div class="tab-bar" role="tablist">
+  <div class="tab-bar" id="main-tabs" role="tablist">
     <button class="tab-btn active" data-tab="today" role="tab" aria-label="Today"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>Today</button>
     <button class="tab-btn" data-tab="log" role="tab" aria-label="Log"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></span>Log</button>
-    <button class="tab-btn" data-tab="dash" role="tab" aria-label="Dashboard"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Dashboard</button>
+    <button class="tab-btn" data-tab="dash" role="tab" aria-label="Stats"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Stats</button>
     <button class="tab-btn" data-tab="yoga" role="tab" aria-label="Yoga"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 8v6M5 11l7 3 7-3M7 20c2-3 3-4 5-6 2 2 3 3 5 6"/></svg></span>Yoga</button>
-    <button class="tab-btn" data-tab="meals" role="tab" aria-label="Info"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>Info</button>
+    <button class="tab-btn" data-tab="meals" role="tab" aria-label="Learn"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>Learn</button>
+    <button class="tab-btn" data-tab="settings" role="tab" aria-label="Settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Settings</button>
   </div>
 
   <div class="content">
@@ -1452,7 +1453,7 @@
 <!-- SETTINGS OVERLAY -->
 <div id="settings-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
   <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
-    <button class="bs" onclick="closeSettings()">✕ Close</button>
+    <span style="min-width:60px"></span>
     <div style="font-size:15px;font-weight:800;color:#f0f0f0">⚙ Settings</div>
     <button class="bp" onclick="saveAndClose()">Save</button>
   </div>
@@ -1915,6 +1916,6 @@
   </div>
 </div>
 
-<script src="app.js?v=447"></script>
+<script src="app.js?v=448"></script>
 </body>
 </html>

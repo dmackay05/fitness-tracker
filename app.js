@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v353 — 2026-10-16";
+var APP_BUILD = "v354 — 2026-10-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2093,7 +2093,7 @@ function dashJump(id,sec){
 }
 function applyDashView(){
   var bar=document.getElementById('dash-view-bar'); if(!bar) return;
-  try{ var tb=document.querySelector('.tab-bar'); var th=tb?tb.getBoundingClientRect().height:0; bar.style.top=Math.round(th)+'px'; document.getElementById('panel-dash').style.setProperty('--djump',Math.round(th+64)+'px'); }catch(e){}
+  try{ var tb=document.querySelector('.tab-bar'); var th=(tb&&getComputedStyle(tb).position!=='fixed')?tb.getBoundingClientRect().height:0; bar.style.top=Math.round(th)+'px'; document.getElementById('panel-dash').style.setProperty('--djump',Math.round(th+64)+'px'); }catch(e){}
   if(!bar._built){
     bar._built=true; bar.className='dash-jump';
     bar.innerHTML=DASH_JUMPS.map(function(j){ return '<button type="button" class="dash-chip" onclick="dashJump(\''+j[0]+'\',\''+j[2]+'\')">'+j[1]+'</button>'; }).join('');
@@ -2234,6 +2234,10 @@ function renderRadials(items){
 var DS_ACTIVE_TAB = 'today'; // tracks which tab is showing, so header items like the phase
                              // badge (lives outside the panel divs) can show only on 'today'
 function switchTab(id){
+  // v354: Settings is a bottom tab. It still renders in its overlay (all settings code
+  // depends on it), sized to sit above the tab bar so the bar stays tappable.
+  if(id==="settings"){ openSettings(); return; }
+  if(_settingsOpen()) _leaveSettings();
   DS_ACTIVE_TAB = id;
   document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("active");});
   document.querySelectorAll(".panel").forEach(function(p){p.classList.remove("active");});
@@ -3321,7 +3325,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; }
+function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 // v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
 // Off by default. The Revert button is never hidden while a custom plan is active,
@@ -3337,7 +3341,24 @@ function dsApplySimpleSettings(){
   });
   var sub=document.getElementById('sg-program-sub'); if(sub) sub.textContent=on?'Weekly plan editor':'Weekly plan, custom set, plan source';
 }
-function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; }
+function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; _markTab(typeof DS_ACTIVE_TAB!=="undefined"&&DS_ACTIVE_TAB?DS_ACTIVE_TAB:"today"); }
+var _SET_DIRTY=false;
+function _settingsOpen(){ var o=document.getElementById("settings-overlay"); return !!(o&&o.style.display==="flex"); }
+// Leaving Settings by tapping another tab keeps edits (saves only if something changed).
+function _leaveSettings(){ if(_SET_DIRTY){ try{ saveHealthSettings(); }catch(e){} } _SET_DIRTY=false; document.getElementById("settings-overlay").style.display="none"; }
+function _markTab(id){ document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.toggle("active", b.dataset.tab===id); }); }
+(function(){
+  function setTabH(){ try{ var tb=document.getElementById("main-tabs"); if(tb) document.documentElement.style.setProperty("--tabh", Math.round(tb.getBoundingClientRect().height)+"px"); }catch(e){} }
+  function init(){
+    setTabH(); window.addEventListener("resize", setTabH);
+    var o=document.getElementById("settings-overlay"); if(o){ o.addEventListener("input",function(){ _SET_DIRTY=true; }); o.addEventListener("change",function(){ _SET_DIRTY=true; }); }
+    // Hide the bottom bar while typing so the iOS keyboard doesn't push it over inputs.
+    var typing=function(t){ return t&&(t.tagName==="INPUT"&&!/^(checkbox|radio|button|range|file|color)$/i.test(t.type)||t.tagName==="TEXTAREA"||t.tagName==="SELECT"); };
+    document.addEventListener("focusin",function(e){ if(typing(e.target)) document.body.classList.add("kb-open"); });
+    document.addEventListener("focusout",function(){ setTimeout(function(){ if(!typing(document.activeElement)) document.body.classList.remove("kb-open"); },50); });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init); else init();
+})();
 function saveAndClose(){ saveHealthSettings(); closeSettings(); }
 
 
