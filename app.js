@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v354 — 2026-10-16";
+var APP_BUILD = "v355 — 2026-10-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3325,7 +3325,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); }
+function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 // v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
 // Off by default. The Revert button is never hidden while a custom plan is active,
@@ -3343,6 +3343,8 @@ function dsApplySimpleSettings(){
 }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; _markTab(typeof DS_ACTIVE_TAB!=="undefined"&&DS_ACTIVE_TAB?DS_ACTIVE_TAB:"today"); }
 var _SET_DIRTY=false;
+// Desktop: the tab bar sits at the top, so pin Settings' top edge to the bar's bottom edge.
+function _setTop(){ try{ var tb=document.getElementById("main-tabs"); if(!tb) return; var fixed=getComputedStyle(tb).position==="fixed"; document.documentElement.style.setProperty("--setop", fixed?"0px":Math.max(0,Math.round(tb.getBoundingClientRect().bottom))+"px"); }catch(e){} }
 function _settingsOpen(){ var o=document.getElementById("settings-overlay"); return !!(o&&o.style.display==="flex"); }
 // Leaving Settings by tapping another tab keeps edits (saves only if something changed).
 function _leaveSettings(){ if(_SET_DIRTY){ try{ saveHealthSettings(); }catch(e){} } _SET_DIRTY=false; document.getElementById("settings-overlay").style.display="none"; }
@@ -3350,7 +3352,7 @@ function _markTab(id){ document.querySelectorAll(".tab-btn").forEach(function(b)
 (function(){
   function setTabH(){ try{ var tb=document.getElementById("main-tabs"); if(tb) document.documentElement.style.setProperty("--tabh", Math.round(tb.getBoundingClientRect().height)+"px"); }catch(e){} }
   function init(){
-    setTabH(); window.addEventListener("resize", setTabH);
+    setTabH(); window.addEventListener("resize", function(){ setTabH(); if(_settingsOpen()) _setTop(); });
     var o=document.getElementById("settings-overlay"); if(o){ o.addEventListener("input",function(){ _SET_DIRTY=true; }); o.addEventListener("change",function(){ _SET_DIRTY=true; }); }
     // Hide the bottom bar while typing so the iOS keyboard doesn't push it over inputs.
     var typing=function(t){ return t&&(t.tagName==="INPUT"&&!/^(checkbox|radio|button|range|file|color)$/i.test(t.type)||t.tagName==="TEXTAREA"||t.tagName==="SELECT"); };
@@ -3849,7 +3851,7 @@ initHealthSettings();
 
 // Sheet is source of truth: pull + merge on open, then re-render
 var _bn=document.getElementById("sync-banner");
-if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Tap \u2699 Settings to enter your Apps Script URL. (Tap this banner to dismiss.)"; _bn.style.color="#fbbf24"; _bn.style.display="block"; _bn.onclick=function(){ _bn.style.display="none"; }; }
+if(!SHEETS_URL && _bn){ _bn.textContent="\u26A0 Not connected \u2014 Sheets URL missing. Open the Settings tab to enter your Apps Script URL. (Tap this banner to dismiss.)"; _bn.style.color="#fbbf24"; _bn.style.display="block"; _bn.onclick=function(){ _bn.style.display="none"; }; }
 // v248: startup requests run one after another instead of all at once — a
 // cold Apps Script handling three whole-sheet reads in parallel is what pushed
 // the first sync past the timeout.

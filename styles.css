@@ -1829,11 +1829,18 @@ html body div.app{max-width:480px}
 .content:has(#panel-dash.active){overflow:visible}
 #dash-strength-card{scroll-margin-top:var(--djump,130px)}
 
-/* v354: bottom-fixed main tab bar (iPhone-style), Settings as 6th tab */
-#main-tabs.tab-bar{position:fixed;top:auto;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:50;border-bottom:none;border-top:1px solid #1e1e35;padding:0 2px env(safe-area-inset-bottom);background:#0d0d1a;overflow:visible}
-#main-tabs .tab-btn{border-bottom:none;border-top:2px solid transparent;padding:8px 0 6px;letter-spacing:.3px;font-size:10px;min-width:0}
-#main-tabs .tab-btn.active{border-top-color:#5eead4}
-.app>.content{padding-bottom:calc(var(--tabh,64px) + 24px)}
-#settings-overlay{bottom:var(--tabh,64px) !important}
-body.kb-open #main-tabs{display:none}
-body.kb-open #settings-overlay{bottom:0 !important}
+/* v355: main tab bar — bottom-fixed on phones, top (sticky, original) on desktop; Settings is the 6th tab */
+#main-tabs .tab-btn{min-width:0}
+@media (max-width:700px){
+  #main-tabs.tab-bar{position:fixed;top:auto;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:50;border-bottom:none;border-top:1px solid #1e1e35;padding:0 2px env(safe-area-inset-bottom);background:#0d0d1a;overflow:visible}
+  #main-tabs .tab-btn{border-bottom:none;border-top:2px solid transparent;padding:8px 0 6px;letter-spacing:.3px;font-size:10px}
+  #main-tabs .tab-btn.active{border-top-color:#5eead4}
+  .app>.content{padding-bottom:calc(var(--tabh,64px) + 24px)}
+  #settings-overlay{bottom:var(--tabh,64px) !important}
+  body.kb-open #main-tabs{display:none}
+  body.kb-open #settings-overlay{bottom:0 !important}
+}
+@media (min-width:701px){
+  /* Settings fills the screen below the top tab bar, so the tabs stay usable and nothing peeks through */
+  #settings-overlay{top:var(--setop,0px) !important;bottom:0 !important}
+}
