@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v355 — 2026-10-16";
+var APP_BUILD = "v356 — 2026-10-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -458,8 +458,7 @@ var DS_PHASE_RX = {
   'fri-bulg':{p1:{rx:'3\u00d710/leg',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u20138/leg',sets:2,rpe:'9',rest:'2.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'6',rest:'1.5 min'}},
   'tue-lat':{p1:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d715/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710/side',sets:1,rpe:'6',rest:'1 min'}},
   'tue-pallof':{p1:{rx:'3\u00d710/side',sets:3,rpe:'8',rest:'1 min'},p2:{rx:'1\u00d78/side',sets:1,rpe:'8',rest:'1.5 min'},p3:{rx:'3\u00d712/side',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d78/side',sets:1,rpe:'6',rest:'1 min'}},
-  'tue-tib':{p1:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},p2:{rx:'1\u00d710',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
-  'tue-calf':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'4\u00d720',sets:4,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'7',rest:'1 min'}},
+  'tue-lyingcurl':{p1:{rx:'3\u00d710\u201315',sets:3,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'3\u00d78\u201310',sets:3,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d712',sets:1,rpe:'6',rest:'1 min'}},
   'mon-inclinepress':{p1:{rx:'3\u00d710\u201312',sets:3,rpe:'8\u20139',rest:'2 min'},p2:{rx:'1\u20132\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'6',rest:'1.5 min'}},
   'thu-lat':{p1:{rx:'4\u20135\u00d710\u201312',sets:5,rpe:'8\u20139',rest:'2 min'},p2:{rx:'2\u00d76\u201310',sets:2,rpe:'9',rest:'3 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5 min'},deload:{rx:'1\u20132\u00d710\u201312',sets:2,rpe:'6',rest:'1.5 min'}},
   'mon-standbandpress':{p1:{rx:'3\u00d712\u201315',sets:3,rpe:'8\u20139',rest:'1.5\u20132 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6',rest:'1 min'}},
@@ -479,8 +478,7 @@ var DS_PHASE_RX = {
   'fri-nordic':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1.5 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'fri-goodmorning':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'fri-add':{p1:{rx:'3\u00d712\u201315/leg',sets:3,rpe:'8\u20139',rest:'1 min'},p2:{rx:'1\u00d78\u201310/leg',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'6',rest:'1 min'}},
-  'fri-tib':{p1:{rx:'2\u00d715\u201320',sets:2,rpe:'8\u20139',rest:'1 min'},p2:{rx:'1\u00d710',sets:1,rpe:'9',rest:'1.5 min'},p3:{rx:'2\u00d720',sets:2,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
-  'fri-calf':{p1:{rx:'4\u00d712\u201315/leg',sets:4,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d78/leg',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715/leg',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710/leg',sets:1,rpe:'7',rest:'1 min'}},
+  'fri-seatcurl':{p1:{rx:'3\u00d710\u201315',sets:3,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'3\u00d78\u201310',sets:3,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d712',sets:1,rpe:'6',rest:'1 min'}},
   'fri-plank':{p1:{rx:'3\u00d730\u201345s',sets:3},p2:{rx:'1\u00d730s',sets:1},p3:{rx:'3\u00d745s',sets:3},deload:{rx:'1\u00d720s',sets:1}}
 };
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
@@ -5843,12 +5841,7 @@ var DS_SESSIONS={
         variants:[{name:'Floor Glute Bridge',equip:'Tube band across hips',rx:'3×15–20',cue:'Shoulders on the floor instead of a bench — shorter range of motion, gentler entry point while the movement feels new. Same drive-and-squeeze cue.',demo:'bridge'},{name:'Kneeling Banded Hip Thrust',equip:'75 lb 41\u2033 loop band, bottom door anchor \u00b7 cushion or folded mat under the knees',rx:'3\u00d712\u201315',cue:'Band from the low door anchor across your hip crease, kneeling upright facing away from the door. Sit the hips back toward the heels with the chest up, then drive the hips forward to stand tall on your knees and squeeze the glutes for 1 sec. Finish with the glutes, not by leaning back or arching the low back. Easy exit: shuffle back toward the door until the band goes slack.'}]},
       {id:'tue-lat',name:'Banded Lateral Walk',demo:'latwalk',slot:'Abductors',target:'Hip Abductors',equip:'Mini loop above knees',rx:'3×12/side',cal:25,cue:"Stay in the quarter squat — don't stand up between steps",log:'setsreps',sets:3,variants:[{name:'Standing Clamshell (banded)',equip:'Mini loop above knees',rx:'3×15/side',cue:'Stand on one leg holding a wall or chair, band above the knees — drive the free knee out to the side and back without rotating the hips. Same abductor target, less quad fatigue than the walk',demo:'latwalk'}]},
       {id:'tue-pallof',name:'Banded Pallof Press',demo:'pallof',slot:'Anti-Rotation',target:'Core',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Press out and resist the rotation — hips and shoulders square',log:'setsreps',sets:3,variants:[{name:'Kneeling Pallof Press',equip:'Tube 10–20 lb, mid anchor',rx:'3×10/side',cue:'Same anchor and press, but from tall-kneeling — takes the legs out of the equation so it is pure anti-rotation core, and it is gentler on the SI joint than the standing version',demo:'pallof'}]},
-      {id:'tue-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'3\u00d715\u201320',cal:12,cue:'Back to the wall, weight settled back \u2014 lift the toes as high as they go, 1-sec squeeze, slow lower. Stop when you lose range, not when it burns.',log:'setsreps',sets:3,
-        variants:[{name:'Banded Tib Raise',equip:'Tube band, light',rx:'3\u00d715\u201320',cue:'Loop the band around a low anchor and your forefoot \u2014 pull the toes up against the band tension, slow release. Same muscle, different stimulus than the wall version',demo:'tibraise'}]},
-      {id:'tue-calf',name:'Standing Calf Raise',slot:'Calves',target:'Calves',equip:'Tube 20–30 lb or bodyweight',rx:'4×15–20',cal:20,cue:'Full stretch at the bottom, 2-sec squeeze at the top — slow tempo builds the calf best',demo:'calf',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Isolates the soleus, good change-up from the standing version',demo:'calf'}]}]},
-
-  wed:{title:'Wednesday Yoga Flow',sub:'Focus flow · 11 poses · ~30 min · hips, hamstrings, T-spine',accent:'var(--purple)',
-    moves:[
+      {id:'tue-lyingcurl',name:'Lying Band Leg Curl',slot:'Knee Flexion',target:'Hamstrings',equip:'75 lb 41\u2033 loop band, bottom door anchor \u00b7 13\u2033 purple mini band around both feet \u00b7 piano bench',rx:'3\u00d710\u201315',cal:20,cue:'Face down on the bench, feet toward the door. Squeeze your glutes so the hips stay pinned, curl both heels toward your glutes, 1-sec squeeze, lower over 3 sec. Second hamstring hit of the week \u2014 Friday does the seated version.',demo:'ballcurl',log:'setsreps',sets:3,variants:[{name:'Seated Band Leg Curl',equip:'75 lb loop, middle door anchor \u00b7 purple mini band \u00b7 piano bench',rx:'3\u00d710\u201315',cue:'Sit facing the door, legs straight, band taut. Pull both heels under the bench, 1-sec squeeze, 3-sec return.',demo:'ballcurl'}]},
       {id:'wed-flow-center',name:'Seated Centering Breath',slot:'Flow · 1',target:'Breath · Nervous System',equip:'Mat',rx:'2 min',cal:5,cue:'Sit tall, eyes closed — inhale 4 counts, exhale 6. Let the exhale set the pace for the whole flow',demo:'seated',log:'time',secs:120},
       {id:'wed-flow-catcow',name:'Cat-Cow — breath-led',slot:'Flow · 2',target:'Spine',equip:'Mat',rx:'2 min',cal:8,cue:'Inhale arch, exhale round — the breath moves you, not the other way around. Ease onto hands and knees from your seated breath',demo:'catcow',log:'time',secs:120},
       {id:'wed-flow-birddog',name:'Bird Dog — slow flow',slot:'Flow · 3',target:'Core · SI Stability',equip:'Mat',rx:'6/side',cal:10,cue:'Exhale extend, inhale return — flat back, zero rocking. Stay right where Cat-Cow left you, on hands and knees',demo:'birddog',log:'setsreps',sets:1},
@@ -5932,9 +5925,7 @@ var DS_SESSIONS={
         variants:[{name:'Banded Squat',equip:'Mini loop above knees',rx:'2–3×15–20',cue:'Loop the mini band above the knees, bodyweight squat, actively push the knees out against the band the whole way. Zero load on the grip/forearm, same light top-off intent',demo:'squat'}]},
       {id:'fri-add',name:'Side-Lying Adductor Raise',demo:'side-leg-ext',slot:'Adductors',target:'Adductors \u00b7 Inner Thigh',equip:'Bodyweight',rx:'3\u00d712\u201315/leg',cal:14,cue:'Bottom leg lifts, top leg parked out of the way. Hips stay stacked square \u2014 if the pelvis rolls back, shorten the range. Gentler on the SI joint than a Copenhagen plank.',log:'setsreps',sets:3,
         variants:[{name:'Band Adductor Squeeze',equip:'Mini loop band',rx:'3\u00d715\u201320',cue:'Seated or standing, band looped around the ankles/knees \u2014 squeeze the legs together against the band, slow release. Same target, no floor position needed',demo:'side-leg-ext'}]},
-      {id:'fri-tib',name:'Elevated Tibialis Raise',demo:'tibraise',slot:'Shins',target:'Shins \u00b7 Tibialis Anterior',equip:'Wall + low block',rx:'2\u00d715\u201320',cal:8,cue:'Second shin session of the week, lighter than Tuesday. Toes up, pause, slow lower.',log:'setsreps',sets:2,
-        variants:[{name:'Banded Tib Raise',equip:'Tube band, light',rx:'2\u00d715\u201320',cue:'Same banded version as Tuesday \u2014 loop around a low anchor and the forefoot, pull toes up against tension',demo:'tibraise'}]},
-      {id:'fri-calf',name:'Single-Leg Calf Raise',demo:'calf',slot:'Calves',target:'Calves',equip:'Step edge, bodyweight',rx:'4×12–15/leg',cal:25,cue:'Heel hangs off the step, full stretch at the bottom, 2-sec squeeze at the top',log:'setsreps',sets:4,variants:[{name:'Seated Banded Calf Raise',equip:'Tube 20–30 lb, looped over knees',rx:'4×15–20',cue:'Seated, band looped over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Bilateral swap that takes balance out of the equation on a fatigued Friday',demo:'calf'}]},
+      {id:'fri-seatcurl',name:'Seated Band Leg Curl',slot:'Knee Flexion (stretch)',target:'Hamstrings',equip:'75 lb 41\u2033 loop band, middle door anchor \u00b7 13\u2033 purple mini band around both feet \u00b7 piano bench',rx:'3\u00d710\u201315',cal:20,cue:'Sit facing the door, legs straight out, band taut. Grip the bench, knees together, pull both heels under the bench, 1-sec squeeze, 3-sec return. Seated trains the hamstrings at long length \u2014 the best curl for growth.',demo:'ballcurl',log:'setsreps',sets:3,variants:[{name:'Lying Band Leg Curl',equip:'75 lb loop, bottom door anchor \u00b7 purple mini band \u00b7 piano bench',rx:'3\u00d710\u201315',cue:'Face down, feet toward the door, glutes squeezed. Curl, squeeze, 3-sec lower.',demo:'ballcurl'}]},
       {id:'fri-obliques',name:'Obliques / Rotation',demo:'woodchop',slot:'Rotation',target:'Obliques',equip:'Tube 10–20 → 30 lb',rx:'3×10/side',cal:25,cue:'Power from the hips rotating — arms guide, core drives. Stop short of any pinch near the SI joint — rotation under load is a higher-demand pattern for it.',log:'setsreps',sets:3,
         variants:[{name:'Slow Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern, far less rotational force on the SI joint',demo:'pallof'}]},
       {id:'fri-plank',name:'Plank',slot:'Anti-Extension',target:'Core',equip:'Bodyweight',rx:'3×30–45s',cal:20,cue:'Squeeze glutes, brace core — straight line head to heels, breathe',demo:'plank',log:'time',secs:40,variants:[{name:'Stability Ball Plank',equip:'Forearms on ball',rx:'3\u00d720\u201330s',cue:'Forearms on the ball, body straight \u2014 the wobble is the work. Shorter holds count',demo:'plank'}]},
@@ -6033,11 +6024,10 @@ var DS_CARD_MAP={
   'mon-hollow':'hollow','thu-hollow':'hollow','sat-hollow':'hollow',
   'mon-elbow':'elbow','thu-elbow':'elbow',
   'mon-forearm':'forearm','thu-forearm':'forearm',
-  'mon-calf':'calf','tue-calf':'calf','fri-calf':'calf',
-  'tue-tib':'tib','fri-tib':'tib'
+  'mon-calf':'calf'
 };
 // Friday's calf slot has always defaulted to single-leg; keep it that way.
-var DS_LOCK_BY_NAME={'mon-pressaround':'Low-Anchor Band Fly (rest-pause)','mon-inclinepress':'Standing Band Chest Press (pyramid)','mon-standbandpress':'Band Tempo Push-up','fri-calf':'Single-Leg Calf Raise','tue-squat':'Heavy Band Front Squat'};
+var DS_LOCK_BY_NAME={'mon-pressaround':'Low-Anchor Band Fly (rest-pause)','mon-inclinepress':'Standing Band Chest Press (pyramid)','mon-standbandpress':'Band Tempo Push-up','tue-squat':'Heavy Band Front Squat'};
 // Main moves and alternates that needed the 10 lb pair, rewritten for bands /
 // bodyweight. Same names where possible so history keeps lining up.
 var DS_CARD_PATCH={
@@ -6416,7 +6406,7 @@ function dsToggleVarRotate(on){
 // anything with an elbow/tendon caution flag (forearm work, incline curl)
 // and any heavy spinal-loaded compound (squats, RDL, good morning) — this
 // is for safe isolation/machine work only.
-var DS_ANCHOR_POOL=['tue-legext','mon-pressaround','mon-tri','mon-lateral','thu-hammer','thu-facepull','tue-calf','fri-calf'];
+var DS_ANCHOR_POOL=['tue-legext','mon-pressaround','mon-tri','mon-lateral','thu-hammer','thu-facepull'];
 function dsAnchorExerciseId(dk){
   var pool=DS_ANCHOR_POOL, n=pool.length; if(!n) return null;
   var w=dsWeekIndex(dk||activeDate);
@@ -6978,13 +6968,13 @@ function dsFbCapOf(id){ return (dsFullBodyOn() && DS_FB_CAPS[id]) || 0; }
 var DS_FB_PLAN={
   mon:{title:'Full Body A',sub:'Squat · Horizontal Push/Pull · Side Delts · Arms',accent:'var(--accent)',
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
-    ids:['tue-squat:3','tue-legext:2','fri-slrdl:3','mon-pushup:3','mon-row:3','mon-pressaround:2','mon-lateral:3','sat-uprightrow:2','mon-curl:3','mon-tri:3','tue-calf:3','mon-hollow','mon-elbow']},
+    ids:['tue-squat:3','tue-legext:2','fri-slrdl:3','mon-pushup:3','mon-row:3','mon-pressaround:2','mon-lateral:3','sat-uprightrow:2','mon-curl:3','mon-tri:3','tue-lyingcurl:3','mon-hollow','mon-elbow']},
   wed:{title:'Full Body B',sub:'Single-Leg · Glutes · Incline/Vertical · Rear Delts · Arms',accent:'var(--accent)',
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
-    ids:['fri-bulg:3','sat-hipthrust:3','sat-frontsquat:2','mon-inclinepress:3','thu-lat:3','mon-ohp:3','thu-facepull:3','sat-shrug:2','thu-hammer:3','mon-slamskull:3','mon-calf:2','tue-lat:2','tue-tib:2','tue-pallof:2']},
+    ids:['fri-bulg:3','sat-hipthrust:3','sat-frontsquat:2','mon-inclinepress:3','thu-lat:3','mon-ohp:3','thu-facepull:3','sat-shrug:2','thu-hammer:3','mon-slamskull:3','mon-calf:2','tue-lat:2','fri-seatcurl:2','tue-pallof:2']},
   fri:{title:'Full Body C',sub:'Hinge · Knee Flexion · Stretch Chest/Back · Arms',accent:'var(--accent)',
     warm:['warmup-raise','warmup-armcircle','warmup-hipflow-7','warmup-bandshoulder','wu-shoulder-cars','wu-hip-cars'],
-    ids:['fri-goodmorning:3','fri-nordic:3','tue-legext:2','fri-goblet:2','fri-add:2','mon-standbandpress:3','sat-chest:2','sat-ballpullover:3','thu-lateral:3','mon-pullapart:2','sat-inclinecurl:3','sat-ohtriceps:3','fri-calf:3','fri-plank','thu-elbow','mon-forearm:2']}
+    ids:['fri-goodmorning:3','fri-nordic:3','tue-legext:2','fri-goblet:2','fri-add:2','mon-standbandpress:3','sat-chest:2','sat-ballpullover:3','thu-lateral:3','mon-pullapart:2','sat-inclinecurl:3','sat-ohtriceps:3','fri-seatcurl:3','fri-plank','thu-elbow','mon-forearm:2']}
 };
 var DS_FB_FLOWS={
   tue:{title:'Hip Mobility Flow',sub:'~21 min · recovery after Monday\u2019s squat/RDL · + walk-run intervals',
@@ -10376,7 +10366,7 @@ var DS_MV={
   'tue-bridge':{'Glutes':1,'Hamstrings':.5},
   'tue-ballcurl':{'Hamstrings':1,'Glutes':.5},
   'tue-pallof':{'Core':1},
-  'tue-calf':{'Calves':1},
+  'tue-lyingcurl':{'Hamstrings':1},
   'tue-jump':{'Quads':1,'Glutes':.5,'Calves':.5},
   'tue-step':{'Quads':1,'Glutes':.5},
   'thu-chest':{'Chest':1},
@@ -10393,7 +10383,7 @@ var DS_MV={
   'fri-slrdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
   'fri-goodmorning':{'Hamstrings':1,'Glutes':.5,'Back':.5},
   'fri-nordic':{'Hamstrings':1,'Glutes':.5},
-  'fri-calf':{'Calves':1},
+  'fri-seatcurl':{'Hamstrings':1},
   'fri-obliques':{'Core':1},
   'fri-deadbug':{'Core':1},
   'fri-sqpress':{'Quads':1,'Glutes':.5,'Shoulders':.5,'Triceps':.5},
@@ -14576,7 +14566,7 @@ function acroFilter(q){
 }
 
 /* ── v313: Muscle Map (Info tab) — tap a muscle to learn what it does + which of YOUR exercises train it ── */
-var MM_EXTRA={'tue-tib':{'Shins':1},'fri-tib':{'Shins':1},'fri-add':{'Adductors':1},
+var MM_EXTRA={'fri-add':{'Adductors':1},
   'fri-goodmorning':{'Lower Back':1},'fri-slrdl':{'Lower Back':0.5},'mon-row':{'Lower Back':0.5},
   'tue-squat':{'Abductors':0.5},'fri-bulg':{'Abductors':0.5},
   'thu-facepull':{'Rotator Cuff':1},'wu-shoulder-cars':{'Rotator Cuff':0.5},'warmup-bandshoulder':{'Rotator Cuff':0.5},
