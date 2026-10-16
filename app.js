@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v352 — 2026-10-15";
+var APP_BUILD = "v353 — 2026-10-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -715,6 +715,7 @@ function tdeeWindowRaw(windowDays, endKeyOpt){
 //     of one confident number.
 var TDEE_LONG_WINDOW=42, TDEE_SEED_WINDOW=56, TDEE_SMOOTH_DAYS=42, TDEE_SMOOTH_ALPHA=0.05;
 var TDEE_STABLE_SPREAD=200, TDEE_CHECK_WINDOWS=[28,42,56];
+var TDEE_ANCHOR_KEY='ft_tdee_anchor', TDEE_ANCHOR_BAND=100, TDEE_ANCHOR_MAX_AGE=60;
 var _tdeeCache=null;
 function measuredTDEE(){
   // Cheap memo: calGoalForKey() and several panels ask for this in one render.
@@ -761,6 +762,26 @@ function _measuredTDEEUncached(){
   if(smooth!=null) r.tdee=smooth;
   r.checks=checks; r.spreadLo=spreadLo; r.spreadHi=spreadHi; r.settling=settling;
   r.reliable=base.reliable && !settling;
+  // Anchor to the last reliable reading. While the windows disagree ("settling"),
+  // the smoothed number may not stray more than TDEE_ANCHOR_BAND from the last
+  // value that passed every check, so calorie targets can't lurch when the
+  // estimate flips in and out of settling. With no recent anchor, the smoothed
+  // value is used as-is.
+  try{
+    if(r.reliable){
+      store.set(TDEE_ANCHOR_KEY, JSON.stringify({tdee:r.tdee, day:today}));
+    } else if(settling){
+      var an=JSON.parse(store.get(TDEE_ANCHOR_KEY)||'null');
+      if(an && an.tdee>0 && an.day){
+        var ageDays=Math.round((new Date(today+'T00:00:00')-new Date(an.day+'T00:00:00'))/86400000);
+        if(ageDays>=0 && ageDays<=TDEE_ANCHOR_MAX_AGE){
+          var held=Math.max(an.tdee-TDEE_ANCHOR_BAND, Math.min(an.tdee+TDEE_ANCHOR_BAND, r.tdee));
+          if(held!==r.tdee){ r.unanchored=r.tdee; r.tdee=held; }
+          r.anchored=an.tdee; r.anchorAge=ageDays;
+        }
+      }
+    }
+  }catch(e){}
   return r;
 }
 // Theil-Sen estimator with a distribution-free ~90% confidence interval for the
@@ -1449,6 +1470,7 @@ function renderTdeePanel(){
      +'<div style="color:#888;margin-top:3px;line-height:1.45">Different window lengths disagree ('+chk+'). That almost always means a few pounds of water came on or off inside the shorter windows and are being read as fat. '+trendTxt+'</div>'
      +'<div style="margin-top:6px;color:#8b8b9c;line-height:1.45">Judge by the 7-day average for now. This tightens as the swing ages out of the windows.</div>';
     if(dsMaintActive()||dsBulkActive()) hs+='<div style="margin-top:6px;color:#888;line-height:1.45">'+(dsBulkActive()?'Bulk':'Maintenance')+' mode is on and uses the smoothed estimate.</div>';
+    if(r.anchored) hs+='<div style="margin-top:6px;color:#888;line-height:1.45">Held within \u00b1'+TDEE_ANCHOR_BAND+' kcal of the last reliable reading ('+r.anchored+' kcal, '+(r.anchorAge===0?'today':r.anchorAge+' days ago')+') while this settles.</div>';
     hs+=tdeeDayListHtml(r,false);
     el.innerHTML=hs; return;
   }
