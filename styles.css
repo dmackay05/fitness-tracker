@@ -1844,3 +1844,9 @@ html body div.app{max-width:480px}
   /* Settings fills the screen below the top tab bar, so the tabs stay usable and nothing peeks through */
   #settings-overlay{top:var(--setop,0px) !important;bottom:0 !important}
 }
+
+/* Floating reminder banner: overlays above the bottom tab bar, never shifts page content */
+#weighin-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));width:calc(100% - 24px);max-width:456px;z-index:49;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+#weighin-banner:empty{display:none}
+#weighin-banner .weighin-nudge{pointer-events:auto;margin:0!important;background:linear-gradient(90deg,#5eead433,#a78bfa33),#12121f;box-shadow:0 6px 20px #000a;position:relative}
+.nudge-x{flex-shrink:0;background:none;border:none;color:#9aa0c0;font-size:16px;line-height:1;padding:6px 2px 6px 8px;cursor:pointer}

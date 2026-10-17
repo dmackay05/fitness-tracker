@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v357 — 2026-10-16";
+var APP_BUILD = "v358 — 2026-10-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1380,14 +1380,20 @@ function jumpToWeighIn(){
     var inp=document.getElementById('wt-input'); if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth',block:'center'}); }
   }, 60);
 }
+function dismissNudges(){ try{ store.set('ft_nudge_dismissed', todayKey()); }catch(e){} renderWeighinBanner(); }
 function renderWeighinBanner(){
   var el=document.getElementById('weighin-banner'); if(!el) return;
+  try{ if(store.get('ft_nudge_dismissed')===todayKey()){ el.innerHTML=''; return; } }catch(e){}
   var todayDow = keyToDate(todayKey()).getDay();
   var isWeighInToday = (todayDow === WEIGHIN_DAY);
   var loggedToday = !!(getDay(todayKey()).weight);
   var _mh=measureNudgeHtml();
-  if(!isWeighInToday || loggedToday){ el.innerHTML=_mh; return; }
-  el.innerHTML = '<div class="weighin-nudge"><div class="weighin-nudge-text">\u2696\ufe0f <b>Weigh-in day</b> \u2014 same conditions as always: morning, after bathroom, before eating.</div><button class="weighin-nudge-btn" onclick="jumpToWeighIn()">Log Now</button></div>'+_mh;
+  var _wh='';
+  if(isWeighInToday && !loggedToday){
+    _wh='<div class="weighin-nudge"><div class="weighin-nudge-text">\u2696\ufe0f <b>Weigh-in day</b> \u2014 same conditions as always: morning, after bathroom, before eating.</div><button class="weighin-nudge-btn" onclick="jumpToWeighIn()">Log Now</button><button class="nudge-x" aria-label="Dismiss for today" onclick="dismissNudges()">\u2715</button></div>';
+  }
+  if(_mh) _mh=_mh.replace(/<\/div><\/div>$/,'<button class="nudge-x" aria-label="Dismiss for today" onclick="dismissNudges()">\u2715</button></div></div>');
+  el.innerHTML=_wh+_mh;
 }
 
 /* ===== Measurement & progress-photo reminders (v275) =====
