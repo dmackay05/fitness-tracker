@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v362 — 2026-10-17";
+var APP_BUILD = "v363 — 2026-10-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5952,6 +5952,8 @@ var DS_SESSIONS={
       {id:'sat-curl',name:'Bayesian Curl',slot:'Pull · Biceps',target:'Biceps — Long Head',equip:'Tube 20–40 lb · low door anchor, face away',rx:'2×10–15',cal:20,cue:'Anchor low on a door, face away in a staggered stance and step forward until the band is taut with arms hanging straight behind you. Elbows pinned to your sides — curl up, squeeze, then lower into the full stretch.',demo:'curl',log:'setsreps',sets:2},
       {id:'sat-forearm',name:'Forearm Curls — Underhand + Overhand',slot:'Pull · Forearms',target:'Forearms · Brachioradialis · Biceps',equip:'Tube 20–40 lb · low door anchor, face away',rx:'4×10–15 (2 underhand + 2 overhand)',cal:20,cue:'Same setup as the Bayesian curl: elbows pinned to your sides, curl up, squeeze, slow 3-count down. Do 2 sets underhand (palms up), then flip to overhand (palms down, reverse curl) for 2 sets — overhand hits the forearms hardest, so go lighter. Wrists stay straight, not bent back.',demo:'curl',log:'setsreps',sets:4,
         setup:'Anchor the tube low on a door and face away in a staggered stance, stepping forward until the band is taut with your arms hanging straight. Underhand (palms up): curl up with elbows pinned, squeeze, lower slowly — 2 sets. Flip your grip to overhand (palms down, thumbs toward each other) and repeat with a lighter band or a step back — 2 sets. Keep the wrists neutral; do not let them curl back.'},
+      {id:'sat-wristcurl',name:'Wrist Curls — Underhand + Overhand',slot:'Pull · Forearms',target:'Forearm Flexors + Extensors',equip:'Tube 10–20 lb · anchored under your foot',rx:'4×15–20/side (2 underhand + 2 overhand)',cal:15,cue:'Forearm on your knee, wrist hanging off the end, working hand only. Underhand (palm up) first, then overhand (palm down) — slow 3-count down, 1-sec squeeze up. Underhand loads the same flexor tendon as the elbow rehab, so keep it light and stop at any elbow ache; overhand is the gentler one.',demo:'wristecc',log:'setsreps',sets:4,
+        setup:'Sit with the band anchored under one foot and the working forearm resting on your knee, hand past the edge. Underhand (palm up): curl the wrist up, squeeze 1 sec, lower slowly — 2 sets. Flip the palm to face down and extend the wrist up against the band — 2 sets. Switch arms and repeat. Light band, high reps; the range is short so the pump comes from volume, not load.'},
       {id:'sat-ohtriceps',name:'Banded Overhead Triceps Extension',lockVar:0,slot:'Push · Triceps',target:'Triceps — Long Head',equip:'Tube 10–20 lb · low-to-mid door anchor behind you',rx:'2×10–12',cal:20,cue:'Stretched-overhead triceps angle — pushdowns and skull crushers miss this position. Anchor low-to-mid on a door, face away in a staggered stance with a slight forward lean, handles behind your head — extend forward and up to lockout, then let the band pull you back into the deep stretch by bending only the elbows. Tape-mark your stance so load stays comparable. Elbows stay close to your ears, no flaring out.',demo:'triceps',log:'setsreps',sets:2,
         variants:[{name:'DB Overhead Triceps Extension',equip:'1× 10 lb dumbbell, both hands',rx:'3×10–12',cue:'Hold one dumbbell overhead with both hands, lower behind the head bending only the elbows, press back to lockout — same stretched-triceps angle, no band needed',demo:'triceps'}]},
       {id:'sat-bandcrunch',name:'Kneeling Band Crunch',lockVar:0,slot:'Core · Loaded',target:'Abs',equip:'Tube 20–30 → 50 lb · anchored high on a door',rx:'2×12–15',cal:20,cue:'Hips stay still — curl the ribs down toward the pelvis, rounding the spine, not hinging at the hips. Exhale hard at the bottom, 1-sec squeeze, slow return to a full stretch. ⚠️ SI joint: start light and stop at any pinch low in the back.',demo:null,log:'setsreps',sets:2,
@@ -10302,6 +10304,7 @@ var DS_MV={
   'sat-lateral':{'Shoulders':1},
   'sat-curl':{'Biceps':1},
   'sat-forearm':{'Forearms':1},
+  'sat-wristcurl':{'Forearms':1},
   'sat-shrug':{'Traps':1,'Shoulders':.2},
   'sat-uprightrow':{'Traps':1,'Shoulders':.7},
   'sat-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
