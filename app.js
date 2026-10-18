@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v363 — 2026-10-17";
+var APP_BUILD = "v364 — 2026-10-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -842,7 +842,7 @@ window.addEventListener("pagehide",function(){ flushPendingSync(); });
 // checked supplement ids to real names instead. _suppNames isn't a date key,
 // so Code.gs's date-pattern filter skips right over it when processing days.
 function buildFtPayload(){
-  var out={}; for(var k in appData){ if(appData.hasOwnProperty(k)) out[k]=appData[k]; }
+  var out={}; for(var k in appData){ if(appData.hasOwnProperty(k)){ var _d=appData[k]; if(_d&&_d.supplements){ try{ _d.supplements=_normSupps(_d.supplements); }catch(e){} } out[k]=_d; } }
   var suppNames={}; (SUPPS||[]).forEach(function(s){ if(s&&s.id) suppNames[s.id]=s.name||s.id; });
   out._suppNames=suppNames;
   return out;
@@ -1022,16 +1022,27 @@ function _fetchSheetOnce(onRows){
 // column with every checked supplement's real name. This resolves that list
 // back to ids by matching against the currently-configured SUPPS, on top of
 // (not instead of) the old two columns, so older rows still restore correctly.
+// Resolve a stored supplement key/name to a canonical id. Strips any stacked
+// "n_" fallback prefixes (a past round-trip bug re-prefixed names on every sync
+// and bloated the Sheet cell past 50k chars), then matches SUPPS by id or name.
+function _normSuppKey(k){
+  k=String(k);
+  if(!/^n_/i.test(k)) return k;
+  var base=k.replace(/^(n_)+/i,"").trim().toLowerCase();
+  var m=(SUPPS||[]).filter(function(s){return s&&(String(s.id).toLowerCase()===base||String(s.name||"").toLowerCase()===base);})[0];
+  return m?m.id:("n_"+base);
+}
+function _normSupps(sup){
+  var out={};
+  Object.keys(sup||{}).forEach(function(k){ var nk=_normSuppKey(k); if(sup[k]) out[nk]=true; else if(!(nk in out)) out[nk]=false; });
+  return out;
+}
 function _parseSuppsFromSheet(row){
   var out={"fish-oil":row["Fish Oil"]==="Yes","simvastatin":row["Simvastatin"]==="Yes"};
   var listed=row["Supplements"];
   if(listed){
-    var names=String(listed).split(",").map(function(s){return s.trim().toLowerCase();}).filter(Boolean);
-    names.forEach(function(nm){
-      var match=SUPPS.filter(function(s){return s&&s.name&&s.name.toLowerCase()===nm;})[0];
-      if(match) out[match.id]=true;
-      else out["n_"+nm]=true; // no config match (yet) — keep the name itself as a fallback id rather than lose it
-    });
+    var names=String(listed).split(",").map(function(s){return s.trim();}).filter(Boolean);
+    names.forEach(function(nm){ out[_normSuppKey("n_"+nm)]=true; });
   }
   return out;
 }

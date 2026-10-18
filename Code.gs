@@ -393,9 +393,14 @@ function processDailyData(ss, data) {
     // supplement by its real current name, not just the original hardcoded
     // two. Falls back to the raw id if a name can't be resolved (e.g. old
     // data logged before the app ever sent a name for it).
+    // v11: strip stacked "n_" fallback prefixes and de-dupe — a round-trip bug
+    // used to re-prefix unresolved names every sync until the cell hit Sheets'
+    // 50,000-character limit and the whole day failed to save.
+    var _seenSupp = {};
     var suppsOn = Object.keys(sup).filter(function(k) { return sup[k]; })
-      .map(function(k) { return suppNames[k] || k; });
-    row.push(suppsOn.join(", "));
+      .map(function(k) { var base = String(k).replace(/^(n_)+/i, ""); return suppNames[k] || suppNames[base] || base; })
+      .filter(function(n) { var l = String(n).toLowerCase(); if (_seenSupp[l]) return false; _seenSupp[l] = 1; return true; });
+    row.push(suppsOn.join(", ").slice(0, 2000));
 
     // v9: Sat Fat + Cholesterol, appended at the end (same reasoning) —
     // hyperlipidemia tracking
