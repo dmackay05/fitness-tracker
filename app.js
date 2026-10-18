@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v359 — 2026-10-17";
+var APP_BUILD = "v360 — 2026-10-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5631,8 +5631,7 @@ var DS_WARMUP_BANDSHOULDER={id:'warmup-bandshoulder',name:'Banded Shoulder Pass-
 // and (via the per-exercise ramp sets) Potentiate, but nothing was actually
 // raising heart rate/tissue temperature first. A short bout of easy general
 // movement before the joint-specific work is the standard piece that was missing.
-var DS_WARMUP_RAISE={id:'warmup-raise',name:'Jump Rope — General Warm-up',demo:'walk',slot:'Warm-up',target:'General · Heart Rate & Tissue Temp',equip:'Jump rope',rx:'60–90 sec',cal:15,cue:'Easy, steady pace — the goal is raising your heart rate and warming the tissues, not a cardio effort.',log:'time',secs:75,
-  variants:[{name:'March or Jog in Place',equip:'Bodyweight',rx:'60–90 sec',cue:'No rope needed — march or light jog in place, knees driving up, same intent: get the heart rate up a little before the mobility work below.',demo:'walk'}]};
+var DS_WARMUP_RAISE={id:'warmup-raise',name:'March or Jog in Place — General Warm-up',demo:'walk',slot:'Warm-up',target:'General · Heart Rate & Tissue Temp',equip:'Bodyweight',rx:'60–90 sec',cal:15,cue:'March or light jog in place, knees driving up — easy, steady pace. The goal is raising your heart rate and warming the tissues before the mobility work below, not a cardio effort.',log:'time',secs:75};
 var DS_WARMUP_HIPCARS={id:'wu-hip-cars',name:'Hip CARs',demo:'hipcircle',slot:'Warm-up · Prehab',target:'Hip Joint · SI Joint Prep',equip:'Wall or chair for balance',rx:'3×/way/leg',cal:10,cue:'Stand tall holding a wall. Lift one knee to hip height, then draw the biggest, slowest circle you can with that knee — out to the side, around behind you, back to front. About 5 seconds per circle. Brace your core and keep the rest of your body still; only the hip moves. 3 each direction, then switch legs.',log:'time',secs:75};
 var DS_WARMUP_SHOULDERCARS={id:'wu-shoulder-cars',name:'Shoulder CARs',demo:'shouldercar',slot:'Warm-up · Prehab',target:'Shoulder Joint',equip:'Bodyweight',rx:'3×/way/arm',cal:8,cue:'Stand tall, make a fist and squeeze the rest of your body tight. Reach the arm forward and up overhead, then rotate the palm out and sweep it down and behind you in the biggest, slowest circle you can — about 5 seconds per circle. Only the shoulder moves; ribs stay down, no leaning. 3 each direction, then switch arms. Go extra slow on the right side through any spot that clicks.',log:'time',secs:60};
 var DS_WALK30={id:'post-walk',name:'Post-session Walk',demo:'walk',slot:'Cardio',target:'Zone 2 · HDL & calorie gap',equip:'None',rx:'~30 min brisk',cal:170,cue:'Brisk but easy — conversational pace. This is your main HDL lever, so consistency beats intensity here',log:'done',variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'~30 min brisk',cal:230,cue:'Pack rides high between the shoulder blades, straps cinched tight — posture tall, no forward lean. Start ~15 lb; if the SI joint complains, drop weight, not the walk',demo:'ruck'},{name:'Interval Walk (low-impact HIIT)',equip:'None',rx:'~20 min · 1 min fast / 1–2 min easy, repeat',cal:180,cue:'Push the pace hard for 1 min — not a jog, just a fast, purposeful walk — then ease off and recover. Repeat 8–10 rounds. Same interval-training effect on visceral fat as Tabata/circuits, zero impact on the knees.',demo:'walk'}]};
