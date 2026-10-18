@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v360 — 2026-10-17";
+var APP_BUILD = "v361 — 2026-10-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -469,10 +469,10 @@ var DS_PHASE_RX = {
   'thu-hammer':{p1:{rx:'5\u00d712\u201315',sets:5,rpe:'9\u201310',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'10',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9\u201310',rest:'1 min'},deload:{rx:'1\u00d710\u201312',sets:1,rpe:'7',rest:'1 min'}},
   'thu-ohtriceps':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'sat-ballpullover':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
-  'sat-chest':{p1:{rx:'4\u00d712\u201315',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6\u20137',rest:'1 min'}},
+  'sat-chest':{p1:{rx:'3\u00d712\u201315',sets:3,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d712\u201315',sets:1,rpe:'6\u20137',rest:'1 min'}},
   'sat-uprightrow':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8',rest:'1.5 min'},p2:{rx:'1\u20132\u00d78\u201310',sets:2,rpe:'8',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'sat-shrug':{p1:{rx:'4\u00d715\u201320',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d710',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d720',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d715',sets:1,rpe:'6',rest:'1 min'}},
-  'sat-ohtriceps':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
+  'sat-ohtriceps':{p1:{rx:'2\u00d710\u201312',sets:2,rpe:'9',rest:'1 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'1.5 min'},p3:{rx:'2\u00d715\u201320',sets:2,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'thu-ballpullover':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'8\u20139',rest:'1.5 min'},p2:{rx:'1\u00d78\u201310',sets:1,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'8\u20139',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
   'fri-slrdl':{p1:{rx:'3\u20134\u00d78\u201312',sets:4,rpe:'8\u20139',rest:'2\u20133 min'},p2:{rx:'2\u00d76\u20138',sets:2,rpe:'9',rest:'3\u20134 min'},p3:{rx:'3\u20134\u00d715\u201320',sets:4,rpe:'8\u20139',rest:'1.5\u20132 min'},deload:{rx:'1\u20132\u00d710',sets:2,rpe:'6\u20137',rest:'2 min'}},
   'fri-nordic':{p1:{rx:'4\u00d710\u201312',sets:4,rpe:'9',rest:'1.5 min'},p2:{rx:'1\u20132\u00d76\u20138',sets:2,rpe:'9',rest:'2 min'},p3:{rx:'3\u00d715\u201320',sets:3,rpe:'9',rest:'1 min'},deload:{rx:'1\u00d710',sets:1,rpe:'6',rest:'1 min'}},
@@ -5942,7 +5942,7 @@ var DS_SESSIONS={
         variants:[{name:'Standing Pallof Rotation',equip:'Tube 10–20 lb · anchor to one side',rx:'3×8/side',cue:'Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern as the slam, no ballistic force at all',demo:'pallof'}]}]},
 
   sat:{title:'Upper Body C',sub:'Light third upper day — Chest · Back · Shoulders · Arms · Core · ~25 min',accent:'var(--accent)',
-    moves:[DS_WARMUP_RAISE,DS_WARMUP_ARMCIRCLE,DS_WARMUP_BANDSHOULDER,DS_WARMUP_SHOULDERCARS,
+    moves:[DS_WARMUP_ARMCIRCLE,DS_WARMUP_BANDSHOULDER,
       {id:'sat-chest',name:'Chest — Pull-Apart / Fly',lockVar:3,pat:'fly',slot:'Push · Horizontal Push',target:'Chest · Rear Delts',equip:'Tube 10–20 → 40 lb',rx:'3×12–15',cal:35,cue:'Hug a big tree — slight elbow bend, feel the stretch open across your chest. Third weekly chest touch, spread out from Mon/Thu so no single day carries all the volume.',demo:'fly',log:'setsreps',sets:3,
         variants:[{name:'Banded Push-up',pat:'pushup',equip:'Bodyweight / tube',rx:'3×12',cue:'Chest to floor, push the floor away',demo:'pushup'},
                   {name:'Floor DB Press',pat:'press',equip:'10 lb dumbbells',rx:'3×12',cue:'Press to the ceiling, control the lower',demo:'press'},
@@ -5950,6 +5950,8 @@ var DS_SESSIONS={
       {id:'sat-facepull',name:'Rear Delts / Face Pull',slot:'Pull · Back · Rear Delts',target:'Rear Delts · Mid-Back · Traps',equip:'Tube 10–20 → 50 lb · door anchor at face height',rx:'3×12–15',cal:25,cue:'Pull to your temples, elbows high — thumbs point behind you at the finish. Balances the pressing on Mon/Thu/Sat.',demo:'facepull',log:'setsreps',sets:3},
       {id:'sat-lateral',name:'Lateral Raise',demo:'lateralraise',slot:'Push · Side Delts',target:'Side Delts',equip:'Tube 10 → 30 lb',rx:'2×15–20',cal:20,cue:'Lead with elbows, not hands — pour water from a pitcher',log:'setsreps',sets:2},
       {id:'sat-curl',name:'Bayesian Curl',slot:'Pull · Biceps',target:'Biceps — Long Head',equip:'Tube 20–40 lb · low door anchor, face away',rx:'2×10–15',cal:20,cue:'Anchor low on a door, face away in a staggered stance and step forward until the band is taut with arms hanging straight behind you. Elbows pinned to your sides — curl up, squeeze, then lower into the full stretch.',demo:'curl',log:'setsreps',sets:2},
+      {id:'sat-forearm',name:'Forearm Curls — Underhand + Overhand',slot:'Pull · Forearms',target:'Forearm Flexors + Extensors',equip:'Tube 10–20 lb · anchored under your foot',rx:'4×15–20/side (2 underhand + 2 overhand)',cal:15,cue:'Forearm on your knee, wrist hanging off the end, working hand only. Do the underhand (palm up) sets first, then flip to overhand (palm down) — slow 3-count down in both. Underhand loads the same flexor tendon as the elbow rehab, so keep it light and stop at any elbow ache; overhand is the gentler one.',demo:'wristecc',log:'setsreps',sets:4,
+        setup:'Sit with the band anchored under one foot and the working forearm resting on your knee, hand past the edge. Underhand (palm up): curl the wrist up, squeeze 1 sec, lower slowly — 2 sets. Flip the palm to face down (overhand / reverse curl) and repeat — 2 sets. Switch arms and repeat. Light band, high reps; the range is short so the pump comes from volume, not load.'},
       {id:'sat-ohtriceps',name:'Banded Overhead Triceps Extension',lockVar:0,slot:'Push · Triceps',target:'Triceps — Long Head',equip:'Tube 10–20 lb · low-to-mid door anchor behind you',rx:'2×10–12',cal:20,cue:'Stretched-overhead triceps angle — pushdowns and skull crushers miss this position. Anchor low-to-mid on a door, face away in a staggered stance with a slight forward lean, handles behind your head — extend forward and up to lockout, then let the band pull you back into the deep stretch by bending only the elbows. Tape-mark your stance so load stays comparable. Elbows stay close to your ears, no flaring out.',demo:'triceps',log:'setsreps',sets:2,
         variants:[{name:'DB Overhead Triceps Extension',equip:'1× 10 lb dumbbell, both hands',rx:'3×10–12',cue:'Hold one dumbbell overhead with both hands, lower behind the head bending only the elbows, press back to lockout — same stretched-triceps angle, no band needed',demo:'triceps'}]},
       {id:'sat-bandcrunch',name:'Kneeling Band Crunch',lockVar:0,slot:'Core · Loaded',target:'Abs',equip:'Tube 20–30 → 50 lb · anchored high on a door',rx:'2×12–15',cal:20,cue:'Hips stay still — curl the ribs down toward the pelvis, rounding the spine, not hinging at the hips. Exhale hard at the bottom, 1-sec squeeze, slow return to a full stretch. ⚠️ SI joint: start light and stop at any pinch low in the back.',demo:null,log:'setsreps',sets:2,
@@ -7296,7 +7298,7 @@ dsSwapShiftV302();
       insertAfter('thu','sat-shrug',c);
     }
   }
-  if(!dsDayIsCustom('sat') && DS_SESSIONS.sat && !findIn('sat','sat-sideplank')){
+  if(false && !dsDayIsCustom('sat') && DS_SESSIONS.sat && !findIn('sat','sat-sideplank')){ // v361: Saturday trimmed, no side plank
     insertAfter('sat','sat-bandcrunch',{id:'sat-sideplank',name:'Side Plank',slot:'Core · Obliques',target:'Obliques · Quadratus lumborum',equip:'Bodyweight',
       rx:'2×30s — one set per side',cal:12,demo:'sideplank',log:'time',secs:30,sets:2,
       cue:'One set per side. Hips stacked and lifted, straight line from ear to ankle — drop to the bent-knee version if the hips sag. ⚠️ SI joint: stop at any pinch low in the back.',
@@ -10299,6 +10301,7 @@ var DS_MV={
   'sat-facepull':{'Back':.5,'Shoulders':.7,'Traps':.5},
   'sat-lateral':{'Shoulders':1},
   'sat-curl':{'Biceps':1},
+  'sat-forearm':{'Forearms':1},
   'sat-shrug':{'Traps':1,'Shoulders':.2},
   'sat-uprightrow':{'Traps':1,'Shoulders':.7},
   'sat-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
