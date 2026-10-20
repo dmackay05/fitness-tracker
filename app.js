@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v366 — 2026-10-19";
+var APP_BUILD = "v367 — 2026-10-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1382,7 +1382,6 @@ function statAverages(){
 
 /* ===== Weigh-in day reminder ===== */
 var WEIGHIN_DAY = parseInt(store.get('ft_weighin_day')); if(isNaN(WEIGHIN_DAY)) WEIGHIN_DAY = 1;
-var WEIGHIN_DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 function setWeighinDay(v){ WEIGHIN_DAY = parseInt(v); store.set('ft_weighin_day', WEIGHIN_DAY); renderDash(); }
 function jumpToWeighIn(){
   switchTab('log');
@@ -2091,13 +2090,6 @@ function renderDashFocus(){
 // Display only. Every card keeps its element ids, so every renderer still works
 // whichever view is showing.
 var DASH_VIEW = store.get('ft_dash_view') || 'daily';
-function dashViewSet(v){
-  DASH_VIEW=(v==='progress')?'progress':'daily';
-  try{ store.set('ft_dash_view',DASH_VIEW); }catch(e){}
-  applyDashView();
-  try{ renderDash(); }catch(e){ console.warn('dash view render',e); }
-  try{ window.scrollTo(0,0); }catch(e){}
-}
 var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['streaks','Streaks','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep'],['volume','Volume','deep'],['intake','Intake avg','deep'],['distance','Distance','deep']];
 function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ return {}; } }
 function dashJump(id,sec){
@@ -3679,25 +3671,7 @@ function pullConfigManual(){
 
 
 // ── BATCH D: PROGRESSIVE OVERLOAD HELPERS ──────────────────────────────
-function _attachExDetail(ex,si,ri,li){
-  var s=parseInt((document.getElementById(si)||{}).value)||0;
-  var r=(((document.getElementById(ri)||{}).value)||"").trim();
-  var l=(((document.getElementById(li)||{}).value)||"").trim();
-  if(s) ex.sets=s; if(r) ex.reps=r; if(l) ex.load=l;
-}
-function _clearExDetail(si,ri,li){ [si,ri,li].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; }); }
 function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load&&!e.avgHR)) return ""; var sr=""; if(e.sets&&e.reps) sr=e.sets+"\u00d7"+e.reps; else if(e.sets) sr=e.sets+"\u00d7?"; else if(e.reps) sr=/^\d+$/.test(String(e.reps).trim())?(e.reps+" reps"):String(e.reps); var hr=e.avgHR?("\u2764 "+e.avgHR+(e.peakHR?("/"+e.peakHR):"")+"bpm"):""; return [sr+(e.load?(" @ "+e.load):""),hr].filter(Boolean).join(" \u00b7 ").trim(); }
-function lastExercise(name){
-  if(!name) return null; name=String(name).toLowerCase().trim();
-  var keys=Object.keys(appData).filter(function(k){return k!==activeDate;}).sort().reverse();
-  for(var i=0;i<keys.length;i++){ var exs=(appData[keys[i]].exercises||[]); for(var j=exs.length-1;j>=0;j--){ var e=exs[j]; if((e.name||"").toLowerCase().trim()===name && (e.sets||e.reps||e.load)) return {e:e,date:keys[i]}; } }
-  return null;
-}
-function showLastHint(name,elId){
-  var el=document.getElementById(elId); if(!el) return;
-  var l=lastExercise(name);
-  el.innerHTML = l ? ("Last: "+escH(exDetailStr(l.e))+' <span style="color:#5eead4">\u2014 beat it \ud83d\udcaa</span>') : "";
-}
 // ── BATCH D: DAILY HABITS + STREAKS ─────────────────────────────────────
 function loadHabits(){ try{ var a=JSON.parse(store.get("ft_habits")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 // One-time migration: old d.habits objects were keyed by a local random habit id,
@@ -4241,7 +4215,6 @@ function dsFlowBarHtml(sk){
 
 
 /* ===== DAILY SESSION MODULE (injected) ===== */
-var DS_FIG='#9a9d8c', DS_BAND='#4ec98a', DS_ARR='#f5b14c';
 function dsS(dur,attr,vals){return '<animate attributeName="'+attr+'" values="'+vals+'" keyTimes="0;0.5;1" dur="'+dur+'s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>';}
 var DS_DEMOS={
   backwalk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
@@ -5623,7 +5596,6 @@ var DS_BWLEG={key:"bwleg",title:"Bodyweight Leg Circuit",accent:"#4ec98a",meta:"
 /* ============================ DS_SESSIONS (Mon–Sun) ============================ */
 function dsCore(id,name,rx,cal,cue,demo){return {id:id,name:name,slot:'Core',target:'Core',equip:'Bodyweight',rx:rx,cal:cal,cue:cue,demo:demo||null,log:'setsreps',sets:3};}
 var DS_WARMUP_ARMCIRCLE={id:'warmup-armcircle',name:'Arm Circles + Shoulder Rolls',demo:'shouldercar',slot:'Warm-up',target:'Shoulders · Upper Body Mobility',equip:'Bodyweight',rx:'2 min',cal:10,cue:'Small circles forward 20s, then backward 20s. Follow with big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction — loosen everything before you load it.',log:'time',secs:120};
-var DS_WARMUP_HIPFLOW9={id:'warmup-hipflow-9',name:'Leg Swings + Hip Openers',demo:'legswing',slot:'Warm-up',target:'Hips · SI Joint Mobility',equip:'Bodyweight',rx:'3–4 min',cal:20,cue:'Front-to-back leg swings 10/leg (hold a wall for balance), then side-to-side swings 10/leg. Finish with 90/90 hip switches or slow hip circles, 30s each direction — wake up the hips before anything loads them.',log:'time',secs:210};
 var DS_WARMUP_HIPFLOW7={id:'warmup-hipflow-7',name:'Leg Swings + 90/90s',demo:'legswing',slot:'Warm-up',target:'Hips · SI Joint Mobility',equip:'Bodyweight',rx:'5 min',cal:25,cue:'Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches for 8 reps/side and slow hip circles 30s each direction — get the hips moving before squats and deadlifts load them.',log:'time',secs:300};
 // Replaces the KB Halo as the shoulder-specific warm-up on upper days — same
 // intent (prep the overhead/behind-the-head path before pressing, given the
@@ -5645,9 +5617,6 @@ var DS_WARMUP_BANDSHOULDER={id:'warmup-bandshoulder',name:'Banded Shoulder Pass-
 var DS_WARMUP_RAISE={id:'warmup-raise',name:'March or Jog in Place — General Warm-up',demo:'walk',slot:'Warm-up',target:'General · Heart Rate & Tissue Temp',equip:'Bodyweight',rx:'60–90 sec',cal:15,cue:'March or light jog in place, knees driving up — easy, steady pace. The goal is raising your heart rate and warming the tissues before the mobility work below, not a cardio effort.',log:'time',secs:75};
 var DS_WARMUP_HIPCARS={id:'wu-hip-cars',name:'Hip CARs',demo:'hipcircle',slot:'Warm-up · Prehab',target:'Hip Joint · SI Joint Prep',equip:'Wall or chair for balance',rx:'3×/way/leg',cal:10,cue:'Stand tall holding a wall. Lift one knee to hip height, then draw the biggest, slowest circle you can with that knee — out to the side, around behind you, back to front. About 5 seconds per circle. Brace your core and keep the rest of your body still; only the hip moves. 3 each direction, then switch legs.',log:'time',secs:75};
 var DS_WARMUP_SHOULDERCARS={id:'wu-shoulder-cars',name:'Shoulder CARs',demo:'shouldercar',slot:'Warm-up · Prehab',target:'Shoulder Joint',equip:'Bodyweight',rx:'3×/way/arm',cal:8,cue:'Stand tall, make a fist and squeeze the rest of your body tight. Reach the arm forward and up overhead, then rotate the palm out and sweep it down and behind you in the biggest, slowest circle you can — about 5 seconds per circle. Only the shoulder moves; ribs stay down, no leaning. 3 each direction, then switch arms. Go extra slow on the right side through any spot that clicks.',log:'time',secs:60};
-var DS_WALK30={id:'post-walk',name:'Post-session Walk',demo:'walk',slot:'Cardio',target:'Zone 2 · HDL & calorie gap',equip:'None',rx:'~30 min brisk',cal:170,cue:'Brisk but easy — conversational pace. This is your main HDL lever, so consistency beats intensity here',log:'done',variants:[{name:'Rucked Walk',equip:'Loaded backpack · 15–25 lb',rx:'~30 min brisk',cal:230,cue:'Pack rides high between the shoulder blades, straps cinched tight — posture tall, no forward lean. Start ~15 lb; if the SI joint complains, drop weight, not the walk',demo:'ruck'},{name:'Interval Walk (low-impact HIIT)',equip:'None',rx:'~20 min · 1 min fast / 1–2 min easy, repeat',cal:180,cue:'Push the pace hard for 1 min — not a jog, just a fast, purposeful walk — then ease off and recover. Repeat 8–10 rounds. Same interval-training effect on visceral fat as Tabata/circuits, zero impact on the knees.',demo:'walk'}]};
-var DS_RIDE20={id:'post-ride',name:'Easy Ride',demo:'ride',slot:'Cardio',target:'Zone 2 · HDL & calorie gap',equip:'Indoor recumbent bike (display dead — pace by Fitbit HR)',rx:'~25 min easy spin · Fitbit in Zone 2 (~60–70% max HR)',cal:150,cue:'Recumbent bike, no console readout — go by Fitbit heart rate instead. Keep it in Zone 2: conversational pace, not gasping. If HR creeps above Zone 2, ease off resistance rather than stopping. Zone 2 volume is what moves HDL over time',log:'done'};
-var DS_ACTIVEREST={id:'active-rest',name:'Active Rest Intervals',slot:'Cardio',target:'Extra calorie burn between sets',equip:'Jump rope or light band',rx:'3–5 min total, spread across rest periods',cal:40,cue:'Light jump rope or low-resistance band work between sets — heart rate up, not a second workout',log:'done',setup:'Instead of standing still between sets, spend 3–5 min total (30–45s at a time) on light jump rope or a low-resistance band exercise. Keep it easy enough that it doesn\\u2019t eat into your strength sets — the point is extra burn, not extra fatigue.',variants:[{name:'Banded Circuit Intervals (HIIT-style)',equip:'Tube band, light resistance',rx:'20–30s hard / 30–40s rest, cycle 3–4 band moves for 10–12 min',cal:90,cue:'Pick 3–4 light-resistance moves you already know (banded squat, row, press) and cycle through them fast for 20–30s each, resting just enough to reset form. This mimics Tabata-style intervals without the jumping or impact — do it as a standalone finisher after your main lifts, not squeezed between working sets.',demo:'squat'}]};
 
 /* ── Saturday heat alternative: indoor full-body circuit (arms/legs/core/mobility) ── */
 var DS_SATHEAT_MOVES=[
@@ -7102,14 +7071,6 @@ var DS_RESERVE_MOVES=[];
       if(typeof DS_MV!=='undefined' && !DS_MV['pu-band']) DS_MV['pu-band']={"Back":1,"Biceps":0.5,"Forearms":0.3};
     }
   }
-  // Saturday: (v359) no longer a ride day — Saturday is Upper C, so this ride-only trim is disabled
-  if(false && !dsDayIsCustom('sat') && DS_SESSIONS.sat){
-    var keep={'sat-ride':1,'sat-bandcrunch':1,'sat-hollow':1};
-    var kept=[];
-    DS_SESSIONS.sat.moves.forEach(function(m){ if(!m) return; if(keep[m.id]) kept.push(m); else if(!/^warmup|^wu-/.test(m.id)) DS_RESERVE_MOVES.push(m); });
-    kept.sort(function(x,y){ return (x.id==='sat-ride')-(y.id==='sat-ride'); });
-    DS_SESSIONS.sat={title:'Ride Day + Light Core',sub:'Mountain bike ride for cardio · short core finisher · no heavy lifting',accent:DS_SESSIONS.sat.accent,moves:kept};
-  }
 })();
 // v309 lock-in trim: cut overlapping accessories so each lifting day centers on
 // the compound lifts. Cut moves stay findable via DS_RESERVE_MOVES.
@@ -7169,19 +7130,6 @@ var DS_RESERVE_MOVES=[];
       return true;
     });
   });
-  // Saturday: ride + a short chest/biceps pump + loaded core (3rd weekly hit for the priority muscles).
-  // High-to-low fly = the week's only downward chest line (Mon/Thu already cover upward + straight-out).
-  if(false && !dsDayIsCustom('sat') && DS_SESSIONS.sat){
-    var add=['mon-highfly','sat-inclinecurl'], mv=DS_SESSIONS.sat.moves;
-    DS_RESERVE_MOVES=DS_RESERVE_MOVES.filter(function(m){
-      if(m&&add.indexOf(m.id)>=0&&!mv.some(function(x){return x&&x.id===m.id;})){ mv.splice(Math.max(0,mv.length-1),0,m); return false; }
-      return true;
-    });
-    // ride last
-    mv.sort(function(x,y){ return (x.id==='sat-ride')-(y.id==='sat-ride'); });
-    DS_SESSIONS.sat.title='Ride Day + Chest/Arm Pump';
-    DS_SESSIONS.sat.sub='Mountain bike ride · high-to-low fly + incline curl · band crunch';
-  }
   DS_PLAN_DAYS.forEach(function(d){
     if(dsDayIsCustom(d)||!DS_SESSIONS[d]) return;
     (DS_SESSIONS[d].moves||[]).forEach(function(m){ if(m&&SETS[m.id]) setSets(m,SETS[m.id]); });
@@ -7310,12 +7258,6 @@ dsSwapShiftV302();
       c.id='thu-wallwalk'; c.slot='Pull · Serratus'; c.sets=2; c.rx='2×8 trips'; c.cal=10;
       insertAfter('thu','sat-shrug',c);
     }
-  }
-  if(false && !dsDayIsCustom('sat') && DS_SESSIONS.sat && !findIn('sat','sat-sideplank')){ // v361: Saturday trimmed, no side plank
-    insertAfter('sat','sat-bandcrunch',{id:'sat-sideplank',name:'Side Plank',slot:'Core · Obliques',target:'Obliques · Quadratus lumborum',equip:'Bodyweight',
-      rx:'2×30s — one set per side',cal:12,demo:'sideplank',log:'time',secs:30,sets:2,
-      cue:'One set per side. Hips stacked and lifted, straight line from ear to ankle — drop to the bent-knee version if the hips sag. ⚠️ SI joint: stop at any pinch low in the back.',
-      variants:[{name:'Bent-Knee Side Plank',equip:'Bodyweight',rx:'2×30s — one set per side',cue:'Knees bent and stacked — shorter lever, same hip-lift cue. Use it whenever the straight-leg version sags.',demo:'sideplank'}]});
   }
 })();
 
@@ -8775,22 +8717,6 @@ function dsHistoryN(id,n){
   }).filter(Boolean);
 }
 // ── WEEKLY VOLUME PER MUSCLE GROUP ───────────────────────────────────────
-var MUSCLE_KEYWORDS=[
-  ['rear delt','Rear Delts'],['read delt','Rear Delts'],
-  ['side delt','Shoulders'],['front delt','Shoulders'],['shoulder','Shoulders'],['delt','Shoulders'],['overhead press','Shoulders'],
-  ['trap','Traps'],
-  ['chest','Chest'],['pec','Chest'],
-  ['tricep','Triceps'],
-  ['lat pull','Back'],['lat','Back'],['back','Back'],['row','Back'],
-  ['bicep','Biceps'],['forearm','Forearms'],['grip','Forearms'],
-  ['ham','Hamstrings'],
-  ['glute','Glutes'],['hip abduct','Glutes'],['abductor','Glutes'],['sumo','Glutes'],
-  ['quad','Quads'],['split squat','Quads'],['squat','Quads'],['lunge','Quads'],
-  ['calv','Calves'],
-  ['tibialis','Shins'],['shin','Shins'],['dorsiflex','Shins'],
-  ['adductor','Adductors'],['inner thigh','Adductors'],['groin','Adductors'],
-  ['oblique','Core'],['anti-rot','Core'],['core','Core'],['woodchop','Core'],['plank','Core'],['dead bug','Core']
-];
 // Approximate weekly volume landmarks (working sets/week): [MEV, MAV-high].
 // Broadly consistent with commonly-published RP ranges (MEV ~8-12, MRV ~20-25 for
 // large muscle groups) for the standard groups below — Chest, Back, Shoulders,
@@ -8824,23 +8750,6 @@ function dsMuscleVolBandRowsHtml(v){
     if(open) row+=dsMvBreakdownHtml(m);
     return row;
   }).join('');
-}
-function dsMuscleTagsFromTarget(target){
-  if(!target) return [];
-  var parts=target.split(/[\/,&+]/).map(function(s){return s.trim();}).filter(Boolean);
-  if(!parts.length) parts=[target];
-  var byM={};
-  parts.forEach(function(p,i){
-    var low=p.toLowerCase();
-    for(var k=0;k<MUSCLE_KEYWORDS.length;k++){
-      if(low.indexOf(MUSCLE_KEYWORDS[k][0])!==-1){
-        var m=MUSCLE_KEYWORDS[k][1], w=(i===0?1:0.5);
-        byM[m]=Math.max(byM[m]||0,w);
-        break;
-      }
-    }
-  });
-  return Object.keys(byM).map(function(m){return {muscle:m,weight:byM[m]};});
 }
 // A muscle can read below MEV simply because the sets that cover it are
 // scheduled later in the week and have not been performed yet. Telling someone
@@ -10239,7 +10148,6 @@ var DS_TC_KEEP_SLOTS = {"Warm-up":1,"Horizontal Push":1,"Vertical Push":1,"Horiz
 var DS_TC_KEEP_IDS = {"tue-bridge":1,"tue-lat":1};  // glute activation kept on crunch days (SI-joint priority)
 function dsTcKeep(m){ return !!(DS_TC_KEEP_SLOTS[m.slot] || DS_TC_KEEP_IDS[m.id]); }
 function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("ds_tc", DS_TIME_CRUNCH?"1":"0"); }catch(e){} dsRender(); }
-var DS_MORE_OPEN=false;
 function dsGuestShowExtras(){ try{ return store.get('ds_guest_extras')==='1'; }catch(e){ return false; } }
 function dsSetGuestExtras(on){ try{ store.set('ds_guest_extras', on?'1':'0'); }catch(e){} dsRender(); }
 function dsExtrasHidden(){ return dsGuestMode() && !dsGuestShowExtras(); }
