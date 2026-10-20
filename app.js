@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v369 — 2026-10-20";
+var APP_BUILD = "v370 — 2026-10-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7251,16 +7251,16 @@ dsSwapShiftV302();
   if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && !findIn('thu','thu-elbowrot')) insertAfter('thu','thu-elbow',mk('thu-elbowrot'));
   }
 
-  // ── v369 biceps spread: Bayesian 2 + Spider 2 on Monday, Ball Preacher 2 on Saturday (same weekly curl volume) ──
+  // ── v370 more biceps volume: Spider Curl (2 sets) added after Monday's Bayesian curl, Ball Preacher Curl (2 sets) after Saturday's; Bayesian volume unchanged ──
   function stepV369(){
   if(!dsDayIsCustom('mon') && DS_SESSIONS.mon){
     var bayes=findIn('mon','mon-curl');
     if(bayes){
-      setSets(bayes,2);
       if(!findIn('mon','mon-spider')){
         if(typeof DS_PHASE_RX!=='undefined' && DS_PHASE_RX['mon-curl'] && !DS_PHASE_RX['mon-spider']){
           var pr={}; for(var ph in DS_PHASE_RX['mon-curl']){ pr[ph]={}; for(var f in DS_PHASE_RX['mon-curl'][ph]) pr[ph][f]=DS_PHASE_RX['mon-curl'][ph][f]; }
-          pr.p1.rx='2\u00d710\u201315';   // spider curl starts a little lower in the rep range than the Bayesian curl
+          pr.p1.sets=2; pr.p1.rx='2\u00d710\u201315';   // spider curl starts a little lower in the rep range than the Bayesian curl
+          if(pr.p3){ pr.p3.sets=2; pr.p3.rx='2\u00d715\u201320'; }
           DS_PHASE_RX['mon-spider']=pr;
         }
         var spider={id:'mon-spider',name:'Spider Curl',slot:'Pull · Biceps',target:'Biceps — Long Head',
@@ -7280,7 +7280,7 @@ dsSwapShiftV302();
       setup:'Close a door with the tube anchored at the very bottom and push the stability ball firmly against the door so it cannot roll. Kneel on the near side, lean your chest onto the ball and rest the backs of your upper arms on top of it. The band runs from your hands down the far side of the ball to the low anchor. If the band rubs the ball or drags it sideways, move the anchor a little higher.',
       variants:[{name:'Preacher Curl',equip:'Tube 10–20 lb · angled surface (arm of a couch, tilted bench)',rx:'2×12–15',
         cue:'No ball or door handy? Rest the back of your upper arm on any angled support so it cannot swing, and lower all the way down under control.',demo:'preachercurl'}]};
-    if(at>=0){ DS_RESERVE_MOVES.push(mv[at]); mv.splice(at,1,preacher); }
+    if(at>=0) mv.splice(at+1,0,preacher);
     else insertAfter('sat','sat-lateral',preacher);
   }
   }
