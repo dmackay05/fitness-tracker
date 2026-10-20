@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v364 — 2026-10-17";
+var APP_BUILD = "v365 — 2026-10-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8704,6 +8704,12 @@ function dsEncodeSets(ex,sets){
   var uniqLoads=loads.filter(function(v,i){return loads.indexOf(v)===i;});
   ex.load=(uniqLoads.length<=1?(uniqLoads[0]||''):loads.join('|'));
   if(rirs.some(function(v){return v!=='';})) ex.rir=rirs.join('/');
+  // Unilateral sets carry repsL/repsR; ex.reps above is their combined sum (progress logic reads it).
+  // Keep the real per-side numbers so the export can print them instead of a doubled total.
+  if(sets.some(function(x){return x.repsL!=null&&x.repsR!=null;})){
+    ex.repsL=sets.map(function(x){return x.repsL!=null?x.repsL:'';}).join('/');
+    ex.repsR=sets.map(function(x){return x.repsR!=null?x.repsR:'';}).join('/');
+  }
 }
 function dsSyncPartialLog(item){ if(!item)return; var day=getDay(), sid="sess_"+item.id, st=dsItemState(item.id);
   day.exercises=day.exercises.filter(function(e){return e.id!==sid;});
@@ -9899,6 +9905,35 @@ function dsHealthActivityType(ex){
   if(n.indexOf('walk')>=0||n.indexOf('ruck')>=0) return 'Walking';
   return 'Strength training';
 }
+/* Detail-line helpers for the export. Sets/reps (true per-side numbers when logged L/R,
+   a hold duration for timed work), then load + effort so a pasted summary is reviewable. */
+function dsHealthSetsText(ex){
+  var n = +ex.sets||0;
+  var setWord = n===1 ? "set" : "sets";
+  if(ex.repsL && ex.repsR){
+    var L=String(ex.repsL), R=String(ex.repsR);
+    if(L===R) return n+" "+setWord+" \u00d7 "+L+" per side";
+    return n+" "+setWord+" \u00d7 L "+L+" \u00b7 R "+R;
+  }
+  if(n) return n+" "+setWord+(ex.reps?" \u00d7 "+ex.reps:"");
+  if(ex.reps) return String(ex.reps);
+  // No sets/reps captured: a timed hold or flow. Show the duration instead of nothing.
+  var rawId = ex.id && ex.id.indexOf("sess_")===0 ? ex.id.slice(5) : ex.id;
+  var item = rawId ? dsRawItem(rawId) : null;
+  if(ex.actualSecs==null && item && item.log==="time" && item.secs){
+    var ns = item.sets || 1;
+    return (ns>1 ? ns+" \u00d7 " : "")+item.secs+"s"+(item.perSide?" per side":"");
+  }
+  var secs = dsEstimateSeconds(ex);
+  return secs>0 ? dsFormatTrainingTime(secs) : "";
+}
+function dsHealthLoadRirText(ex){
+  var out=[];
+  var load = ex.load ? String(ex.load).replace(/\|/g," / ") : "";
+  if(load) out.push("load "+load);
+  if(ex.rir!=null && String(ex.rir)!=="") out.push("RIR "+ex.rir);
+  return out.join(", ");
+}
 function dsBuildHealthExportText(key){
   key = key || activeDate;
   var day = getDay(key);
@@ -9937,8 +9972,8 @@ function dsBuildHealthExportText(key){
   lines.push("EXERCISE DETAIL:");
   list.forEach(function(ex){
     var bits = [ex.name];
-    if(ex.sets) bits.push(ex.sets+" sets"+(ex.reps?" \u00d7 "+ex.reps:""));
-    else if(ex.reps) bits.push(ex.reps);
+    var sc = dsHealthSetsText(ex); if(sc) bits.push(sc);
+    var lr = dsHealthLoadRirText(ex); if(lr) bits.push(lr);
     if(ex.calories) bits.push(Math.round(ex.calories)+" kcal");
     var tr=dsFmtTimeRange(ex); if(tr) bits.push(tr);
     lines.push("\u2022 "+bits.join(" \u2014 "));
@@ -10066,10 +10101,8 @@ function dsBuildWeekExportText(){
     var lines=[prettyDate(k)+" ("+k+")"];
     list.forEach(function(ex){
       var bits=[ex.name];
-      if(ex.sets) bits.push(ex.sets+" sets"+(ex.reps?" \u00d7 "+ex.reps:""));
-      else if(ex.reps) bits.push(ex.reps);
-      if(ex.load) bits.push(ex.load);
-      if(ex.rir!=null && ex.rir!=='') bits.push("RIR "+ex.rir);
+      var _sc=dsHealthSetsText(ex); if(_sc) bits.push(_sc);
+      var _lr=dsHealthLoadRirText(ex); if(_lr) bits.push(_lr);
       if(ex.calories) bits.push(Math.round(ex.calories)+" kcal");
       var tr=dsFmtTimeRange(ex); if(tr) bits.push(tr);
       lines.push("  \u2022 "+bits.join(" \u2014 "));
