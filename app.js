@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v367 — 2026-10-19";
+var APP_BUILD = "v368 — 2026-10-19";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7039,31 +7039,59 @@ function dsRenderFullBodyUI(){
     +(dsFullBodyOn()?'<br>Session rotation is paused while this is on. Same exercise ids as the split, so your history and progression carry over either way.':'');
 }
 
-// ── v274 SPLIT TUNE-UP — trims lower-body session volume, makes Saturday a
-// light ride day, adds a vertical pull. Runs before the split is captured for
-// full-body mode, so both modes share it. Skipped for imported plans (guests).
-// Moves taken off Saturday stay findable (full-body mode + the picker) via
-// DS_RESERVE_MOVES.
+// ── PLAN TUNING ─────────────────────────────────────────────────────────
+// The built-in plan above is adjusted once at load by six ordered steps (v274 → v343).
+// All of them run before the split is captured for full-body mode, so both modes share
+// the result. Removed moves go to DS_RESERVE_MOVES so full-body mode, one-day picks and
+// history still resolve them. Imported plans (guests) skip every step, and each step
+// leaves any day the user customised alone. New ids are used for added moves so logs
+// never collide.
 var DS_RESERVE_MOVES=[];
-(function dsSplitTuneV274(){
+// v302 dropped the first mon-pressaround alternate -> shift saved swap picks down one.
+function dsSwapShiftV302(){
+  try{
+    if(!DS_SWAPS||typeof DS_SWAPS!=='object'||DS_SWAPS.__v302) return false;
+    ['mon-pressaround','L:mon-pressaround'].forEach(function(k){ var i=DS_SWAPS[k]; if(i==null) return; if(i===1) delete DS_SWAPS[k]; else if(i>1) DS_SWAPS[k]=i-1; });
+    DS_SWAPS.__v302=1; store.set('ds_swaps',JSON.stringify(DS_SWAPS)); return true;
+  }catch(e){ return false; }
+}
+dsSwapShiftV302();
+(function dsPlanTuning(){
   if(dsGuestMode()) return;
-  function find(day,id){ var s=DS_SESSIONS[day]; if(!s) return null; for(var i=0;i<s.moves.length;i++){ if(s.moves[i]&&s.moves[i].id===id) return s.moves[i]; } return null; }
+  // ── shared helpers ──
+  function setSets(m,n){
+    if(!m||m.log!=='setsreps') return;
+    m.sets=n;
+    if(m.rx) m.rx=String(m.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×');
+    var pr=(typeof DS_PHASE_RX!=='undefined')&&DS_PHASE_RX[m.id];
+    if(pr&&pr.p1){ pr.p1.sets=n; pr.p1.rx=String(pr.p1.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×'); }
+  }
+  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
+  function insertAfter(d,afterId,m){
+    var mv=DS_SESSIONS[d].moves, at=-1;
+    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
+    if(at<0){ if(d==='sat'){ var r=-1; for(var j=0;j<mv.length;j++){ if(mv[j]&&mv[j].id==='sat-ride'){ r=j; break; } } at=r<0?mv.length:r; } else at=mv.length; }
+    mv.splice(at,0,m);
+  }
+
+  // ── v274 split tune-up: drop jump squat, RDL 6->4 / good morning 4->3, rear-delt fly default, band pull-ups on Thursday ──
+  function stepV274(){
   // Tuesday: drop jump squat -> ~10 quad sets
   if(!dsDayIsCustom('tue') && DS_SESSIONS.tue){
     DS_SESSIONS.tue.moves=DS_SESSIONS.tue.moves.filter(function(m){ if(m&&m.id==='tue-jump'){ DS_RESERVE_MOVES.push(m); return false; } return true; });
   }
   // Friday: RDL 6 -> 4 sets, good morning 4 -> 3 sets -> ~11 hamstring sets
   if(!dsDayIsCustom('fri')){
-    var rdl=find('fri','fri-slrdl'); if(rdl){ rdl.sets=4; rdl.rx='4×8–12'; }
-    var gm=find('fri','fri-goodmorning'); if(gm){ gm.sets=3; gm.rx='3×10–12'; }
+    var rdl=findIn('fri','fri-slrdl'); if(rdl){ rdl.sets=4; rdl.rx='4×8–12'; }
+    var gm=findIn('fri','fri-goodmorning'); if(gm){ gm.sets=3; gm.rx='3×10–12'; }
   }
   // Rear delts: default the face-pull slot to the Cross-Body Rear Delt Fly
-  var fp=find('mon','thu-facepull');
+  var fp=findIn('mon','thu-facepull');
   if(fp && fp.variants){ for(var i=0;i<fp.variants.length;i++){ if(/Cross-Body Rear Delt Fly/.test(fp.variants[i].name)){ fp.lockVar=i+1; break; } } }
   // Thursday: add band-assisted pull-ups (vertical pull)
   if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && typeof DS_PULLUP!=='undefined'){
     var pu=null; DS_PULLUP.moves.forEach(function(m){ if(m.id==='pu-band') pu=m; });
-    if(pu && !find('thu','pu-band')){
+    if(pu && !findIn('thu','pu-band')){
       var mv=DS_SESSIONS.thu.moves, at=-1;
       for(var j=0;j<mv.length;j++){ if(mv[j]&&mv[j].id==='thu-lat'){ at=j+1; break; } }
       if(at<0) at=mv.length;
@@ -7071,11 +7099,9 @@ var DS_RESERVE_MOVES=[];
       if(typeof DS_MV!=='undefined' && !DS_MV['pu-band']) DS_MV['pu-band']={"Back":1,"Biceps":0.5,"Forearms":0.3};
     }
   }
-})();
-// v309 lock-in trim: cut overlapping accessories so each lifting day centers on
-// the compound lifts. Cut moves stay findable via DS_RESERVE_MOVES.
-(function dsLockInTrimV309(){
-  if(dsGuestMode()) return;
+  }
+  // ── v309 lock-in trim: cut overlapping accessories; Pallof replaces Friday obliques ──
+  function stepV309(){
   var CUT={mon:['mon-lateral','mon-pressaround','mon-legraise'],tue:['tue-lat'],thu:['mon-pullapart','thu-legraise'],fri:['fri-goblet']};
   var pallof=null;
   if(!dsDayIsCustom('tue') && DS_SESSIONS.tue){
@@ -7091,14 +7117,9 @@ var DS_RESERVE_MOVES=[];
     if(f){ for(var i=0;i<f.length;i++){ if(f[i]&&f[i].id==='fri-obliques'){ DS_RESERVE_MOVES.push(f[i]); f[i]=pallof; done=true; break; } } }
     if(!done) DS_RESERVE_MOVES.push(pallof);
   }
-})();
-
-// ── v302 EXERCISE AUDIT — chest + arms first, legs nudged up, redundancy out.
-// Removed moves go to DS_RESERVE_MOVES so full-body mode, one-day picks and
-// history still resolve them. Runs before the split is captured, so both
-// modes share it. Skipped for imported plans (guests).
-(function dsSplitTuneV302(){
-  if(dsGuestMode()) return;
+  }
+  // ── v302 exercise audit: chest + arms first, legs nudged up, redundancy out (set counts + drops) ──
+  function stepV302(){
   var DROP={
     mon:['warmup-armcircle','mon-calf','mon-highfly','mon-forearm'],   // dup shoulder warm-up · calves on an upper day · 2-set junk fly · wrist curl right after wrist rehab
     thu:['warmup-armcircle','pu-band','thu-hollow','thu-forearm'],      // dup warm-up · second vertical pull · core/forearm dups
@@ -7115,13 +7136,6 @@ var DS_RESERVE_MOVES=[];
     // Saturday pump work (re-added below)
     'mon-highfly':3,'sat-inclinecurl':3
   };
-  function setSets(m,n){
-    if(!m||m.log!=='setsreps') return;
-    m.sets=n;
-    if(m.rx) m.rx=String(m.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×');
-    var pr=(typeof DS_PHASE_RX!=='undefined')&&DS_PHASE_RX[m.id];
-    if(pr&&pr.p1){ pr.p1.sets=n; pr.p1.rx=String(pr.p1.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×'); }
-  }
   var reserved={}; DS_RESERVE_MOVES.forEach(function(m){ if(m&&m.id) reserved[m.id]=m; });
   Object.keys(DROP).forEach(function(d){
     if(dsDayIsCustom(d)||!DS_SESSIONS[d]) return;
@@ -7145,40 +7159,13 @@ var DS_RESERVE_MOVES=[];
   }
   var fg=null; (DS_SESSIONS.fri&&DS_SESSIONS.fri.moves||[]).forEach(function(m){ if(m&&m.id==='fri-goblet') fg=m; });
   if(fg) fg.slot='Quads';
-})();
-// v302 dropped the first mon-pressaround alternate -> shift saved swap picks down one.
-function dsSwapShiftV302(){
-  try{
-    if(!DS_SWAPS||typeof DS_SWAPS!=='object'||DS_SWAPS.__v302) return false;
-    ['mon-pressaround','L:mon-pressaround'].forEach(function(k){ var i=DS_SWAPS[k]; if(i==null) return; if(i===1) delete DS_SWAPS[k]; else if(i>1) DS_SWAPS[k]=i-1; });
-    DS_SWAPS.__v302=1; store.set('ds_swaps',JSON.stringify(DS_SWAPS)); return true;
-  }catch(e){ return false; }
-}
-dsSwapShiftV302();
-
-// v337 upper-body + core fill-in (one-time lock-in pass): side delts back to 2x/week,
-// a second vertical pull on Monday, ab/core volume up on Thursday, and one forearm-
-// extensor set to balance the flexor rehab. Existing ids keep their history; new
-// ids are clones/new moves so logs never collide. Skipped for imported plans.
-(function dsUpperCoreTuneV337(){
-  if(dsGuestMode()) return;
-  function setSets(m,n){
-    if(!m||m.log!=='setsreps') return;
-    m.sets=n;
-    if(m.rx) m.rx=String(m.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×');
-    var pr=(typeof DS_PHASE_RX!=='undefined')&&DS_PHASE_RX[m.id];
-    if(pr&&pr.p1){ pr.p1.sets=n; pr.p1.rx=String(pr.p1.rx).replace(/^\s*\d+(\s*[–\-]\s*\d+)?\s*×/,n+'×'); }
   }
+  // ── v337 upper-body + core fill-in: Monday pulldown + lateral raise, Thursday wrist extension / crunch / leg raise ──
+  function stepV337(){
   function takeReserve(id){
     var got=null;
     DS_RESERVE_MOVES=DS_RESERVE_MOVES.filter(function(m){ if(m&&m.id===id&&!got){ got=m; return false; } return true; });
     return got;
-  }
-  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
-  function insertAfter(d,afterId,m){
-    var mv=DS_SESSIONS[d].moves, at=-1;
-    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
-    mv.splice(at<0?mv.length:at,0,m);
   }
   function clone(src,newId,over){
     var c={}; for(var k in src) c[k]=src[k];
@@ -7232,19 +7219,9 @@ dsSwapShiftV302();
       if(lg){ setSets(lg,3); DS_SESSIONS.thu.moves.push(lg); }
     }
   }
-})();
-
-// v338 completeness pass: rotator cuff (Mon), serratus/lower-trap wall walks (Thu),
-// obliques via side plank (Sat). New ids so logs never collide; skipped for imported plans.
-(function dsUpperCoreTuneV338(){
-  if(dsGuestMode()) return;
-  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
-  function insertAfter(d,afterId,m){
-    var mv=DS_SESSIONS[d].moves, at=-1;
-    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
-    if(at<0){ if(d==='sat'){ var r=-1; for(var j=0;j<mv.length;j++){ if(mv[j]&&mv[j].id==='sat-ride'){ r=j; break; } } at=r<0?mv.length:r; } else at=mv.length; }
-    mv.splice(at,0,m);
   }
+  // ── v338 completeness: rotator cuff (Mon), serratus wall walks (Thu), side plank (Sat) ──
+  function stepV338(){
   if(!dsDayIsCustom('mon') && DS_SESSIONS.mon && !findIn('mon','mon-extrot')){
     insertAfter('mon','thu-facepull',{id:'mon-extrot',name:'Band External Rotation',slot:'Pull · Rotator Cuff',target:'Rotator cuff · Rear delts',
       equip:'Light tube 5–10 lb · door anchor at elbow height',rx:'2×15/side',cal:8,demo:'extrot',log:'setsreps',sets:2,
@@ -7259,18 +7236,9 @@ dsSwapShiftV302();
       insertAfter('thu','sat-shrug',c);
     }
   }
-})();
-
-// v343 elbow rehab: band pronation/supination (orange 41in loop) in the Mon + Thu rehab slots,
-// right after the existing wrist-curl rehab card. New ids so logs never collide; skipped for imported plans.
-(function dsElbowRotV343(){
-  if(dsGuestMode()) return;
-  function findIn(d,id){ var mv=(DS_SESSIONS[d]&&DS_SESSIONS[d].moves)||[]; for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===id) return mv[i]; } return null; }
-  function insertAfter(d,afterId,m){
-    var mv=DS_SESSIONS[d].moves, at=-1;
-    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id===afterId){ at=i+1; break; } }
-    mv.splice(at<0?mv.length:at,0,m);
   }
+  // ── v343 elbow rehab: band pronation/supination in the Mon + Thu rehab slots ──
+  function stepV343(){
   function mk(id){
     return {id:id,name:'Elbow \u2014 Band Pronation/Supination',slot:'Rehab',target:'Medial epicondyle \u00b7 Forearm rotators',
       equip:'Orange loop 41in (5\u201315 lb) \u00b7 under your foot',rx:'2\u00d712\u201315/direction',cal:8,demo:'extrot',log:'setsreps',sets:2,
@@ -7281,6 +7249,8 @@ dsSwapShiftV302();
   }
   if(!dsDayIsCustom('mon') && DS_SESSIONS.mon && !findIn('mon','mon-elbowrot')) insertAfter('mon','mon-elbow',mk('mon-elbowrot'));
   if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && !findIn('thu','thu-elbowrot')) insertAfter('thu','thu-elbow',mk('thu-elbowrot'));
+  }
+  stepV274(); stepV309(); stepV302(); stepV337(); stepV338(); stepV343();
 })();
 
 dsApplyFullBody();
