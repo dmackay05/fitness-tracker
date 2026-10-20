@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v368 — 2026-10-19";
+var APP_BUILD = "v369 — 2026-10-20";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7250,7 +7250,41 @@ dsSwapShiftV302();
   if(!dsDayIsCustom('mon') && DS_SESSIONS.mon && !findIn('mon','mon-elbowrot')) insertAfter('mon','mon-elbow',mk('mon-elbowrot'));
   if(!dsDayIsCustom('thu') && DS_SESSIONS.thu && !findIn('thu','thu-elbowrot')) insertAfter('thu','thu-elbow',mk('thu-elbowrot'));
   }
-  stepV274(); stepV309(); stepV302(); stepV337(); stepV338(); stepV343();
+
+  // ── v369 biceps spread: Bayesian 2 + Spider 2 on Monday, Ball Preacher 2 on Saturday (same weekly curl volume) ──
+  function stepV369(){
+  if(!dsDayIsCustom('mon') && DS_SESSIONS.mon){
+    var bayes=findIn('mon','mon-curl');
+    if(bayes){
+      setSets(bayes,2);
+      if(!findIn('mon','mon-spider')){
+        if(typeof DS_PHASE_RX!=='undefined' && DS_PHASE_RX['mon-curl'] && !DS_PHASE_RX['mon-spider']){
+          var pr={}; for(var ph in DS_PHASE_RX['mon-curl']){ pr[ph]={}; for(var f in DS_PHASE_RX['mon-curl'][ph]) pr[ph][f]=DS_PHASE_RX['mon-curl'][ph][f]; }
+          pr.p1.rx='2\u00d710\u201315';   // spider curl starts a little lower in the rep range than the Bayesian curl
+          DS_PHASE_RX['mon-spider']=pr;
+        }
+        var spider={id:'mon-spider',name:'Spider Curl',slot:'Pull · Biceps',target:'Biceps — Long Head',
+          equip:'Tube 30 lb to start · low door anchor (or loop band) · flat bench',rx:'2×10–15',cal:20,tempo:'3-0-1-1',demo:'curl',log:'setsreps',sets:2,
+          cue:'Lie chest-down on the bench with your chest right at the end, upper arms hanging straight down, palms forward. Only the forearms move — the upper arms stay vertical the whole set, which keeps the biceps stretched at the bottom and makes swinging impossible. Curl up, squeeze 1 sec, lower over 3 sec to a fully straight arm. Start with the 30 lb tube: 15+ clean reps with reps left → go up to 40 lb; under 8 → drop to 20 lb. ⚠️ Elbow: if the inside of the elbow aches past 24h, swap back to Bicep Curl.',
+          setup:'Slide the bench so its end is about 1.5–2 ft from a door, with the door anchor closed in at the very bottom. Lie chest-down with your chest at the end of the bench and your arms hanging straight down. Hold the handles palms-forward; the band should have a little tension at the bottom of the rep (too slack → move the bench farther from the door; stretched hard → closer). No anchor? Loop a band around the two bench legs at that end, padding any sharp corners, and hold the free loop.'};
+        insertAfter('mon','mon-curl',spider);
+      }
+    }
+  }
+  if(!dsDayIsCustom('sat') && DS_SESSIONS.sat && !findIn('sat','sat-preacher')){
+    var mv=DS_SESSIONS.sat.moves, at=-1;
+    for(var i=0;i<mv.length;i++){ if(mv[i]&&mv[i].id==='sat-curl'){ at=i; break; } }
+    var preacher={id:'sat-preacher',name:'Ball Preacher Curl',lockVar:0,slot:'Pull · Biceps',target:'Biceps — Short Head · Brachialis',
+      equip:'Tube 20–30 lb · stability ball pressed against a door · low door anchor',rx:'2×10–15',cal:20,tempo:'3-0-1-1',demo:'preachercurl',log:'setsreps',sets:2,
+      cue:'Kneel facing the ball and lean your chest onto it, upper arms resting on top and angled slightly down the front. The ball keeps the elbows from drifting, so the curl is strict. Curl up, squeeze 1 sec, then lower over 3 sec until the arm is nearly straight — the bottom half does the most work. ⚠️ Elbow: start one band lighter than your standing curl; if the inside of the elbow aches past 24h, swap back to Bicep Curl.',
+      setup:'Close a door with the tube anchored at the very bottom and push the stability ball firmly against the door so it cannot roll. Kneel on the near side, lean your chest onto the ball and rest the backs of your upper arms on top of it. The band runs from your hands down the far side of the ball to the low anchor. If the band rubs the ball or drags it sideways, move the anchor a little higher.',
+      variants:[{name:'Preacher Curl',equip:'Tube 10–20 lb · angled surface (arm of a couch, tilted bench)',rx:'2×12–15',
+        cue:'No ball or door handy? Rest the back of your upper arm on any angled support so it cannot swing, and lower all the way down under control.',demo:'preachercurl'}]};
+    if(at>=0){ DS_RESERVE_MOVES.push(mv[at]); mv.splice(at,1,preacher); }
+    else insertAfter('sat','sat-lateral',preacher);
+  }
+  }
+  stepV274(); stepV309(); stepV302(); stepV337(); stepV338(); stepV343(); stepV369();
 })();
 
 dsApplyFullBody();
@@ -8856,6 +8890,12 @@ function dsPic(panels,notes){
   function path(pts){ return pts.map(function(p,i){ return (i?'L':'M')+p[0]+' '+p[1]; }).join(' '); }
   panels.forEach(function(p){
     if(!_th) s+='<text x="'+p.cx+'" y="22" text-anchor="middle" fill="#f0f0f0" style="font:600 13px system-ui,sans-serif">'+p.title+'</text>';
+    /* v369 new-style figures: props (bench, ball, door) are drawn first, then the body; the working arm is
+       coloured (p.work), the band's anchor is marked (p.anchor), and labels sit beside the part they describe. */
+    (p.props||[]).forEach(function(o){
+      if(o.t==='rect') s+='<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" rx="'+(o.rx==null?3:o.rx)+'" fill="rgba(138,138,168,0.14)" stroke="#8a8aa8" stroke-width="2"/>';
+      else if(o.t==='circ') s+='<circle cx="'+o.x+'" cy="'+o.y+'" r="'+o.r+'" fill="rgba(138,138,168,0.14)" stroke="#8a8aa8" stroke-width="2"/>';
+    });
     (p.lines||[]).forEach(function(l){ s+='<line x1="'+l[0]+'" y1="'+l[1]+'" x2="'+l[2]+'" y2="'+l[3]+'" stroke="#8a8aa8" stroke-width="4" stroke-linecap="round"/>'; });
     var body='fill="none" stroke="#e8e8f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"';
     s+='<circle cx="'+p.head[0]+'" cy="'+p.head[1]+'" r="13" '+body+'/>';
@@ -8864,11 +8904,21 @@ function dsPic(panels,notes){
     if(p.legs2) s+='<path d="'+path(p.legs2)+'" '+body+'/>';
     if(p.arm) s+='<path d="'+path(p.arm)+'" '+body+'/>';
     if(p.arm2) s+='<path d="'+path(p.arm2)+'" '+body+'/>';
+    (p.work||[]).forEach(function(w){ s+='<path d="'+path(w)+'" fill="none" stroke="#ff8a5b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'; });
     (p.circles||[]).forEach(function(c){ s+='<circle cx="'+c[0]+'" cy="'+c[1]+'" r="'+c[2]+'" fill="none" stroke="#8a8aa8" stroke-width="4"/>'; });
-    if(p.band) s+='<path d="'+path(p.band)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round"/>';
-    if(p.band2) s+='<path d="'+path(p.band2)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round"/>';
+    if(p.band) s+='<path d="'+path(p.band)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round" stroke-linejoin="round"/>';
+    if(p.band2) s+='<path d="'+path(p.band2)+'" fill="none" stroke="#2dd4a7" stroke-width="'+(p.bw||3)+'" stroke-linecap="round" stroke-linejoin="round"/>';
+    if(p.anchor) s+='<rect x="'+(p.anchor[0]-9)+'" y="'+p.anchor[1]+'" width="18" height="5" rx="2" fill="#2dd4a7"/>';
+    if(p.hand) s+='<circle cx="'+p.hand[0]+'" cy="'+p.hand[1]+'" r="5" fill="#ff8a5b"/>';
+    if(p.elbow) s+='<circle cx="'+p.elbow[0]+'" cy="'+p.elbow[1]+'" r="3.5" fill="#1a1a2e" stroke="#ff8a5b" stroke-width="2"/>';
     if(!_th) (p.tags||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#2dd4a7" style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
+    if(!_th) (p.labels||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#a8a8c0"'+(t[3]?' text-anchor="'+t[3]+'"':'')+' style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
   });
+  if(!_th && panels[0] && panels[0].arrow){
+    s+='<defs><marker id="dsarr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#a8a8c0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>'
+      +'<line x1="174" y1="100" x2="206" y2="100" stroke="#a8a8c0" stroke-width="1.6" marker-end="url(#dsarr)"/>'
+      +'<text x="190" y="90" text-anchor="middle" fill="#a8a8c0" style="font:500 11px system-ui,sans-serif">Curl</text>';
+  }
   notes.forEach(function(n,i){ s+='<text x="8" y="'+(292+i*18)+'" fill="#a8a8c0" style="font:500 12px system-ui,sans-serif">'+n+'</text>'; });
   return s+'</svg>';
 }
@@ -8893,11 +8943,46 @@ var DS_SETUPPICS={
     {cx:95,title:'Hips back',head:[112,72],torso:[[108,86],[82,150]],legs:[[82,150],[112,212],[70,212]],arm:[[104,98],[122,130],[126,150]],band:[[10,206],[82,150]],tags:[[10,230,'Low anchor']]},
     {cx:285,title:'Lockout (squeeze)',head:[290,64],torso:[[290,78],[290,150]],legs:[[290,150],[292,212],[250,212]],arm:[[290,92],[300,128],[302,148]],band:[[200,206],[290,150]],bw:4,tags:[[300,166,'Squeeze 1 sec'],[200,230,'Low anchor']]}
   ],['Kneel facing away from a low door anchor, band across the hip crease','Sit hips back, chest up','Drive hips forward to tall kneeling · 1 sec squeeze','Exit: shuffle back toward the door until the band goes slack']); },
-  'Bayesian Curl (low anchor)':function(){ return dsPic([
-    {cx:95,title:'Bottom (stretched)',head:[95,60],torso:[[95,76],[95,146]],legs:[[95,146],[98,200],[95,246],[112,246]],arm:[[95,86],[78,140],[60,186]],band:[[8,250],[60,188]],tags:[[8,268,'Low anchor']]},
-    {cx:285,title:'Top (squeeze)',head:[285,60],torso:[[285,76],[285,146]],legs:[[285,146],[288,200],[285,246],[302,246]],arm:[[285,86],[268,140],[302,104]],band:[[198,250],[302,106]],bw:4,tags:[[198,268,'Low anchor']]}
-  ],['Face away from the anchor, elbow slightly behind you','Elbow stays put — only the forearm moves','1 sec up · 1 sec squeeze · 3 sec down','Most tension is in the stretched bottom']); }
+  'Bayesian Curl (low anchor)':function(){ return dsBayesianPic(); }
 };
+/* v369 new-style biceps figures: orange working arm, drawn props, labels beside the part, band + anchor in teal. */
+function dsBayesianPic(){
+  var st={head:[95,60],torso:[[95,76],[95,146]],legs:[[95,146],[98,200],[95,246],[112,246]],
+    props:[{t:'rect',x:2,y:150,w:8,h:102,rx:2}],anchor:[12,246],elbow:[78,140],tags:[[8,268,'Low door anchor']]};
+  return dsPic2(
+    dsMk(st,{title:'Bottom (full stretch)',arrow:true,work:[[[95,86],[78,140],[60,186]]],hand:[60,188],band:[[12,248],[60,192]],
+      labels:[[8,126,'Elbow'],[8,140,'stays back']]}),
+    dsMk(st,{title:'Top (squeeze)',work:[[[95,86],[78,140],[112,104]]],hand:[112,104],band:[[12,248],[112,106]],bw:4,
+      labels:[[8,126,'Elbow'],[8,140,'stays back'],[126,100,'Squeeze']]}),
+    ['Face away from the door, step forward until the band is taut','Upper arms hang just behind your torso and never move','Curl up, squeeze 1 sec, lower over 3 sec','Most tension is in the stretched bottom']);
+}
+DS_SETUPPICS['Bayesian Curl']=DS_SETUPPICS['Bayesian Curl (low anchor)'];   // alias, so the exercise library lists it once
+function dsSpiderPic(){
+  var bn={head:[150,134],torso:[[40,146],[126,146],[138,141]],legs:[[40,146],[10,148]],
+    props:[{t:'rect',x:28,y:150,w:106,h:9}],lines:[[40,159,40,252],[112,159,112,252]],anchor:[126,248],elbow:[126,188],
+    labels:[[46,196,'Upper arm'],[46,210,'stays put']]};
+  return dsPic2(
+    dsMk(bn,{title:'Bottom (full stretch)',arrow:true,work:[[[126,146],[126,188],[126,226]]],hand:[126,230],band:[[126,234],[126,248]],
+      labels:bn.labels.concat([[136,222,'Band'],[136,236,'anchored']])}),
+    dsMk(bn,{title:'Top (squeeze)',work:[[[126,146],[126,188],[158,156]]],hand:[158,156],band:[[158,160],[126,248]],bw:4,
+      labels:bn.labels.concat([[124,112,'Squeeze']])}),
+    ['Lie chest-down on a bench, chest at the very end','Arms hang straight down, palms facing forward','Band anchored low: door anchor about 2 ft ahead','Curl up, squeeze 1 sec, lower over 3 sec']);
+}
+DS_SETUPPICS['Spider Curl']=function(){ return dsSpiderPic(); };
+function dsBallPreacherPic(){
+  var D=-10;
+  function m(p){ return [p[0]+D,p[1]]; }
+  function ms(a){ return a.map(m); }
+  var bp={head:m([124,152]),torso:ms([[66,200],[126,178],[125,166]]),legs:ms([[66,200],[62,246],[18,246]]),
+    props:[{t:'rect',x:184+D,y:110,w:5,h:142,rx:1},{t:'circ',x:144+D,y:217,r:35}],anchor:m([183,247]),elbow:m([158,180])};
+  var ball=[144+D,221,'Ball','middle'];
+  return dsPic2(
+    dsMk(bp,{title:'Bottom (full stretch)',arrow:true,work:[ms([[126,178],[158,180],[178,205]])],hand:m([178,207]),band:ms([[178,211],[183,247]]),
+      labels:[ball,[172,128,'Door','end'],[60+D,112,'Upper arm rests'],[60+D,126,'on the ball']]}),
+    dsMk(bp,{title:'Top (squeeze)',work:[ms([[126,178],[158,180],[150,150]])],hand:m([150,150]),band:ms([[150,154],[176,160],[183,190],[183,247]]),bw:4,
+      labels:[ball,[60+D,112,'Elbow stays'],[60+D,126,'on the ball'],[122,132,'Squeeze']]}),
+    ['Ball pressed against a closed door, knees on the floor','Lean onto the ball, upper arms resting on top','Band runs down the far side to a low door anchor','Curl up, squeeze 1 sec, lower over 3 sec']);
+}
 /* ── Batch 2: frame-coordinate diagrams (panel B is the same frame shifted 190px right) ── */
 function dsSh(p,o){
   var q={}; for(var k in p) q[k]=p[k];
@@ -8907,6 +8992,12 @@ function dsSh(p,o){
   if(p.circles) q.circles=p.circles.map(function(c){ return [c[0]+o,c[1],c[2]]; });
   if(p.lines) q.lines=p.lines.map(function(l){ return [l[0]+o,l[1],l[2]+o,l[3]]; });
   if(p.tags) q.tags=p.tags.map(function(t){ return [t[0]+o,t[1],t[2]]; });
+  if(p.work) q.work=p.work.map(function(w){ return w.map(pt); });
+  if(p.props) q.props=p.props.map(function(r){ var c={}; for(var k in r) c[k]=r[k]; c.x=r.x+o; return c; });
+  if(p.labels) q.labels=p.labels.map(function(t){ return [t[0]+o,t[1],t[2],t[3]]; });
+  if(p.anchor) q.anchor=pt(p.anchor);
+  if(p.hand) q.hand=pt(p.hand);
+  if(p.elbow) q.elbow=pt(p.elbow);
   q.cx=95+o; return q;
 }
 function dsPic2(a,b,notes){ a.cx=95; return dsPic([a,dsSh(b,190)],notes); }
@@ -9254,10 +9345,7 @@ DS_SETUPPICS['DB Hammer Curl']=function(){ return dsPic2(
     dsMk(kn,{title:'Bottom (arm long)',arm:[[92,108],[128,164],[148,206]],lines:[[88,128,140,180]],band:[[170,250],[148,208]],tags:[[4,150,'Arm on the pad']]}),
     dsMk(kn,{title:'Top (squeeze)',arm:[[92,108],[128,164],[104,124]],lines:[[88,128,140,180]],band:[[170,250],[104,126]],bw:4,tags:[[4,150,'Upper arm stays put']]}),
     ['Rest the back of your upper arm on an angled pad','Band anchored low in front','Lower all the way down under control','The bottom half does the most work']); };
-  DS_SETUPPICS['Ball Preacher Curl']=function(){ return dsPic2(
-    dsMk(kn,{title:'Bottom (arm long)',arm:[[92,108],[126,158],[150,206]],circles:[[146,182,40]],tags:[[4,150,'Arm draped over the ball']]}),
-    dsMk(kn,{title:'Top (squeeze 1 sec)',arm:[[92,108],[126,158],[104,122]],circles:[[146,182,40]],bw:4,tags:[[4,150,'Slow 3-sec lower']]}),
-    ['Kneel behind the ball, arm over the front','Angle the arm downward, not flat on top','Curl up and squeeze 1 sec','3 sec down to an almost-straight arm']); };
+  DS_SETUPPICS['Ball Preacher Curl']=function(){ return dsBallPreacherPic(); };
 })();
 DS_SETUPPICS['DB Overhead Triceps Extension']=function(){ return dsPic2(
   dsMk(DS_STD,{title:'Bottom (stretched)',head:[110,64],arm:[[95,88],[93,40],[76,66]],circles:[[76,74,8]],tags:[[4,150,'Elbows by your ears']]}),
@@ -10225,6 +10313,8 @@ var DS_MV={
   'sat-facepull':{'Back':.5,'Shoulders':.7,'Traps':.5},
   'sat-lateral':{'Shoulders':1},
   'sat-curl':{'Biceps':1},
+  'sat-preacher':{'Biceps':1},
+  'mon-spider':{'Biceps':1},
   'sat-forearm':{'Forearms':1},
   'sat-wristcurl':{'Forearms':1},
   'sat-shrug':{'Traps':1,'Shoulders':.2},
