@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v376 — 2026-10-21";
+var APP_BUILD = "v377 — 2026-10-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8904,8 +8904,37 @@ function dsPic(panels,notes){
     if(p.anchor) s+='<rect x="'+(p.anchor[0]-9)+'" y="'+p.anchor[1]+'" width="18" height="5" rx="2" fill="#2dd4a7"/>';
     if(p.hand) s+='<circle cx="'+p.hand[0]+'" cy="'+p.hand[1]+'" r="5" fill="#ff8a5b"/>';
     if(p.elbow) s+='<circle cx="'+p.elbow[0]+'" cy="'+p.elbow[1]+'" r="3.5" fill="#1a1a2e" stroke="#ff8a5b" stroke-width="2"/>';
-    if(!_th) (p.tags||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#2dd4a7" style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
-    if(!_th) (p.labels||[]).forEach(function(t){ s+='<text x="'+t[0]+'" y="'+t[1]+'" fill="#a8a8c0"'+(t[3]?' text-anchor="'+t[3]+'"':'')+' style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
+    if(!_th){
+      /* v377 auto label placement: nudge any tag/label that would sit on the body, band, props or another label */
+      var _ob=[];
+      function _seg(a,b){ var n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/3)); for(var i=0;i<=n;i++) _ob.push([a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n]); }
+      function _pl(pts){ if(pts) for(var i=1;i<pts.length;i++) _seg(pts[i-1],pts[i]); }
+      function _ci(cx,cy,r){ var n=Math.max(8,Math.ceil(2*Math.PI*r/3)); for(var i=0;i<n;i++) _ob.push([cx+r*Math.cos(2*Math.PI*i/n),cy+r*Math.sin(2*Math.PI*i/n)]); }
+      _ci(p.head[0],p.head[1],13); _pl(p.torso); _pl(p.legs); _pl(p.legs2); _pl(p.arm); _pl(p.arm2); _pl(p.band); _pl(p.band2);
+      (p.work||[]).forEach(_pl); (p.lines||[]).forEach(function(l){ _seg([l[0],l[1]],[l[2],l[3]]); });
+      (p.circles||[]).forEach(function(c){ _ci(c[0],c[1],c[2]); });
+      (p.props||[]).forEach(function(o){ if(o.t==='circ') _ci(o.x,o.y,o.r); else { _seg([o.x,o.y],[o.x+o.w,o.y]); _seg([o.x,o.y+o.h],[o.x+o.w,o.y+o.h]); _seg([o.x,o.y],[o.x,o.y+o.h]); _seg([o.x+o.w,o.y],[o.x+o.w,o.y+o.h]); } });
+      if(p.hand) _ci(p.hand[0],p.hand[1],5);
+      if(p.anchor) _seg([p.anchor[0]-9,p.anchor[1]+2],[p.anchor[0]+9,p.anchor[1]+2]);
+      if(panels[0]&&panels[0].arrow) _seg([170,84],[210,104]);
+      var _lo=p.cx-93, _hi=p.cx+91, _placed=[];
+      function _box(x,y,len,anc){ var w=len*5.8; var x0=anc==='middle'?x-w/2:(anc==='end'?x-w:x); return [x0-2,y-10,x0+w+2,y+3]; }
+      function _hit(b){ for(var i=0;i<_ob.length;i++){ var q=_ob[i]; if(q[0]>b[0]-3&&q[0]<b[2]+3&&q[1]>b[1]-3&&q[1]<b[3]+3) return true; } for(var j=0;j<_placed.length;j++){ var o=_placed[j]; if(b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]) return true; } return false; }
+      function _place(t,anc){
+        var len=String(t[2]).length, w=len*5.8, best=null;
+        var dys=[0,-14,14,-28,28,-42,42,-56,56,-70,70];
+        var xs=[t[0]]; if(anc!=='end'&&anc!=='middle'){ xs.push(_lo+2,_hi-w); }
+        for(var xi=0;xi<xs.length&&!best;xi++) for(var di=0;di<dys.length&&!best;di++){
+          var x=xs[xi], y=t[1]+dys[di]; var b=_box(x,y,len,anc);
+          if(b[0]<_lo-2||b[2]>_hi+2||b[1]<30||b[3]>272) continue;
+          if(!_hit(b)) best=[x,y,b];
+        }
+        if(!best){ var b0=_box(t[0],t[1],len,anc); best=[t[0],t[1],b0]; }
+        _placed.push(best[2]); return [best[0],best[1]];
+      }
+      (p.tags||[]).forEach(function(t){ var q=_place(t,''); s+='<text x="'+q[0]+'" y="'+q[1]+'" fill="#2dd4a7" style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
+      (p.labels||[]).forEach(function(t){ var q=_place(t,t[3]||''); s+='<text x="'+q[0]+'" y="'+q[1]+'" fill="#a8a8c0"'+(t[3]?' text-anchor="'+t[3]+'"':'')+' style="font:500 11px system-ui,sans-serif">'+t[2]+'</text>'; });
+    }
   });
   if(!_th && panels[0] && panels[0].arrow){
     s+='<defs><marker id="dsarr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#a8a8c0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>'
