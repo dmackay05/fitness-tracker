@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v373 — 2026-10-21";
+var APP_BUILD = "v374 — 2026-10-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8586,7 +8586,7 @@ function dsManualIdx(item){ if(!item)return null; var v=DS_SWAPS[dsSwapKey(item)
 // Curated weekly rotation for chest slots: only these options rotate (by name;
 // first entry = even weeks). Slots not listed keep their lock / normal rotation.
 var DS_ROTATE_POOL={
-  'mon-pushup':['Deficit Push-up','Band Tempo Push-up'],
+  'mon-pushup':['Incline Push-up (counter/desk)','Knee Push-up','Band Floor Press'],
   'mon-pressaround':['Low-Anchor Band Fly (rest-pause)','Standing Band Fly (stretch-biased)','Single-Arm Band Press-Around'],
   'mon-inclinepress':['Standing Band Chest Press (pyramid)','Incline Close-Grip Press'],
   'mon-standbandpress':['Band Tempo Push-up','Feet-Elevated Push-up']
@@ -9614,7 +9614,7 @@ function dsRenderItem(rawItem,idx,accent){
   h+='<div class="ds-mbody">';
   if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
-  if(item.log==='setsreps'&&(item.tempo||dsIsElasticBand(item))){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+(item.tempo?'':'. Band taut at the start; if it snaps you back, the rep doesn\u2019t count.')+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Pacer</button>'+(dsIsElasticBand(item)?' '+'<span class="ds-mtempo-l">Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></div>':'</div>'); }
+  if(item.log==='setsreps'&&(item.tempo||dsIsElasticBand(item))){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Pacer</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   var _hasPic=false;
   if(typeof DS_SETUPPICS!=='undefined'&&DS_SETUPPICS[item.name]){ h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }

@@ -1338,3 +1338,6 @@ html body div.app{max-width:480px}
 #weighin-banner:empty{display:none}
 #weighin-banner .weighin-nudge{pointer-events:auto;margin:0!important;background:linear-gradient(90deg,#5eead433,#a78bfa33),#12121f;box-shadow:0 6px 20px #000a;position:relative}
 .nudge-x{flex-shrink:0;background:none;border:none;color:#9aa0c0;font-size:16px;line-height:1;padding:6px 2px 6px 8px;cursor:pointer}
+
+#panel-today .ds-mtempo-d{margin-top:4px;}
+#panel-today .ds-mtempo-d summary{font-size:11px;color:#888;cursor:pointer;}
