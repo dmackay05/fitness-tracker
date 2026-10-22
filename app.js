@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v377 — 2026-10-21";
+var APP_BUILD = "v378 — 2026-10-21";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9233,6 +9233,18 @@ DS_SETUPPICS['Hollow Body Hold']=function(){
   {title:'Start (flat)',head:[30,238],torso:[[46,240],[110,240]],legs:[[110,240],[172,240]],arm:arms,tags:[[40,208,'Low back flat']]},
   {title:'Hold (dish shape)',head:[36,212],torso:[[50,222],[110,244]],legs:[[110,244],[176,222]],arm:[[50,222],[30,214],[10,208]],bw:4,tags:[[64,190,'Ribs down']]},
   ['Press the low back flat, lift shoulders and legs a few inches','Lower the legs if your back lifts off the floor']); };
+/* v378 yoga-flow figures: 90/90 (seen from above) and pigeon / reclined figure-4 (side view) */
+DS_SETUPPICS['90/90 Hip Switches']=function(){
+  var tp={noGround:true,head:[95,56],torso:[[95,72],[95,168]],arm:[[66,92],[124,92]]};
+  return dsPic2(
+  dsMk(tp,{title:'Right leg in front',legs2:[[95,168],[44,170],[52,122]],work:[[[95,168],[146,198],[94,222]]],labels:[[8,244,'Seen from above · you face down']],tags:[[100,238,'Front shin'],[4,112,'Back shin']]}),
+  dsMk(tp,{title:'Switch: left leg in front',legs2:[[95,168],[146,170],[138,122]],work:[[[95,168],[44,198],[96,222]]],labels:[[8,244,'Seen from above · you face down']],tags:[[4,238,'Front shin'],[112,112,'Back shin']]}),
+  ['Both knees bent to 90° · front shin across, back shin behind','Rotate slowly through center to switch · hands on the floor']); };
+DS_SETUPPICS['Pigeon Pose (or Reclined Figure-4)']=function(){
+  return dsPic2(
+  {title:'Pigeon (front shin folded)',head:[116,112],torso:[[114,128],[110,222]],legs:[[110,222],[40,244]],work:[[[110,222],[172,232],[122,246]]],arm:[[114,146],[140,196],[142,246]],tags:[[4,206,'Back leg long']],labels:[[176,222,'Front shin']]},
+  {title:'Easier: reclined figure-4',head:[30,226],torso:[[46,232],[110,232]],legs:[[110,232],[134,192],[156,232]],work:[[[110,232],[176,184],[140,198]]],tags:[[30,196,'Ankle on knee']],labels:[[96,168,'Knee falls out']]},
+  ['Pigeon: front shin angled forward, back leg long, hips square','Too much? Lie back and cross an ankle over the knee']); };
 DS_SETUPPICS['Lateral Raise']=function(){ return dsPic2(
   dsMk(DS_FRONT,{title:'Bottom',arm:[[95,88],[84,120],[80,150]],arm2:[[95,88],[106,120],[110,150]],tags:[[4,150,'Stand on band']]}),
   dsMk(DS_FRONT,{title:'Top (shoulder height)',arm:[[95,88],[66,86],[40,82]],arm2:[[95,88],[124,86],[150,82]],bw:4,tags:[[4,150,'Elbows lead']]}),
