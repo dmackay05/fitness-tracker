@@ -1341,3 +1341,5 @@ html body div.app{max-width:480px}
 
 #panel-today .ds-mtempo-d{margin-top:4px;}
 #panel-today .ds-mtempo-d summary{font-size:11px;color:#888;cursor:pointer;}
+
+#panel-today .ds-mtrans{font-size:11px;color:#888;margin-top:3px;}
