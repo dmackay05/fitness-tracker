@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v382 — 2026-10-22";
+var APP_BUILD = "v383 — 2026-10-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8772,10 +8772,6 @@ DS_SETUPPICS['Rear Delts / Face Pull']=function(){ return dsPic2(
   dsMk(DS_STD,{title:'Start (arms out)',arm:[[95,88],[125,84],[155,80]],band:[[176,80],[155,80]],tags:[[4,150,'Anchor at face']]}),
   dsMk(DS_STD,{title:'Pull (elbows high)',arm:[[95,88],[80,80],[113,72]],band:[[176,80],[113,72]],bw:4,tags:[[4,150,'Elbows high']]}),
   ['Anchor at face height, pull to your face, elbows high','1 sec squeeze · 3 sec back']); };
-DS_SETUPPICS['Underhand Pulldown']=function(){ return dsPic2(
-  dsMk(DS_STD,{title:'Start (arms up)',arm:[[95,88],[112,56],[124,30]],band:[[150,6],[124,32]],tags:[[4,150,'High anchor']]}),
-  dsMk(DS_STD,{title:'Bottom (elbows down)',arm:[[95,88],[84,122],[106,102]],band:[[150,6],[106,104]],bw:4,tags:[[4,150,'Elbows to ribs']]}),
-  ['Anchor high in front, palms facing you','Pull elbows to your ribs · 1 sec squeeze · 3 sec up']); };
 DS_SETUPPICS['Banded Bulgarian Split Squat']=function(){
   var bn=[[28,202,64,202],[34,202,34,252],[58,202,58,252]];
   return dsPic2(
@@ -8932,18 +8928,46 @@ DS_SETUPPICS['Behind-Back Anchor Press']=function(){ return dsPic2(
   dsMk(DS_STD,{title:'Start (at chest)',arm:[[95,88],[92,114],[112,104]],band:[[86,96],[112,104]],tags:[[4,150,'Band around your back']]}),
   dsMk(DS_STD,{title:'Top (arms straight)',arm:[[95,88],[130,94],[160,98]],band:[[86,96],[160,98]],bw:4,tags:[[4,150,'Thumbs looped through']]}),
   ['Band around your upper back, thumbs through the handles','Press straight out · 1 sec squeeze · 3 sec down']); };
-(function(){
-  var kn={legs:[[90,170],[104,246],[60,246]],head:[95,86],torso:[[90,170],[92,102]]};
-  DS_SETUPPICS['Overhand Pulldown']=function(){ return dsPic2(
-    dsMk(kn,{title:'Start (arms up)',arm:[[92,110],[118,66],[142,34]],band:[[176,6],[142,36]],tags:[[4,150,'Palms away']]}),
-    dsMk(kn,{title:'Bottom (elbows down)',arm:[[92,110],[82,136],[106,122]],band:[[176,6],[106,124]],bw:4,tags:[[4,150,'Elbows to ribs']]}),
-    ['Kneel facing a high anchor, palms away, arms overhead','Elbows to your ribs · 1 sec squeeze · 3 sec up']); };
-  var kf={legs:[[70,170],[84,246],[40,246]],head:[75,86],torso:[[70,170],[72,102]]};
-  DS_SETUPPICS['Deep-Stretch Pulldown']=function(){ return dsPic2(
-    dsMk(kf,{title:'Start (deep stretch)',arm:[[72,110],[120,62],[160,26]],band:[[184,6],[160,28]],tags:[[4,150,'Kneel farther back']]}),
-    dsMk(kf,{title:'Bottom (elbows down)',arm:[[72,110],[62,136],[86,122]],band:[[184,6],[86,124]],bw:4,tags:[[4,150,'Squeeze the lats']]}),
-    ['Kneel farther back, let the arms reach long overhead','Pull elbows to your ribs · feel the stretch each rep']); };
-})();
+/* v383 pulldown family and row: kneeling, facing a door on the left, orange working arm, one shared rig.
+   dsKneelPic draws a kneeling figure; start/end give the elbow and hand of the working arm in each panel. */
+function dsKneelPic(o){
+  var s=o.shift||0, S=[98+s,104], ay=o.ay||11;
+  var base={head:[95+s,86],torso:[[100+s,170],[98+s,102]],legs:[[100+s,170],[88+s,246],[132+s,246]],
+    props:[{t:'rect',x:2,y:(o.door?o.door[0]:0),w:8,h:(o.door?o.door[1]:62),rx:2}],anchor:[14,ay-5],tags:[[14,268,o.tag||'High door anchor']]};
+  return dsPic2(
+    dsMk(base,{title:o.t1,arrow:true,arrowLabel:o.arrow||'Pull',work:[[S,o.start.e,o.start.h]],hand:o.start.h,elbow:o.start.e,band:[[14,ay],o.start.h],labels:(o.l1||[]).concat([[36+s,238,'Kneeling']])}),
+    dsMk(base,{title:o.t2,work:[[S,o.end.e,o.end.h]],hand:o.end.h,elbow:o.end.e,band:[[14,ay],o.end.h],bw:4,labels:o.l2||[]}),
+    o.notes);
+}
+function dsPulldownPic(o){
+  o.start=o.start||{e:[72,66],h:[48,36]}; o.end=o.end||{e:[110,138],h:[80,114]};
+  o.t1=o.t1||'Start (arms overhead)'; o.t2=o.t2||'Bottom (elbows down)';
+  o.l2=o.l2||[[118,160,'Elbows to ribs']];
+  return dsKneelPic(o);
+}
+DS_SETUPPICS['Underhand Pulldown']=function(){ return dsPulldownPic({notes:['Kneel facing a high door anchor, palms facing you','Elbows to your ribs · 1 sec squeeze · 3 sec up']}); };
+DS_SETUPPICS['Overhand Pulldown']=function(){ return dsPulldownPic({notes:['Kneel facing a high door anchor, palms facing away','Elbows to your ribs · 1 sec squeeze · 3 sec up']}); };
+DS_SETUPPICS['Kneeling Wide-Grip Pulldown']=function(){ return dsPulldownPic({l1:[[56,92,'Wide grip']],notes:['Kneel facing a high door anchor, hands wider than shoulders','Elbows down and back · 1 sec squeeze · 3 sec up']}); };
+DS_SETUPPICS['Deep-Stretch Pulldown']=function(){ return dsPulldownPic({shift:26,t1:'Start (deep stretch)',start:{e:[90,68],h:[46,38]},end:{e:[136,138],h:[106,114]},l1:[[58,150,'Kneel farther back']],notes:['Kneel farther back, let the arms reach long overhead','Pull elbows to your ribs · feel the stretch each rep']}); };
+DS_SETUPPICS['Kneeling Door-Anchored Row']=function(){ return dsKneelPic({ay:124,door:[112,140],tag:'Chest-height anchor',arrow:'Row',
+  t1:'Start (arms long)',t2:'Pulled (elbows back)',start:{e:[74,116],h:[50,124]},end:{e:[124,128],h:[102,126]},
+  l2:[[96,176,'Elbows back']],notes:['Kneel tall facing the door, step back until the band is taut','Squeeze the shoulder blades first · elbows to your ribs · slow return']}); };
+DS_SETUPPICS['Straight-Arm Band Pullover']=function(){
+  var hg={head:[44,98],torso:[[61,109],[115,140]],legs:[[115,140],[102,194],[95,246],[78,246]],
+    props:[{t:'rect',x:2,y:0,w:8,h:62,rx:2}],anchor:[14,6],tags:[[14,268,'High door anchor']]};
+  return dsPic2(
+    dsMk(hg,{title:'Start (arms overhead)',arrow:true,arrowLabel:'Sweep',work:[[[61,110],[48,76],[36,44]]],hand:[36,44],band:[[14,11],[36,44]]}),
+    dsMk(hg,{title:'Bottom (hands to thighs)',work:[[[61,110],[86,134],[108,158]]],hand:[108,158],band:[[14,11],[108,158]],bw:4,labels:[[120,184,'Elbows fixed']]}),
+    ['Hinge forward about 45°, elbows in a slight fixed bend','Sweep hands to your thighs with the lats · control the way back']); };
+DS_SETUPPICS['Door-Anchored Overhead Press']=function(){
+  var fr={head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[84,192],[82,246],[70,246]],legs2:[[95,138],[106,192],[108,246],[120,246]],
+    props:[{t:'rect',x:2,y:150,w:8,h:102,rx:2}],anchor:[12,246],tags:[[8,268,'Low door anchor']]};
+  return dsPic2(
+    dsMk(fr,{title:'Start (at shoulders)',arrow:true,arrowLabel:'Press',work:[[[98,90],[116,112],[124,86]]],hand:[124,86],elbow:[116,112],band:[[12,248],[124,88]]}),
+    dsMk(fr,{title:'Top (locked out)',work:[[[98,90],[116,60],[118,36]]],hand:[118,36],elbow:[116,60],band:[[12,248],[118,38]],bw:4,labels:[[132,150,'Ribs down']]}),
+    ['Face away from a low anchor, band taut at your shoulders','Press straight up, ribs down · 3 sec back down']); };
+DS_SETUPPICS['Standing Underfoot Press']=DS_SETUPPICS['Overhead Press'];       // same stand-on-the-tube setup
+DS_SETUPPICS['One-Foot Band Lateral Raise']=DS_SETUPPICS['Lateral Raise'];     // same raise; one foot on the band
 DS_SETUPPICS['Banded Straight-Arm Pulldown']=function(){ return dsPic2(
   dsMk(DS_STD,{title:'Start (arms up)',arm:[[95,88],[125,58],[150,30]],band:[[176,6],[150,32]],tags:[[4,150,'High anchor']]}),
   dsMk(DS_STD,{title:'Bottom (at thighs)',arm:[[95,88],[100,120],[104,150]],band:[[176,6],[104,152]],bw:4,tags:[[4,150,'Elbows soft']]}),
