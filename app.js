@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v388 — 2026-10-22";
+var APP_BUILD = "v389 — 2026-10-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9322,7 +9322,7 @@ function dsItemMatchesSearch(rawItem,q){
   if(rawItem.variants&&rawItem.variants.length){
     for(var j=0;j<rawItem.variants.length;j++){
       var v=rawItem.variants[j];
-      if((v.name&&re.test(v.name))||(v.cue&&re.test(v.cue)))return true;
+      if((v.name&&re.test(v.name))||(v.cue&&re.test(v.cue))||(v.equip&&re.test(v.equip)))return true;
     }
   }
   return false;
@@ -9996,6 +9996,15 @@ function dsRenderSearchAll(q){
     var m=ex.moves.filter(function(it){return dsItemMatchesSearch(it,q);});
     if(m.length){ totalHits+=m.length; html+=dsRenderSection(ex.label,'',ex.accent,m,''); }
   });
+  // Exercises cut from the weekly plan still live in DS_RESERVE_MOVES — include them
+  // so search finds everything the app knows about.
+  try{
+    var _seen={};
+    DS_ORDER.forEach(function(d){ dsSessOf(d).moves.forEach(function(it){ if(it&&it.id)_seen[it.id]=1; }); });
+    extras.forEach(function(ex){ ex.moves.forEach(function(it){ if(it&&it.id)_seen[it.id]=1; }); });
+    var _res=(typeof DS_RESERVE_MOVES!=='undefined'?DS_RESERVE_MOVES:[]).filter(function(it){ return it&&it.id&&it.name&&!_seen[it.id]&&dsItemMatchesSearch(it,q); });
+    if(_res.length){ totalHits+=_res.length; html+=dsRenderSection('Not in current plan','','var(--muted)',_res,''); }
+  }catch(e){}
   DS_SEARCH_HITS=totalHits;
   return html;
 }
