@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v384 — 2026-10-22";
+var APP_BUILD = "v385 — 2026-10-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8430,9 +8430,10 @@ function dsRenderProteinMeal(){
   var host=document.getElementById('dash-protein-meal');
   if(!host) return;
   var proteinByMeal=dsProteinByMealToday(activeDate);
+  var pmOpen=!!window.__dsPmOpen; var pmOld=host.querySelector('details.ds-mvwrap'); if(pmOld) pmOpen=pmOld.open;
   host.innerHTML =
     '<div class="card">'
-    +'<details class="ds-mvwrap"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Protein by Meal \u2014 Today <span class="ds-mvhint" style="font-size:11px;color:#888;font-weight:400">inferred from log time</span></summary>'
+    +'<details class="ds-mvwrap"'+(pmOpen?' open':'')+' ontoggle="window.__dsPmOpen=this.open"><summary class="ds-mvsum" style="font-size:12px;font-weight:700;color:#ddd;cursor:pointer">Protein by Meal \u2014 Today <span class="ds-mvhint" style="font-size:11px;color:#888;font-weight:400">inferred from log time</span></summary>'
     +'<div style="font-size:11px;color:#888;margin:8px 0 10px">Spreading protein into 3\u20134 doses of ~0.3\u20130.4g/kg improves MPS response vs back-loading it into 1\u20132 meals</div>'
     +dsProteinMealRowsHtml(proteinByMeal)
     +'</details>'
