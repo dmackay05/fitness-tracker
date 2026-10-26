@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v395 — 2026-10-25";
+var APP_BUILD = "v396 — 2026-10-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9389,7 +9389,7 @@ function dsRenderItem(rawItem,idx,accent){
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
   h+=dsLoadTipHtml(item.name)||dsLoadTipHtml(rawItem.name);
   if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){} }
-  if(item.log==='setsreps'&&(item.tempo||dsIsElasticBand(item))){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Pacer</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
+  if(item.log==='setsreps'&&(item.tempo||dsIsElasticBand(item))){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   var _hasPic=false;
   if(typeof DS_SETUPPICS!=='undefined'&&DS_SETUPPICS[item.name]){ h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
@@ -10523,25 +10523,6 @@ function dsTempoText(tp){ var a=['Lower '+tp.down+'s']; if(tp.pause)a.push('paus
 var dsTP={on:false,t:null,ctx:null,lock:null};
 function dsTPBeep(f,ms,vol){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C)return; if(!dsTP.ctx)dsTP.ctx=new C(); if(dsTP.ctx.state==='suspended')dsTP.ctx.resume(); var c=dsTP.ctx,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(vol||0.18,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){} }
 function dsTPVib(p){ try{ if(navigator.vibrate)navigator.vibrate(p); }catch(e){} }
-function dsTempoStart(id,spec){
-  dsTempoStop(); var tp=dsTempoParse(spec);
-  var phases=[['LOWER',tp.down,'#9fd3c7',440],['PAUSE',tp.pause,'#f5c26b',330],['UP',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100]].filter(function(p){return p[1]>0;});
-  var bar=document.getElementById('ds-tp-bar'); if(!bar){ bar=document.createElement('div'); bar.id='ds-tp-bar'; document.body.appendChild(bar); }
-  bar.innerHTML='<div class="ds-tp-ph" id="ds-tp-ph">Get set</div><div class="ds-tp-n" id="ds-tp-n">3</div><div class="ds-tp-r" id="ds-tp-r">'+dsTempoText(tp)+'</div><button onclick="dsTempoStop()">Stop</button>';
-  bar.style.display='flex'; dsTP.ctx=dsTP.ctx||null; dsTPBeep(660,80,0.01); // unlock audio inside the tap
-  try{ if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(l){dsTP.lock=l;}).catch(function(){}); }catch(e){}
-  dsTP.on=true; var rep=0, pi=-1, left=3;
-  var ph=document.getElementById('ds-tp-ph'), n=document.getElementById('ds-tp-n'), r=document.getElementById('ds-tp-r');
-  function tick(){
-    if(!dsTP.on)return;
-    if(left<=0){ pi=(pi+1)%phases.length; if(pi===0){rep++; r.textContent='Rep '+rep+' \u00b7 '+dsTempoText(tp);} left=phases[pi][1];
-      ph.textContent=phases[pi][0]; ph.style.color=phases[pi][2]; dsTPBeep(phases[pi][3],180); dsTPVib(pi===0?[120]:[60]); }
-    else if(pi>=0) dsTPBeep(phases[pi][3],50,0.08); else dsTPBeep(520,60);
-    n.textContent=left; left--; dsTP.t=setTimeout(tick,1000);
-  }
-  tick();
-}
-function dsTempoStop(){ dsTP.on=false; if(dsTP.t)clearTimeout(dsTP.t); var b=document.getElementById('ds-tp-bar'); if(b)b.style.display='none'; try{ if(dsTP.lock){dsTP.lock.release();dsTP.lock=null;} }catch(e){} }
 function dsIsElasticBand(item){ var e=(item.equip||''); return /tube|band|loop/i.test(e) && !/dumbbell|kettlebell|\bkb\b/i.test(e); }
 function dsIsUnilateral(item){ return /\/side|\/leg/i.test(item.rx||''); }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;st._loadTouched=true;dsSaveUI();} }
@@ -10620,7 +10601,7 @@ function dsLogSet(id,target){
   st.sets.push(setObj);
   dsAutoregulate(id);
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
-  if(typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
+  if(!(dsGP&&dsGP.noRest) && typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
   dsSaveUI(); dsRender(); renderAll();
 }
 function dsUndoSet(id){
@@ -14729,4 +14710,98 @@ function dsLoadTipHtml(name){
     +'<div class="ds-lt-r"><b>Setup</b> '+t[0]+'</div>'
     +'<div class="ds-lt-r"><b>Each rep</b> '+t[1]+'</div>'
     +'<div class="ds-lt-r"><b>Last set</b> '+t[2]+'</div></div>';
+}
+
+/* v396 Guided pacer: full-screen overlay that runs countdown → paced reps → log effort → rest,
+   for every remaining set of the exercise. Replaces the old small pacer bar. */
+var dsGP={id:null,on:false,t:null,paused:false,state:'',target:10,rep:0,side:null,lock:null};
+function dsGPRestSecs(item){
+  var rx=String(item.rx||''), m=rx.match(/(\d+(?:\.\d+)?)\s*min/i), s=rx.match(/(\d+)\s*s(?:ec)?\b/i);
+  if(m) return Math.round(parseFloat(m[1])*60);
+  if(s) return +s[1];
+  return dsIsCompound(item)?90:(typeof DS_REST_SECS!=='undefined'?DS_REST_SECS:60);
+}
+function dsGPTopReps(item){ var m=String(item.rx||'').match(/[×x]\s*(\d+)(?:\s*[–-]\s*(\d+))?/); return m?+(m[2]||m[1]):10; }
+function dsGPCtx(){ var raw=dsRawItem(dsGP.id); var item=dsViewOf(raw); var st=dsItemState(dsGP.id); return {raw:raw,item:item,st:st,uni:dsIsUnilateral(item),total:(item.sets||raw.sets||3)}; }
+function dsGPEl(){ var o=document.getElementById('ds-gp'); if(!o){ o=document.createElement('div'); o.id='ds-gp'; document.body.appendChild(o); } return o; }
+function dsGPClear(){ if(dsGP.t){clearTimeout(dsGP.t);dsGP.t=null;} }
+function dsTempoStart(id,spec){
+  dsTempoStop(); dsGP.id=id; dsGP.spec=spec; dsGP.on=true; dsGP.paused=false;
+  var c=dsGPCtx(); dsGP.target=(c.uni?(c.st._repsL):(c.st._reps))||dsGPTopReps(c.item);
+  dsTPBeep(660,80,0.01);
+  try{ if(navigator.wakeLock)navigator.wakeLock.request('screen').then(function(l){dsGP.lock=l;}).catch(function(){}); }catch(e){}
+  if(c.st.sets.length>=c.total) { dsGPDone(); return; }
+  dsGPSetup();
+}
+function dsTempoStop(){ dsGP.on=false; dsGPClear(); var o=document.getElementById('ds-gp'); if(o)o.style.display='none'; try{ if(dsGP.lock){dsGP.lock.release();dsGP.lock=null;} }catch(e){} var b=document.getElementById('ds-tp-bar'); if(b)b.style.display='none'; }
+function dsGPHead(c,extra){ return '<button class="gp-x" onclick="event.stopPropagation();dsTempoStop()">\u2715</button><div class="gp-name">'+c.item.name+'</div><div class="gp-set">Set '+Math.min(c.st.sets.length+1,c.total)+' of '+c.total+(dsGP.side?' \u00b7 '+dsGP.side+' side':'')+(extra||'')+'</div>'; }
+function dsGPAdj(d){ dsGP.target=Math.max(1,Math.min(60,dsGP.target+d)); var n=document.getElementById('gp-tgt'); if(n)n.textContent=dsGP.target; }
+function dsGPSetup(){
+  var c=dsGPCtx(), o=dsGPEl(); dsGP.state='setup'; dsGP.side=c.uni?'Left':null; o.onclick=null;
+  o.innerHTML=dsGPHead(c)+'<div class="gp-lbl">Reps this set</div><div class="gp-adj"><button onclick="dsGPAdj(-1)">\u2212</button><div class="gp-big" id="gp-tgt">'+dsGP.target+'</div><button onclick="dsGPAdj(1)">+</button></div>'
+    +'<div class="gp-sub">'+dsTempoText(dsTempoParse(dsGP.spec))+' \u00b7 rest '+dsGPRestSecs(c.item)+'s</div><button class="gp-go" onclick="dsGPCount()">\u25b6 Start</button>';
+  o.style.display='flex';
+}
+function dsGPCount(){
+  var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='count'; var left=3; dsTPBeep(660,80,0.01);
+  o.innerHTML=dsGPHead(c)+'<div class="gp-phase" style="color:#9fd3c7">GET SET</div><div class="gp-huge" id="gp-n">3</div><div class="gp-sub">'+dsGP.target+' reps'+(dsGP.side?' \u00b7 '+dsGP.side:'')+'</div>';
+  o.onclick=null;
+  (function tick(){ if(!dsGP.on)return; if(left<=0){ dsGPReps(); return; } document.getElementById('gp-n').textContent=left; dsTPBeep(520,90); left--; dsGP.t=setTimeout(tick,1000); })();
+}
+function dsGPReps(){
+  var c=dsGPCtx(), o=dsGPEl(), tp=dsTempoParse(dsGP.spec); dsGP.state='reps'; dsGP.rep=0; dsGP.paused=false;
+  var phases=[['DOWN',tp.down,'#9fd3c7',440],['HOLD',tp.pause,'#f5c26b',330],['UP',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100]].filter(function(p){return p[1]>0;});
+  o.innerHTML=dsGPHead(c)+'<div class="gp-rep"><span id="gp-rep">1</span><small> / '+dsGP.target+'</small></div><div class="gp-phase" id="gp-ph"></div><div class="gp-huge gp-sec" id="gp-n"></div><div class="gp-sub" id="gp-hint">Tap anywhere to pause</div><button class="gp-end" onclick="event.stopPropagation();dsGPEnd()">End set</button>';
+  o.onclick=function(){ dsGP.paused=!dsGP.paused; var h=document.getElementById('gp-hint'); if(h)h.textContent=dsGP.paused?'\u23f8 Paused \u2014 tap to resume':'Tap anywhere to pause'; o.classList.toggle('gp-paused',dsGP.paused); };
+  var pi=-1, left=0;
+  (function tick(){
+    if(!dsGP.on||dsGP.state!=='reps')return;
+    if(dsGP.paused){ dsGP.t=setTimeout(tick,250); return; }
+    if(left<=0){ pi++; if(pi>=phases.length){ pi=0; } if(pi===0){ dsGP.rep++; if(dsGP.rep>dsGP.target){ dsTPBeep(1200,350); dsTPVib([200,80,200]); dsGPEnd(); return; } document.getElementById('gp-rep').textContent=dsGP.rep; }
+      left=phases[pi][1]; var ph=document.getElementById('gp-ph'); ph.textContent=phases[pi][0]; ph.style.color=phases[pi][2]; o.style.setProperty('--gp-c',phases[pi][2]); dsTPBeep(phases[pi][3],180); dsTPVib(pi===0?[120]:[60]); }
+    else dsTPBeep(phases[pi][3],40,0.06);
+    document.getElementById('gp-n').textContent=left; left--; dsGP.t=setTimeout(tick,1000);
+  })();
+}
+function dsGPEnd(fixed){
+  dsGPClear(); var c=dsGPCtx(), o=dsGPEl(); o.onclick=null; o.classList.remove('gp-paused');
+  var done=(fixed!=null)?fixed:(dsGP.rep>dsGP.target?dsGP.target:Math.max(0,dsGP.rep-1));
+  dsGP.done=Math.max(1,done); dsGP.state='end';
+  if(c.uni&&dsGP.side==='Left'){ dsGP.doneL=dsGP.done; dsGP.side='Right'; dsGPSwitch(); return; }
+  var last=(c.st.sets.length+1>=c.total), tip=(typeof DS_LOADTIPS!=='undefined')&&(DS_LOADTIPS[c.item.name]||DS_LOADTIPS[c.raw.name]);
+  o.innerHTML=dsGPHead(c)+'<div class="gp-lbl">Reps done</div><div class="gp-adj"><button onclick="dsGPDoneAdj(-1)">\u2212</button><div class="gp-big" id="gp-done">'+dsGP.done+'</div><button onclick="dsGPDoneAdj(1)">+</button></div>'
+    +(tip?'<button class="gp-part'+(last?' gp-part-hot':'')+'" onclick="dsGPPartials()">\u2795 Partials (stretch half)</button>':'')
+    +'<div class="gp-lbl">Reps left in the tank?</div><div class="gp-rir">'+[0,1,2,3,4].map(function(r){return '<button onclick="dsGPLog('+r+')">'+(r===4?'4+':r)+'</button>';}).join('')+'</div>';
+}
+function dsGPSwitch(){ var c=dsGPCtx(), o=dsGPEl(), left=8;
+  o.innerHTML=dsGPHead(c)+'<div class="gp-phase" style="color:#f5c26b">SWITCH SIDES</div><div class="gp-huge" id="gp-n">8</div><button class="gp-go" onclick="dsGPCount()">Ready</button>';
+  (function tick(){ if(!dsGP.on||dsGP.state!=='end')return; if(left<=0){ dsGPCount(); return; } var n=document.getElementById('gp-n'); if(n)n.textContent=left; left--; dsGP.t=setTimeout(tick,1000); })();
+}
+function dsGPDoneAdj(d){ dsGP.done=Math.max(0,Math.min(60,dsGP.done+d)); var n=document.getElementById('gp-done'); if(n)n.textContent=dsGP.done; }
+function dsGPPartials(){ var c=dsGPCtx(), o=dsGPEl(), n=0; dsGPClear();
+  o.innerHTML=dsGPHead(c)+'<div class="gp-phase" style="color:#fb923c">PARTIALS</div><div class="gp-rep"><span id="gp-rep">0</span><small> / 8</small></div><div class="gp-sub">Short reps in the stretched half</div><button class="gp-end" onclick="dsGPEndPartials()">Done</button>';
+  (function tick(){ if(!dsGP.on)return; if(n>=8){ dsTPBeep(1200,300); dsGPEndPartials(); return; } n++; var r=document.getElementById('gp-rep'); if(r)r.textContent=n; dsTPBeep(n%2?700:500,120); dsGP.t=setTimeout(tick,1500); })();
+}
+function dsGPEndPartials(){ dsGPEnd(dsGP.done); var p=document.querySelector('#ds-gp .gp-part'); if(p)p.remove(); }
+function dsGPLog(rir){
+  var c=dsGPCtx(), st=c.st;
+  if(c.uni){ st._repsL=dsGP.doneL||dsGP.done; st._repsR=dsGP.done; } else st._reps=dsGP.done;
+  st._rir=rir; dsGP.noRest=true;
+  try{ dsLogSet(dsGP.id); }finally{ dsGP.noRest=false; }
+  st._rir=null; dsSaveUI();
+  var c2=dsGPCtx(); dsGP.target=(c2.uni?c2.st._repsL:c2.st._reps)||dsGP.target;
+  if(c2.st.sets.length>=c2.total){ dsGPDone(); return; }
+  dsGPRest(dsGPRestSecs(c2.item));
+}
+function dsGPRest(secs){
+  var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='rest'; dsGP.left=secs; dsGP.side=c.uni?'Left':null;
+  o.innerHTML=dsGPHead(c,' next')+'<div class="gp-phase" style="color:#7dd3fc">REST</div><div class="gp-huge" id="gp-n">'+secs+'</div>'
+    +(c.st._autoNote?'<div class="gp-sub">'+c.st._autoNote+'</div>':'')
+    +'<div class="gp-lbl">Next set reps</div><div class="gp-adj"><button onclick="dsGPAdj(-1)">\u2212</button><div class="gp-big" id="gp-tgt">'+dsGP.target+'</div><button onclick="dsGPAdj(1)">+</button></div>'
+    +'<div class="gp-row"><button onclick="dsGP.left+=30">+30s</button><button onclick="dsGP.left=0">Skip rest</button></div>';
+  (function tick(){ if(!dsGP.on||dsGP.state!=='rest')return; if(dsGP.left<=0){ dsTPBeep(990,250); dsTPVib([150,80,150]); dsGPCount(); return; } if(dsGP.left<=3)dsTPBeep(600,80); var n=document.getElementById('gp-n'); if(n)n.textContent=dsGP.left; dsGP.left--; dsGP.t=setTimeout(tick,1000); })();
+}
+function dsGPDone(){ var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='done'; dsGP.side=null; o.onclick=null;
+  o.innerHTML='<button class="gp-x" onclick="dsTempoStop()">\u2715</button><div class="gp-name">'+c.item.name+'</div><div class="gp-phase" style="color:#7cd67c">ALL SETS DONE \u2713</div><div class="gp-sub">'+c.st.sets.length+' sets logged</div><button class="gp-go" onclick="dsTempoStop()">Close</button>';
+  o.style.display='flex'; dsTPBeep(880,150); setTimeout(function(){dsTPBeep(1320,250);},180);
 }
