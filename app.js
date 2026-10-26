@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v394 — 2026-10-24";
+var APP_BUILD = "v395 — 2026-10-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9387,6 +9387,7 @@ function dsRenderItem(rawItem,idx,accent){
   h+='<div class="ds-mbody">';
   if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
+  h+=dsLoadTipHtml(item.name)||dsLoadTipHtml(rawItem.name);
   if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){} }
   if(item.log==='setsreps'&&(item.tempo||dsIsElasticBand(item))){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Pacer</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
@@ -14687,3 +14688,45 @@ function xlInit(){
   });
 }
 try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{xlInit();}catch(e){} }); else xlInit(); }catch(e){}
+
+/* v395 Stretch-load tips: bands are weakest in the stretched position, so each card
+   shows how to keep tension there. [setup, every rep, last set]. Keyed by exercise name. */
+var DS_LOADTIPS=(function(){
+  var curl=['Step back until the band is taut with your arm fully straight','1 sec pause at the bottom, arm straight','Then 5–8 bottom-half partials'];
+  var pull=['Kneel far enough back that the band is taut with arms fully overhead','2 sec pause at the top stretch','Then 5–8 top-half partials'];
+  var press=['Anchor behind you at chest height — step forward until taut with hands at your chest','1 sec pause at the chest','Then 5–8 partials in the first half of the press'];
+  var lat=['Stand on the band so it’s already taut with your hand at your hip','1 sec pause just off the hip','Then 5–8 bottom-half partials'];
+  var ohtri=['Anchor low behind you — band taut with elbows fully bent','1 sec pause in the deep bend','Then 5–8 partials in the bent half'];
+  var hinge=['Choke up on the band so it’s taut at the bottom of the hinge','1 sec pause at the bottom, hamstrings long','Then 5–8 bottom-half partials (only if pain-free)'];
+  var legcurl=['Set the band so it’s taut with your leg straight','1 sec pause with the leg straight','Then 5–8 partials near straight (only if pain-free)'];
+  var wrist=['Band taut at the full stretch','1 sec pause at the bottom','Then partials in the lower half'];
+  var t={
+    'Banded Push-ups':['Bodyweight already loads the bottom — go chest to floor','1 sec pause at the bottom','Then 5–8 bottom-half partials'],
+    'Bent-Over Row':['Stand on the band wide (or choke it) so it’s taut with arms hanging','1 sec hang at the bottom, shoulders long','Then 5–8 bottom-half partials'],
+    'Overhand Pulldown':pull,'Underhand Pulldown':pull,'Deep-Stretch Pulldown':pull,'Kneeling Wide-Grip Pulldown':pull,
+    'Overhead Press':['Stand on more band so it’s taut at shoulder height','1 sec pause at the shoulders','Then partials in the bottom half'],
+    'Rear Delts / Face Pull':['Step back until taut with arms reaching straight forward','1 sec pause arms reached long','Then partials in the first half'],
+    'Lateral Raise':lat,
+    'Bicep Curl':curl,'Bayesian Curl':curl,'Hammer Curl':curl,'Spider Curl':curl,'Ball Preacher Curl':curl,
+    'Triceps Pushdown':['Step back so the band pulls hard with elbows bent at the top','1 sec pause at the top, elbows pinned','Then partials in the top half'],
+    'Banded Incline Skull Crusher':ohtri,'Banded Overhead Triceps Extension':ohtri,
+    'Incline Close-Grip Press':press,'Standing Band Chest Press':press,
+    'Chest — Pull-Apart / Fly':['Anchor behind you — step forward until taut with arms wide','1–2 sec pause in the wide stretch','Then 5–8 partials in the wide half'],
+    'Banded Squat':['Band tension fades at the bottom — control the descent','2 sec pause at the bottom, or 1.5 reps','Partials only if knees feel good'],
+    'Banded Bulgarian Split Squat':['Bodyweight loads the bottom — sink deep','1 sec pause at the bottom','Partials only if knees feel good'],
+    'Banded Leg Extension':['Set the band so it’s taut with the knee fully bent','1 sec pause at the bottom','Partials only if knees feel good'],
+    'Banded Hip Thrust':['Move farther from the anchor so it’s taut with hips low','1 sec pause at the bottom','Then bottom-half partials (only if pain-free)'],
+    'Lying Band Leg Curl':legcurl,'Seated Band Leg Curl':legcurl,
+    'Romanian Deadlift (Bilateral)':hinge,'Banded Good Morning':hinge,
+    'Standing Calf Raise':['Full heel drop at the bottom','2 sec pause in the stretch','Then bottom-half partials'],
+    'Elbow — Band Wrist Curl':wrist,'Wrist Curls — Underhand + Overhand':wrist,'Forearm — Band Wrist Extension':wrist,'Forearm Curls — Underhand + Overhand':curl
+  };
+  return t;
+})();
+function dsLoadTipHtml(name){
+  var t=DS_LOADTIPS[name]; if(!t) return '';
+  return '<div class="ds-loadtip"><div class="ds-lt-h">💪 Load the stretch</div>'
+    +'<div class="ds-lt-r"><b>Setup</b> '+t[0]+'</div>'
+    +'<div class="ds-lt-r"><b>Each rep</b> '+t[1]+'</div>'
+    +'<div class="ds-lt-r"><b>Last set</b> '+t[2]+'</div></div>';
+}

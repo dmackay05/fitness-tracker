@@ -1343,3 +1343,8 @@ html body div.app{max-width:480px}
 #panel-today .ds-mtempo-d summary{font-size:11px;color:#888;cursor:pointer;}
 
 #panel-today .ds-mtrans{font-size:11px;color:#888;margin-top:3px;}
+/* v395 stretch-load tips */
+#panel-today .ds-loadtip{margin-top:8px;background:rgba(251,146,60,0.10);border-left:3px solid #fb923c;border-radius:6px;padding:8px 10px;}
+#panel-today .ds-lt-h{font-size:13px;font-weight:700;color:#fdba74;margin-bottom:4px;}
+#panel-today .ds-lt-r{font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px;}
+#panel-today .ds-lt-r b{color:#fdba74;margin-right:4px;}
