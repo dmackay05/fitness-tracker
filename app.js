@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v399 — 2026-10-27";
+var APP_BUILD = "v400 — 2026-10-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -14735,13 +14735,14 @@ function dsGPRestSecs(item){
   return dsIsCompound(item)?90:(typeof DS_REST_SECS!=='undefined'?DS_REST_SECS:60);
 }
 function dsGPTopReps(item){ var m=String(item.rx||'').match(/[×x]\s*(\d+)(?:\s*[–-]\s*(\d+))?/); return m?+(m[2]||m[1]):10; }
-/* v399 rising target: guided sets climb from the bottom of the rx rep range on set 1 to the
-   top on the last set (e.g. 3×10–15 → 10/13/15). Single-number rx (3×12) stays flat. */
+/* v400 open-ended sets: every set targets the TOP of the rx rep range (e.g. 3×10–15 → 15),
+   and the target is a floor, not a cap — the pacer keeps counting past it until you tap
+   Done, so each set lands near failure and real reps get logged (15/13/12 is normal).
+   Single-number rx (3×12) uses the last logged reps or that number. */
 function dsGPRamp(item,setIdx,total){
   var m=String(item.rx||'').match(/[×x]\s*(\d+)\s*[–-]\s*(\d+)/); if(!m) return null;
   var lo=+m[1], hi=+m[2]; if(hi<=lo) return null;
-  if(total<=1) return hi;
-  return Math.round(lo+(hi-lo)*Math.min(setIdx,total-1)/(total-1));
+  return hi;
 }
 function dsGPCtx(){ var raw=dsRawItem(dsGP.id); var item=dsViewOf(raw); var st=dsItemState(dsGP.id); return {raw:raw,item:item,st:st,uni:dsIsUnilateral(item),total:(item.sets||raw.sets||3)}; }
 function dsGPEl(){ var o=document.getElementById('ds-gp'); if(!o){ o=document.createElement('div'); o.id='ds-gp'; document.body.appendChild(o); } return o; }
@@ -14784,7 +14785,7 @@ function dsGPReps(){
   (function tick(){
     if(!dsGP.on||dsGP.state!=='reps')return;
     if(dsGP.paused){ dsGP.t=setTimeout(tick,250); return; }
-    if(left<=0){ pi++; if(pi>=phases.length){ pi=0; } if(pi===0){ dsGP.rep++; if(dsGP.rep>dsGP.target){ dsTPBeep(1200,350); dsTPVib([200,80,200]); dsGPEnd(); return; } document.getElementById('gp-rep').textContent=dsGP.rep; }
+    if(left<=0){ pi++; if(pi>=phases.length){ pi=0; } if(pi===0){ dsGP.rep++; if(dsGP.rep>60){ dsGPEnd(); return; } if(dsGP.rep===dsGP.target+1){ dsTPBeep(1200,350); dsTPVib([200,80,200]); var hh=document.getElementById('gp-hint'); if(hh)hh.textContent='\u2705 Target hit \u2014 keep going until a clean rep won\u2019t happen, then tap Done'; var eb=document.querySelector('#ds-gp .gp-end'); if(eb)eb.textContent='Done'; } document.getElementById('gp-rep').textContent=dsGP.rep; }
       left=phases[pi][1]; var ph=document.getElementById('gp-ph'); ph.textContent=phases[pi][0]; ph.style.color=phases[pi][2]; o.style.setProperty('--gp-c',phases[pi][2]); dsTPBeep(phases[pi][3],180); dsTPVib(pi===0?[120]:[60]); }
     else dsTPBeep(phases[pi][3],40,0.06);
     document.getElementById('gp-n').textContent=left; left--; dsGP.t=setTimeout(tick,1000);
@@ -14792,7 +14793,7 @@ function dsGPReps(){
 }
 function dsGPEnd(fixed){
   dsGPClear(); var c=dsGPCtx(), o=dsGPEl(); o.onclick=null; o.classList.remove('gp-paused');
-  var done=(fixed!=null)?fixed:(dsGP.rep>dsGP.target?dsGP.target:Math.max(0,dsGP.rep-1));
+  var done=(fixed!=null)?fixed:Math.max(0,dsGP.rep-1);
   dsGP.done=Math.max(1,done); dsGP.state='end';
   if(c.uni&&dsGP.side==='Left'){ dsGP.doneL=dsGP.done; dsGP.side='Right'; dsGPSwitch(); return; }
   var last=(c.st.sets.length+1>=c.total), tip=(typeof DS_LOADTIPS!=='undefined')&&(DS_LOADTIPS[c.item.name]||DS_LOADTIPS[c.raw.name]);
