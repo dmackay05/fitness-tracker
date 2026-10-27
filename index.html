@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=402">
+<link rel="stylesheet" href="styles.css?v=403">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -334,6 +334,12 @@
 
     <!-- ════════ MEALS ════════ -->
     <div class="panel" id="panel-meals">
+      <details class="info-sec" data-sec="mealplan">
+        <summary class="info-sec-hd"><span>Meal Plan (2-week)</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
+      <div id="meals-plan"></div>
+        </div>
+      </details>
       <details class="info-sec" data-sec="guides">
         <summary class="info-sec-hd"><span>Food Guides</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
@@ -1089,6 +1095,7 @@
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('log')"><span id="refresh-icon-log">↻</span> Refresh</button></div>
       <div class="past-banner" id="banner-log" style="display:none"><span>&#9888; Editing <strong id="banner-log-lbl"></strong></span><button class="today-btn" onclick="goToToday()">Go to Today</button></div>
 
+      <div class="card" id="mp-today-card" style="margin-bottom:14px"></div>
       <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">🍽 Food</div>
         <div style="font-size:11px;color:#888;margin-bottom:6px">Logging as:</div>
@@ -1915,7 +1922,7 @@
   </div>
 </div>
 
-<script src="app.js?v=402"></script>
+<script src="app.js?v=403"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>

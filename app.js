@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v402 — 2026-10-27";
+var APP_BUILD = "v403 — 2026-10-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1285,7 +1285,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -8021,7 +8021,143 @@ function renderMealsTab(){
   renderWowGuide("meals-wow-guide");
   renderGrocery("meals-grocery");
   miRender();
+  try{ mpRenderPlan(); }catch(e){}
 }
+// ── 2-WEEK FAMILY MEAL PLAN ─────────────────────────────────────────────
+// Rotation anchored to Mon 2026-10-26 = Week 1, Monday. Breakfast and dinner
+// are family meals (family batch + picky-plate notes); lunch and snack are
+// David's. Macros are David's portion, computed from per-ingredient USDA-style
+// values. Base days land ~2,030–2,220 kcal, 175–212 g protein, 41–55 g fiber;
+// on higher-calorie days the Top-ups fill the gap to calGoalForKey().
+var MP_DATA = {"meals": [{"id": "b1", "slot": "Breakfast", "name": "Protein overnight oats", "cal": 555, "protein": 52, "carbs": 66, "fat": 10, "fiber": 13, "mine": "½ cup oats, 1 scoop whey, 1 cup 1% milk, ½ cup Greek yogurt, 1 cup berries, 1 Tbsp chia. Mix the night before.", "family": "Make 5 jars at once; kids' jars can skip the whey and use vanilla yogurt.", "picky": "Plain oats with milk and fruit on the side.", "shop": ["Rolled oats", "Whey protein", "Milk", "Greek yogurt", "Berries (frozen)", "Chia seeds"], "tags": ["make-ahead"]}, {"id": "b2", "slot": "Breakfast", "name": "Veggie egg scramble + toast", "cal": 538, "protein": 44, "carbs": 52, "fat": 17, "fiber": 10, "mine": "2 eggs + ½ cup egg whites scrambled with spinach and peppers, ¼ cup mozzarella, 2 slices whole-wheat toast, an orange.", "family": "Scramble a dozen eggs in one pan; stir veggies into your portion only if the kids won't eat them.", "picky": "Plain scrambled eggs, toast, fruit.", "shop": ["Eggs", "Liquid egg whites", "Spinach", "Bell peppers", "Shredded mozzarella", "Whole-grain bread", "Oranges"], "tags": ["quick"]}, {"id": "b3", "slot": "Breakfast", "name": "Greek yogurt power bowl", "cal": 552, "protein": 57, "carbs": 39, "fat": 21, "fiber": 15, "mine": "1½ cups nonfat Greek yogurt with ½ scoop whey stirred in, 1 cup raspberries, 2 Tbsp ground flax, 1 oz almonds.", "family": "Set out a yogurt bar: yogurt, fruit, granola for the kids.", "picky": "Vanilla yogurt and fruit.", "shop": ["Greek yogurt", "Whey protein", "Raspberries (frozen)", "Ground flax", "Almonds"], "tags": ["quick"]}, {"id": "b4", "slot": "Breakfast", "name": "Family protein pancakes", "cal": 576, "protein": 50, "carbs": 75, "fat": 10, "fiber": 12, "mine": "¾ cup Kodiak-style protein pancake mix made with 1 egg and ½ cup milk, topped with 1 cup berries and ¾ cup Greek yogurt.", "family": "One box of protein pancake mix feeds everyone; serve berries and syrup on the side.", "picky": "Pancakes with syrup, scrambled egg, fruit.", "shop": ["Protein pancake mix", "Eggs", "Milk", "Berries (frozen)", "Greek yogurt"], "tags": ["weekend", "family"]}, {"id": "l1", "slot": "Lunch", "name": "Tuna & white bean salad", "cal": 609, "protein": 44, "carbs": 62, "fat": 22, "fiber": 14, "mine": "1 can tuna, ¾ cup white beans, 2 cups greens, cucumber and tomato, 1 Tbsp olive oil + lemon, 1 oz feta, an apple.", "family": "Lunch is just you on workdays.", "picky": "", "shop": ["Canned tuna", "White beans", "Mixed greens", "Cucumbers", "Cherry tomatoes", "Olive oil", "Lemons", "Feta", "Apples"], "tags": ["no-cook"]}, {"id": "l2", "slot": "Lunch", "name": "Chicken burrito bowl", "cal": 619, "protein": 57, "carbs": 68, "fat": 12, "fiber": 16, "mine": "5 oz batch-cooked chicken, ¾ cup brown rice, ½ cup black beans, peppers and onion, salsa, ¼ avocado.", "family": "Uses the Sunday batch of chicken and rice.", "picky": "", "shop": ["Chicken breast", "Brown rice", "Black beans", "Bell peppers", "Onions", "Salsa", "Avocados"], "tags": ["batch"]}, {"id": "l3", "slot": "Lunch", "name": "Chickpea quinoa salad + shake", "cal": 682, "protein": 56, "carbs": 53, "fat": 28, "fiber": 11, "mine": "¾ cup chickpeas, ½ cup quinoa, 2 hard-boiled eggs, 1 oz feta, cucumber and tomato, ½ Tbsp olive oil + lemon. Whey shake with water on the side.", "family": "Make 2–3 jars at once; keeps 4 days.", "picky": "", "shop": ["Chickpeas", "Quinoa", "Eggs", "Feta", "Cucumbers", "Cherry tomatoes", "Olive oil", "Lemons", "Whey protein"], "tags": ["make-ahead", "meat-light"]}, {"id": "l4", "slot": "Lunch", "name": "Chicken hummus wrap", "cal": 608, "protein": 53, "carbs": 70, "fat": 14, "fiber": 15, "mine": "1 large whole-wheat tortilla, 5 oz chicken, 2 Tbsp hummus, spinach and peppers. Baby carrots and a pear on the side.", "family": "Uses the Sunday chicken batch.", "picky": "", "shop": ["Whole-wheat tortillas", "Chicken breast", "Hummus", "Spinach", "Bell peppers", "Baby carrots", "Pears"], "tags": ["batch"]}, {"id": "l5", "slot": "Lunch", "name": "Chicken & black bean quesadillas", "cal": 657, "protein": 58, "carbs": 69, "fat": 16, "fiber": 14, "mine": "2 whole-wheat tortillas, 4 oz chicken, ½ cup black beans, ¼ cup mozzarella, salsa.", "family": "Weekend family lunch; make a stack on a sheet pan at 425°F.", "picky": "Plain cheese quesadilla.", "shop": ["Whole-wheat tortillas", "Chicken breast", "Black beans", "Shredded mozzarella", "Salsa"], "tags": ["weekend", "family"]}, {"id": "s1", "slot": "Snack", "name": "Protein shake + banana", "cal": 317, "protein": 34, "carbs": 40, "fat": 3, "fiber": 3, "mine": "1 scoop whey in 1 cup 1% milk, a banana.", "family": "", "picky": "", "shop": ["Whey protein", "Milk", "Bananas"], "tags": ["quick"]}, {"id": "s2", "slot": "Snack", "name": "Cottage cheese & raspberries", "cal": 244, "protein": 26, "carbs": 25, "fat": 6, "fiber": 8, "mine": "1 cup 2% cottage cheese with 1 cup raspberries.", "family": "", "picky": "", "shop": ["Cottage cheese", "Raspberries (frozen)"], "tags": ["quick"]}, {"id": "s3", "slot": "Snack", "name": "Greek yogurt, almonds & apple", "cal": 389, "protein": 30, "carbs": 40, "fat": 14, "fiber": 8, "mine": "1 cup Greek yogurt, 1 oz almonds, an apple.", "family": "", "picky": "", "shop": ["Greek yogurt", "Almonds", "Apples"], "tags": ["quick"]}, {"id": "s4", "slot": "Snack", "name": "Edamame + string cheese", "cal": 268, "protein": 25, "carbs": 15, "fat": 14, "fiber": 8, "mine": "1 cup shelled edamame (microwave from frozen) and a string cheese.", "family": "", "picky": "", "shop": ["Edamame (frozen, shelled)", "String cheese"], "tags": ["quick"]}, {"id": "d1", "slot": "Dinner", "name": "Sheet-pan lemon chicken, sweet potato & broccoli", "cal": 692, "protein": 67, "carbs": 59, "fat": 21, "fiber": 14, "mine": "6 oz chicken, 1 sweet potato, 1½ cups broccoli, ½ cup white beans roasted on the pan, olive oil share.", "family": "2½ lb chicken breast, 4 sweet potatoes, 2 heads broccoli, 1 can white beans, 3 Tbsp olive oil, lemon. 425°F, 25 min.", "picky": "Plain chicken and sweet potato.", "shop": ["Chicken breast", "Sweet potatoes", "Broccoli", "White beans", "Olive oil", "Lemons"], "tags": ["sheet-pan"]}, {"id": "d2", "slot": "Dinner", "name": "Beef & black bean taco bowls", "cal": 649, "protein": 48, "carbs": 75, "fat": 18, "fiber": 14, "mine": "4 oz 93% beef, ½ cup black beans, ¾ cup brown rice, ½ cup corn, salsa, 2 Tbsp cheddar, lettuce.", "family": "2 lb 93% ground beef + 2 cans black beans stirred into the taco meat, 3 cups dry brown rice, frozen corn, toppings bar.", "picky": "Plain taco meat (no beans), rice, cheese.", "shop": ["Lean ground beef (93%)", "Black beans", "Brown rice", "Frozen corn", "Salsa", "Shredded cheddar", "Romaine"], "tags": ["tacos"]}, {"id": "d3", "slot": "Dinner", "name": "Whole-wheat spaghetti with lentil meat sauce", "cal": 666, "protein": 46, "carbs": 73, "fat": 22, "fiber": 16, "mine": "2 oz dry whole-wheat spaghetti, ½ cup marinara with 3 oz beef and ½ cup lentils, 2 Tbsp parmesan, side salad.", "family": "1½ lb beef + 1 cup dry lentils simmered in 2 jars marinara; the lentils disappear into the sauce. Use a half-and-half pasta blend if the kids balk.", "picky": "Pasta with butter and parmesan, plain meatballs or meat on the side.", "shop": ["Whole-wheat spaghetti", "Marinara sauce", "Lean ground beef (93%)", "Lentils (dry)", "Parmesan", "Mixed greens", "Olive oil"], "tags": ["pasta"]}, {"id": "d4", "slot": "Dinner", "name": "Parmesan tilapia, quinoa & green beans", "cal": 656, "protein": 59, "carbs": 66, "fat": 19, "fiber": 14, "mine": "6 oz tilapia with parmesan crust, 1 cup quinoa, 1 cup green beans, berries for dessert.", "family": "2½ lb tilapia, 2 cups dry quinoa (or rice for the kids), 2 bags frozen green beans. 400°F, 12–15 min.", "picky": "Plain tilapia or chicken, rice, fruit.", "shop": ["Tilapia fillets", "Parmesan", "Quinoa", "Frozen green beans", "Olive oil", "Berries (frozen)"], "tags": ["fish", "sheet-pan"]}, {"id": "d5", "slot": "Dinner", "name": "White chicken chili", "cal": 598, "protein": 67, "carbs": 49, "fat": 14, "fiber": 13, "mine": "5 oz chicken, ¾ cup white beans, corn, peppers and onion, topped with Greek yogurt, cheese, ¼ avocado.", "family": "2 lb chicken, 3 cans white beans, 1 bag frozen corn, onion, green chiles, broth. Slow cooker 6 hr or stovetop 40 min.", "picky": "Shredded chicken with cheese over rice.", "shop": ["Chicken breast", "White beans", "Frozen corn", "Onions", "Bell peppers", "Greek yogurt", "Shredded mozzarella", "Avocados", "Chicken broth"], "tags": ["soup"]}, {"id": "d6", "slot": "Dinner", "name": "Breakfast-for-dinner veggie egg bake", "cal": 647, "protein": 56, "carbs": 61, "fat": 20, "fiber": 12, "mine": "Your slice = 2 eggs + ½ cup egg whites + ½ cup cottage cheese with veggies and mozzarella; 2 slices whole-wheat toast, berries.", "family": "9×13 pan: 12 eggs, 2 cups egg whites, 2 cups cottage cheese, 3 cups chopped veggies, 1½ cups mozzarella. 375°F, 35–40 min.", "picky": "Scrambled eggs, toast, fruit.", "shop": ["Eggs", "Liquid egg whites", "Cottage cheese", "Spinach", "Bell peppers", "Shredded mozzarella", "Whole-grain bread", "Berries (frozen)"], "tags": ["breakfast-for-dinner"]}, {"id": "d7", "slot": "Dinner", "name": "Chicken & veggie fried brown rice", "cal": 675, "protein": 59, "carbs": 60, "fat": 21, "fiber": 12, "mine": "¾ cup brown rice, 4 oz chicken, 1 egg, 1 cup peas and carrots, ½ cup edamame, a little soy sauce.", "family": "Cook the rice a day ahead. 2 lb chicken, 5 eggs, 2 bags peas and carrots, 1 bag edamame.", "picky": "Plain rice with egg and chicken pulled out before the veg go in.", "shop": ["Brown rice", "Chicken breast", "Eggs", "Frozen peas & carrots", "Edamame (frozen, shelled)", "Soy sauce"], "tags": ["chicken-rice"]}, {"id": "d8", "slot": "Dinner", "name": "Sheet-pan chicken fajitas", "cal": 649, "protein": 64, "carbs": 63, "fat": 16, "fiber": 15, "mine": "5 oz chicken with 1½ cups peppers and onion, 1 whole-wheat tortilla, ½ cup black beans, salsa, Greek yogurt as sour cream.", "family": "2 lb chicken strips, 4 peppers, 2 onions, fajita seasoning, 2 cans black beans. 425°F, 20 min.", "picky": "Plain chicken in a tortilla with cheese.", "shop": ["Chicken breast", "Bell peppers", "Onions", "Olive oil", "Whole-wheat tortillas", "Black beans", "Salsa", "Greek yogurt"], "tags": ["sheet-pan", "tacos"]}, {"id": "d9", "slot": "Dinner", "name": "Spinach-ricotta baked ziti", "cal": 635, "protein": 45, "carbs": 58, "fat": 27, "fiber": 10, "mine": "2 oz dry chickpea pasta, ½ cup marinara, ⅓ cup ricotta + ½ cup cottage cheese, mozzarella, spinach; side salad.", "family": "1 lb chickpea pasta + 1 lb regular ziti mixed, 2 jars marinara, 15 oz ricotta, 2 cups cottage cheese, 10 oz frozen spinach, 2 cups mozzarella. 375°F, 25 min.", "picky": "A plain-cheese corner of the pan without spinach.", "shop": ["Chickpea pasta", "Ziti", "Marinara sauce", "Ricotta", "Cottage cheese", "Shredded mozzarella", "Frozen spinach", "Mixed greens"], "tags": ["pasta", "meat-light"]}, {"id": "d10", "slot": "Dinner", "name": "Beef & bean chili", "cal": 583, "protein": 47, "carbs": 66, "fat": 15, "fiber": 17, "mine": "3 oz beef, ¾ cup kidney/black beans, tomatoes, peppers and onion, cheddar, Greek yogurt, 2 warm corn tortillas.", "family": "1½ lb beef, 4 cans beans, 2 cans diced tomatoes, onion, peppers, chili spices. Leftovers freeze well.", "picky": "Plain beef and beans over rice with cheese.", "shop": ["Lean ground beef (93%)", "Kidney beans", "Black beans", "Diced tomatoes", "Onions", "Bell peppers", "Shredded cheddar", "Greek yogurt", "Corn tortillas"], "tags": ["soup"]}, {"id": "d11", "slot": "Dinner", "name": "Tilapia fish tacos with slaw", "cal": 604, "protein": 61, "carbs": 66, "fat": 13, "fiber": 18, "mine": "6 oz tilapia, 3 corn tortillas, 1 cup cabbage slaw with lime-yogurt dressing, ½ cup black beans, ¼ avocado, salsa.", "family": "2½ lb tilapia, 1 bag coleslaw mix, 2 cans black beans, corn tortillas. 400°F, 12 min.", "picky": "Plain fish (or chicken) in a tortilla with cheese.", "shop": ["Tilapia fillets", "Corn tortillas", "Coleslaw mix", "Greek yogurt", "Limes", "Black beans", "Avocados", "Salsa"], "tags": ["fish", "tacos"]}, {"id": "d12", "slot": "Dinner", "name": "Chicken, white bean & barley soup", "cal": 621, "protein": 53, "carbs": 65, "fat": 16, "fiber": 13, "mine": "4 oz chicken, ½ cup white beans, ½ cup barley, carrots/celery/onion, parmesan, a slice of whole-wheat bread.", "family": "2 lb chicken, 2 cans white beans, 1 cup pearl barley, 2 cups each carrot/celery/onion, 2 boxes broth.", "picky": "Chicken, carrots and broth with noodles or rice instead of barley.", "shop": ["Chicken breast", "White beans", "Pearl barley", "Carrots", "Celery", "Onions", "Chicken broth", "Parmesan", "Whole-grain bread"], "tags": ["soup"]}, {"id": "d13", "slot": "Dinner", "name": "Egg & bean breakfast burritos", "cal": 714, "protein": 53, "carbs": 78, "fat": 21, "fiber": 16, "mine": "2 eggs + ¾ cup egg whites scrambled with peppers and onion, ½ cup black beans, cheddar and salsa in 2 whole-wheat tortillas.", "family": "18 eggs or eggs + a carton of whites, 2 cans black beans, tortillas, cheese. Extras freeze for breakfasts.", "picky": "Egg-and-cheese burrito, fruit.", "shop": ["Eggs", "Liquid egg whites", "Black beans", "Whole-wheat tortillas", "Shredded cheddar", "Salsa", "Bell peppers", "Onions"], "tags": ["breakfast-for-dinner"]}, {"id": "d14", "slot": "Dinner", "name": "Greek chicken rice bowls", "cal": 695, "protein": 64, "carbs": 60, "fat": 21, "fiber": 9, "mine": "5 oz lemon-oregano chicken, ¾ cup brown rice, ½ cup chickpeas, cucumber and tomato, 1 oz feta, yogurt-cucumber sauce.", "family": "2 lb chicken, 3 cups dry rice, 1 can chickpeas, cucumbers, tomatoes, feta, plain yogurt for sauce.", "picky": "Chicken, rice and cucumber slices, no sauce.", "shop": ["Chicken breast", "Brown rice", "Chickpeas", "Cucumbers", "Cherry tomatoes", "Feta", "Greek yogurt", "Olive oil", "Lemons"], "tags": ["chicken-rice"]}], "topups": [{"id": "t1", "name": "PB toast", "note": "1 slice whole-wheat toast + 2 Tbsp peanut butter", "cal": 270, "protein": 11, "carbs": 21, "fat": 17, "fiber": 4}, {"id": "t2", "name": "Almonds", "note": "1 oz almonds", "cal": 164, "protein": 6, "carbs": 6, "fat": 14, "fiber": 4}, {"id": "t3", "name": "Extra ½ cup brown rice", "note": "add to lunch or dinner (¾ cup)", "cal": 164, "protein": 3, "carbs": 34, "fat": 1, "fiber": 3}, {"id": "t4", "name": "Popcorn", "note": "3 cups air-popped", "cal": 93, "protein": 3, "carbs": 19, "fat": 1, "fiber": 4}, {"id": "t5", "name": "Banana", "note": "1 medium", "cal": 105, "protein": 1, "carbs": 27, "fat": 0, "fiber": 3}], "rotation": [[["b1", "l1", "s1", "d1"], ["b2", "l2", "s2", "d2"], ["b3", "l3", "s1", "d3"], ["b1", "l4", "s4", "d4"], ["b2", "l1", "s3", "d5"], ["b4", "l5", "s2", "d6"], ["b2", "l2", "s1", "d7"]], [["b3", "l2", "s1", "d8"], ["b1", "l3", "s2", "d9"], ["b2", "l4", "s1", "d10"], ["b3", "l1", "s4", "d11"], ["b1", "l2", "s3", "d12"], ["b4", "l5", "s2", "d13"], ["b3", "l4", "s1", "d14"]]]};
+var MP_ANCHOR = "2026-10-26";
+var MP_SLOTS = ["Breakfast","Lunch","Snack","Dinner"];
+var MP_DOW = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+var MP_BY = {}; MP_DATA.meals.forEach(function(m){ MP_BY[m.id]=m; });
+var mpViewWeek = null, mpViewDay = null;
+function mpParse(k){ var p=k.split("-"); return new Date(+p[0],+p[1]-1,+p[2]); }
+function mpWeekOff(){ return parseInt(store.get("ft_mp_weekoff"))===1?1:0; }
+function mpPos(dateKey){
+  var days=Math.round((mpParse(dateKey)-mpParse(MP_ANCHOR))/86400000);
+  var dow=((days%7)+7)%7, wk=Math.floor(days/7);
+  return {week:((((wk+mpWeekOff())%2)+2)%2), day:dow};
+}
+function mpSwaps(){ try{ return JSON.parse(store.get("ft_mp_swaps")||"{}")||{}; }catch(e){ return {}; } }
+function mpMealsAt(week,day,dateKey){
+  var ids=MP_DATA.rotation[week][day], sw=dateKey?mpSwaps():{};
+  return ids.map(function(id,i){
+    var slot=MP_SLOTS[i], s=dateKey&&sw[dateKey+"|"+slot];
+    return {slot:slot, meal:MP_BY[(s&&MP_BY[s])?s:id], swapped:!!(s&&MP_BY[s]&&s!==id)};
+  });
+}
+function mpSum(list){
+  return list.reduce(function(a,x){ var m=x.meal||x; ["cal","protein","carbs","fat","fiber"].forEach(function(k){a[k]+=m[k]||0;}); return a; },{cal:0,protein:0,carbs:0,fat:0,fiber:0});
+}
+function mpIsLogged(day,m,slot){
+  return (day.foods||[]).some(function(f){ return f.mpId===m.id || (f.name===m.name && (!f.mealTag||f.mealTag===slot)); });
+}
+function mpLog(id,slot){
+  var m=MP_BY[id]||MP_DATA.topups.filter(function(t){return t.id===id;})[0]; if(!m) return;
+  var day=getDay();
+  day.foods.push({name:m.name,cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,fiber:m.fiber,
+    id:Date.now().toString()+Math.floor(Math.random()*1000), mealTag:slot, mpId:m.id});
+  saveDay(day); renderAll();
+}
+function mpSwap(dateKey,slot,id){
+  var sw=mpSwaps(), pos=mpPos(dateKey), def=MP_DATA.rotation[pos.week][pos.day][MP_SLOTS.indexOf(slot)];
+  if(!id||id===def) delete sw[dateKey+"|"+slot]; else sw[dateKey+"|"+slot]=id;
+  try{ store.set("ft_mp_swaps",JSON.stringify(sw)); }catch(e){}
+  renderAll(); if(typeof mpRenderPlan==="function") mpRenderPlan();
+}
+function mpTopups(gap){
+  var out=[], left=gap;
+  MP_DATA.topups.forEach(function(t){ if(left>=t.cal*0.7){ out.push(t); left-=t.cal; } });
+  return out;
+}
+function mpStatLine(s,goal){
+  return '<span style="color:#d8d8d0">'+s.cal+'</span>'+(goal?'<span style="color:#888"> / '+goal+'</span>':'')+' kcal · '+
+    '<span style="color:#5eead4">'+s.protein+'g P</span> · '+s.carbs+'g C · '+s.fat+'g F · <span style="color:#4ade80">'+s.fiber+'g fiber</span>';
+}
+function mpRenderToday(){
+  var el=document.getElementById("mp-today-card"); if(!el) return;
+  var key=activeDate, pos=mpPos(key), list=mpMealsAt(pos.week,pos.day,key), day=getDay(key);
+  var goal=calGoalForKey(key), s=mpSum(list), gap=goal-s.cal;
+  var rows=list.map(function(x){
+    var m=x.meal, done=mpIsLogged(day,m,x.slot);
+    var opts=MP_DATA.meals.filter(function(o){return o.slot===x.slot;}).map(function(o){
+      return '<option value="'+o.id+'"'+(o.id===m.id?' selected':'')+'>'+o.name+'</option>'; }).join("");
+    return '<div style="padding:9px 0;border-bottom:1px solid #ffffff0d">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
+        '<div style="min-width:0"><div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+(x.swapped?' · swapped':'')+'</div>'+
+        '<div style="font-size:14px;color:#e8e8e0;font-weight:600">'+m.name+'</div>'+
+        '<div style="font-size:11px;color:#888">'+m.cal+' kcal · '+m.protein+'g P · '+m.fiber+'g fiber</div></div>'+
+        (done?'<span class="tag" style="background:#4ade8022;color:#4ade80;border:1px solid #4ade8055;flex-shrink:0">✓ Logged</span>'
+             :'<button class="bs" style="flex-shrink:0" onclick="mpLog(\''+m.id+'\',\''+x.slot+'\')">Log</button>')+
+      '</div>'+
+      '<details style="margin-top:4px"><summary style="font-size:11px;color:#8b8b9c;cursor:pointer">Details &amp; swap</summary>'+
+        '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
+        (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
+        (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
+        '<select style="margin-top:6px;width:100%" onchange="mpSwap(\''+key+'\',\''+x.slot+'\',this.value)">'+opts+'</select>'+
+      '</details></div>';
+  }).join("");
+  var tu="";
+  if(gap>120){
+    tu='<div style="margin-top:10px;font-size:12px;color:#fbbf24">Plan is '+gap+' kcal under today\'s target. Top-ups:</div>'+
+      mpTopups(gap).map(function(t){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;color:#9a9d8c">'+
+        '<span><b style="color:#d8d8d0">'+t.name+'</b> · '+t.note+' · '+t.cal+' kcal, '+t.protein+'g P</span>'+
+        '<button class="bs" onclick="mpLog(\''+t.id+'\',\'Snack\')">Log</button></div>'; }).join("");
+  } else if(gap<-120){
+    tu='<div style="margin-top:10px;font-size:12px;color:#fbbf24">Plan is '+(-gap)+' kcal over today\'s target. Trim the snack or use ½ the rice/pasta at dinner.</div>';
+  }
+  el.innerHTML='<div class="card-title" style="margin-bottom:2px">📋 Today\'s Meal Plan</div>'+
+    '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:4px">Week '+(pos.week+1)+' · '+MP_DOW[pos.day]+' · '+calGoalLabelForKey(key)+'</div>'+
+    rows+
+    '<div style="font-size:12px;margin-top:8px;color:#9a9d8c">Plan total: '+mpStatLine(s,goal)+'</div>'+tu;
+}
+function mpSetView(w,d){ if(w!=null) mpViewWeek=w; if(d!=null) mpViewDay=d; mpRenderPlan(); }
+function mpToggleWeekOff(){ try{ store.set("ft_mp_weekoff", mpWeekOff()?"0":"1"); }catch(e){} mpViewWeek=null; renderAll(); mpRenderPlan(); }
+function mpAddGroceries(w){
+  var c=grCustom(), base={}; GROCERY_LIST.forEach(function(g){ g.items.forEach(function(n){ base[n.replace(/&amp;/g,"&").toLowerCase()]=1; }); });
+  var added=0;
+  MP_DATA.rotation[w].forEach(function(ids){ ids.forEach(function(id){ MP_BY[id].shop.forEach(function(n){
+    if(c.indexOf(n)<0 && !base[n.toLowerCase()]){ c.push(n); added++; } }); }); });
+  try{ store.set("ft_grocery_custom",JSON.stringify(c)); }catch(e){}
+  renderGrocery("meals-grocery");
+  var b=document.getElementById("mp-gr-btn"); if(b){ b.textContent=added?("Added "+added+" items"):"Already on list"; setTimeout(function(){ b.textContent="Add Week "+(w+1)+" to grocery list"; },1800); }
+}
+function mpRenderPlan(){
+  var el=document.getElementById("meals-plan"); if(!el) return;
+  var now=mpPos(todayKey());
+  if(mpViewWeek==null) mpViewWeek=now.week;
+  if(mpViewDay==null) mpViewDay=now.day;
+  var w=mpViewWeek, d=mpViewDay, list=mpMealsAt(w,d,null), s=mpSum(list);
+  function chip(lbl,on,fn){ return '<span class="tag" style="cursor:pointer;background:'+(on?"#4ade8022":"#88888816")+';color:'+(on?"#4ade80":"#aaa")+';border:1px solid '+(on?"#4ade8055":"#88888830")+'" onclick="'+fn+'">'+lbl+'</span>'; }
+  var wk=[0,1].map(function(i){ return chip("Week "+(i+1)+(i===now.week?" · now":""),i===w,"mpSetView("+i+",null)"); }).join(" ");
+  var dy=MP_DOW.map(function(n,i){ return chip(n.slice(0,3)+(w===now.week&&i===now.day?" •":""),i===d,"mpSetView(null,"+i+")"); }).join(" ");
+  var cards=list.map(function(x){ var m=x.meal;
+    return '<div class="card" style="margin-top:10px">'+
+      '<div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+'</div>'+
+      '<div class="card-title" style="margin:2px 0 4px">'+m.name+'</div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:6px">'+m.cal+' kcal · '+m.protein+'g P · '+m.carbs+'g C · '+m.fat+'g F · '+m.fiber+'g fiber</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
+      (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
+      (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
+    '</div>'; }).join("");
+  el.innerHTML='<div class="card">'+
+      '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:10px">Two-week rotation. Breakfast and dinner feed the family; lunch and snack are yours. Numbers are your portion. Log meals from the Log tab.</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+wk+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+dy+'</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;margin-top:10px">Day total: '+mpStatLine(s,0)+'</div>'+
+      '<div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px">Base days run about 2,050–2,200 kcal. On higher targets (maintenance, bulk), the Log tab suggests top-ups to close the gap. Fiber runs 40–55 g; if that\'s a big jump, ramp up over 1–2 weeks and drink more water.</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+
+        '<button class="bs" id="mp-gr-btn" onclick="mpAddGroceries('+w+')">Add Week '+(w+1)+' to grocery list</button>'+
+        '<button class="bs" onclick="mpToggleWeekOff()">Swap which week is current</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#888;line-height:1.5;margin-top:8px">Sunday prep: batch-cook 2–3 lb chicken and a pot of brown rice for weekday lunches.</div>'+
+    '</div>'+cards;
+}
+
 
 // ── MY PLAN ───────────────────────────────────────────────────────────
 // The plan is loaded from an external JSON file at runtime, not hardcoded
