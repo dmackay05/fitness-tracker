@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v403 — 2026-10-27";
+var APP_BUILD = "v404 — 2026-10-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -146,7 +146,7 @@ var GOALS = {
   calActive:   parseInt(store.get('ft_cal_active'))   || 2250,
   calRide:     parseInt(store.get('ft_cal_ride'))      || 2350,
   calRecovery: parseInt(store.get('ft_cal_recovery'))  || 2200,
-  calMaint:    parseInt(store.get('ft_cal_maint'))     || 2600,
+  calMaint:    parseInt(store.get('ft_cal_maint'))     || 0, // v404: no stale 2600 default; see dsMaintFallback()
   protein: parseInt(store.get('ft_protein')) || 170,
   carbs:   parseInt(store.get('ft_carbs'))   || 200,
   fat:     parseInt(store.get('ft_fat'))     || 65,
@@ -196,18 +196,95 @@ function dsDaysOfType(t){
   order.forEach(function(d){ var dt=map&&map[d]?map[d]:(DAY_TYPE_MAP[idx[d]]||'active'); if(dt===t) res.push(names[d]); });
   return res.length?res.join(' \u00b7 '):'none';
 }
+// ── CALORIE GOAL MODE — one maintenance number drives every target ──────
+// v404: every calorie target in the app is built the same way:
+//   measured maintenance  +  goal offset (cut / recomp / gain)  +  small day-type nudge.
+// The old fixed day-type numbers (2050/2200/2250/2350), the stale 2600 default,
+// and the separate Maintenance/Bulk toggles each told a different story; they're
+// folded into this. Day nudges average to zero across the week, so the weekly
+// average equals maintenance + goal offset exactly.
+var GOAL_MODES = {
+  cut:    {label:'Lean cut', short:'Cut',    off:-300, col:'#5eead4',
+           blurb:'About 300 kcal under maintenance — roughly 0.5–0.6 lb/week, slow enough to keep building muscle while belly fat comes down.'},
+  recomp: {label:'Recomp',   short:'Recomp', off:0,    col:'#a78bfa',
+           blurb:'At maintenance. Fat and muscle trade slowly; the scale stays flat while the waist shrinks.'},
+  gain:   {label:'Lean gain',short:'Gain',   off:250,  col:'#fb923c',
+           blurb:'About 250 kcal over maintenance — roughly 0.25–0.5 lb/week. Fastest muscle gain, some fat comes with it.'}
+};
+var DAY_CAL_NUDGE = {rest:-150, recovery:-50, active:40, ride:40}; // Sun -150, Wed -50, 5 training days +40 → averages to 0
+var GOAL_MODE = store.get('ft_goal_mode') || null;
+(function migrateGoalMode(){
+  if(GOAL_MODE && GOAL_MODES[GOAL_MODE]) return;
+  // First run on v404: carry forward whatever the old toggles implied.
+  var bulkOn=!!store.get('ft_bulk_start');
+  GOAL_MODE = bulkOn ? 'gain' : 'recomp';
+  try{ store.set('ft_goal_mode', GOAL_MODE); store.remove('ft_bulk_start'); store.remove('ft_maint_start'); }catch(e){}
+})();
+function dsGoalMode(){ return GOAL_MODES[GOAL_MODE] ? GOAL_MODE : 'recomp'; }
+function dsSetGoalMode(m){
+  if(!GOAL_MODES[m]) return;
+  GOAL_MODE=m; store.set('ft_goal_mode', m);
+  try{ dsQueueConfigPush(); }catch(e){}
+  try{ renderAll(); }catch(e){}
+  dsRenderGoalUI();
+  toast(GOAL_MODES[m].label+' — targets updated');
+}
+// Fallback when there isn't enough data for a measured number: the last
+// measured value we saw, else the weekly average of the old day-type settings.
+function dsMaintFallback(){
+  var s=parseInt(store.get('ft_cal_maint')); if(s>0) return s;
+  return Math.round((GOALS.calRest+GOALS.calRecovery+4*GOALS.calActive+GOALS.calRide)/7);
+}
+var _dsBaseMaintGuard=false;
+function dsBaseMaint(){
+  if(_dsBaseMaintGuard) return dsMaintFallback();
+  _dsBaseMaintGuard=true;
+  try{
+    var r=measuredTDEE();
+    if(r && r.ok && r.tdee){
+      if(GOALS.calMaint!==r.tdee){ GOALS.calMaint=r.tdee; try{ store.set('ft_cal_maint', r.tdee); }catch(e){} }
+      return r.tdee;
+    }
+  }catch(e){}
+  finally{ _dsBaseMaintGuard=false; }
+  return dsMaintFallback();
+}
+function dsGoalCalFor(dateKey){
+  var t=dayTypeForKey(dateKey), m=GOAL_MODES[dsGoalMode()];
+  return Math.round((dsBaseMaint()+m.off+(DAY_CAL_NUDGE[t]||0))/10)*10;
+}
 function calGoalForKey(dateKey){
-  if(dsBulkActive()) return dsBulkTargetCal();
-  if(dsMaintActive()) return dsMaintTargetCal();
-  var t = dayTypeForKey(dateKey);
-  if(t==="rest") return GOALS.calRest;
-  if(t==="ride") return GOALS.calRide;
-  if(t==="recovery") return GOALS.calRecovery;
-  return GOALS.calActive;
+  return dsGoalCalFor(dateKey);
 }
 function calGoalLabelForKey(dateKey){
-  if(dsBulkActive()) return "Bulk phase";
-  if(dsMaintActive()) return "Maintenance mode";
+  var m=GOAL_MODES[dsGoalMode()];
+  var t = dayTypeForKey(dateKey);
+  var dl = t==="rest"?"rest day":(t==="ride"?(dsGuestMode()?"long cardio day":"Saturday"):(t==="recovery"?"recovery day":"training day"));
+  return m.label+" \u00b7 "+dl;
+}
+function dsRenderGoalUI(){
+  var sel=document.getElementById('ds-goal-mode'), pv=document.getElementById('ds-goal-preview');
+  var mk=dsGoalMode(), m=GOAL_MODES[mk], base=dsBaseMaint();
+  if(sel){
+    sel.innerHTML=Object.keys(GOAL_MODES).map(function(k){
+      var g=GOAL_MODES[k], on=k===mk;
+      return '<button type="button" onclick="dsSetGoalMode(\''+k+'\')" style="flex:1;padding:10px 6px;border-radius:10px;border:1px solid '+(on?g.col:'#333')+';background:'+(on?'rgba(255,255,255,.06)':'transparent')+';color:'+(on?g.col:'#aaa')+';font-family:\'DM Mono\',monospace;font-size:12px;cursor:pointer">'+g.label+'<br><span style="font-size:10px;opacity:.8">'+(g.off===0?'\u00b10':(g.off>0?'+':'\u2212')+Math.abs(g.off))+' kcal</span></button>';
+    }).join('');
+  }
+  if(pv){
+    var r=null; try{ r=measuredTDEE(); }catch(e){}
+    var src=(r&&r.ok)?('measured maintenance \u2248'+base+' kcal'):('estimated maintenance '+base+' kcal (not enough data for a measured number yet)')
+    var row=function(lbl,t){ return '<div style="display:flex;justify-content:space-between"><span>'+lbl+'</span><b style="color:#f0f0f0">'+Math.round((base+m.off+(DAY_CAL_NUDGE[t]||0))/10)*10+'</b></div>'; };
+    pv.innerHTML='<div style="color:'+m.col+';margin-bottom:6px">'+m.blurb+'</div>'
+      +'<div style="color:#888;margin-bottom:6px">Built from your '+src+(m.off===0?'':' '+(m.off>0?'+ '+m.off:'\u2212 '+Math.abs(m.off)))+'. Moves automatically as that number updates.</div>'
+      +row('Training days ('+dsDaysOfType('active')+')','active')
+      +(dsDaysOfType('ride')!=='none'?row('Saturday','ride'):'')
+      +row('Recovery ('+dsDaysOfType('recovery')+')','recovery')
+      +row('Rest ('+dsDaysOfType('rest')+')','rest')
+      +'<div style="color:#8b8b9c;margin-top:6px">Weekly average: <b style="color:#f0f0f0">'+Math.round(base+m.off)+'</b> kcal. Protein stays at '+GOALS.protein+' g every day.</div>';
+  }
+}
+function _legacyCalGoalLabelForKey(dateKey){
   var t = dayTypeForKey(dateKey);
   if(t==="rest") return "Rest day";
   if(t==="ride") return dsGuestMode()?"Long cardio day":"Ride day";
@@ -268,18 +345,18 @@ function dsMaintDaysElapsed(){
   var ms = Date.now() - keyToDate(MAINT_START).getTime();
   return Math.floor(ms/86400000);
 }
-function dsMaintActive(){ return !!MAINT_START; }
+function dsMaintActive(){ return false; } // v404: folded into Goal Mode (Recomp)
 // Live measured maintenance when there's enough data to trust it; otherwise
 // falls back to the stored/manual calMaint figure. Guards against
 // measuredTDEE() -> intakeDaysDetail() -> calGoalForKey() -> here recursion.
 var _dsMaintTdeeGuard = false;
 function dsMaintTargetCal(){
-  if(_dsMaintTdeeGuard) return GOALS.calMaint||2600;
+  if(_dsMaintTdeeGuard) return dsMaintFallback();
   _dsMaintTdeeGuard = true;
   var cal;
   try{
     var r = measuredTDEE();
-    cal = (r && r.ok && r.tdee) ? r.tdee : (GOALS.calMaint||2600);
+    cal = (r && r.ok && r.tdee) ? r.tdee : dsMaintFallback();
   } finally { _dsMaintTdeeGuard = false; }
   return cal;
 }
@@ -320,15 +397,15 @@ function dsBulkDaysElapsed(){
   var ms = Date.now() - keyToDate(BULK_START).getTime();
   return Math.floor(ms/86400000);
 }
-function dsBulkActive(){ return !!BULK_START; }
+function dsBulkActive(){ return false; } // v404: folded into Goal Mode (Lean gain)
 var _dsBulkTdeeGuard = false;
 function dsBulkTargetCal(){
-  if(_dsBulkTdeeGuard) return (GOALS.calMaint||2600)+BULK_SURPLUS;
+  if(_dsBulkTdeeGuard) return dsMaintFallback()+BULK_SURPLUS;
   _dsBulkTdeeGuard = true;
   var cal;
   try{
     var r = measuredTDEE();
-    cal = (r && r.ok && r.tdee) ? r.tdee : (GOALS.calMaint||2600);
+    cal = (r && r.ok && r.tdee) ? r.tdee : dsMaintFallback();
   } finally { _dsBulkTdeeGuard = false; }
   return cal + BULK_SURPLUS;
 }
@@ -496,7 +573,7 @@ var TREND_METRICS=[
   {key:"thighs",  label:"Thighs",   unit:"in",  dir:"lower",   color:"#34d399", get:function(d){return _meas(d,"thighs");}},
   {key:"neck",    label:"Neck",     unit:"in",  dir:"lower",   color:"#60a5fa", get:function(d){return _meas(d,"neck");}},
   {key:"biceps",  label:"Biceps",   unit:"in",  dir:"higher",  color:"#c084fc", get:function(d){return _meas(d,"biceps");}},
-  {key:"cal",     label:"Calories", unit:"kcal",dir:"neutral", color:"#5eead4", goal:function(){return GOALS.calActive||GOALS.cal||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.cal||0);},0):null;}},
+  {key:"cal",     label:"Calories", unit:"kcal",dir:"neutral", color:"#5eead4", goal:function(){return calGoalForKey(todayKey())||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.cal||0);},0):null;}},
   {key:"protein", label:"Protein",  unit:"g",   dir:"higher",  color:"#fbbf24", goal:function(){return GOALS.protein||0;}, get:function(d){return (d.foods&&d.foods.length)?d.foods.reduce(function(a,x){return a+(+x.protein||0);},0):null;}},
   {key:"fiber",   label:"Fiber",    unit:"g",   dir:"higher",  color:"#4ade80", goal:function(){return GOALS.fiber||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.fiber||0);},0);return s>0?Math.round(s*10)/10:null;}},
   {key:"sodium",  label:"Sodium",   unit:"mg",  dir:"lower",   color:"#f472b6", goal:function(){return GOALS.sodium||0;}, get:function(d){if(!d.foods||!d.foods.length)return null;var s=d.foods.reduce(function(a,x){return a+(+x.sodium||0);},0);return s>0?Math.round(s):null;}},
@@ -725,7 +802,11 @@ function measuredTDEE(){
   // Cheap memo: calGoalForKey() and several panels ask for this in one render.
   var now=Date.now();
   if(_tdeeCache && _tdeeCache.day===todayKey() && now-_tdeeCache.t<3000) return _tdeeCache.r;
-  var r=_measuredTDEEUncached();
+  // While computing, calorie goals (used only for the day-completeness floor)
+  // come from the fallback maintenance, so goals and maintenance never recurse.
+  var _prevGuard=_dsBaseMaintGuard; _dsBaseMaintGuard=true;
+  var r;
+  try{ r=_measuredTDEEUncached(); } finally { _dsBaseMaintGuard=_prevGuard; }
   _tdeeCache={day:todayKey(), t:now, r:r};
   return r;
 }
@@ -1285,7 +1366,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI();}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} }
+function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){}}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -1468,6 +1549,10 @@ function renderWeightTrend(){
   el.innerHTML=h;
 }
 // Measured maintenance from intake vs weight change. Hidden until it can be trusted.
+function dsGoalLineHtml(target){
+  var m=GOAL_MODES[dsGoalMode()];
+  return '<div style="margin-top:6px;color:'+m.col+';line-height:1.45">Goal: <b>'+m.label+'</b> ('+(m.off===0?'at maintenance':(m.off>0?'+'+m.off:'\u2212'+Math.abs(m.off))+' kcal')+'). Today\'s target: <b>'+target+'</b>. Change it in Settings \u2192 Nutrition.</div>';
+}
 function renderTdeePanel(){
   var el=document.getElementById("dash-tdee"); if(!el) return;
   var r=measuredTDEE();
@@ -1486,10 +1571,10 @@ function renderTdeePanel(){
     // them. Show the carried-forward estimate as a range, not a confident number.
     var chk=r.checks.filter(function(c){return c.ok;}).map(function(c){return c.days+'-day: '+c.tdee;}).join(' · ');
     var hs='<div><b style="color:#fbbf24;font-size:15px">Settling — likely '+r.spreadLo+'–'+r.spreadHi+' kcal</b></div>'
-     +(r.smoothed?'<div style="color:#888;margin-top:3px;line-height:1.45">Smoothed estimate: <b>≈'+r.tdee+' kcal</b>. This is the number Maintenance/Bulk mode uses; it moves slowly on purpose.</div>':'')
+     +(r.smoothed?'<div style="color:#888;margin-top:3px;line-height:1.45">Smoothed estimate: <b>≈'+r.tdee+' kcal</b>. Every calorie target in the app is built from this one number; it moves slowly on purpose.</div>':'')
      +'<div style="color:#888;margin-top:3px;line-height:1.45">Different window lengths disagree ('+chk+'). That almost always means a few pounds of water came on or off inside the shorter windows and are being read as fat. '+trendTxt+'</div>'
      +'<div style="margin-top:6px;color:#8b8b9c;line-height:1.45">Judge by the 7-day average for now. This tightens as the swing ages out of the windows.</div>';
-    if(dsMaintActive()||dsBulkActive()) hs+='<div style="margin-top:6px;color:#888;line-height:1.45">'+(dsBulkActive()?'Bulk':'Maintenance')+' mode is on and uses the smoothed estimate.</div>';
+    hs+=dsGoalLineHtml(target);
     if(r.anchored) hs+='<div style="margin-top:6px;color:#888;line-height:1.45">Held within \u00b1'+TDEE_ANCHOR_BAND+' kcal of the last reliable reading ('+r.anchored+' kcal, '+(r.anchorAge===0?'today':r.anchorAge+' days ago')+') while this settles.</div>';
     hs+=tdeeDayListHtml(r,false);
     el.innerHTML=hs; return;
@@ -1513,9 +1598,7 @@ function renderTdeePanel(){
   h+='<div style="color:#8b8b9c;margin-top:4px;line-height:1.45">Mean-based estimate: '+r.tdeeMean+' kcal'
    +(spread>=100?' \u2014 a '+Math.round(spread)+' kcal gap, which means a few low days are still skewing the average. Trust the median.'
                 :' \u2014 within '+Math.round(spread)+' kcal of the median, so the logging looks consistent.')+'</div>';
-  if(dsMaintActive()||dsBulkActive()) h+='<div style="margin-top:6px;color:#888;line-height:1.45">'+(dsBulkActive()?'Bulk phase is on, so today\'s target is this number + '+BULK_SURPLUS+' kcal':'Maintenance mode is on, so today\'s target is this number')+' and moves with it as new data comes in.</div>';
-  else if(gap>0) h+='<div style="margin-top:6px;color:#5eead4;line-height:1.45">Today\'s target of '+target+' sits about '+gap+' kcal under that \u2014 roughly '+(gap*7/3500).toFixed(2)+' lbs/week of predicted loss.</div>';
-  else h+='<div style="margin-top:6px;color:#fbbf24;line-height:1.45">Today\'s target of '+target+' is at or above measured maintenance. If loss has stalled, this is the first number to look at.</div>';
+  h+=dsGoalLineHtml(target);
   if(r.tdee<1900) h+='<div style="margin-top:6px;color:#fb923c;line-height:1.45">This lands below a plausible resting rate for your size, which usually means calories are going unlogged rather than unburned \u2014 cooking oil and estimated dinner portions are the usual pair.</div>';
   h+=tdeeDayListHtml(r,false);
   if(r.smoothed&&Math.abs(r.rawTdee-r.tdee)>=50) h+='<div style="margin-top:4px;color:#8b8b9c;line-height:1.45">Latest window alone says '+r.rawTdee+' kcal; the smoothed number drifts toward it gradually so short water swings don\'t whipsaw your targets.</div>';
@@ -2142,7 +2225,110 @@ function dashCollapseInit(){
     paint();
   });
 }
+// ── THE BIG PICTURE (v404) ────────────────────────────────────────────────
+// One card at the top of the dashboard that answers "is this working?" by
+// putting the slow signals side by side: 7-day average weight, waist, arms,
+// training consistency, effort, and the calorie goal they all hang off.
+function _bpShort(k){ return keyToDate(k).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
+function _bpKeyBack(n){ var d=new Date(todayKey()+'T00:00:00'); d.setDate(d.getDate()-n); return localDateKey(d); }
+function _bpMeasureSeries(field){
+  return Object.keys(appData).filter(function(k){
+    var m=appData[k]&&appData[k].measurements; if(!m) return false;
+    var v=parseFloat(m[field]); return isFinite(v)&&v>0;
+  }).sort().map(function(k){ return {key:k, v:parseFloat(appData[k].measurements[field])}; });
+}
+// Latest reading vs the most recent reading at least `gap` days older.
+function _bpMeasureDelta(field, gap){
+  var s=_bpMeasureSeries(field); if(!s.length) return null;
+  var last=s[s.length-1], cut=(function(){ var d=new Date(last.key+'T00:00:00'); d.setDate(d.getDate()-gap); return localDateKey(d); })();
+  var prior=null; for(var i=s.length-1;i>=0;i--){ if(s[i].key<=cut){ prior=s[i]; break; } }
+  if(!prior && s.length>1) prior=s[0]; // fewer than 3 weeks of history: compare to the first reading
+  return {last:last, prior:prior, first:s[0], delta:prior?last.v-prior.v:null, n:s.length};
+}
+function _bpTraining(days){
+  var start=_bpKeyBack(days-1), sessions=0, multi=0, same=0, rirSum=0, rirN=0;
+  Object.keys(appData).forEach(function(k){
+    if(k<start||k>todayKey()) return;
+    var ex=(appData[k].exercises||[]).filter(function(e){ return String(e.id||'').indexOf('sess_')===0 && e.reps; });
+    if(ex.length>=3) sessions++;
+    ex.forEach(function(e){
+      var parts=String(e.reps).split('/').map(parseFloat).filter(function(x){return !isNaN(x);});
+      if(parts.length>=3){ multi++; if(parts.every(function(x){return x===parts[0];})) same++; }
+      if(e.rir!=null&&e.rir!==''){
+        String(e.rir).split('/').forEach(function(x){ var v=x==='4+'?4:parseFloat(x); if(!isNaN(v)){ rirSum+=v; rirN++; } });
+      }
+    });
+  });
+  return {sessions:sessions, multi:multi, same:same, samePct:multi?Math.round(same/multi*100):null, rir:rirN?rirSum/rirN:null, rirN:rirN};
+}
+function _bpSpark(){
+  var pts=weightSeries().filter(function(p){ return p.key>=_bpKeyBack(55); });
+  if(pts.length<4) return '';
+  var W=320,H=64,P=4, x0=new Date(_bpKeyBack(55)+'T00:00:00').getTime(), x1=new Date(todayKey()+'T00:00:00').getTime();
+  var avg=pts.map(function(p){ var a=weightAvgWindow(7,p.key); return {key:p.key,v:a?a.avg:p.w}; });
+  var all=pts.map(function(p){return p.w;}).concat(avg.map(function(a){return a.v;}));
+  var lo=Math.min.apply(null,all)-0.5, hi=Math.max.apply(null,all)+0.5;
+  var X=function(k){ return P+(new Date(k+'T00:00:00').getTime()-x0)/(x1-x0||1)*(W-2*P); };
+  var Y=function(v){ return P+(hi-v)/(hi-lo||1)*(H-2*P); };
+  var dots=pts.map(function(p){ return '<circle cx="'+X(p.key).toFixed(1)+'" cy="'+Y(p.w).toFixed(1)+'" r="1.8" fill="#a78bfa" opacity=".35"/>'; }).join('');
+  var line=avg.map(function(a,i){ return (i?'L':'M')+X(a.key).toFixed(1)+' '+Y(a.v).toFixed(1); }).join(' ');
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" style="display:block;margin:8px 0 2px" role="img" aria-label="Daily weigh-ins with 7-day average, last 8 weeks">'
+    +dots+'<path d="'+line+'" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+    +'<div style="display:flex;justify-content:space-between;font-size:10px;color:#8b8b9c;font-family:\'DM Mono\',monospace"><span>8 weeks ago</span><span>dots = daily · line = 7-day avg</span><span>today</span></div>';
+}
+function _bpTile(label, value, sub, col){
+  return '<div style="flex:1;min-width:0;background:rgba(255,255,255,.03);border:1px solid #ffffff12;border-radius:10px;padding:8px 9px">'
+    +'<div style="font-size:10px;color:#8b8b9c;font-family:\'DM Mono\',monospace;text-transform:uppercase;letter-spacing:.05em">'+label+'</div>'
+    +'<div style="font-size:17px;font-weight:700;color:'+(col||'#f0f0f0')+';margin-top:2px;white-space:nowrap">'+value+'</div>'
+    +'<div style="font-size:10px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:2px;line-height:1.35">'+sub+'</div></div>';
+}
+function _bpSigned(d,dp,unit){ if(d==null) return '—'; var a=Math.abs(d).toFixed(dp); return (d>0.049?'+':(d<-0.049?'−':'±'))+a+(unit||''); }
+function renderBigPicture(){
+  var el=document.getElementById('dash-bigpic'); if(!el) return;
+  try{
+    var mk=dsGoalMode(), gm=GOAL_MODES[mk], base=dsBaseMaint(), tgt=calGoalForKey(todayKey());
+    var now=weightAvgWindow(7), then=weightAvgWindow(7,_bpKeyBack(28));
+    var wD=(now&&then&&now.n>=2&&then.n>=2)?now.avg-then.avg:null;
+    var waist=_bpMeasureDelta('waist',21), arm=_bpMeasureDelta('biceps',21);
+    var tr7=_bpTraining(7), tr28=_bpTraining(28), tr14=_bpTraining(14);
+    // Verdict from the slow signals together.
+    var v, vcol='#f0f0f0';
+    var wDl = waist&&waist.delta!=null ? waist.delta : null;
+    if(wDl==null){ v='Log your waist once a week (morning, before eating). Without it the scale can’t tell fat loss from muscle gain.'; vcol='#fbbf24'; }
+    else if(wDl<=-0.4 && (wD==null||Math.abs(wD)<=1.5)){ v='✅ Recomp is working: waist '+_bpSigned(wDl,1,'"')+' while weight held. That combination means fat coming off and muscle going on.'; vcol='#5eead4'; }
+    else if(wDl<=-0.4 && wD<-1.5){ v='✅ Losing fat: weight and waist are both down.'; vcol='#5eead4'; }
+    else if(wDl>=0.4 && wD!=null && wD>1.5){ v='⚠️ Weight and waist both up — the surplus is running ahead of muscle gain. Ease calories back.'; vcol='#fbbf24'; }
+    else if(wD!=null && wD>1 && Math.abs(wDl)<0.4){ v='⬆ Weight up with a steady waist — consistent with lean gain.'; vcol='#fb923c'; }
+    else { v='↔ Holding steady — no clear change in the last few weeks.'+(mk!=='cut'?' To move belly fat faster, switch the goal to Lean cut.':''); vcol='#8b8b9c'; }
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<div class="card-title" style="margin-bottom:0">The Big Picture</div>'
+      +'<button type="button" onclick="openSettings();setTimeout(function(){var d=document.getElementById(\'set-nutrition\');if(d){d.open=true;d.scrollIntoView({behavior:\'smooth\'});}},120)" style="border:1px solid '+gm.col+';color:'+gm.col+';background:transparent;border-radius:999px;padding:3px 10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer">Goal: '+gm.label+'</button></div>';
+    h+='<div style="font-size:12.5px;line-height:1.5;color:'+vcol+';margin-bottom:8px">'+v+'</div>';
+    // Tiles
+    var wTile=now?_bpTile('Weight · 7d avg', now.avg.toFixed(1), wD!=null?(_bpSigned(wD,1,' lb')+' vs 4 wks ago'):'needs 4 wks of weigh-ins', '#a78bfa'):_bpTile('Weight','—','log weigh-ins');
+    var waTile=waist?_bpTile('Waist', waist.last.v.toFixed(2).replace(/\.?0+$/,'')+'"', (waist.delta!=null?_bpSigned(waist.delta,2,'"')+' vs '+_bpShort(waist.prior.key):'')+(waist.first&&waist.first.key!==waist.last.key?'<br>'+_bpSigned(waist.last.v-waist.first.v,2,'"')+' since '+_bpShort(waist.first.key):''), wDl!=null&&wDl<0?'#5eead4':null):_bpTile('Waist','—','not logged yet');
+    var aTile=arm?_bpTile('Arms', arm.last.v.toFixed(2).replace(/\.?0+$/,'')+'"', arm.delta!=null?(_bpSigned(arm.delta,2,'"')+' vs '+_bpShort(arm.prior.key)):(arm.n===1?'one reading so far':'re-measure in 3 wks'), arm.delta!=null&&arm.delta>0?'#5eead4':null):_bpTile('Arms','—','log biceps monthly');
+    h+='<div style="display:flex;gap:6px">'+wTile+waTile+aTile+'</div>';
+    h+=_bpSpark();
+    // Training + effort
+    var ph=dsCurrentPhase(), phInfo=dsPhaseWeekInfo();
+    h+='<div style="margin-top:10px;font-size:12px;line-height:1.55;color:#cfcfda">'
+      +'<b>Training:</b> '+tr7.sessions+' lifting session'+(tr7.sessions===1?'':'s')+' this week · '+tr28.sessions+' in the last 4 weeks'
+      +(ph&&PHASE_LABELS[ph]?' · <span style="color:#c084fc">'+PHASE_LABELS[ph]+(phInfo&&!PHASE_MANUAL?' (wk '+phInfo.weekInPhase+'/'+phInfo.totalInPhase+')':'')+'</span>':'')+'</div>';
+    if(tr14.samePct!=null && tr14.multi>=6){
+      var eff = tr14.samePct>=50
+        ? '<span style="color:#fbbf24">'+tr14.samePct+'% of your exercises in the last 2 weeks had the exact same reps every set.</span> That usually means stopping at the target instead of near failure. Treat the target as a minimum: keep going until 0–2 reps are left, and let the numbers fall off set to set.'
+        : '<span style="color:#5eead4">Rep counts vary set to set</span> — a good sign you’re pushing close to failure.';
+      h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Effort:</b> '+eff+(tr14.rir!=null&&tr14.rirN>=10?' Average logged RIR '+tr14.rir.toFixed(1)+'.':'')+'</div>';
+    }
+    // Calories
+    var tdr=null; try{ tdr=measuredTDEE(); }catch(e){}
+    h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Calories:</b> maintenance '+((tdr&&tdr.ok)?'≈':'est. ')+base+' · goal '+(gm.off===0?'±0':(gm.off>0?'+':'−')+Math.abs(gm.off))+' · today’s target <b style="color:#f0f0f0">'+tgt+'</b></div>';
+    el.innerHTML=h;
+  }catch(e){ el.innerHTML=''; }
+}
 function renderDash(){
+  try{ renderBigPicture(); }catch(e){}
   renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
   var t=getTotals(), burned=getBurned(), netRem=GOALS.cal-t.cal;
@@ -3338,7 +3524,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
+function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){} dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 // v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
 // Off by default. The Revert button is never hidden while a custom plan is active,
@@ -3606,7 +3792,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3618,7 +3804,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -3634,6 +3820,7 @@ function applyConfig(cfg){
   GOAL_WEIGHT=parseFloat(store.get('ft_goal_weight'))||0;
   GOALS.cal=parseInt(store.get('ft_cal'))||GOALS.cal;
   GOALS.calRest=parseInt(store.get('ft_cal_rest'))||GOALS.calRest;
+  if(GOAL_MODES[store.get('ft_goal_mode')]) GOAL_MODE=store.get('ft_goal_mode');
   GOALS.calRecovery=parseInt(store.get('ft_cal_recovery'))||GOALS.calRecovery;
   GOALS.calActive=parseInt(store.get('ft_cal_active'))||GOALS.calActive;
   GOALS.calRide=parseInt(store.get('ft_cal_ride'))||GOALS.calRide;
@@ -6995,6 +7182,10 @@ function dsProgTarget(id){
   if(_dec || dsRepRange(id)){
     var _rng=dsRepRange(id);
     var _nr=_dec?_dec.reps:(rec?rec.reps:(_rng?_rng.lo:10));
+    // v404: a short session never drags the target under the bottom of the
+    // prescribed range. One off day is a fatigue/setup signal, not a new ceiling.
+    if(_rng) _nr=Math.max(_rng.lo,_nr);
+    else if(rec && rec.reps && _nr<rec.reps) _nr=rec.reps;
     _nr=Math.max(1,_nr);
     DS_PROG[id]={reps:_nr, day:activeDate, prevReps:rec?rec.reps:null, bandUp:!!(_dec&&_dec.bandUp)};
     dsProgSave();
@@ -7018,6 +7209,8 @@ function dsProgTarget(id){
       else if(avgRir<=1) newReps=Math.max(1,Math.round(baseline)-1);
     }
   }
+  // v404: hold rather than lower when there's no prescribed range to anchor to.
+  if(rec && rec.reps && newReps<rec.reps) newReps=rec.reps;
   newReps=Math.max(1,newReps);
   DS_PROG[id]={reps:newReps, day:activeDate, prevReps:rec?rec.reps:null};
   dsProgSave();
@@ -9594,7 +9787,15 @@ function dsRenderItem(rawItem,idx,accent){
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
     var _prog=DS_PROG[item.id];
     if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
-      h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB Program updated: target now '+_prog.reps+' reps (was '+_prog.prevReps+'), based on your trend</div>';
+      var _prng=dsRepRange(item.id), _pph=dsCurrentPhase();
+      if(_prog.reps>_prog.prevReps){
+        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u2191 Target up to '+_prog.reps+' reps (was '+_prog.prevReps+') \u2014 you earned it last session.</div>';
+      } else if(_prog.bandUp){
+        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u25B2 Band up: restart at '+_prog.reps+' reps with the next band step.</div>';
+      } else if(_prng){
+        // Lower number only because the prescribed range itself changed (training phase).
+        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB '+(_pph&&PHASE_LABELS[_pph]?PHASE_LABELS[_pph]+' this week':'This week\u2019s plan')+': range is '+_prng.lo+'\u2013'+_prng.hi+'. The number is a minimum \u2014 keep going until you have 0\u20132 reps left, and log what you actually did.</div>';
+      }
     }
     var _deloadFill = dsDeloadActive() && st._load && !st._loadTouched;
     var loadFld = dsWantsLoad(item) ? '<input class="ds-wt'+(_deloadFill?' ds-wt-deload':'')+'" id="ds-load-'+item.id+'" placeholder="band / lb" title="'+(_deloadFill?'Suggested \u2014 ~30% below last session for deload week':'')+'" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">'+(dsIsElasticBand(item)?dsBandPickerHTML(item.id):'') : '';
