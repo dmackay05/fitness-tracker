@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v405 — 2026-10-27";
+var APP_BUILD = "v406 — 2026-10-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -315,7 +315,7 @@ function dsDeloadDaysElapsed(){
 }
 function dsDeloadActive(){ return !!DELOAD_START && dsDeloadDaysElapsed() < 7; }
 function dsSetDeload(on){
-  if(on){ DELOAD_START = todayKey(); store.set('ft_deload_start', DELOAD_START); }
+  if(on){ DELOAD_START = todayKey(); store.set('ft_deload_start', DELOAD_START); store.set('ft_last_deload', DELOAD_START); }
   else { DELOAD_START = null; store.remove('ft_deload_start'); }
   try{ renderAll(); }catch(e){}
   dsRenderDeloadUI();
@@ -455,7 +455,12 @@ function dsRenderBulkUI(){
 var PHASE_START = store.get('ft_phase_start') || null;
 var PHASE_MANUAL = store.get('ft_phase_manual') || null; // 'p1'|'p2'|'p3'|'deload'|null(auto by date)
 var PHASE_LABELS = {p1:'Phase 1 \u2014 Base',p2:'Phase 2 \u2014 Max Effort',p3:'Phase 3 \u2014 Supercompensation',deload:'Deload'};
+// v406: the wave is retired for this band program (one steady block + deloads
+// when due). Phase functions return null so every exercise uses its base rx.
+var DS_PHASES_RETIRED = true;
+try{ if(PHASE_START||PHASE_MANUAL){ store.remove('ft_phase_start'); store.remove('ft_phase_manual'); PHASE_START=null; PHASE_MANUAL=null; } }catch(e){}
 function dsPhaseWeekInfo(){
+  if(DS_PHASES_RETIRED) return null;
   if(!PHASE_START) return null;
   var ms = Date.now() - keyToDate(PHASE_START).getTime();
   var days = Math.floor(ms/86400000);
@@ -474,12 +479,13 @@ function dsPhaseWeekInfo(){
 }
 if(PHASE_MANUAL==='p2'){ PHASE_MANUAL='p1'; try{ store.set('ft_phase_manual','p1'); }catch(e){} }
 // v405 one-time: today's cached rep targets were computed under Max Effort ranges.
-try{ if(!store.get('ft_v405_progreset')){
+try{ if(!store.get('ft_v406_progreset')){
   var _pr={}; try{ _pr=JSON.parse(store.get('ds_prog')||'{}'); }catch(e){}
   var _tk=todayKey(); Object.keys(_pr).forEach(function(k){ if(_pr[k]&&_pr[k].day===_tk) delete _pr[k]; });
-  store.set('ds_prog', JSON.stringify(_pr)); store.set('ft_v405_progreset','1');
+  store.set('ds_prog', JSON.stringify(_pr)); store.set('ft_v406_progreset','1');
 } }catch(e){}
 function dsCurrentPhase(){
+  if(DS_PHASES_RETIRED) return null;
   if(PHASE_MANUAL==='p2') return 'p1';
   if(PHASE_MANUAL) return PHASE_MANUAL;
   var info = dsPhaseWeekInfo();
@@ -2294,6 +2300,42 @@ function _bpTile(label, value, sub, col){
     +'<div style="font-size:10px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:2px;line-height:1.35">'+sub+'</div></div>';
 }
 function _bpSigned(d,dp,unit){ if(d==null) return '—'; var a=Math.abs(d).toFixed(dp); return (d>0.049?'+':(d<-0.049?'−':'±'))+a+(unit||''); }
+
+// ── DELOAD DUE? (v406) ────────────────────────────────────────────────────
+// Due when 6+ weeks of training have passed since the last deload (or since
+// training started, if none is recorded), or when 3+ exercises have stalled:
+// three sessions in a row with no more reps than the first of them at the same band.
+function _dlSessionDays(){
+  return Object.keys(appData).filter(function(k){
+    return (appData[k].exercises||[]).filter(function(e){ return String(e.id||'').indexOf('sess_')===0 && e.reps; }).length>=3;
+  }).sort();
+}
+function dsStalledExercises(){
+  var ids={}; var since=_bpKeyBack(42);
+  Object.keys(appData).forEach(function(k){ if(k<since) return; (appData[k].exercises||[]).forEach(function(e){ if(String(e.id||'').indexOf('sess_')===0&&e.reps) ids[e.id.slice(5)]=1; }); });
+  var out=[];
+  Object.keys(ids).forEach(function(id){
+    var h=dsHistoryN(id,3); if(h.length<3) return;
+    if(h[0].date<since) return;
+    var r=h.map(dsParseLastReps); if(r.some(function(x){return x==null;})) return;
+    var sameLoad=h.every(function(x){ return String(x.load||'')===String(h[0].load||''); });
+    if(sameLoad && r[1]<=r[0] && r[2]<=r[0]){ var raw=dsRawItem(id); out.push(raw&&raw.name?raw.name:id); }
+  });
+  return out;
+}
+function dsDeloadDue(){
+  if(dsDeloadActive()) return null;
+  var days=_dlSessionDays(); if(!days.length) return null;
+  var last=store.get('ft_last_deload')||null;
+  var from=last||days[0];
+  var weeks=Math.floor((new Date(todayKey()+'T00:00:00')-new Date(from+'T00:00:00'))/86400000/7);
+  var stalled=dsStalledExercises();
+  if(weeks>=6) return {why:(last?weeks+' weeks since your last deload':'no deload logged in '+weeks+' weeks of training'), stalled:stalled};
+  if(stalled.length>=3) return {why:stalled.length+' exercises have stalled for 3 sessions ('+stalled.slice(0,3).join(', ')+(stalled.length>3?'…':'')+')', stalled:stalled};
+  return null;
+}
+function dsDeloadAlreadyDone(){ store.set('ft_last_deload', todayKey()); toast('Got it \u2014 next check in 6 weeks'); try{ renderAll(); }catch(e){} }
+function dsStartDeloadFromNudge(){ dsSetDeload(true); toast('Deload week started — 7 days'); try{ renderAll(); }catch(e){} }
 function renderBigPicture(){
   var el=document.getElementById('dash-bigpic'); if(!el) return;
   try{
@@ -2332,6 +2374,9 @@ function renderBigPicture(){
         : '<span style="color:#5eead4">Rep counts vary set to set</span> — a good sign you’re pushing close to failure.';
       h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Effort:</b> '+eff+(tr14.rir!=null&&tr14.rirN>=10?' Average logged RIR '+tr14.rir.toFixed(1)+'.':'')+'</div>';
     }
+    var dl=null; try{ dl=dsDeloadDue(); }catch(e){}
+    if(dsDeloadActive()) h+='<div style="margin-top:6px;font-size:12px;line-height:1.55;color:#5eead4"><b>Deload week</b> \u2014 day '+(dsDeloadDaysElapsed()+1)+' of 7. Same exercises, about half the sets, stop 3\u20134 reps short of failure.</div>';
+    else if(dl) h+='<div style="margin-top:8px;padding:8px 10px;border:1px solid #5eead455;border-radius:10px;font-size:12px;line-height:1.5;color:#cfcfda"><b style="color:#5eead4">Deload due</b> \u2014 '+dl.why+'. One easy week now lets you come back stronger.<div style="margin-top:6px"><button type="button" onclick="dsStartDeloadFromNudge()" style="border:1px solid #5eead4;color:#5eead4;background:transparent;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer">Start deload week</button> <button type="button" onclick="dsDeloadAlreadyDone()" style="border:1px solid #444;color:#8b8b9c;background:transparent;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer;margin-left:4px">I deloaded recently</button></div></div>';
     // Calories
     var tdr=null; try{ tdr=measuredTDEE(); }catch(e){}
     h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Calories:</b> maintenance '+((tdr&&tdr.ok)?'≈':'est. ')+base+' · goal '+(gm.off===0?'±0':(gm.off>0?'+':'−')+Math.abs(gm.off))+' · today’s target <b style="color:#f0f0f0">'+tgt+'</b></div>';
@@ -3803,7 +3848,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3815,7 +3860,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
