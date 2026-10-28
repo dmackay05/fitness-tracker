@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v404 — 2026-10-27";
+var APP_BUILD = "v405 — 2026-10-27";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -444,7 +444,7 @@ function dsRenderBulkUI(){
   if(badge) badge.textContent = "\u2B06 Bulk — day "+(dsBulkDaysElapsed()+1);
 }
 
-// ── TRAINING PHASE CYCLE — Base / Max Effort / Supercompensation / Deload ──
+// ── TRAINING PHASE CYCLE — Base / Supercompensation / Deload (Max Effort removed v405) ──
 // 13-week wave, adapted from Jeff Nippard's Ultimate PPL periodization for
 // home band/DB training: Phase 1 wk1-6 (Base — moderate volume, RPE 8-9/9-10),
 // Phase 2 wk7-10 (Max Effort — 1-2 sets, RPE 9-10), Phase 3 wk11-12
@@ -463,13 +463,24 @@ function dsPhaseWeekInfo(){
   var cyclePos = ((weekNum-1)%13)+1;       // 1..13 position within the wave
   var cycleNum = Math.floor((weekNum-1)/13)+1;
   var phase, weekInPhase, totalInPhase;
-  if(cyclePos<=6){ phase='p1'; weekInPhase=cyclePos; totalInPhase=6; }
-  else if(cyclePos<=10){ phase='p2'; weekInPhase=cyclePos-6; totalInPhase=4; }
+  // v405: the low-rep Max Effort block (old weeks 7-10) is gone. It's a barbell
+  // idea that fits bands poorly: bands are lightest in the stretch, so 1-2 sets
+  // of 6-10 reps mostly trains the top half and cuts weekly volume in half.
+  // Base now runs weeks 1-10.
+  if(cyclePos<=10){ phase='p1'; weekInPhase=cyclePos; totalInPhase=10; }
   else if(cyclePos<=12){ phase='p3'; weekInPhase=cyclePos-10; totalInPhase=2; }
   else { phase='deload'; weekInPhase=1; totalInPhase=1; }
   return {phase:phase,weekInPhase:weekInPhase,totalInPhase:totalInPhase,cycleNum:cycleNum,cyclePos:cyclePos};
 }
+if(PHASE_MANUAL==='p2'){ PHASE_MANUAL='p1'; try{ store.set('ft_phase_manual','p1'); }catch(e){} }
+// v405 one-time: today's cached rep targets were computed under Max Effort ranges.
+try{ if(!store.get('ft_v405_progreset')){
+  var _pr={}; try{ _pr=JSON.parse(store.get('ds_prog')||'{}'); }catch(e){}
+  var _tk=todayKey(); Object.keys(_pr).forEach(function(k){ if(_pr[k]&&_pr[k].day===_tk) delete _pr[k]; });
+  store.set('ds_prog', JSON.stringify(_pr)); store.set('ft_v405_progreset','1');
+} }catch(e){}
 function dsCurrentPhase(){
+  if(PHASE_MANUAL==='p2') return 'p1';
   if(PHASE_MANUAL) return PHASE_MANUAL;
   var info = dsPhaseWeekInfo();
   return info ? info.phase : null;
@@ -498,7 +509,7 @@ function dsRenderPhaseUI(){
   if(select) select.value = PHASE_MANUAL || '';
   if(preview){
     if(!PHASE_START && !PHASE_MANUAL){
-      preview.textContent = "Off. Turning this on starts the 13-week wave (Base \u2192 Max Effort \u2192 Supercompensation \u2192 Deload) from today \u2014 every exercise's sets/reps/RPE/rest below will follow it automatically, week by week.";
+      preview.textContent = "Off. Turning this on starts the 13-week wave (Base \u2192 Supercompensation \u2192 Deload) from today \u2014 every exercise's sets/reps/RPE/rest below will follow it automatically, week by week.";
     } else if(PHASE_MANUAL){
       preview.textContent = "Manually pinned to "+PHASE_LABELS[PHASE_MANUAL]+". Every exercise reflects this phase until you change it or clear the pin below.";
     } else if(info){
