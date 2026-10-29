@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v408 — 2026-10-28";
+var APP_BUILD = "v409 — 2026-10-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2716,7 +2716,15 @@ function editEx(id){
   document.getElementById("ee-cal").value=(e.calories||0);
   document.getElementById("ee-avghr").value=(e.avgHR!=null)?e.avgHR:"";
   document.getElementById("ee-peakhr").value=(e.peakHR!=null)?e.peakHR:"";
+  document.getElementById("ee-start").value=eeTimeVal(e.startTs);
+  document.getElementById("ee-end").value=eeTimeVal(e.endTs||e.startTs);
   document.getElementById("ex-edit-modal").style.display="flex";
+}
+// Editable start/end times: <input type=time> values ("HH:MM") mapped onto the active day.
+function eeTimeVal(ts){ if(!ts) return ""; var d=new Date(ts); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+function eeTsFromVal(v){ if(!v) return null; var p=v.split(":"), d=keyToDate(activeDate); d.setHours(+p[0],+p[1],0,0); return d.getTime(); }
+function eeShift(mins){
+  ["ee-start","ee-end"].forEach(function(id){ var el=document.getElementById(id), ts=eeTsFromVal(el.value); if(ts!=null) el.value=eeTimeVal(ts+mins*60000); });
 }
 function closeExEdit(){ editingExId=null; document.getElementById("ex-edit-modal").style.display="none"; }
 function saveExEdit(){
@@ -2729,6 +2737,12 @@ function saveExEdit(){
   var avgV=document.getElementById("ee-avghr").value, peakV=document.getElementById("ee-peakhr").value;
   if(avgV!==""){ e.avgHR=parseInt(avgV,10); } else { delete e.avgHR; }
   if(peakV!==""){ e.peakHR=parseInt(peakV,10); } else { delete e.peakHR; }
+  var sTs=eeTsFromVal(document.getElementById("ee-start").value), eTs=eeTsFromVal(document.getElementById("ee-end").value);
+  if(sTs!=null){
+    if(eTs==null||eTs<sTs) eTs=sTs;
+    e.startTs=sTs; e.endTs=eTs;
+    if(e.type!=="cardio" && eTs>sTs) e.actualSecs=Math.round((eTs-sTs)/1000);
+  }
   saveDay(day); closeExEdit(); renderAll();
 }
 function renderExLog(){

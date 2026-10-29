@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=408">
+<link rel="stylesheet" href="styles.css?v=409">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -1447,6 +1447,16 @@
       <input type="number" inputmode="decimal" id="ee-avghr" placeholder="Avg HR (bpm)" min="30" max="220" style="flex:1"/>
       <input type="number" inputmode="decimal" id="ee-peakhr" placeholder="Peak HR (bpm)" min="30" max="220" style="flex:1"/>
     </div>
+    <div style="display:flex;gap:10px;margin-top:8px;align-items:flex-end">
+      <label style="flex:1;font-size:11px;color:#888">Start<input type="time" id="ee-start" style="width:100%"/></label>
+      <label style="flex:1;font-size:11px;color:#888">End<input type="time" id="ee-end" style="width:100%"/></label>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+      <button class="bs" style="flex:1" onclick="eeShift(-5)">−5 min</button>
+      <button class="bs" style="flex:1" onclick="eeShift(-1)">−1 min</button>
+      <button class="bs" style="flex:1" onclick="eeShift(1)">+1 min</button>
+      <button class="bs" style="flex:1" onclick="eeShift(5)">+5 min</button>
+    </div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="bs" style="flex:1" onclick="closeExEdit()">Cancel</button>
       <button class="bp" style="flex:1" onclick="saveExEdit()">Save</button>
@@ -1923,7 +1933,7 @@
   </div>
 </div>
 
-<script src="app.js?v=408"></script>
+<script src="app.js?v=409"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>
