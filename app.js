@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v406 — 2026-10-27";
+var APP_BUILD = "v407 — 2026-10-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7367,6 +7367,9 @@ function dsRawItem(id){
   });
   if(!fallback && typeof DS_SAT_HEAT!=="undefined" && DS_SAT_HEAT.moves){ DS_SAT_HEAT.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); }
   [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP,DS_ATG,DS_BWLEG].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
+  // Reserve moves (cut from the plan but reachable via search / one-day picks) were missing here,
+  // so Log set on e.g. High-Anchor Band Fly got null and threw silently (v407).
+  if(!fallback && typeof DS_RESERVE_MOVES!=='undefined'){ DS_RESERVE_MOVES.some(function(m){ if(m&&m.id===id){fallback=m;return true;} return false; }); }
   return fallback;
 }
 
