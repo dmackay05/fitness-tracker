@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v407 — 2026-10-28";
+var APP_BUILD = "v408 — 2026-10-28";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9706,7 +9706,17 @@ function dsMainFieldsMatch(item,q){
 function dsSetSearch(v){ DS_SEARCH=v||''; DS_CHIP_MODE=false; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display=DS_SEARCH?'block':'none'; dsRenderMuscleChips(); dsRender(); }
 function dsClearSearch(){ DS_SEARCH=''; DS_CHIP_MODE=false; var inp=document.getElementById('ds-search'); if(inp)inp.value=''; var cl=document.getElementById('ds-search-clear'); if(cl)cl.style.display='none'; dsRenderMuscleChips(); dsRender(); }
 function dsEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-function dsSearchPattern(q){ return dsEsc(q).replace(/[\s-]+/g,'[-\\s]+'); }
+// v408: forgiving search — plural "s" optional per word ("sit ups" finds "Sit-Up"), and
+// spaces/hyphens optional everywhere ("situp" finds "Sit-Up", "pushup" finds "Push-up").
+function dsSearchPattern(q){
+  var toks=String(q).trim().split(/[\s-]+/).filter(Boolean);
+  return toks.map(function(t){
+    var suf='';
+    if(t.length>=4 && /ies$/i.test(t)){ t=t.slice(0,-3); suf='(?:y|ies)'; }
+    else if((t.length>=4 || (t.length===3 && toks.length>1)) && /[^s]s$/i.test(t)){ t=t.slice(0,-1); suf='s?'; }
+    return t.split('').map(dsEsc).join('[-\\s]?')+suf;
+  }).join('[-\\s]*');
+}
 function dsHi(text,q){ if(!q||!text)return text; try{ var re=new RegExp('('+dsSearchPattern(q)+')','ig'); return String(text).replace(re,'<mark class="ds-hit">$1</mark>'); }catch(e){ return text; } }
 function dsItemMatchesSearch(rawItem,q){
   if(!q)return true;
@@ -10428,6 +10438,8 @@ function dsRenderSearchAll(q){
     {label:'Pull-Up Progression',accent:DS_PULLUP.accent,moves:DS_PULLUP.moves},
     {label:DS_ATG.title,accent:DS_ATG.accent,moves:DS_ATG.moves},
     {label:DS_BWLEG.title,accent:DS_BWLEG.accent,moves:DS_BWLEG.moves}
+,
+    {label:'Saturday Heat Circuit',accent:(typeof DS_SAT_HEAT!=='undefined'&&DS_SAT_HEAT.accent)||'var(--muted)',moves:(typeof DS_SAT_HEAT!=='undefined'&&DS_SAT_HEAT.moves)||[]}
   ];
   if(dsExtrasHidden()) extras=[];
   extras.forEach(function(ex){
