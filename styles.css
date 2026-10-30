@@ -1373,3 +1373,6 @@ html body div.app{max-width:480px}
 #ds-gp .gp-end{padding:14px 32px;border-radius:14px;border:none;background:#e5484d;color:#fff;font-size:18px;font-weight:800}
 #ds-gp .gp-part{padding:12px 22px;border-radius:14px;border:2px solid #fb923c;background:transparent;color:#fdba74;font-size:17px;font-weight:800}
 #ds-gp .gp-part-hot{background:#fb923c;color:#0d1117}
+
+/* v411: David-only sections */
+body:not(.is-owner) .owner-only{display:none!important}

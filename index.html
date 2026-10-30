@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=410">
+<link rel="stylesheet" href="styles.css?v=411">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -335,7 +335,7 @@
 
     <!-- ════════ MEALS ════════ -->
     <div class="panel" id="panel-meals">
-      <details class="info-sec" data-sec="mealplan">
+      <details class="info-sec owner-only" data-sec="mealplan">
         <summary class="info-sec-hd"><span>Meal Plan (2-week)</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
       <div id="meals-plan"></div>
@@ -350,7 +350,7 @@
       <div class="card" id="meals-myth-guide" style="margin-top:10px"></div>
         </div>
       </details>
-      <details class="info-sec" data-sec="wow">
+      <details class="info-sec owner-only" data-sec="wow">
         <summary class="info-sec-hd"><span>Word of Wisdom</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
       <div id="meals-wow-guide"></div>
@@ -368,7 +368,7 @@
 
         </div>
       </details>
-      <details class="info-sec" data-sec="grocery">
+      <details class="info-sec owner-only" data-sec="grocery">
         <summary class="info-sec-hd"><span>Grocery List</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
       <div id="meals-grocery"></div>
@@ -893,7 +893,7 @@
         <div class="card-title">Caffeine <span style="font-size:11px;color:#4ade80;font-weight:400">— Strong (performance)</span></div>
         <div style="font-size:13px;line-height:1.5">Reliably improves strength, reps to failure, and endurance by a small amount. The studied dose is <b>3–6 mg per kg of body weight</b> about 30–60 min before training, and many people get most of the effect from less. It improves performance in a session rather than building muscle directly.</div>
         <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>Trade-off:</b> Caffeine late in the day costs sleep (card 9 above), which usually outweighs the performance boost. Keep it earlier in the day.</div>
-        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>Word of Wisdom:</b> The Church specifically names coffee and tea and does not address other caffeine sources, so what you use here is your own decision. Herbal teas are fine.</div>
+        <div class="owner-only" style="font-size:13px;line-height:1.5;margin-top:6px"><b>Word of Wisdom:</b> The Church specifically names coffee and tea and does not address other caffeine sources, so what you use here is your own decision. Herbal teas are fine.</div>
         <details style="margin-top:8px"><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:'DM Mono',monospace">Evidence</summary>
           <div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px">Guest et al. 2021, ISSN Position Stand, <i>J Int Soc Sports Nutr</i> · Grgic et al. 2019, <i>Br J Sports Med</i> (umbrella review) · Grgic et al. 2018, <i>J Int Soc Sports Nutr</i> (meta-analysis, strength and power)</div></details>
       </div>
@@ -1036,7 +1036,7 @@
         <div class="acro-row"><span class="acro-a">RMR</span><div class="acro-t"><div class="acro-f">Resting Metabolic Rate</div><div class="acro-d">Similar to BMR, measured under looser conditions.</div></div></div>
         <div class="acro-row"><span class="acro-a">TDEE</span><div class="acro-t"><div class="acro-f">Total Daily Energy Expenditure</div><div class="acro-d">All calories burned in a day: BMR + NEAT + EAT + TEF.</div></div></div>
         <div class="acro-row"><span class="acro-a">TEF</span><div class="acro-t"><div class="acro-f">Thermic Effect of Food</div><div class="acro-d">Calories used digesting food; highest for protein.</div></div></div>
-        <div class="acro-row"><span class="acro-a">WoW</span><div class="acro-t"><div class="acro-f">Word of Wisdom</div><div class="acro-d">LDS health code (see the Word of Wisdom section).</div></div></div>
+        <div class="acro-row owner-only"><span class="acro-a">WoW</span><div class="acro-t"><div class="acro-f">Word of Wisdom</div><div class="acro-d">LDS health code (see the Word of Wisdom section).</div></div></div>
       </div>
       <div class="card acro-cat" style="margin-top:10px"><div class="card-title">Body composition &amp; measurement</div>
         <div class="acro-row"><span class="acro-a">BF%</span><div class="acro-t"><div class="acro-f">Body Fat Percentage</div></div></div>
@@ -1094,7 +1094,7 @@
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('log')"><span id="refresh-icon-log">↻</span> Refresh</button></div>
       <div class="past-banner" id="banner-log" style="display:none"><span>&#9888; Editing <strong id="banner-log-lbl"></strong></span><button class="today-btn" onclick="goToToday()">Go to Today</button></div>
 
-      <div class="card" id="mp-today-card" style="margin-bottom:14px"></div>
+      <div class="card owner-only" id="mp-today-card" style="margin-bottom:14px"></div>
       <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">🍽 Food</div>
         <div style="font-size:11px;color:#888;margin-bottom:6px">Logging as:</div>
@@ -1933,7 +1933,7 @@
   </div>
 </div>
 
-<script src="app.js?v=410"></script>
+<script src="app.js?v=411"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>

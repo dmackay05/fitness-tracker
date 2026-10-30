@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v410 — 2026-10-30";
+var APP_BUILD = "v411 — 2026-10-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -172,6 +172,11 @@ var DS_WEEKMAP_CAL=['sun','mon','tue','wed','thu','fri','sat'];
 // On automatically whenever an imported plan is active. Hides David's home
 // extras, locks session rotation, genericizes deload/maintenance text, and
 // derives calorie day types from the plan instead of David's fixed week.
+// v411: David-only content (Word of Wisdom, family grocery list, 2-week family meal
+// plan) carries class "owner-only" and shows only when body has .is-owner. Owner =
+// not an imported plan and profile name starts with "David"; ft_owner '1'/'0' forces it.
+function ftIsOwner(){ try{ var o=store.get('ft_owner'); if(o==='1') return true; if(o==='0') return false; return !dsGuestMode() && /^\s*david\b/i.test(store.get('ft_name')||''); }catch(e){ return false; } }
+function ftApplyOwner(){ try{ document.body.classList.toggle('is-owner', ftIsOwner()); }catch(e){} }
 function dsGuestMode(){ try{ return !!(store.get('ds_custom_plan')||""); }catch(e){ return false; } }
 var DS_GUEST_TYPES_CACHE=null, DS_GUEST_TYPES_RAW=null;
 // Per day: the plan's own "dayType" (rest|active|recovery|ride) if given;
@@ -1383,7 +1388,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){}}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} }
+function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){}}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
