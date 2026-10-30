@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v411 — 2026-10-30";
+var APP_BUILD = "v412 — 2026-10-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5927,7 +5927,7 @@ function dsUpperTotalSession(){
   return _DS_UT_CACHE;
 }
 function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=!DS_UT_ON[activeDate]; dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
-function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_UT_ON[activeDate]&&!dsDayIsCustom(sk)){ var _ut=dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_UT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _ut=dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
 // v348: exercises the user removed from a weekday on the Today tab (per-day id list, synced).
 // Filtering happens here so the card list, done/total bar and Volume all agree.
 var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ DS_HIDDEN={}; }
@@ -10897,13 +10897,13 @@ function dsRender(){
     var _estFull=dsEstMin(_allMoves), _estNow=dsEstMin(_moves), _tcOn=DS_TIME_CRUNCH;
     var _tcBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleTimeCrunch()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_tcOn?'#e8c98a':'#ffffff1a')+';background:'+(_tcOn?'#e8c98a18':'transparent')+';color:'+(_tcOn?'#e8c98a':'#888')+';">'+(_tcOn?'\u26A1 Time Crunch ON \u2014 compounds only \u00b7 ~'+_estNow+' min  (tap for full)':'\u26A1 Time Crunch \u2014 full session ~'+_estFull+' min  (tap to trim)')+'</button></div>';
     var _satHeatBtn='';
-    if(sk==='sat'&&!dsDayIsCustom('sat')){
+    if(sk==='sat'&&ftIsOwner()&&!dsDayIsCustom('sat')){
       var _hot=!!DS_SAT_HEAT_ON[activeDate];
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
     var _od=dsOneDayOn();
     var _utBtn='';
-    if(!_od && !dsDayIsCustom(sk) && sk!=='wed' && sk!=='sun'){
+    if(ftIsOwner() && !_od && !dsDayIsCustom(sk) && sk!=='wed' && sk!=='sun'){
       var _utOn=!!DS_UT_ON[activeDate];
       _utBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_utOn?'#a78bfa':'#ffffff1a')+';background:'+(_utOn?'#a78bfa18':'transparent')+';color:'+(_utOn?'#a78bfa':'#888')+';">'+(_utOn?'\ud83d\udcaa Upper Total ON \u2014 every upper muscle today (tap to go back to the plan)':'\ud83d\udcaa Swap today for Upper Total (every upper muscle, one session)')+'</button>'+((!_utOn&&(sk==='tue'||sk==='fri'))?'<div style="font-size:11px;color:#777;margin-top:6px;">Heads-up: this is a lower day \u2014 swapping it skips your leg work this week.</div>':'')+'</div>';
     }
