@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v409 — 2026-10-28";
+var APP_BUILD = "v410 — 2026-10-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3862,7 +3862,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3874,7 +3874,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -3905,6 +3905,7 @@ function applyConfig(cfg){
   // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
   // (last pushed wins per-key), everything else from both sides is kept.
   try{ var umv=JSON.parse(cfg.ds_usermoves||'null'); if(umv&&typeof umv==='object'){ for(var k1 in umv) DS_USERMOVES[k1]=umv[k1]; store.set('ds_usermoves',JSON.stringify(DS_USERMOVES)); } }catch(e){}
+  try{ var utv=JSON.parse(cfg.ds_ut_on||'null'); if(utv&&typeof utv==='object'){ for(var k3 in utv) DS_UT_ON[k3]=utv[k3]; store.set('ds_ut_on',JSON.stringify(DS_UT_ON)); } }catch(e){}
   try{ var shv=JSON.parse(cfg.ds_sat_heat_on||'null'); if(shv&&typeof shv==='object'){ for(var k2 in shv) DS_SAT_HEAT_ON[k2]=shv[k2]; store.set('ds_sat_heat_on',JSON.stringify(DS_SAT_HEAT_ON)); } }catch(e){}
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
@@ -5885,7 +5886,43 @@ var DS_SATHEAT_MOVES=[
 var DS_SAT_HEAT={title:'Indoor Heat Circuit',sub:'Arms · Legs · Core · Mobility — Ride Alternative',accent:'#f97316',moves:DS_SATHEAT_MOVES};
 var DS_SAT_HEAT_ON={}; try{ DS_SAT_HEAT_ON=JSON.parse(store.get("ds_sat_heat_on")||"{}"); }catch(e){ DS_SAT_HEAT_ON={}; }
 function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDate]; dsTrimDateKeys(DS_SAT_HEAT_ON,120); try{ store.set("ds_sat_heat_on", JSON.stringify(DS_SAT_HEAT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); }
-function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+/* ── v410: Upper Total — one-session swap day hitting every upper muscle once.
+   Picks reuse plan ids (history/volume stay linked), ordered by door-anchor
+   position (mid → high → low → floor) with set counts trimmed to ~2 each. ── */
+var DS_UT_SPEC=[
+  ['sat-standpress',3,'3×12–20','Mid anchor · 1–2 RIR · rest 2 min'],
+  ['thu-row',3,'3×12–20','Mid anchor · 1–2 RIR · rest 2 min'],
+  ['mon-fly',2,'2×15–25','Mid anchor · 0–1 RIR · rest 90 s'],
+  ['mon-pulldown',2,'2×12–20','High anchor · 1–2 RIR · rest 90 s'],
+  ['sat-facepull',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
+  ['mon-tri',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
+  ['sat-ohtriceps',2,'2×15–25','High anchor, face away · 0–1 RIR · rest 60 s'],
+  ['sat-bandcrunch',2,'2×15–20','High anchor · 1 RIR · rest 60 s'],
+  ['mon-inclinepress',2,'2×12–20','Low anchor · 1–2 RIR · rest 90 s'],
+  ['sat-curl',2,'2×12–20','Low anchor, face away · 0–1 RIR · rest 60 s'],
+  ['thu-hammer',2,'2×12–20','Low anchor, face away · 0–1 RIR · rest 60 s'],
+  ['mon-lateral',2,'2×15–25','Stand on band · 0–1 RIR · rest 60 s'],
+  ['mon-pushup#Deficit',1,'1×AMRAP','Floor · stop at 1 RIR'],
+  ['sat-wristcurl',2,'2×15–25/side','Under foot · underhand set + overhand set'],
+  ['thu-legraise',1,'1×12–20','Floor · 1 RIR']
+];
+var DS_UT_ON={}; try{ DS_UT_ON=JSON.parse(store.get("ds_ut_on")||"{}")||{}; }catch(e){ DS_UT_ON={}; }
+var _DS_UT_CACHE=null;
+function dsUpperTotalSession(){
+  if(_DS_UT_CACHE) return _DS_UT_CACHE;
+  var moves=[DS_WARMUP_RAISE,DS_WARMUP_BANDSHOULDER,DS_WARMUP_SHOULDERCARS];
+  DS_UT_SPEC.forEach(function(r){
+    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){} if(!m) return;
+    var c={}; for(var k in m) c[k]=m[k];
+    delete c.variants; delete c.lockVar; delete c.pair;
+    c.sets=r[1]; c.rx=r[2]; c.slot=(c.slot||'')+' · '+r[3];
+    moves.push(c);
+  });
+  _DS_UT_CACHE={title:'Upper Total',sub:'Every upper muscle in one session · ~29 sets · ~60–70 min · swap for an upper day, max 1×/week',accent:'#a78bfa',moves:moves,_ut:true};
+  return _DS_UT_CACHE;
+}
+function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=!DS_UT_ON[activeDate]; dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
+function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_UT_ON[activeDate]&&!dsDayIsCustom(sk)){ var _ut=dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
 // v348: exercises the user removed from a weekday on the Today tab (per-day id list, synced).
 // Filtering happens here so the card list, done/total bar and Volume all agree.
 var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ DS_HIDDEN={}; }
@@ -10860,6 +10897,11 @@ function dsRender(){
       _satHeatBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleSatHeat()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_hot?'#f97316':'#ffffff1a')+';background:'+(_hot?'#f9731618':'transparent')+';color:'+(_hot?'#f97316':'#888')+';">'+(_hot?'\u2600\ufe0f Too-hot mode ON \u2014 indoor circuit (tap to go back to the ride)':'\u2600\ufe0f Too hot to ride? Tap for an indoor arms/legs/core circuit')+'</button></div>';
     }
     var _od=dsOneDayOn();
+    var _utBtn='';
+    if(!_od && !dsDayIsCustom(sk) && sk!=='wed' && sk!=='sun'){
+      var _utOn=!!DS_UT_ON[activeDate];
+      _utBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_utOn?'#a78bfa':'#ffffff1a')+';background:'+(_utOn?'#a78bfa18':'transparent')+';color:'+(_utOn?'#a78bfa':'#888')+';">'+(_utOn?'\ud83d\udcaa Upper Total ON \u2014 every upper muscle today (tap to go back to the plan)':'\ud83d\udcaa Swap today for Upper Total (every upper muscle, one session)')+'</button>'+((!_utOn&&(sk==='tue'||sk==='fri'))?'<div style="font-size:11px;color:#777;margin-top:6px;">Heads-up: this is a lower day \u2014 swapping it skips your leg work this week.</div>':'')+'</div>';
+    }
     var _flowBar=_od?'':dsFlowBarHtml(sk);
     var _flowEdit=(!_od&&dsFlowDay(sk)&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
     var _odBtn='';
@@ -10875,7 +10917,7 @@ function dsRender(){
       }
     }
     var _editBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleEditMode()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_EDIT_MODE?'#5eead4':'#ffffff1a')+';background:'+(DS_EDIT_MODE?'#5eead418':'transparent')+';color:'+(DS_EDIT_MODE?'#5eead4':'#888')+';">'+(DS_EDIT_MODE?'\u2713 Done editing':'\u270E Edit exercises \u2014 remove or add')+'</button></div>';
-    html=_odBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn+_editBtn;
+    html=_odBtn+_utBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn+_editBtn;
     DS_ITEM_CTX={sk:sk};
     var _splitDays=dsSplitDaysMap();
     if((_splitDays[sk]||_od) && !dsDayIsCustom(sk)){
