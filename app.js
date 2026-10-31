@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v414 — 2026-10-30";
+var APP_BUILD = "v415 — 2026-10-30";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5899,6 +5899,7 @@ var DS_UT_SPEC=[
   ['thu-row',3,'3×12–20','Mid anchor · 1–2 RIR · rest 2 min'],
   ['mon-fly',2,'2×15–25','Mid anchor · 0–1 RIR · rest 90 s'],
   ['mon-pulldown',2,'2×12–20','High anchor · 1–2 RIR · rest 90 s'],
+  ['ut-slpulldown',2,'2×12–20/side','High anchor · 1–2 RIR · rest 60 s between sides'],
   ['sat-facepull',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
   ['mon-tri',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
   ['sat-ohtriceps',2,'2×15–25','High anchor, face away · 0–1 RIR · rest 60 s'],
@@ -5924,7 +5925,7 @@ function dsUpperTotalSession(){
     c.sets=r[1]; c.rx=r[2]; c.slot=(c.slot||'')+' · '+r[3];
     moves.push(c);
   });
-  _DS_UT_CACHE={title:'Upper Total',sub:'Every upper muscle in one session · ~31 sets · ~60–70 min · swap for an upper day, max 1×/week',accent:'#a78bfa',moves:moves,_ut:true};
+  _DS_UT_CACHE={title:'Upper Total',sub:'Every upper muscle in one session · ~33 sets · ~60–70 min · swap for an upper day, max 1×/week',accent:'#a78bfa',moves:moves,_ut:true};
   return _DS_UT_CACHE;
 }
 function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=!DS_UT_ON[activeDate]; dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
@@ -7192,6 +7193,7 @@ function dsRenderFullBodyUI(){
 // Moves that are not in the weekly plan (cut, replaced or superseded) but must still resolve:
 // full-body mode, one-day picks and exercise history all look them up here.
 var DS_RESERVE_MOVES=[
+  {"id":"ut-slpulldown","name":"Single-Arm Lat Pulldown","slot":"Pull · Vertical Pull","target":"Lats","equip":"Tube 30–50 lb → loop on Clench handles · high door anchor","rx":"2×12–20/side","cal":25,"tempo":"2-1-1-1","demo":"pulldown","log":"setsreps","sets":2,"cue":"One arm at a time so each lat gets the whole band. Reach up and slightly across for a full lat stretch, then drive the elbow down toward your hip and pause 1 sec. Hips square, brace — only a slight lean toward the working side.","setup":"Anchor the band at the top of a door and close and lock it. Kneel or half-kneel a step back, one handle in the working hand, arm reaching up and slightly across your body so you feel the lat stretch. Pull the elbow down and back to your side, pause, then return over 2–3 sec. Finish all reps on one side, then switch."},
       {"id":"fri-bulg","name":"Banded Bulgarian Split Squat","slot":"Unilateral Squat","target":"Quads · Balance","equip":"Tube 20–30 → 40–50 lb","rx":"3×10/leg","cal":40,"cue":"Front heel drives through the floor — torso stays tall","demo":"splitsquat","log":"setsreps","sets":3,"variants":[{"name":"Banded Reverse Lunge","equip":"Tube 20–30 lb","rx":"3×10/leg","cue":"Step back, drop the knee, drive through the front heel — easier to balance than Bulgarians, same quad work","demo":"splitsquat"},{"name":"Upright Walking Lunge (short steps)","equip":"Bodyweight (tube under the front foot to load it)","rx":"3×10–12/leg","cue":"Short steps, torso upright (not leaning forward) — front knee tracks straight over the toes, not past them. The short step + upright torso keeps this quad-dominant and pulls in adductors and calves too, unlike a long-step glute-focused lunge. Walk forward continuously, alternating legs each step.","demo":"splitsquat"},{"name":"Front-Elevated Split Squat (glute-biased)","equip":"Yoga block or low step · bodyweight or tube under the front foot","rx":"3×10–12/leg","cue":"Front foot elevated on a block, back foot stepped far behind you — this shifts the emphasis onto the front glute and takes the front knee through a deeper range than the standard Bulgarian. Torso can lean forward slightly here (unlike the upright cue on the standard version) to load the hip more than the knee.","demo":"splitsquat"}]},
   {"id":"mon-elbowrot","name":"Elbow — Band Pronation/Supination","slot":"Rehab","target":"Medial epicondyle · Forearm rotators","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb) · under your foot","rx":"2×12–15/direction","cal":8,"demo":"extrot","log":"setsreps","sets":2,"cue":"Elbow pinned to your side — only the forearm rotates. Slow 3–4 sec return. Mild muscle burn is fine; sharp inner-elbow pain means a lighter stretch.","setup":"Sit with your forearm on your knee, elbow bent 90° and tucked near your side, wrist just past the edge. Loop one end of the orange band under your foot and hold the other end in your fist. Rotate the forearm against the band (palm turning down = pronation), then return slowly over 3–4 seconds. Switch which side of the hand the band pulls from to train supination (palm turning up) the same way. 2×12–15 each direction.","variants":[{"name":"Isometric Pronation Hold","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb)","rx":"3×30–45s","cue":"Rotate to mid-range and hold still against the band — steady tension, no movement. Gentlest way to load an irritated tendon; use it on days the reps feel aggravating.","demo":"extrot"}]},
   {"id":"thu-elbow","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Red Theraband or light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
