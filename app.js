@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v420 — 2026-10-31";
+var APP_BUILD = "v421 — 2026-10-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4091,12 +4091,38 @@ var DS_BACKRESET=[
 var DS_BR_DONE={}; try{ DS_BR_DONE=JSON.parse(store.get('ds_backreset')||'{}')||{}; }catch(e){ DS_BR_DONE={}; }
 var DS_BR_OPEN=false, DS_BR_RUN=null;
 function dsBrSave(){ try{ dsTrimDateKeys(DS_BR_DONE,120); }catch(e){} try{ store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
-function dsBrToggleDone(){ DS_BR_DONE[activeDate]=!DS_BR_DONE[activeDate]; dsBrSave(); dsRender(); }
+// v421: a finished/marked Back Reset is also written to the day's exercise log as a
+// yoga entry, so it flows into Google Health / weekly exports, training time and Sheets.
+function dsBrLogId(dk){ return 'backreset_'+dk; }
+function dsBrWriteLog(dk,on,secs){
+  try{
+    var ftData=JSON.parse(store.get("ft_data")||"{}");
+    if(!ftData[dk]) ftData[dk]={foods:[],exercises:[],weight:null,waterOz:0,wellness:{},supplements:{}};
+    if(!ftData[dk].exercises) ftData[dk].exercises=[];
+    var id=dsBrLogId(dk), ex=ftData[dk].exercises, has=ex.some(function(x){return x.id===id;});
+    if(on && !has){
+      secs=secs||DS_BACKRESET.reduce(function(a,p){return a+p.s+DS_BR_GAP;},0);
+      var mins=Math.round(secs/60), now=Date.now();
+      var e={name:'Yoga — Daily Back Reset ('+mins+' min)',calories:(typeof calAdj==='function'?calAdj(mins*3):mins*3),type:'yoga',id:id,actualSecs:secs,startTs:now-secs*1000,endTs:now};
+      if(ftData[dk].exTombs) delete ftData[dk].exTombs['n_'+e.name.toLowerCase()];
+      ex.push(e);
+    } else if(!on && has){
+      var gone=ex.filter(function(x){return x.id===id;})[0];
+      ftData[dk].exTombs=ftData[dk].exTombs||{}; ftData[dk].exTombs['n_'+String(gone.name).toLowerCase().trim()]=Date.now();
+      ftData[dk].exercises=ex.filter(function(x){return x.id!==id;});
+    } else return;
+    store.set("ft_data",JSON.stringify(ftData));
+    if(typeof appData!=="undefined") appData=ftData;
+    try{ renderAll(); }catch(e){}
+    try{ if(typeof pushToSheets==="function") pushToSheets(); }catch(e){}
+  }catch(e){}
+}
+function dsBrToggleDone(){ DS_BR_DONE[activeDate]=!DS_BR_DONE[activeDate]; dsBrSave(); dsBrWriteLog(activeDate,!!DS_BR_DONE[activeDate]); dsRender(); }
 function dsBrToggleOpen(){ DS_BR_OPEN=!DS_BR_OPEN; dsRender(); }
 function dsBrMins(){ return Math.round(DS_BACKRESET.reduce(function(a,p){return a+p.s;},0)/60); }
 var DS_BR_CTX=null, DS_BR_GAP=5;
 function dsBrBeep(f,ms){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C) return; if(!DS_BR_CTX) DS_BR_CTX=new C(); if(DS_BR_CTX.state==='suspended') DS_BR_CTX.resume(); var c=DS_BR_CTX,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.25,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){} }
-function dsBrStart(){ dsBrStop(true); dsBrBeep(660,150); DS_BR_RUN={i:0,left:DS_BR_GAP,gap:true}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){} dsRender(); }
+function dsBrStart(){ dsBrStop(true); dsBrBeep(660,150); DS_BR_RUN={i:0,left:DS_BR_GAP,gap:true,t0:Date.now()}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){} dsRender(); }
 function dsBrStop(silent){ if(DS_BR_RUN&&DS_BR_RUN.t) clearInterval(DS_BR_RUN.t); DS_BR_RUN=null; try{ medWakeOff(); }catch(e){} if(!silent) dsRender(); }
 function dsBrSkip(){ if(!DS_BR_RUN) return; DS_BR_RUN.left=1; dsBrTick(); }
 function dsBrTick(){
@@ -4109,7 +4135,7 @@ function dsBrTick(){
     } else {
       DS_BR_RUN.i++;
       try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
-      if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrBeep(784,250); setTimeout(function(){dsBrBeep(1047,500);},280); dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); try{ toast('Back Reset done \u2713'); }catch(e){} dsRender(); return; }
+      if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrBeep(784,250); setTimeout(function(){dsBrBeep(1047,500);},280); var _brSecs=DS_BR_RUN?Math.round((Date.now()-DS_BR_RUN.t0)/1000):0; dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); dsBrWriteLog(activeDate,true,_brSecs>60?_brSecs:0); try{ toast('Back Reset done \u2713'); }catch(e){} dsRender(); return; }
       dsBrBeep(440,300); DS_BR_RUN.gap=true; DS_BR_RUN.left=DS_BR_GAP;
     }
   }
