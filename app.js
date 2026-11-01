@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v423 — 2026-10-31";
+var APP_BUILD = "v424 — 2026-10-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9524,6 +9524,13 @@ DS_SETUPPICS['Straight-Arm Band Pullover']=function(){
     dsMk(hg,{title:'Bottom (hands to thighs)',work:[[[61,110],[86,134],[108,158]]],hand:[108,158],band:[[14,11],[108,158]],bw:4,labels:[[120,184,'Elbows fixed']]}),
     ['Hinge forward about 45°, elbows in a slight fixed bend','Sweep hands to your thighs with the lats · control the way back']); };
 DS_SETUPPICS['Single-Arm Lat Pulldown']=function(){ return dsPulldownPic({t1:'Start (one arm, long reach)',l1:[[56,92,'Reach up & across']],l2:[[118,160,'Elbow to your hip']],notes:['Kneel facing a high anchor, one handle, reach up and slightly across','Elbow down to your hip · 1 sec pause · 3 sec up · then switch sides']}); };
+DS_SETUPPICS['Band Triceps Kickback']=function(){
+  var hg={head:[44,98],torso:[[61,109],[115,140]],legs:[[115,140],[102,194],[95,246],[78,246]],
+    props:[{t:'rect',x:2,y:150,w:8,h:102,rx:2}],anchor:[12,246],tags:[[8,268,'Low anchor in front']]};
+  return dsPic2(
+    dsMk(hg,{title:'Start (elbow bent)',arrow:true,arrowLabel:'Extend',work:[[[61,110],[90,128],[80,162]]],hand:[80,162],elbow:[90,128],band:[[12,248],[80,164]],labels:[[118,112,'Upper arm pinned']]}),
+    dsMk(hg,{title:'Lockout (arm straight)',work:[[[61,110],[90,128],[122,148]]],hand:[122,148],elbow:[90,128],band:[[12,248],[122,150]],bw:4,labels:[[132,132,'Squeeze 1 sec']]}),
+    ['Anchor low in front, hinge forward, upper arm pinned to your side','Only the elbow moves · straighten back · 1 sec squeeze · slow return']); };
 DS_SETUPPICS['Door-Anchored Overhead Press']=function(){
   var fr={head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[84,192],[82,246],[70,246]],legs2:[[95,138],[106,192],[108,246],[120,246]],
     props:[{t:'rect',x:2,y:150,w:8,h:102,rx:2}],anchor:[12,246],tags:[[8,268,'Low door anchor']]};
