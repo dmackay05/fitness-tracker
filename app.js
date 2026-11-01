@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v419 — 2026-10-31";
+var APP_BUILD = "v420 — 2026-10-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4094,27 +4094,34 @@ function dsBrSave(){ try{ dsTrimDateKeys(DS_BR_DONE,120); }catch(e){} try{ store
 function dsBrToggleDone(){ DS_BR_DONE[activeDate]=!DS_BR_DONE[activeDate]; dsBrSave(); dsRender(); }
 function dsBrToggleOpen(){ DS_BR_OPEN=!DS_BR_OPEN; dsRender(); }
 function dsBrMins(){ return Math.round(DS_BACKRESET.reduce(function(a,p){return a+p.s;},0)/60); }
-function dsBrStart(){ dsBrStop(true); DS_BR_RUN={i:0,left:DS_BACKRESET[0].s}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){} dsRender(); }
+var DS_BR_CTX=null, DS_BR_GAP=5;
+function dsBrBeep(f,ms){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C) return; if(!DS_BR_CTX) DS_BR_CTX=new C(); if(DS_BR_CTX.state==='suspended') DS_BR_CTX.resume(); var c=DS_BR_CTX,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.25,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){} }
+function dsBrStart(){ dsBrStop(true); dsBrBeep(660,150); DS_BR_RUN={i:0,left:DS_BR_GAP,gap:true}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){} dsRender(); }
 function dsBrStop(silent){ if(DS_BR_RUN&&DS_BR_RUN.t) clearInterval(DS_BR_RUN.t); DS_BR_RUN=null; try{ medWakeOff(); }catch(e){} if(!silent) dsRender(); }
-function dsBrSkip(){ if(!DS_BR_RUN) return; DS_BR_RUN.left=0; dsBrTick(); }
+function dsBrSkip(){ if(!DS_BR_RUN) return; DS_BR_RUN.left=1; dsBrTick(); }
 function dsBrTick(){
   if(!DS_BR_RUN) return;
   DS_BR_RUN.left--;
+  if(DS_BR_RUN.left>0 && DS_BR_RUN.left<=3) dsBrBeep(DS_BR_RUN.gap?660:520,120);   // countdown pips
   if(DS_BR_RUN.left<=0){
-    DS_BR_RUN.i++;
-    try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
-    if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); try{ toast('Back Reset done ✓'); }catch(e){} dsRender(); return; }
-    DS_BR_RUN.left=DS_BACKRESET[DS_BR_RUN.i].s;
+    if(DS_BR_RUN.gap){ // transition over -> hold starts
+      DS_BR_RUN.gap=false; DS_BR_RUN.left=DS_BACKRESET[DS_BR_RUN.i].s; dsBrBeep(880,400);
+    } else {
+      DS_BR_RUN.i++;
+      try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
+      if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrBeep(784,250); setTimeout(function(){dsBrBeep(1047,500);},280); dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); try{ toast('Back Reset done \u2713'); }catch(e){} dsRender(); return; }
+      dsBrBeep(440,300); DS_BR_RUN.gap=true; DS_BR_RUN.left=DS_BR_GAP;
+    }
   }
   dsBrPaint();
 }
 function dsBrPaint(){ var el=document.getElementById('ds-br-run'); if(!el||!DS_BR_RUN) return;
-  var p=DS_BACKRESET[DS_BR_RUN.i], nx=DS_BACKRESET[DS_BR_RUN.i+1];
-  el.innerHTML='<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace">'+(DS_BR_RUN.i+1)+' / '+DS_BACKRESET.length+'</div>'
+  var p=DS_BACKRESET[DS_BR_RUN.i], nx=DS_BACKRESET[DS_BR_RUN.i+1], gp=DS_BR_RUN.gap;
+  el.innerHTML='<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace">'+(gp?'GET INTO POSITION \u00b7 ':'')+(DS_BR_RUN.i+1)+' / '+DS_BACKRESET.length+'</div>'
     +'<div style="font-weight:700;font-size:16px;margin-top:4px">'+p.n+'</div>'
-    +'<div style="font-size:34px;font-weight:700;color:#c9a96e;margin:6px 0;font-family:\'DM Mono\',monospace">'+DS_BR_RUN.left+'s</div>'
+    +'<div style="font-size:34px;font-weight:700;color:'+(gp?'#7dd3fc':'#c9a96e')+';margin:6px 0;font-family:\'DM Mono\',monospace">'+DS_BR_RUN.left+'s</div>'
     +'<div style="font-size:12px;color:#aaa;line-height:1.5">'+p.c+'</div>'
-    +(nx?'<div style="font-size:11px;color:#777;margin-top:8px">Next: '+nx.n+'</div>':'')
+    +((nx&&!gp)?'<div style="font-size:11px;color:#777;margin-top:8px">Next: '+nx.n+'</div>':'')
     +'<div style="display:flex;gap:8px;margin-top:10px"><button class="bs" style="flex:1" onclick="dsBrSkip()">Next ›</button><button class="bs" style="flex:1" onclick="dsBrStop()">Stop</button></div>';
 }
 function dsBackResetCardHtml(){
