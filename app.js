@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v425 — 2026-11-01";
+var APP_BUILD = "v426 — 2026-11-01";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -11045,11 +11045,11 @@ function dsRender(){
     }
     var _od=dsOneDayOn();
     var _utBtn='';
-    if(ftIsOwner() && !_od && !dsDayIsCustom(sk) && sk!=='wed'){
+    if(ftIsOwner() && !_od && !dsDayIsCustom(sk)){
       var _utOn=!!DS_UT_ON[activeDate];
       _utBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_utOn?'#a78bfa':'#ffffff1a')+';background:'+(_utOn?'#a78bfa18':'transparent')+';color:'+(_utOn?'#a78bfa':'#888')+';">'+(_utOn?'\ud83d\udcaa Upper Total ON \u2014 every upper muscle today (tap to go back to the plan)':'\ud83d\udcaa Swap today for Upper Total (every upper muscle, one session)')+'</button>'+((!_utOn&&(sk==='tue'||sk==='fri'))?'<div style="font-size:11px;color:#777;margin-top:6px;">Heads-up: this is a lower day \u2014 swapping it skips your leg work this week.</div>':'')+'</div>';
     }
-    if(ftIsOwner() && !_od && !dsDayIsCustom(sk) && sk!=='wed'){
+    if(ftIsOwner() && !_od && !dsDayIsCustom(sk)){
       var _ltOn=!!DS_LT_ON[activeDate];
       _utBtn+='<div style="margin:0 0 14px;"><button onclick="dsToggleLowerTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_ltOn?'#34d399':'#ffffff1a')+';background:'+(_ltOn?'#34d39918':'transparent')+';color:'+(_ltOn?'#34d399':'#888')+';">'+(_ltOn?'\ud83e\uddb5 Lower Total ON \u2014 lighter all-legs session today (tap to go back to the plan)':'\ud83e\uddb5 Swap today for Lower Total (lighter, every lower muscle)')+'</button></div>';
     }
