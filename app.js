@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v426 — 2026-11-01";
+var APP_BUILD = "v427 — 2026-11-01";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -11053,8 +11053,8 @@ function dsRender(){
       var _ltOn=!!DS_LT_ON[activeDate];
       _utBtn+='<div style="margin:0 0 14px;"><button onclick="dsToggleLowerTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_ltOn?'#34d399':'#ffffff1a')+';background:'+(_ltOn?'#34d39918':'transparent')+';color:'+(_ltOn?'#34d399':'#888')+';">'+(_ltOn?'\ud83e\uddb5 Lower Total ON \u2014 lighter all-legs session today (tap to go back to the plan)':'\ud83e\uddb5 Swap today for Lower Total (lighter, every lower muscle)')+'</button></div>';
     }
-    var _flowBar=_od?'':dsFlowBarHtml(sk);
-    var _flowEdit=(!_od&&dsFlowDay(sk)&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
+    var _flowBar=(_od||(SS&&(SS._ut||SS._lt)))?'':dsFlowBarHtml(sk);
+    var _flowEdit=(!_od&&!(SS&&(SS._ut||SS._lt))&&dsFlowDay(sk)&&DS_FLOWEDIT_OPEN)?dsRenderFlowEditor():'';
     var _odBtn='';
     if(activeDate===todayKey() && !DS_DAY_OVERRIDE){
       var _bs='padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;';
@@ -11071,7 +11071,8 @@ function dsRender(){
     html=_odBtn+_utBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn+_editBtn;
     DS_ITEM_CTX={sk:sk};
     var _splitDays=dsSplitDaysMap();
-    if((_splitDays[sk]||_od) && !dsDayIsCustom(sk)){
+    var _totOn=!!(SS&&(SS._ut||SS._lt));
+    if((_splitDays[sk]||_od||_totOn) && !dsDayIsCustom(sk)){
       var _wu=[],_core=[],_main=[];
       _moves.forEach(function(m){ var b=dsSectionBucket(m); if(b==='warmup')_wu.push(m); else if(b==='core')_core.push(m); else _main.push(m); });
       html+=(_wu.length?dsRenderSection('Warm-Up','',DS_SEC_ACCENT_WARMUP,_wu,''):'')
