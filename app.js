@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v427 — 2026-11-01";
+var APP_BUILD = "v428 — 2026-11-01";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5992,22 +5992,24 @@ function dsToggleSatHeat(){ DS_SAT_HEAT_ON[activeDate]=!DS_SAT_HEAT_ON[activeDat
    Picks reuse plan ids (history/volume stay linked), ordered by door-anchor
    position (mid → high → low → floor) with set counts trimmed to ~2 each. ── */
 var DS_UT_SPEC=[
+  /* v428: compounds first (presses, push-ups, rows, pulldowns), then arms, core last.
+     One extra trip back to the high anchor for triceps is worth it. */
   ['sat-standpress',3,'3×12–20','Mid anchor · 1–2 RIR · rest 2 min'],
+  ['mon-pushup#Deficit',1,'1×AMRAP','Floor, right after the press while fresh · stop at 1 RIR'],
   ['thu-row',3,'3×12–20','Mid anchor · 1–2 RIR · rest 2 min'],
   ['mon-fly',2,'2×15–25','Mid anchor · 0–1 RIR · rest 90 s'],
   ['mon-pulldown',2,'2×12–20','High anchor · 1–2 RIR · rest 90 s'],
   ['ut-slpulldown',2,'2×12–20/side','High anchor · 1–2 RIR · rest 60 s between sides'],
   ['thu-pullover',2,'2×15–20','High anchor · 0–1 RIR · rest 60 s'],
   ['sat-facepull',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
-  ['mon-tri',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
-  ['sat-ohtriceps',2,'2×15–25','High anchor, face away · 0–1 RIR · rest 60 s'],
-  ['sat-bandcrunch',2,'2×15–20','High anchor · 1 RIR · rest 60 s'],
   ['mon-inclinepress',2,'2×12–20','Low anchor · 1–2 RIR · rest 90 s'],
   ['mon-ohp#Seated',2,'2×12–20','Seated, band under you · 1–2 RIR · rest 90 s'],
   ['sat-curl',2,'2×12–20','Low anchor, face away · 0–1 RIR · rest 60 s'],
   ['thu-hammer',2,'2×12–20','Low anchor, face away · 0–1 RIR · rest 60 s'],
+  ['mon-tri',2,'2×15–25','High anchor · 0–1 RIR · rest 60 s'],
+  ['sat-ohtriceps',2,'2×15–25','High anchor, face away · 0–1 RIR · rest 60 s'],
+  ['sat-bandcrunch',2,'2×15–20','High anchor · 1 RIR · rest 60 s'],
   ['mon-lateral',2,'2×15–25','Stand on band · 0–1 RIR · rest 60 s'],
-  ['mon-pushup#Deficit',1,'1×AMRAP','Floor · stop at 1 RIR'],
   ['sat-wristcurl',2,'2×15–25/side','Under foot · underhand set + overhand set'],
   ['thu-legraise',1,'1×12–20','Floor · 1 RIR']
 ];
