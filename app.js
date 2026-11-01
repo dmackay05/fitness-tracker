@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v421 — 2026-10-31";
+var APP_BUILD = "v422 — 2026-10-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4117,6 +4117,10 @@ function dsBrWriteLog(dk,on,secs){
     try{ if(typeof pushToSheets==="function") pushToSheets(); }catch(e){}
   }catch(e){}
 }
+// v422: days marked done before v421 (or synced from another device) had no log
+// entry, so they never reached the exports. Backfill any done day that's missing one.
+function dsBrBackfill(){ try{ for(var dk in DS_BR_DONE){ if(!DS_BR_DONE[dk]) continue; var d=appData[dk]; var has=d&&d.exercises&&d.exercises.some(function(x){return x.id===dsBrLogId(dk);}); if(!has) dsBrWriteLog(dk,true); } }catch(e){} }
+setTimeout(dsBrBackfill,1500);
 function dsBrToggleDone(){ DS_BR_DONE[activeDate]=!DS_BR_DONE[activeDate]; dsBrSave(); dsBrWriteLog(activeDate,!!DS_BR_DONE[activeDate]); dsRender(); }
 function dsBrToggleOpen(){ DS_BR_OPEN=!DS_BR_OPEN; dsRender(); }
 function dsBrMins(){ return Math.round(DS_BACKRESET.reduce(function(a,p){return a+p.s;},0)/60); }
