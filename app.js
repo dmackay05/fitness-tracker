@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v418 — 2026-10-31";
+var APP_BUILD = "v419 — 2026-10-31";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3867,7 +3867,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3879,7 +3879,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -3910,6 +3910,7 @@ function applyConfig(cfg){
   // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
   // (last pushed wins per-key), everything else from both sides is kept.
   try{ var umv=JSON.parse(cfg.ds_usermoves||'null'); if(umv&&typeof umv==='object'){ for(var k1 in umv) DS_USERMOVES[k1]=umv[k1]; store.set('ds_usermoves',JSON.stringify(DS_USERMOVES)); } }catch(e){}
+  try{ var brv=JSON.parse(cfg.ds_backreset||'null'); if(brv&&typeof brv==='object'){ for(var k5 in brv) DS_BR_DONE[k5]=brv[k5]; store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); } }catch(e){}
   try{ var ltv=JSON.parse(cfg.ds_lt_on||'null'); if(ltv&&typeof ltv==='object'){ for(var k4 in ltv) DS_LT_ON[k4]=ltv[k4]; store.set('ds_lt_on',JSON.stringify(DS_LT_ON)); } }catch(e){}
   try{ var utv=JSON.parse(cfg.ds_ut_on||'null'); if(utv&&typeof utv==='object'){ for(var k3 in utv) DS_UT_ON[k3]=utv[k3]; store.set('ds_ut_on',JSON.stringify(DS_UT_ON)); } }catch(e){}
   try{ var shv=JSON.parse(cfg.ds_sat_heat_on||'null'); if(shv&&typeof shv==='object'){ for(var k2 in shv) DS_SAT_HEAT_ON[k2]=shv[k2]; store.set('ds_sat_heat_on',JSON.stringify(DS_SAT_HEAT_ON)); } }catch(e){}
@@ -4073,6 +4074,64 @@ function medStreak(){
   return n;
 }
 function medWeekMins(){ var t=0,d=new Date(); for(var i=0;i<7;i++){ t+=medMinsForKey(localDateKey(d)); d.setDate(d.getDate()-1); } return t; }
+// v419: Daily Back Reset — fixed ~6-min lower-back yoga add-on shown every day on the
+// Today tab, below the session. Not part of any session, so no swap/custom/one-day
+// mode ever replaces it. Done-state is per date and synced (ds_backreset).
+var DS_BACKRESET=[
+  {n:'Cat-Cow',s:60,c:'On hands and knees. Inhale, drop the belly and lift the chest; exhale, round the spine up. Slow and breath-led.'},
+  {n:'Child’s Pose',s:60,c:'Knees wide, hips back to heels, arms long in front. Breathe into the low back and let it widen.'},
+  {n:'Sphinx',s:45,c:'Lie on your belly, forearms down, elbows under shoulders. Lift the chest gently; glutes relaxed. Ease off if the back pinches.'},
+  {n:'Knees-to-Chest',s:45,c:'On your back, hug both knees in and rock gently side to side to massage the low back.'},
+  {n:'Supine Twist — left',s:30,c:'Knees fall to the left, shoulders stay down, look right. Let gravity do the work.'},
+  {n:'Supine Twist — right',s:30,c:'Knees fall to the right, shoulders stay down, look left.'},
+  {n:'Reclined Figure-4 — left',s:30,c:'Left ankle over right knee, pull the right thigh in. Stretches the glute and piriformis, which often pull on the low back.'},
+  {n:'Reclined Figure-4 — right',s:30,c:'Right ankle over left knee, pull the left thigh in.'},
+  {n:'Child’s Pose (finish)',s:30,c:'Back to child’s pose. Slow exhales.'}
+];
+var DS_BR_DONE={}; try{ DS_BR_DONE=JSON.parse(store.get('ds_backreset')||'{}')||{}; }catch(e){ DS_BR_DONE={}; }
+var DS_BR_OPEN=false, DS_BR_RUN=null;
+function dsBrSave(){ try{ dsTrimDateKeys(DS_BR_DONE,120); }catch(e){} try{ store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
+function dsBrToggleDone(){ DS_BR_DONE[activeDate]=!DS_BR_DONE[activeDate]; dsBrSave(); dsRender(); }
+function dsBrToggleOpen(){ DS_BR_OPEN=!DS_BR_OPEN; dsRender(); }
+function dsBrMins(){ return Math.round(DS_BACKRESET.reduce(function(a,p){return a+p.s;},0)/60); }
+function dsBrStart(){ dsBrStop(true); DS_BR_RUN={i:0,left:DS_BACKRESET[0].s}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){} dsRender(); }
+function dsBrStop(silent){ if(DS_BR_RUN&&DS_BR_RUN.t) clearInterval(DS_BR_RUN.t); DS_BR_RUN=null; try{ medWakeOff(); }catch(e){} if(!silent) dsRender(); }
+function dsBrSkip(){ if(!DS_BR_RUN) return; DS_BR_RUN.left=0; dsBrTick(); }
+function dsBrTick(){
+  if(!DS_BR_RUN) return;
+  DS_BR_RUN.left--;
+  if(DS_BR_RUN.left<=0){
+    DS_BR_RUN.i++;
+    try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
+    if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); try{ toast('Back Reset done ✓'); }catch(e){} dsRender(); return; }
+    DS_BR_RUN.left=DS_BACKRESET[DS_BR_RUN.i].s;
+  }
+  dsBrPaint();
+}
+function dsBrPaint(){ var el=document.getElementById('ds-br-run'); if(!el||!DS_BR_RUN) return;
+  var p=DS_BACKRESET[DS_BR_RUN.i], nx=DS_BACKRESET[DS_BR_RUN.i+1];
+  el.innerHTML='<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace">'+(DS_BR_RUN.i+1)+' / '+DS_BACKRESET.length+'</div>'
+    +'<div style="font-weight:700;font-size:16px;margin-top:4px">'+p.n+'</div>'
+    +'<div style="font-size:34px;font-weight:700;color:#c9a96e;margin:6px 0;font-family:\'DM Mono\',monospace">'+DS_BR_RUN.left+'s</div>'
+    +'<div style="font-size:12px;color:#aaa;line-height:1.5">'+p.c+'</div>'
+    +(nx?'<div style="font-size:11px;color:#777;margin-top:8px">Next: '+nx.n+'</div>':'')
+    +'<div style="display:flex;gap:8px;margin-top:10px"><button class="bs" style="flex:1" onclick="dsBrSkip()">Next ›</button><button class="bs" style="flex:1" onclick="dsBrStop()">Stop</button></div>';
+}
+function dsBackResetCardHtml(){
+  if(!ftIsOwner()) return '';
+  var ok=!!DS_BR_DONE[activeDate];
+  var h='<div style="margin:0 0 14px;padding:14px;border-radius:12px;border:1px solid '+(ok?'#5eead455':'#c9a96e44')+';background:'+(ok?'#5eead411':'#c9a96e11')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+    +'<div style="min-width:0;cursor:pointer" onclick="dsBrToggleOpen()"><div style="font-weight:700;font-size:14px">'+(ok?'✓ ':'')+'🧘‍♂️ Daily Back Reset</div>'
+    +'<div style="font-size:11px;color:#888;margin-top:3px">~'+dsBrMins()+' min · cat-cow, child’s pose, twists · every day '+(DS_BR_OPEN?'▾':'▸')+'</div></div>'
+    +'<button class="bp" style="padding:10px 14px;font-size:12px;white-space:nowrap" onclick="dsBrStart()">'+(ok?'Again':'▷ Start')+'</button></div>';
+  if(DS_BR_RUN) h+='<div id="ds-br-run" style="margin-top:12px;padding-top:12px;border-top:1px solid #ffffff14"></div>';
+  else if(DS_BR_OPEN){
+    h+='<div style="margin-top:10px">'+DS_BACKRESET.map(function(p){ return '<div style="padding:7px 0;border-top:1px solid #ffffff10"><div style="display:flex;justify-content:space-between;font-size:13px"><b>'+p.n+'</b><span style="color:#888;font-family:\'DM Mono\',monospace">'+p.s+'s</span></div><div style="font-size:11px;color:#999;line-height:1.5;margin-top:2px">'+p.c+'</div></div>'; }).join('')
+      +'<button class="bs" style="width:100%;margin-top:8px" onclick="dsBrToggleDone()">'+(ok?'Mark not done':'Mark done (did it without the timer)')+'</button></div>';
+  }
+  return h+'</div>';
+}
 function dsMeditateCardHtml(){
   if(dsGuestMode()) return '';
   var done=medMinsForKey(activeDate), ok=done>0;
@@ -10978,6 +11037,7 @@ function dsRender(){
       html+=dsRenderSection('The Session','',_fallbackAccent,_moves,'');
     }
     html+=dsMeditateCardHtml();
+    html+=dsBackResetCardHtml();
     var _customMoves=dsCustomMoves(sk);
     if(_customMoves.length){
       html+=dsRenderSection('Custom Set',_customMoves.length+' move'+(_customMoves.length===1?'':'s')+' \u00b7 '+DS_DAYLABEL[sk],'#fbbf24',_customMoves,'Your own picks for '+DS_DAYLABEL[sk]+'. <span style="text-decoration:underline;cursor:pointer" onclick="dsCustomOpen()">Edit set</span>');
@@ -11024,7 +11084,7 @@ function dsRender(){
     } else { _note.style.display='none'; }
   }
   if(_q&&!_hasHit){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d across any day.</div>'; }
-  host.innerHTML=html; dsUpdateStats();
+  host.innerHTML=html; dsUpdateStats(); if(DS_BR_RUN) dsBrPaint();
 }
 function renderToday(){ try{dsRender();}catch(e){} }
 function dsUpdateStats(){
