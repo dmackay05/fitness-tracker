@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v432 — 2026-11-01";
+var APP_BUILD = "v433 — 2026-11-02";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9338,6 +9338,28 @@ DS_SETUPPICS['Standing Band Chest Press (pyramid)']=function(){
   dsMk(stag,{title:'Top (arms straight)',arm:[[100,88],[130,94],[160,98]],band:[[8,98],[160,98]],bw:4,tags:[[4,196,'Staggered stance']]}),
   ['Anchor behind you at chest height, elbows about 45°','Pyramid 15 · 10–12 · 8–10 · 3 sec down, 1 sec squeeze']); };
 DS_SETUPPICS['Banded Chest Press (anchor)']=DS_SETUPPICS['Standing Band Chest Press'];
+/* v433 new-style figures for the push-up replacements: door on the left, anchor marked, orange working arm. */
+var DS_SPLIT={head:[104,60],torso:[[102,76],[96,140]],legs:[[96,140],[78,194],[64,246],[80,246]],legs2:[[96,140],[120,194],[126,246],[142,246]]};
+DS_SETUPPICS['High-to-Low Band Press']=function(){
+  var door=[{t:'rect',x:2,y:34,w:8,h:218,rx:2}];
+  return dsPic2(
+    dsMk(DS_SPLIT,{title:'Start (stretch)',arrow:true,arrowLabel:'Press',props:door,anchor:[12,38],
+      work:[[[102,88],[74,114],[118,100]]],elbow:[74,114],hand:[118,100],band:[[12,42],[118,100]],
+      labels:[[8,60,'Top of door'],[118,120,'Elbow back'],[118,134,'~45°']]}),
+    dsMk(DS_SPLIT,{title:'Finish (low, together)',props:door,anchor:[12,38],
+      work:[[[102,88],[122,112],[142,136]]],elbow:[122,112],hand:[142,136],band:[[12,42],[142,136]],bw:4,
+      labels:[[118,64,'Squeeze 1 sec']]}),
+    ['Face away from a high anchor, split stance, band taut at the start','Press down toward your belly button · 1 sec squeeze · 3 sec back']); };
+DS_SETUPPICS['Low-to-High Band Fly']=function(){
+  var door=[{t:'rect',x:2,y:34,w:8,h:218,rx:2}];
+  return dsPic2(
+    dsMk(DS_SPLIT,{title:'Start (low, stretched)',arrow:true,arrowLabel:'Sweep up',props:door,anchor:[12,242],
+      work:[[[102,88],[86,122],[72,150]]],elbow:[86,122],hand:[72,150],band:[[12,244],[72,152]],
+      labels:[[18,96,'Arms low'],[18,110,'and back'],[18,226,'Bottom of door']]}),
+    dsMk(DS_SPLIT,{title:'Top (eye level)',props:door,anchor:[12,242],
+      work:[[[102,88],[124,82],[146,64]]],elbow:[124,82],hand:[146,64],band:[[12,244],[146,66]],bw:4,
+      labels:[[18,226,'Bottom of door'],[132,110,'Elbows stay'],[132,124,'slightly bent']]}),
+    ['Face away from a low anchor, split stance, elbow bend locked','Sweep up and together · 1–2 sec squeeze · lower slowly']); };
 DS_SETUPPICS['Banded Hip Thrust']=function(){
   var bn={lines:[[14,190,72,190],[22,190,22,252],[64,190,64,252]],head:[36,168]};
   return dsPic2(
@@ -15355,6 +15377,8 @@ var DS_LOADTIPS=(function(){
     'Triceps Pushdown':['Step back so the band pulls hard with elbows bent at the top','1 sec pause at the top, elbows pinned','Then partials in the top half'],
     'Banded Incline Skull Crusher':ohtri,'Banded Overhead Triceps Extension':ohtri,
     'Incline Close-Grip Press':press,'Standing Band Chest Press':press,
+    'High-to-Low Band Press':['Step forward until taut with hands at upper chest, elbows back','1 sec pause in the stretch, elbows back','Then 5–8 partials in the first half of the press'],
+    'Low-to-High Band Fly':['Step forward until taut with hands low by your hips','1 sec pause low and wide','Then 5–8 partials in the bottom half'],
     'Chest — Pull-Apart / Fly':['Anchor behind you — step forward until taut with arms wide','1–2 sec pause in the wide stretch','Then 5–8 partials in the wide half'],
     'Banded Squat':['Band tension fades at the bottom — control the descent','2 sec pause at the bottom, or 1.5 reps','Partials only if knees feel good'],
     'Banded Bulgarian Split Squat':['Bodyweight loads the bottom — sink deep','1 sec pause at the bottom','Partials only if knees feel good'],
