@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v429 — 2026-11-01";
+var APP_BUILD = "v430 — 2026-11-01";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -7403,7 +7403,8 @@ function dsProgDecision(id){
   var base=dsParseLastReps(lt); if(base==null) return null;
   var rir=dsParseLastRir(lt), r=Math.round(base), rng=dsRepRange(id);
   var raw=dsRawItem(id), band=raw?dsWantsLoad(dsViewOf(raw)):false;
-  var up=band?'move up one band step':'make it harder (3-sec lowering, a pause in the stretch, or the next harder variation)';
+  // v430: one clear ladder, easiest change first.
+  var up=band?'step 6\u201312 in further from the anchor (mark the spot). Already at the end of the room? Slow the lowering to 3\u20134 sec with a 1\u20132 sec pause, then the next band':'make it harder (3-sec lowering, a pause in the stretch, or the next harder variation)';
   if(!rng){
     if(rir!=null&&rir>=2.5) return {reps:r+2,note:'\u26A1 Had reps left last time \u2014 aim for '+(r+2)+'.'};
     return {reps:r,note:null};
@@ -7411,7 +7412,7 @@ function dsProgDecision(id){
   var hist=dsHistoryN(id,2);
   var topAtTarget=function(h){ var rp=dsParseLastReps(h), ri=dsParseLastRir(h); return rp!=null&&rp>=rng.hi&&(ri==null||ri>=0.5); };
   if(hist.length>=2&&hist.every(topAtTarget))
-    return {reps:rng.lo,bandUp:true,note:'\u25B2 Top of the range ('+rng.hi+') two sessions running \u2014 '+up+' and restart at '+rng.lo+' reps.'};
+    return {reps:rng.lo,bandUp:true,note:'\u25B2 Top of the range ('+rng.hi+') two sessions running \u2014 '+up+'. Restart at '+rng.lo+' reps.'};
   if(r<rng.lo)
     return {reps:rng.lo,note:'\u2193 Came in under '+rng.lo+' last time \u2014 aim for '+rng.lo+'. Short again next time? '+(band?'Drop one band step.':'Use an easier variation.')};
   if(r>=rng.hi)
@@ -7421,6 +7422,8 @@ function dsProgDecision(id){
   var t2=Math.min(rng.hi,r+1);
   return {reps:t2,note:'\u2713 Beat last time by one \u2014 aim for '+t2+' (range '+rng.lo+'\u2013'+rng.hi+').'};
 }
+// v430: true when the last two sessions both hit the top of the rep range at 1+ RIR.
+function dsReadyToProgress(id){ try{ var d=dsProgDecision(id); return !!(d&&d.bandUp); }catch(e){ return false; } }
 function dsProgTarget(id){
   var rec=DS_PROG[id];
   if(rec && rec.day===activeDate) return rec.reps; // already computed for today, don't recompute mid-session
@@ -9999,7 +10002,7 @@ function dsRenderItem(rawItem,idx,accent){
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
   var _isAnchor=dsIsAnchorSet(item.id); var _isComp=dsIsCompound(item);
   var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+(_isComp?' ds-compound':'')+'" id="ds-move-'+item.id+'"'+(accent?' style="border-left:4px solid '+accent+'"':'')+'><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
-  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+'</div>'+dsPairNoteHtml(rawItem);
+  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+(dsReadyToProgress(item.id)?' <span class="ds-ready-tag" style="display:inline-block;font-size:10px;font-weight:700;color:#0b1220;background:#5eead4;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle">\u25B2 Ready to progress</span>':'')+'</div>'+dsPairNoteHtml(rawItem);
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
@@ -10050,7 +10053,10 @@ function dsRenderItem(rawItem,idx,accent){
     // history with no reps recorded. Show Progress whenever ANY history exists at all.
     if(dsExerciseHistory(item.id).length)h+='<button type="button" class="ds-swap" onclick="event.stopPropagation();dsShowExerciseHistory(\''+item.id+'\')" style="color:var(--accent);border-color:var(--accent);margin-top:2px">\ud83d\udcc8 View Progress</button>';
     var _sugg=dsSuggestNext(item,lt);
-    if(_sugg)h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
+    if(_sugg){
+      if(dsReadyToProgress(item.id)) h+='<div class="ds-suggline ds-ready" style="font-size:12px;color:#5eead4;margin:4px 0 8px;line-height:1.45;border:1px solid #5eead4;border-radius:8px;padding:6px 8px;font-weight:600">'+_sugg+'</div>';
+      else h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
+    }
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
     var _prog=DS_PROG[item.id];
     if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
@@ -10058,7 +10064,7 @@ function dsRenderItem(rawItem,idx,accent){
       if(_prog.reps>_prog.prevReps){
         h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u2191 Target up to '+_prog.reps+' reps (was '+_prog.prevReps+') \u2014 you earned it last session.</div>';
       } else if(_prog.bandUp){
-        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u25B2 Band up: restart at '+_prog.reps+' reps with the next band step.</div>';
+        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u25B2 Progress day: step further back from the anchor (or slow the tempo) and restart at '+_prog.reps+' reps.</div>';
       } else if(_prng){
         // Lower number only because the prescribed range itself changed (training phase).
         h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB '+(_pph&&PHASE_LABELS[_pph]?PHASE_LABELS[_pph]+' this week':'This week\u2019s plan')+': range is '+_prng.lo+'\u2013'+_prng.hi+'. The number is a minimum \u2014 keep going until you have 0\u20132 reps left, and log what you actually did.</div>';
