@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v430 — 2026-11-01";
+var APP_BUILD = "v431 — 2026-11-01";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2267,11 +2267,20 @@ function _bpMeasureDelta(field, gap){
   if(!prior && s.length>1) prior=s[0]; // fewer than 3 weeks of history: compare to the first reading
   return {last:last, prior:prior, first:s[0], delta:prior?last.v-prior.v:null, n:s.length};
 }
+// A strength entry, whether logged on this device (sess_<id>) or synced back
+// from the Sheet (sheet_n_<name>). Synced copies replace local ones on other
+// devices and after a reload, so counting only sess_ ids badly undercounted.
+function _bpIsLiftEntry(e){
+  if(!e||!e.reps) return false;
+  var id=String(e.id||'');
+  if(id.indexOf('sess_')!==0 && id.indexOf('sheet_')!==0) return false;
+  return e.type!=='cardio' && e.type!=='yoga';
+}
 function _bpTraining(days){
   var start=_bpKeyBack(days-1), sessions=0, multi=0, same=0, rirSum=0, rirN=0;
   Object.keys(appData).forEach(function(k){
     if(k<start||k>todayKey()) return;
-    var ex=(appData[k].exercises||[]).filter(function(e){ return String(e.id||'').indexOf('sess_')===0 && e.reps; });
+    var ex=(appData[k].exercises||[]).filter(_bpIsLiftEntry);
     if(ex.length>=3) sessions++;
     ex.forEach(function(e){
       var parts=String(e.reps).split('/').map(parseFloat).filter(function(x){return !isNaN(x);});
@@ -2312,7 +2321,7 @@ function _bpSigned(d,dp,unit){ if(d==null) return '—'; var a=Math.abs(d).toFix
 // three sessions in a row with no more reps than the first of them at the same band.
 function _dlSessionDays(){
   return Object.keys(appData).filter(function(k){
-    return (appData[k].exercises||[]).filter(function(e){ return String(e.id||'').indexOf('sess_')===0 && e.reps; }).length>=3;
+    return (appData[k].exercises||[]).filter(_bpIsLiftEntry).length>=3;
   }).sort();
 }
 function dsStalledExercises(){
