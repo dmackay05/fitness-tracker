@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v436 — 2026-11-03";
+var APP_BUILD = "v437 — 2026-11-03";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -15379,10 +15379,12 @@ var DS_LOADTIPS=(function(){
     'Bent-Over Row':['Stand on the band wide (or choke it) so it’s taut with arms hanging','1 sec hang at the bottom, shoulders long','Then 5–8 bottom-half partials'],
     'Overhand Pulldown':pull,'Underhand Pulldown':pull,'Deep-Stretch Pulldown':pull,'Kneeling Wide-Grip Pulldown':pull,
     'Overhead Press':['Stand on more band so it’s taut at shoulder height','1 sec pause at the shoulders','Then partials in the bottom half'],
-    'Rear Delts / Face Pull':['Step back until taut with arms reaching straight forward','1 sec pause arms reached long','Then partials in the first half'],
+    'Rear Delts / Face Pull':['Light LOOP band (yellow/orange) through a high anchor, one hand in each side of the loop — the band also resists your hands spreading. Step back until taut with arms long','Pull to your face, then spread hands wide and rotate back (knuckles up, double-biceps pose) · squeeze shoulder blades 1 sec','Then partials in the first half'],
     'Lateral Raise':lat,
     'Bicep Curl':curl,'Bayesian Curl':curl,'Hammer Curl':curl,'Spider Curl':curl,'Ball Preacher Curl':curl,
-    'Triceps Pushdown':['Step back so the band pulls hard with elbows bent at the top','1 sec pause at the top, elbows pinned','Then partials in the top half'],
+    'Triceps Pushdown':['Loop band (yellow to start) on a high anchor — choke up until it pulls hard with elbows bent, forearms just above parallel. Tune tension by grip height before jumping bands','Elbows pinned · 1 sec pause at the top · full lockout and squeeze at the bottom','Then partials in the top half'],
+    'Standing Band Fly (stretch-biased)':['Anchor just under armpit height so the band clears your arms · step out until taut with arms wide','Slight fixed elbow bend — never press · 1 sec in the stretch · stop ~¾ in if tension fades','Then 5–8 partials in the wide half'],
+    'Single-Arm Band Fly':['Anchor at chest height OUT TO YOUR SIDE, never behind you · step away until taut, arm wide','Sweep past mid-chest, squeeze 1 sec · fixed elbow bend','Then 5–8 partials in the wide half'],
     'Banded Incline Skull Crusher':ohtri,'Banded Overhead Triceps Extension':ohtri,
     'Incline Close-Grip Press':press,'Standing Band Chest Press':press,
     'High-to-Low Band Press':['Step forward until taut with hands at upper chest, elbows back','1 sec pause in the stretch, elbows back','Then 5–8 partials in the first half of the press'],
