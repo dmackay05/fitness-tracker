@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v438 — 2026-11-04";
+var APP_BUILD = "v439 — 2026-11-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6090,7 +6090,7 @@ function dsLowerTotalSession(){
   return _DS_LT_CACHE;
 }
 function dsToggleLowerTotal(){ DS_LT_ON[activeDate]=!DS_LT_ON[activeDate]; if(DS_LT_ON[activeDate]){ DS_UT_ON[activeDate]=false; try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} } dsTrimDateKeys(DS_LT_ON,120); try{ store.set("ds_lt_on", JSON.stringify(DS_LT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
-function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_LT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _lt=dsLowerTotalSession(); if(_lt&&_lt.moves.length>3) return _lt; } if(DS_UT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _ut=(DS_UT_ON[activeDate]==='short')?dsUpperShortSession():dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_LT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _lt=dsLowerTotalSession(); if(_lt&&_lt.moves.length>3) return _lt; } if(DS_UT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ if(sk==='wed'&&DS_UT_ON[activeDate]==='short'){ var _wy=dsWedFocusSession()||DS_SESSIONS.wed; var _us=dsUpperShortSession(); if(_wy&&_us&&_us.moves.length>3){ return {title:'Upper Short + Yoga',sub:'Lift first (~30 min, keep 2–3 RIR so Thursday stays strong), then the yoga flow as your cooldown',accent:'#a78bfa',moves:_us.moves.concat(_wy.moves||[]),_us:true}; } } var _ut=(DS_UT_ON[activeDate]==='short')?dsUpperShortSession():dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
 // v348: exercises the user removed from a weekday on the Today tab (per-day id list, synced).
 // Filtering happens here so the card list, done/total bar and Volume all agree.
 var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ DS_HIDDEN={}; }
@@ -11119,7 +11119,7 @@ function dsRender(){
     if(ftIsOwner() && !_od && !dsDayIsCustom(sk)){
       var _utOn=(DS_UT_ON[activeDate]===true), _usOn=(DS_UT_ON[activeDate]==='short');
       _utBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_utOn?'#a78bfa':'#ffffff1a')+';background:'+(_utOn?'#a78bfa18':'transparent')+';color:'+(_utOn?'#a78bfa':'#888')+';">'+(_utOn?'\ud83d\udcaa Upper Total ON \u2014 every upper muscle today (tap to go back to the plan)':'\ud83d\udcaa Swap today for Upper Total (every upper muscle, one session)')+'</button>'+((!_utOn&&(sk==='tue'||sk==='fri'))?'<div style="font-size:11px;color:#777;margin-top:6px;">Heads-up: this is a lower day \u2014 swapping it skips your leg work this week.</div>':'')+'</div>';
-      _utBtn+='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperShort()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_usOn?'#a78bfa':'#ffffff1a')+';background:'+(_usOn?'#a78bfa18':'transparent')+';color:'+(_usOn?'#a78bfa':'#888')+';">'+(_usOn?'\u23f1 Upper Short ON \u2014 6 moves, ~30 min (tap to go back to the plan)':'\u23f1 Swap today for Upper Short (6 moves, ~30 min)')+'</button></div>';
+      _utBtn+='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperShort()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_usOn?'#a78bfa':'#ffffff1a')+';background:'+(_usOn?'#a78bfa18':'transparent')+';color:'+(_usOn?'#a78bfa':'#888')+';">'+(_usOn?'\u23f1 Upper Short ON \u2014 6 moves, ~30 min (tap to go back to the plan)':(sk==='wed'?'\u23f1 Add Upper Short before today\'s yoga (6 moves, ~30 min)':'\u23f1 Swap today for Upper Short (6 moves, ~30 min)'))+'</button></div>';
     }
     if(ftIsOwner() && !_od && !dsDayIsCustom(sk)){
       var _ltOn=!!DS_LT_ON[activeDate];
