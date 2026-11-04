@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v437 — 2026-11-03";
+var APP_BUILD = "v438 — 2026-11-04";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6022,6 +6022,30 @@ var DS_UT_SPEC=[
   ['sat-wristcurl',2,'2×15–25/side','Under foot · underhand set + overhand set'],
   ['thu-legraise',1,'1×12–20','Floor · 1 RIR']
 ];
+/* v438: Upper Short — abbreviated Upper Total (~14 sets, ~30–35 min). Stored as DS_UT_ON[date]='short'. */
+var DS_US_SPEC=[
+  ['sat-standpress',3,'3×12–20','Mid anchor · 1–3 RIR · rest 2 min'],
+  ['mon-fly',2,'2×15–25','Mid anchor · 0–2 RIR · rest 90 s'],
+  ['thu-row',3,'3×12–20','Mid anchor · 1–3 RIR · rest 2 min'],
+  ['mon-ohp#Seated',2,'2×12–20','Seated, band under you · 1–3 RIR · rest 90 s'],
+  ['sat-curl',2,'2×12–20','Low anchor, face away · 0–2 RIR · rest 60–90 s'],
+  ['sat-ohtriceps',2,'2×15–25','High anchor, face away · 0–2 RIR · rest 60–90 s']
+];
+var _DS_US_CACHE=null;
+function dsUpperShortSession(){
+  if(_DS_US_CACHE) return _DS_US_CACHE;
+  var moves=[DS_WARMUP_RAISE,DS_WARMUP_BANDSHOULDER];
+  DS_US_SPEC.forEach(function(r){
+    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){} if(!m) return;
+    var c={}; for(var k in m) c[k]=m[k];
+    delete c.variants; delete c.lockVar; delete c.pair;
+    c.sets=r[1]; c.rx=r[2]; c.slot=(c.slot||'')+' · '+r[3];
+    moves.push(c);
+  });
+  _DS_US_CACHE={title:'Upper Short',sub:'Abbreviated upper session · ~14 sets · ~30–35 min · push every set to 1–3 RIR · short on time? do press, row, curl, triceps only',accent:'#a78bfa',moves:moves,_ut:true,_us:true};
+  return _DS_US_CACHE;
+}
+function dsToggleUpperShort(){ DS_UT_ON[activeDate]=(DS_UT_ON[activeDate]==='short')?false:'short'; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
 var DS_UT_ON={}; try{ DS_UT_ON=JSON.parse(store.get("ds_ut_on")||"{}")||{}; }catch(e){ DS_UT_ON={}; }
 var _DS_UT_CACHE=null;
 function dsUpperTotalSession(){
@@ -6037,7 +6061,7 @@ function dsUpperTotalSession(){
   _DS_UT_CACHE={title:'Upper Total',sub:'Every upper muscle in one session · ~35 sets · ~60–70 min · swap for an upper day, max 1×/week',accent:'#a78bfa',moves:moves,_ut:true};
   return _DS_UT_CACHE;
 }
-function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=!DS_UT_ON[activeDate]; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
+function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=(DS_UT_ON[activeDate]===true)?false:true; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
 /* ── v416: Lower Total — lighter one-session swap hitting every lower muscle once
    (~16 sets, ~35–40 min). Same mechanics as Upper Total; the two are exclusive. ── */
 var DS_LT_SPEC=[
@@ -6066,7 +6090,7 @@ function dsLowerTotalSession(){
   return _DS_LT_CACHE;
 }
 function dsToggleLowerTotal(){ DS_LT_ON[activeDate]=!DS_LT_ON[activeDate]; if(DS_LT_ON[activeDate]){ DS_UT_ON[activeDate]=false; try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} } dsTrimDateKeys(DS_LT_ON,120); try{ store.set("ds_lt_on", JSON.stringify(DS_LT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
-function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_LT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _lt=dsLowerTotalSession(); if(_lt&&_lt.moves.length>3) return _lt; } if(DS_UT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _ut=dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
+function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_LT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _lt=dsLowerTotalSession(); if(_lt&&_lt.moves.length>3) return _lt; } if(DS_UT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _ut=(DS_UT_ON[activeDate]==='short')?dsUpperShortSession():dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='sat'&&DS_SAT_HEAT_ON[activeDate]&&!dsDayIsCustom('sat'))return DS_SAT_HEAT; if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
 // v348: exercises the user removed from a weekday on the Today tab (per-day id list, synced).
 // Filtering happens here so the card list, done/total bar and Volume all agree.
 var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ DS_HIDDEN={}; }
@@ -11093,8 +11117,9 @@ function dsRender(){
     var _od=dsOneDayOn();
     var _utBtn='';
     if(ftIsOwner() && !_od && !dsDayIsCustom(sk)){
-      var _utOn=!!DS_UT_ON[activeDate];
+      var _utOn=(DS_UT_ON[activeDate]===true), _usOn=(DS_UT_ON[activeDate]==='short');
       _utBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperTotal()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_utOn?'#a78bfa':'#ffffff1a')+';background:'+(_utOn?'#a78bfa18':'transparent')+';color:'+(_utOn?'#a78bfa':'#888')+';">'+(_utOn?'\ud83d\udcaa Upper Total ON \u2014 every upper muscle today (tap to go back to the plan)':'\ud83d\udcaa Swap today for Upper Total (every upper muscle, one session)')+'</button>'+((!_utOn&&(sk==='tue'||sk==='fri'))?'<div style="font-size:11px;color:#777;margin-top:6px;">Heads-up: this is a lower day \u2014 swapping it skips your leg work this week.</div>':'')+'</div>';
+      _utBtn+='<div style="margin:0 0 14px;"><button onclick="dsToggleUpperShort()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(_usOn?'#a78bfa':'#ffffff1a')+';background:'+(_usOn?'#a78bfa18':'transparent')+';color:'+(_usOn?'#a78bfa':'#888')+';">'+(_usOn?'\u23f1 Upper Short ON \u2014 6 moves, ~30 min (tap to go back to the plan)':'\u23f1 Swap today for Upper Short (6 moves, ~30 min)')+'</button></div>';
     }
     if(ftIsOwner() && !_od && !dsDayIsCustom(sk)){
       var _ltOn=!!DS_LT_ON[activeDate];
