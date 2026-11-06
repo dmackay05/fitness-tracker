@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v439 — 2026-11-04";
+var APP_BUILD = "v440 — 2026-11-05";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8496,6 +8496,128 @@ function renderGrocery(targetId){
       '<div style="display:flex;gap:8px;margin-top:14px"><input id="gr-add-input" placeholder="Add an item" style="flex:1" onkeydown="if(event.key===\'Enter\')grAdd()"/><button class="bs" onclick="grAdd()">Add</button></div>'+
     '</div>';
 }
+// ── RECIPE LIBRARY (v440) ───────────────────────────────────────────────
+// From the COARD "Insulin-Reducing Cookbook" binder. Shared with every user
+// (not owner-only). Macros are the binder's own estimates per serving; carbs
+// given as a range are stored as the midpoint for logging. Fiber isn't listed
+// in the binder, so logged entries carry 0 fiber.
+var RL_CATS=[["breakfast","Breakfast"],["sweet","Sweet Breakfast"],["lunch","Lunch"],["dinner","Dinner"],["snack","Snacks & Treats"],["prep","Make-Ahead & Prep"]];
+var RL_TIPS={
+  breakfast:"Start the day with protein. Avoid sugary drinks and pastries. Pair any carbs with protein and fat.",
+  sweet:"Pair sweetness with protein. Avoid syrups, honey and sugar. Sweeten only with stevia, allulose or monk fruit.",
+  lunch:"Prioritize protein. Use leftovers whenever possible. Avoid bread, chips and sugary sauces.",
+  dinner:"Start with protein. Add vegetables freely. Keep starches optional and small. Use leftovers for tomorrow's lunch.",
+  snack:"Pair sweet flavors with protein or fat. Keep portions reasonable. Avoid regular candy, baked goods and sugary drinks.",
+  prep:"Prep protein first. Roast vegetables while protein cooks. Portion into clear containers. Keep safe snacks visible."
+};
+var RL_DATA=[
+ {id:"rb1",cat:"breakfast",name:"Veggie & Cheese Egg Muffins",why:"High protein, easy to prep ahead",ing:["10 eggs","1 cup chopped spinach","½ cup diced bell peppers","¼ cup diced onion","½ cup shredded full-fat cheese (cheddar, mozzarella or feta)","Salt and pepper"],steps:["Preheat oven to 375°F.","Whisk eggs with salt and pepper.","Stir in vegetables and cheese.","Pour into a greased muffin tin.","Bake 18–22 minutes until set."],serve:"Avocado slices or berries",cal:220,protein:14,fat:16,carbs:5,cr:"4–6",per:"2 muffins"},
+ {id:"rb2",cat:"breakfast",name:"Protein Pancakes (Low-Insulin)",why:"Familiar breakfast, slower blood sugar rise",ing:["2 eggs","½ cup full-fat cottage cheese","¼ cup oat flour or almond flour","½ tsp baking powder","Cinnamon"],steps:["Blend all ingredients until smooth.","Cook small pancakes on a greased skillet."],serve:"Butter and berries (no syrup)",cal:280,protein:18,fat:16,carbs:9,cr:"8–10",per:"3 small pancakes",family:"Kids can have syrup on theirs; same batter."},
+ {id:"rb3",cat:"breakfast",name:"Greek Yogurt Protein Bowl",why:"Protein-rich and lightly sweet",ing:["¾–1 cup plain full-fat Greek yogurt","1 Tbsp chia seeds","¼ cup berries","1 Tbsp chopped nuts","Cinnamon (optional)"],steps:["Mix everything in a bowl."],cal:260,protein:20,fat:12,carbs:7,cr:"6–8"},
+ {id:"rb4",cat:"breakfast",name:"Savory Cottage Cheese Bowl",why:"Very filling",ing:["1 cup full-fat cottage cheese","1 soft-boiled or fried egg","Cherry tomatoes","Olive oil drizzle","Salt and pepper"],steps:["Top cottage cheese with egg, tomatoes and olive oil.","Season to taste."],cal:300,protein:26,fat:18,carbs:5,cr:"4–6"},
+ {id:"rb5",cat:"breakfast",name:"Breakfast Sausage & Veggie Skillet",why:"No refined carbs, very filling",ing:["Chicken or turkey breakfast sausage","Zucchini slices","Bell peppers","Onion","Olive oil"],steps:["Sauté sausage until cooked. Remove and slice.","Cook vegetables in the same pan.","Combine and serve."],cal:320,protein:20,fat:24,carbs:7,cr:"6–8"},
+ {id:"rb6",cat:"breakfast",name:"Avocado Egg Breakfast Plate",why:"Balanced protein and fat",ing:["2 eggs (scrambled or fried)","½ avocado","Sautéed greens (spinach or kale)"],steps:["Cook eggs and greens.","Serve with sliced avocado."],cal:350,protein:18,fat:28,carbs:6,cr:"5–7"},
+ {id:"rb7",cat:"breakfast",name:"Chia Seed Pudding (Low-Sugar)",why:"Fiber slows digestion",ing:["3 Tbsp chia seeds","1 cup unsweetened almond milk","Vanilla extract","Cinnamon"],steps:["Mix and refrigerate overnight."],serve:"Optional berries or nuts on top",cal:240,protein:8,fat:15,carbs:6,cr:"5–7"},
+ {id:"rb8",cat:"breakfast",name:"Smoked Salmon Breakfast Plate",why:"Protein and omega-3 fats",ing:["Smoked salmon","Hard-boiled eggs","Sliced cucumber","Full-fat cream cheese or avocado"],steps:["Assemble on a plate."],cal:340,protein:22,fat:24,carbs:4,cr:"3–5"},
+ {id:"rs1",cat:"sweet",name:"Blueberry Protein Muffins",why:"Muffin texture with protein",ing:["2 eggs","1 cup full-fat Greek yogurt","1½ cups almond flour","1 tsp baking powder","¼ cup allulose or monk fruit sweetener","½ cup blueberries","Vanilla and cinnamon"],steps:["Preheat oven to 350°F.","Mix wet ingredients, then fold in dry.","Stir in blueberries.","Bake 22–25 minutes."],cal:210,protein:9,fat:16,carbs:8,cr:"7–9",per:"1 muffin"},
+ {id:"rs2",cat:"sweet",name:"Cinnamon Chia Pudding",why:"Fiber slows digestion",ing:["3 Tbsp chia seeds","1 cup unsweetened almond milk","Stevia or monk fruit to taste","Cinnamon and vanilla"],steps:["Mix and refrigerate overnight."],cal:230,protein:8,fat:15,carbs:7,cr:"6–8"},
+ {id:"rs3",cat:"sweet",name:"Sweet Cottage Cheese Bowl",why:"High protein, gently sweet",ing:["1 cup full-fat cottage cheese","Stevia or monk fruit to taste","Cinnamon","1 Tbsp chopped nuts","Berries (optional)"],steps:["Stir sweetener and cinnamon into cottage cheese.","Top with nuts and berries."],cal:280,protein:24,fat:16,carbs:8,cr:"6–9"},
+ {id:"rs4",cat:"sweet",name:"Protein Pancakes (Sweet)",why:"Pancake flavor without the sugar",ing:["2 eggs","½ cup full-fat cottage cheese","¼ cup almond flour or oat flour","½ tsp baking powder","Stevia or allulose","Cinnamon"],steps:["Blend ingredients.","Cook small pancakes on a greased skillet."],cal:300,protein:18,fat:17,carbs:9,cr:"8–10",per:"3 small pancakes"},
+ {id:"rs5",cat:"sweet",name:"Vanilla Yogurt Berry Bowl",why:"Protein-forward, lightly sweet",ing:["1 cup full-fat Greek yogurt","Vanilla extract","Stevia or monk fruit","¼ cup berries","1 Tbsp chia or flax seeds"],steps:["Mix yogurt with vanilla and sweetener.","Top with berries and seeds."],cal:290,protein:20,fat:14,carbs:8,cr:"7–10"},
+ {id:"rs6",cat:"sweet",name:"Baked Cinnamon \"Oatmeal\"",why:"Comfort-food feel",ing:["2 cups unsweetened almond milk","2 eggs","½ cup oat flour","½ cup almond flour","¼ cup allulose or monk fruit","Cinnamon and vanilla"],steps:["Preheat oven to 375°F.","Whisk all ingredients.","Bake in a greased dish 30–35 minutes."],cal:260,protein:14,fat:14,carbs:13,cr:"12–14",per:"1 serving"},
+ {id:"rs7",cat:"sweet",name:"Chocolate Chia Breakfast Pudding",why:"Feels indulgent",ing:["3 Tbsp chia seeds","1 cup unsweetened almond milk","1 Tbsp unsweetened cocoa powder","Stevia or allulose"],steps:["Mix well and refrigerate overnight."],cal:240,protein:8,fat:15,carbs:7,cr:"6–8"},
+ {id:"rl1",cat:"lunch",name:"Build-Your-Own Protein Bowl",why:"Flexible and filling",ing:["Base: mixed greens, shredded cabbage or cauliflower rice","Protein: grilled chicken, steak strips, salmon/tuna, rotisserie chicken or tofu/tempeh","Add-ins: avocado, roasted vegetables, olives, nuts or seeds","Dressing: olive oil + vinegar, or full-fat ranch/Caesar (no sugar added)"],steps:["Build the bowl with a base, protein and add-ins.","Add dressing."],cal:450,protein:30,fat:30,carbs:13,cr:"10–15"},
+ {id:"rl2",cat:"lunch",name:"Turkey & Cheese Lettuce Wraps",why:"Sandwich feel without bread",ing:["Sliced turkey","Full-fat cheese slices","Large romaine or butter lettuce leaves","Mustard or full-fat mayo"],steps:["Layer in lettuce leaves and roll."],cal:380,protein:28,fat:26,carbs:7,cr:"6–8"},
+ {id:"rl3",cat:"lunch",name:"Chicken Salad",why:"Classic lunch, lower carb",ing:["Cooked chicken, chopped","Full-fat mayonnaise","Celery and onion","Salt and pepper","Optional: a small amount of grapes or apple"],steps:["Mix everything and chill."],cal:420,protein:30,fat:32,carbs:8,cr:"6–10"},
+ {id:"rl4",cat:"lunch",name:"Leftover Dinner Plate",why:"No extra cooking",ing:["Leftover protein (meat, fish or tofu)","Non-starchy vegetables","Olive oil or butter"],steps:["Reheat and serve as a plated meal."],cal:450,protein:30,fat:30,carbs:12,cr:"8–15"},
+ {id:"rl5",cat:"lunch",name:"Tuna Avocado Bowl",why:"High protein and omega-3s",ing:["Canned tuna","½ avocado","Olive oil","Lemon juice","Salt and pepper"],steps:["Mix tuna with avocado and seasonings."],cal:410,protein:32,fat:28,carbs:7,cr:"6–8"},
+ {id:"rl6",cat:"lunch",name:"Soup & Salad Combo",why:"Warm and filling",ing:["Soup: chicken vegetable, beef and cabbage, or a cream soup made without flour","Salad: greens + protein + olive oil dressing"],steps:["Make soup (or use leftovers).","Assemble salad and serve together."],cal:450,protein:28,fat:30,carbs:13,cr:"10–15"},
+ {id:"rl7",cat:"lunch",name:"Cheeseburger Bowl",why:"Comfort food without the bun",ing:["Ground beef","Shredded lettuce","Tomato and pickles","Full-fat cheese","Mustard and full-fat mayo"],steps:["Cook beef.","Assemble bowl and add toppings."],cal:480,protein:30,fat:35,carbs:10,cr:"8–12"},
+ {id:"rl8",cat:"lunch",name:"Adult Lunchables",why:"No reheating needed",ing:["Deli turkey or chicken","Full-fat cheese cubes","Olives or pickles","Nuts","Raw veggies (cucumbers, peppers)"],steps:["Pack in a divided container and eat cold."],cal:400,protein:25,fat:30,carbs:8,cr:"6–10"},
+ {id:"rl9",cat:"lunch",name:"Jar Salads",why:"Portable and easy to prep ahead",ing:["Olive oil + vinegar (bottom layer)","Chopped cucumbers or peppers","Protein (chicken, steak, tuna or tofu)","Cherry tomatoes","Mixed greens","Optional: full-fat feta or mozzarella"],steps:["Layer in a jar, dressing on the bottom and greens on top.","Shake before eating."],cal:420,protein:28,fat:28,carbs:12,cr:"10–14"},
+ {id:"rl10",cat:"lunch",name:"Egg Salad Box",why:"High protein",ing:["Hard-boiled eggs, chopped","Full-fat mayonnaise","Mustard","Salt and pepper","Celery"],steps:["Mix and portion into containers.","Serve with lettuce cups or cucumber slices."],cal:380,protein:22,fat:30,carbs:5,cr:"4–6"},
+ {id:"rl11",cat:"lunch",name:"Rotisserie Chicken Bento",why:"Zero-prep protein",ing:["Rotisserie chicken","Avocado slices","Roasted or raw vegetables","Optional: full-fat dip"],steps:["Assemble in a meal-prep container."],cal:450,protein:32,fat:32,carbs:10,cr:"8–12"},
+ {id:"rl12",cat:"lunch",name:"Cold Salmon & Cucumber Bowl",why:"No microwave, omega-3s",ing:["Cooked salmon (served cold)","Sliced cucumber","Olive oil","Lemon","Optional: full-fat cream cheese"],steps:["Assemble and eat chilled."],cal:430,protein:28,fat:32,carbs:7,cr:"5–8"},
+ {id:"rd1",cat:"dinner",name:"Sheet Pan Lemon Chicken & Veggies",why:"One pan, easy cleanup",ing:["Chicken thighs or breasts","Broccoli, zucchini and bell peppers","Olive oil","Lemon juice","Garlic, salt, pepper"],steps:["Preheat oven to 400°F.","Toss everything with olive oil and seasoning.","Roast 25–30 minutes until chicken is cooked."],cal:420,protein:32,fat:28,carbs:10,cr:"8–12",family:"Rice or potatoes on the side for anyone who wants them."},
+ {id:"rd2",cat:"dinner",name:"Taco Bowls (Build-Your-Own)",why:"Customizable for adults and kids",ing:["Ground beef or turkey","Taco seasoning (no sugar added)","Shredded lettuce","Tomatoes","Avocado","Full-fat sour cream and cheese","Optional small starch: rice or crushed tortilla chips"],steps:["Cook meat with seasoning.","Set out toppings and let everyone build a bowl."],cal:480,protein:30,fat:34,carbs:13,cr:"10–15",family:"Kids get tortillas; adults use lettuce wraps or a bowl."},
+ {id:"rd3",cat:"dinner",name:"Creamy Garlic Salmon",why:"Omega-3s with a comforting sauce",ing:["Salmon fillets","Butter","Garlic","Full-fat heavy cream","Spinach","Lemon"],steps:["Pan-sear salmon. Remove.","Simmer garlic in butter, add cream and spinach.","Return salmon to the pan."],cal:460,protein:32,fat:34,carbs:7,cr:"6–8",family:"Tilapia or chicken work in the same sauce."},
+ {id:"rd4",cat:"dinner",name:"Bunless Burger Night",why:"Classic comfort without refined bread",ing:["Beef burger patties","Lettuce wraps","Tomato and pickles","Full-fat cheese","Mustard and full-fat mayo"],steps:["Cook burgers.","Serve in lettuce wraps with toppings."],serve:"Roasted veggies or salad",cal:500,protein:32,fat:38,carbs:10,cr:"8–12",family:"Kids use buns; adults go bunless or use a chaffle."},
+ {id:"rd5",cat:"dinner",name:"Slow Cooker Balsamic Beef",why:"Make once, eat twice",ing:["Beef roast","Balsamic vinegar","Garlic","Onion","Olive oil","Optional: small amount of allulose"],steps:["Cook on low 6–8 hours.","Shred and serve with vegetables."],cal:450,protein:35,fat:30,carbs:8,cr:"6–10"},
+ {id:"rd6",cat:"dinner",name:"Creamy Chicken Alfredo (Low-Insulin)",why:"Comfort food with veggies instead of pasta",ing:["Chicken breast","Zucchini noodles or roasted cauliflower","Butter","Garlic","Full-fat heavy cream","Parmesan"],steps:["Cook chicken.","Simmer butter, garlic, cream and cheese.","Toss with veggies and chicken."],cal:480,protein:34,fat:36,carbs:9,cr:"7–10",family:"Kids get pasta; adults use zucchini noodles or spaghetti squash. Same sauce."},
+ {id:"rd7",cat:"dinner",name:"Sausage & Veggie Skillet",why:"Fast and kid-friendly",ing:["Chicken or turkey sausage","Zucchini","Peppers","Onion","Olive oil"],steps:["Brown sausage, remove and slice.","Sauté veggies, return sausage and serve."],cal:420,protein:26,fat:32,carbs:10,cr:"8–12"},
+ {id:"rd8",cat:"dinner",name:"Rotisserie Chicken Dinner Plate",why:"Zero-prep protein",ing:["Rotisserie chicken","Steamed or roasted vegetables","Butter or olive oil"],steps:["Plate and serve."],cal:430,protein:34,fat:30,carbs:8,cr:"6–10"},
+ {id:"rd9",cat:"dinner",name:"Creamy Tuscan Chicken",why:"Restaurant-style flavor",ing:["Chicken breasts or thighs","Butter","Garlic","Sun-dried tomatoes (small amount)","Full-fat heavy cream","Spinach","Parmesan"],steps:["Brown chicken and remove.","Simmer garlic in butter, add cream and tomatoes.","Stir in spinach and Parmesan.","Return chicken and simmer until cooked."],cal:460,protein:34,fat:34,carbs:9,cr:"7–10",family:"Serve over pasta for the kids."},
+ {id:"rd10",cat:"dinner",name:"Shrimp & Veggie Stir Fry",why:"Fast weeknight dinner, lean protein",ing:["Shrimp","Broccoli, snap peas, bell peppers","Olive or avocado oil","Garlic and ginger","Coconut aminos or low-sugar soy sauce"],steps:["Sauté shrimp in oil and remove.","Cook veggies with garlic and ginger.","Return shrimp, splash with coconut aminos and serve."],cal:400,protein:30,fat:26,carbs:10,cr:"8–12",family:"Chicken works if shrimp isn't a family favorite. Rice on the side for the kids."},
+ {id:"rd11",cat:"dinner",name:"Chicken Crust Pizza",why:"Pizza night without flour or sugar",ing:["1 lb ground chicken","1 egg","½ cup grated Parmesan","Garlic powder, salt, pepper","Low-sugar marinara (sweetened only with stevia/allulose/monk fruit if at all)","Full-fat mozzarella","Toppings: pepperoni, mushrooms, olives, peppers"],steps:["Preheat oven to 400°F.","Mix chicken, egg, Parmesan and seasonings.","Press into a thin crust on a parchment-lined pan.","Bake 18–20 minutes until set.","Add sauce, cheese and toppings; bake 8–10 minutes."],cal:480,protein:38,fat:32,carbs:8,cr:"6–10",family:"Kids use regular crust; adults use chicken crust or chaffles."},
+ {id:"rn1",cat:"snack",name:"Cheese & Nut Snack Box",why:"Portable and very filling",ing:["Full-fat cheese cubes","Mixed nuts","Olives or pickles","Raw veggies (cucumbers or peppers)"],steps:["Pack into a small container and eat cold."],cal:300,protein:12,fat:24,carbs:5,cr:"4–6"},
+ {id:"rn2",cat:"snack",name:"Greek Yogurt Dessert Bowl",why:"Sweet and creamy with protein",ing:["¾ cup full-fat Greek yogurt","Stevia or monk fruit to taste","Cinnamon or vanilla","1 Tbsp chopped nuts"],steps:["Mix everything in a bowl."],cal:220,protein:15,fat:12,carbs:7,cr:"6–8"},
+ {id:"rn3",cat:"snack",name:"Hard-Boiled Eggs with Everything Seasoning",why:"Pure protein and fat",ing:["Hard-boiled eggs","Everything bagel seasoning"],steps:["Slice eggs and sprinkle with seasoning."],cal:160,protein:12,fat:12,carbs:2,cr:"2–3",per:"2 eggs"},
+ {id:"rn4",cat:"snack",name:"Chocolate Peanut Butter Fat Bombs",why:"Rich and satisfying",ing:["½ cup natural peanut butter","¼ cup coconut oil","2 Tbsp unsweetened cocoa powder","Stevia or allulose to taste"],steps:["Melt and mix all ingredients.","Pour into small molds and refrigerate until firm."],cal:140,protein:3,fat:12,carbs:4,cr:"3–4",per:"1 piece"},
+ {id:"rn5",cat:"snack",name:"Berry & Cream Cups",why:"Light sweetness paired with fat",ing:["¼ cup berries","Whipped full-fat heavy cream","Stevia (optional)"],steps:["Layer berries and whipped cream in small cups."],cal:180,protein:2,fat:16,carbs:6,cr:"5–7"},
+ {id:"rn6",cat:"snack",name:"Savory Snack Plate",why:"Crunchy, salty and satisfying",ing:["Turkey or beef jerky (no sugar added)","Full-fat cheese slices","Nuts","Pickles"],steps:["Arrange on a plate or pack for later."],cal:320,protein:18,fat:24,carbs:5,cr:"4–6"},
+ {id:"rn7",cat:"snack",name:"Chocolate Chia Pudding (Treat Size)",why:"Fiber plus chocolate",ing:["2 Tbsp chia seeds","¾ cup unsweetened almond milk","1 tsp cocoa powder","Stevia or allulose"],steps:["Mix and refrigerate overnight."],cal:180,protein:6,fat:10,carbs:6,cr:"5–7"},
+ {id:"rp1",cat:"prep",name:"Sunday Protein Prep",why:"One prep session, many meals",ing:["Choose 2–3: grilled/baked chicken, ground beef or turkey, salmon, hard-boiled eggs, rotisserie chicken"],steps:["Cook proteins and store in airtight containers."],cal:250,protein:30,fat:15,carbs:2,cr:"0–3",per:"1 serving"},
+ {id:"rp2",cat:"prep",name:"Roasted Veggie Tray",why:"Ready vegetables for lunches and dinners",ing:["Broccoli, cauliflower, zucchini, peppers, onion","Olive oil","Salt and pepper"],steps:["Roast at 400°F for 25–30 minutes until tender."],cal:120,protein:3,fat:8,carbs:9,cr:"8–10"},
+ {id:"rp3",cat:"prep",name:"Slow Cooker Shredded Chicken",why:"Protein for bowls, salads and wraps",ing:["Chicken breasts or thighs","Garlic","Onion","Olive oil","Salt and pepper"],steps:["Cook on low 6–8 hours.","Shred and portion."],cal:280,protein:32,fat:18,carbs:3,cr:"2–4"},
+ {id:"rp4",cat:"prep",name:"Big Salad Base",why:"Fast lunches all week",ing:["Mixed greens or shredded cabbage","Cucumbers, peppers, tomatoes"],steps:["Store undressed in a large container.","Add protein and dressing each day."],cal:80,protein:2,fat:4,carbs:7,cr:"6–8"},
+ {id:"rp5",cat:"prep",name:"Snack Box Assembly Line",why:"Prevents impulse eating",ing:["Full-fat cheese, nuts, eggs or jerky, raw veggies"],steps:["Assemble several snack boxes at once and refrigerate."],cal:350,protein:20,fat:25,carbs:6,cr:"4–8",per:"1 box"},
+ {id:"rp6",cat:"prep",name:"Freezer Protein Pancakes",why:"Sweet breakfasts ready in minutes",ing:["Either Protein Pancake recipe above"],steps:["Freeze pancakes between parchment sheets.","Reheat in the toaster or microwave."],cal:290,protein:18,fat:16,carbs:9,cr:"8–10",per:"3 pancakes"},
+ {id:"rp7",cat:"prep",name:"One-Pot Dinner for Two Nights",why:"Cook once, eat twice",ing:["Examples: balsamic beef, Tuscan chicken, sausage & veggie skillet"],steps:["Serve fresh one night; reheat for lunch or dinner later in the week."],cal:450,protein:32,fat:32,carbs:10,cr:"8–12"}
+];
+var RL_CAT=null, RL_Q="";
+function rlSetCat(c){ RL_CAT=(RL_CAT===c)?null:c; rlRender(); }
+function rlSearch(v){ RL_Q=(v||"").toLowerCase(); rlRender(true); }
+function rlLog(id){
+  var r=RL_DATA.filter(function(x){return x.id===id;})[0]; if(!r) return;
+  var slot={breakfast:"Breakfast",sweet:"Breakfast",lunch:"Lunch",dinner:"Dinner",snack:"Snack",prep:"Snack"}[r.cat]||"Snack";
+  var day=getDay();
+  day.foods.push({name:r.name,cal:r.cal,protein:r.protein,carbs:r.carbs,fat:r.fat,fiber:0,
+    id:Date.now().toString()+Math.floor(Math.random()*1000), mealTag:slot, rlId:r.id});
+  saveDay(day); renderAll(); toast("Logged "+r.name);
+}
+function rlCard(r){
+  var esc=function(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");};
+  return '<details class="card" style="margin-bottom:8px"><summary style="cursor:pointer;list-style:none">'+
+    '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'+
+      '<div><div class="card-title" style="margin-bottom:2px">'+esc(r.name)+'</div>'+
+      '<div style="font-size:11px;color:#9a9d8c;font-family:\'DM Mono\',monospace">'+r.cal+' cal · '+r.protein+'P · '+r.fat+'F · '+r.cr+'C'+(r.per?' · '+esc(r.per):'')+'</div></div>'+
+      '<span style="color:#888;font-size:12px;flex-shrink:0">▸</span></div></summary>'+
+    '<div style="margin-top:10px;font-size:12px;line-height:1.55;color:#ccc">'+
+      '<div style="color:#9a9d8c;font-style:italic;margin-bottom:8px">'+esc(r.why)+'</div>'+
+      '<div style="font-weight:700;margin-bottom:2px">Ingredients</div><ul style="margin:0 0 8px 18px;padding:0">'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join("")+'</ul>'+
+      '<div style="font-weight:700;margin-bottom:2px">Directions</div><ol style="margin:0 0 8px 18px;padding:0">'+r.steps.map(function(s){return '<li>'+esc(s)+'</li>';}).join("")+'</ol>'+
+      (r.serve?'<div style="margin-bottom:6px"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+
+      (r.family?'<div style="margin-bottom:6px;color:#5eead4"><b>Family split:</b> '+esc(r.family)+'</div>':'')+
+      '<button class="bs" onclick="rlLog(\''+r.id+'\')">Log this</button>'+
+    '</div></details>';
+}
+function rlRender(keepFocus){
+  var el=document.getElementById("meals-recipes"); if(!el) return;
+  var list=RL_DATA.filter(function(r){
+    if(RL_CAT && r.cat!==RL_CAT) return false;
+    if(RL_Q && (r.name+" "+r.ing.join(" ")).toLowerCase().indexOf(RL_Q)<0) return false;
+    return true;
+  });
+  var chips=RL_CATS.map(function(c){ var on=RL_CAT===c[0];
+    return '<span class="tag" style="cursor:pointer;background:'+(on?"#4ade8022":"#88888816")+';color:'+(on?"#4ade80":"#aaa")+';border:1px solid '+(on?"#4ade8055":"#88888830")+'" onclick="rlSetCat(\''+c[0]+'\')">'+c[1]+(on?" ✓":"")+'</span>'; }).join(" ");
+  var body=RL_CATS.map(function(c){
+    var rs=list.filter(function(r){return r.cat===c[0];}); if(!rs.length) return "";
+    return '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:14px 0 4px">'+c[1].replace(/&/g,"&amp;")+'</div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:8px;line-height:1.4">'+RL_TIPS[c[0]]+'</div>'+rs.map(rlCard).join("");
+  }).join("");
+  if(!list.length) body='<div style="text-align:center;color:#8b8b9c;font-size:12px;padding:24px 0">No recipes match.</div>';
+  var top=document.getElementById("rl-top");
+  if(keepFocus && top){ document.getElementById("rl-body").innerHTML=body; return; }
+  el.innerHTML='<div id="rl-top">'+
+    '<div class="card" style="margin-bottom:10px">'+
+      '<div class="card-title" style="margin-bottom:6px">The plate method</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5">Use a 9-inch plate: <b style="color:#ccc">half non-starchy vegetables, a quarter protein, a quarter carbs</b>. Eat vegetables and protein first and any carbs last, never on an empty stomach. Drink water or zero-calorie drinks. Fruit: berries and avocado; skip juice and smoothies. Sweeteners: stevia, monk fruit or allulose only. They can cause bloating in some people.</div>'+
+      '<div style="font-size:11px;color:#888;line-height:1.4;margin-top:6px">From the COARD Insulin-Reducing Cookbook. Macros are the book\'s estimates per serving. Many recipes use full-fat dairy and butter; keep saturated fat in check, and follow a care team\'s advice if it differs.</div>'+
+    '</div>'+
+    '<input type="search" placeholder="Search recipes or ingredients" value="'+RL_Q.replace(/"/g,"&quot;")+'" oninput="rlSearch(this.value)" style="width:100%;box-sizing:border-box;margin-bottom:8px">'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">'+chips+'</div></div>'+
+    '<div id="rl-body">'+body+'</div>';
+}
 function renderMealsTab(){
   infoSecInit();
   renderFruitGuide("meals-fruit-guide");
@@ -8505,6 +8627,7 @@ function renderMealsTab(){
   renderWowGuide("meals-wow-guide");
   renderGrocery("meals-grocery");
   miRender();
+  try{ rlRender(); }catch(e){}
   try{ mpRenderPlan(); }catch(e){}
 }
 // ── 2-WEEK FAMILY MEAL PLAN ─────────────────────────────────────────────
