@@ -106,6 +106,10 @@ function logSyncDebug_(ss, branch, payload, note) {
     var other = keys.filter(function(k){ return !/^\d{4}-\d{2}-\d{2}$/.test(k); });
     sh.appendRow([new Date(), branch, dates.length, dates.length ? dates[dates.length-1] : "",
       other.join(", ").slice(0, 300), (SYNC_ERRS_.concat(note ? [note] : [])).join(" | ").slice(0, 45000)]);
+    // v13: keep only the newest 200 entries so the tab can't balloon again
+    // (it reached 1,050 rows of repeats during the Sep–Oct supplements bug).
+    var extra = sh.getLastRow() - 1 - 200;
+    if (extra > 0) sh.deleteRows(2, extra);
   } catch (e) {}
 }
 
