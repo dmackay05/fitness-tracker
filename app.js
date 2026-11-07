@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v448 — 2026-11-06";
+var APP_BUILD = "v449 — 2026-11-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -10065,11 +10065,7 @@ function dsRenderItem(rawItem,idx,accent){
     } else {
       h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
     }
-    h+='<div class="ds-rirrow"><span class="ds-lbl">Effort</span>';
-    [[0,'Failure'],[1,'Near failure'],[3,'Had more left']].forEach(function(pair){
-      h+='<span class="ds-rirchip'+(st._rir===pair[0]?' on':'')+'" onclick="dsSetRir(\''+item.id+'\','+pair[0]+')">'+pair[1]+'</span>';
-    });
-    h+='</div>';
+    // v449: Effort chips removed from the card (unused, took space). Gym-mode RIR buttons still log RIR.
     h+='<div class="ds-actionrow" style="display:flex;gap:6px;align-items:center;margin-top:8px">'
       +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
       +(st.sets.length?'<button class="ds-undobtn" onclick="dsUndoSet(\''+item.id+'\')" title="Remove last set" style="flex:0 0 auto;border:1px solid #444;background:none;color:#aaa;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">\u21B6</button>':'')
