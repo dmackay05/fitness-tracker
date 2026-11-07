@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v450 — 2026-11-07";
+var APP_BUILD = "v451 — 2026-11-07";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -11159,7 +11159,7 @@ var DS_BAND_LIB=[
   ['Clench loops \u2014 top weight',[['Orange \u00b7 15 lb','Clench orange (5\u201315)'],['Yellow \u00b7 25 lb','Clench yellow (7\u201325)'],['Black \u00b7 75 lb','Clench black (75)'],['Green \u00b7 150 lb','Clench green (75\u2013150)']]],
   ['Clench loops + handles',[['Orange \u00b7 15 lb','Clench orange on handles (5\u201315)'],['Yellow \u00b7 25 lb','Clench yellow on handles (7\u201325)'],['Black \u00b7 75 lb','Clench black on handles (75)'],['Green \u00b7 150 lb','Clench green on handles (75\u2013150)']]],
   ['Clench mini 13in',[['Green \u00b7 20 lb','Clench green mini 13in (2\u201320)'],['Black \u00b7 30 lb','Clench black mini 13in (5\u201330)'],['Purple \u00b7 40 lb','Clench purple mini 13in (10\u201340)']]],
-  ['Tubes',['10 lb tube','20 lb tube','30 lb tube','40 lb tube','50 lb tube','30+20 tubes (~50)','50+20 tubes (~70)','50+30 tubes (~80)','50+40 tubes (~90)','50+40+30 tubes (~120)','All 5 tubes (~150)']]
+  ['Tubes',['10 lb tube','20 lb tube','30 lb tube','40 lb tube','50 lb tube','30+20 tubes (~50)','50+10 tubes (~60)','50+20 tubes (~70)','50+30 tubes (~80)','50+40 tubes (~90)','50+40+30 tubes (~120)','All 5 tubes (~150)']]
 ];
 function dsBandPickerHTML(id){
   var h='<select class="ds-bandpick" aria-label="Pick a band" onchange="dsPickBand(\''+id+'\',this)"><option value="">Band</option>';
