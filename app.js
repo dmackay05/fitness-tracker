@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v442 — 2026-11-06";
+var APP_BUILD = "v443 — 2026-11-06";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -11159,16 +11159,15 @@ function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementB
 // ── Band library: powers the "Band" picker next to the load box on elastic-band exercises.
 // Ratings are nominal (at full stretch). Stacked tubes add on paper; real tension depends on stretch and anchor position.
 var DS_BAND_LIB=[
-  ['Tubes (single)',['10 lb tube','20 lb tube','30 lb tube','40 lb tube','50 lb tube']],
-  ['Tubes stacked on handles',['30+20 tubes (~50)','50+20 tubes (~70)','50+30 tubes (~80)','50+40 tubes (~90)','50+40+30 tubes (~120)','All 5 tubes (~150)']],
-  ['Fabric loops (41in, stretchy)',['Fabric loop 41in (pink)','Fabric loop 41in (gray-blue)']],
-  ['Loop bands (heavy)',['Clench 75 loop (black 41in)','Reebok Ultra Heavy loop (~75+, a bit above Clench 75)','Clench green loop (75\u2013150)','Clench 75 loop on Clench handles','Reebok Ultra Heavy on Clench handles','Green loop (75\u2013150) on Clench handles']],
-  ['Light loops (41in)',['Orange loop 41in (5\u201315)','Yellow loop 41in (7\u201325)','Yellow loop on Clench handles (7\u201325)']],
-  ['Light / activation',['Clench mini loop 13in (purple)','Green mini loop 13in (2\u201320)','Theraband red (light)']]
+  ['Clench loops (41in) \u2014 by top weight',[['Clench yellow \u00b7 up to 25 lb','Clench yellow (7\u201325)'],['Clench black \u00b7 up to 75 lb','Clench black (75)'],['Clench green \u00b7 up to 150 lb','Clench green (75\u2013150)']]],
+  ['Clench loops on Clench handles',[['Yellow on handles \u00b7 up to 25 lb','Clench yellow on handles (7\u201325)'],['Black on handles \u00b7 up to 75 lb','Clench black on handles (75)'],['Green on handles \u00b7 up to 150 lb','Clench green on handles (75\u2013150)']]],
+  ['Clench mini (13in)',[['Purple mini \u00b7 13in','Clench purple mini 13in']]],
+  ['Tubes \u2014 by weight',['10 lb tube','20 lb tube','30 lb tube','40 lb tube','50 lb tube','30+20 tubes (~50)','50+20 tubes (~70)','50+30 tubes (~80)','50+40 tubes (~90)','50+40+30 tubes (~120)','All 5 tubes (~150)']],
+  ['Other light bands',[['Orange loop 41in \u00b7 up to 15 lb','Orange loop 41in (5\u201315)'],['Green mini 13in \u00b7 up to 20 lb','Green mini 13in (2\u201320)'],['Theraband red \u00b7 light','Theraband red (light)']]]
 ];
 function dsBandPickerHTML(id){
   var h='<select class="ds-bandpick" aria-label="Pick a band" onchange="dsPickBand(\''+id+'\',this)"><option value="">Band</option>';
-  DS_BAND_LIB.forEach(function(g){ h+='<optgroup label="'+g[0]+'">'; g[1].forEach(function(b){ h+='<option value="'+b+'">'+b+'</option>'; }); h+='</optgroup>'; });
+  DS_BAND_LIB.forEach(function(g){ h+='<optgroup label="'+g[0]+'">'; g[1].forEach(function(b){ var lab=Array.isArray(b)?b[0]:b, val=Array.isArray(b)?b[1]:b; h+='<option value="'+val+'">'+lab+'</option>'; }); h+='</optgroup>'; });
   return h+'</select>';
 }
 function dsPickBand(id,sel){ var v=sel.value; if(!v)return; var el=document.getElementById('ds-load-'+id); if(el)el.value=v; dsRememberLoad(id); sel.selectedIndex=0; }
