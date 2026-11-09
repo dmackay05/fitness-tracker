@@ -1376,3 +1376,17 @@ html body div.app{max-width:480px}
 
 /* v411: David-only sections */
 body:not(.is-owner) .owner-only{display:none!important}
+
+/* v453: optional effort tag on the final set */
+.ds-efftag{display:flex;align-items:center;gap:6px;margin:8px 0 2px;flex-wrap:wrap}
+.ds-efftag-lbl{font-size:11px;color:#8b8b9c;font-weight:700}
+.ds-effbtn{border:1px solid #444;background:none;color:#cfcfda;border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer}
+.ds-effbtn.on{background:var(--accent);border-color:var(--accent);color:#111;font-weight:700}
+.ds-efftag-opt{font-size:10px;color:#666;margin-left:auto}
+/* v453: weekly lower-body check-in */
+.stiff-row{margin:6px 0}
+.stiff-lbl{display:block;font-size:12px;color:#cfcfda;font-weight:700;margin-bottom:4px}
+.stiff-scale{display:flex;flex-wrap:wrap;gap:4px}
+.stiff-btn{min-width:26px;border:1px solid #444;background:none;color:#cfcfda;border-radius:6px;padding:5px 0;font-size:12px;cursor:pointer;flex:1}
+.stiff-btn.stiff-wide{padding:5px 8px}
+.stiff-btn.on{background:#c084fc;border-color:#c084fc;color:#111;font-weight:700}
