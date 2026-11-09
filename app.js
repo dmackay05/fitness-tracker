@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v456 — 2026-11-08";
+var APP_BUILD = "v457 — 2026-11-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2502,6 +2502,7 @@ function switchTab(id){
   if(id==="log" && typeof ldInit==="function") ldInit();
   if(id==="dash" && typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume();
   if(id==="meals" && typeof renderMealsTab==="function") renderMealsTab();
+  if(id==="food" && typeof renderFoodTab==="function") renderFoodTab();
   document.querySelector(".content").scrollTop=0;
 }
 var _lastSheetPull = 0;
@@ -8196,10 +8197,10 @@ function miRender(){
 // Info tab sections: collapsed by default, open/closed state remembered per section.
 function infoSecInit(){
   var st={}; try{ st=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ st={}; }
-  document.querySelectorAll('#panel-meals details.info-sec').forEach(function(d){
+  document.querySelectorAll('#panel-meals details.info-sec, #panel-food details.info-sec').forEach(function(d){
     var k=d.getAttribute('data-sec');
     if(!d._infoBound){
-      d.open=!!st[k];
+      d.open=(k in st)?!!st[k]:d.hasAttribute('data-default-open');
       d.addEventListener('toggle',function(){
         var cur={}; try{ cur=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ cur={}; }
         cur[k]=d.open; try{ store.set("info_sec_open",JSON.stringify(cur)); }catch(e){}
@@ -8400,6 +8401,14 @@ function rlRender(keepFocus){
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">'+chips+'</div></div>'+
     '<div id="rl-body">'+body+'</div>';
 }
+// v457: Food tab — today's meal plan on top, then the 2-week plan, Recipe Library and grocery list.
+function renderFoodTab(){
+  infoSecInit();
+  try{ mpRenderToday(); }catch(e){}
+  try{ mpRenderPlan(); }catch(e){}
+  try{ rlRender(); }catch(e){}
+  try{ renderGrocery("meals-grocery"); }catch(e){}
+}
 function renderMealsTab(){
   infoSecInit();
   renderFruitGuide("meals-fruit-guide");
@@ -8496,6 +8505,7 @@ function mpRenderToday(){
         '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
         (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
         (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
+        mpRecipeBlock(m.id)+
         '<select style="margin-top:6px;width:100%" onchange="mpSwap(\''+key+'\',\''+x.slot+'\',this.value)">'+opts+'</select>'+
       '</details></div>';
   }).join("");

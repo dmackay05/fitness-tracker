@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=456">
+<link rel="stylesheet" href="styles.css?v=457">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -64,6 +64,7 @@
   <div class="tab-bar" id="main-tabs" role="tablist">
     <button class="tab-btn active" data-tab="today" role="tab" aria-label="Today"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>Today</button>
     <button class="tab-btn" data-tab="log" role="tab" aria-label="Log"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></span>Log</button>
+    <button class="tab-btn" data-tab="food" role="tab" aria-label="Food"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1-3.5 3.5-3.5 7 0 2 1.5 3 3.5 3"/></svg></span>Food</button>
     <button class="tab-btn" data-tab="dash" role="tab" aria-label="Stats"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Stats</button>
     <button class="tab-btn" data-tab="yoga" role="tab" aria-label="Yoga"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 8v6M5 11l7 3 7-3M7 20c2-3 3-4 5-6 2 2 3 3 5 6"/></svg></span>Yoga</button>
     <button class="tab-btn" data-tab="meals" role="tab" aria-label="Learn"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>Learn</button>
@@ -340,13 +341,28 @@
     </div>
 
     <!-- ════════ MEALS ════════ -->
-    <div class="panel" id="panel-meals">
-      <details class="info-sec owner-only" data-sec="mealplan">
+    <div class="panel" id="panel-food">
+      <div class="card owner-only" id="mp-today-card" style="margin-bottom:14px"></div>
+      <details class="info-sec owner-only" data-sec="mealplan" data-default-open="1">
         <summary class="info-sec-hd"><span>Meal Plan (2-week)</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
       <div id="meals-plan"></div>
         </div>
       </details>
+      <details class="info-sec" data-sec="recipes">
+        <summary class="info-sec-hd"><span>Recipe Library</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
+      <div id="meals-recipes"></div>
+        </div>
+      </details>
+      <details class="info-sec owner-only" data-sec="grocery">
+        <summary class="info-sec-hd"><span>Grocery List</span><span class="info-sec-chev">▸</span></summary>
+        <div class="info-sec-body">
+      <div id="meals-grocery"></div>
+        </div>
+      </details>
+    </div>
+    <div class="panel" id="panel-meals">
       <details class="info-sec" data-sec="guides">
         <summary class="info-sec-hd"><span>Food Guides</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
@@ -360,18 +376,6 @@
         <summary class="info-sec-hd"><span>Word of Wisdom</span><span class="info-sec-chev">▸</span></summary>
         <div class="info-sec-body">
       <div id="meals-wow-guide"></div>
-        </div>
-      </details>
-      <details class="info-sec" data-sec="recipes">
-        <summary class="info-sec-hd"><span>Recipe Library</span><span class="info-sec-chev">▸</span></summary>
-        <div class="info-sec-body">
-      <div id="meals-recipes"></div>
-        </div>
-      </details>
-      <details class="info-sec owner-only" data-sec="grocery">
-        <summary class="info-sec-hd"><span>Grocery List</span><span class="info-sec-chev">▸</span></summary>
-        <div class="info-sec-body">
-      <div id="meals-grocery"></div>
         </div>
       </details>
       <!-- ════════ MUSCLE MAP (v313) ════════ -->
@@ -1056,7 +1060,6 @@
       <div class="refresh-bar"><button class="refresh-btn-sm" onclick="doRefresh('log')"><span id="refresh-icon-log">↻</span> Refresh</button></div>
       <div class="past-banner" id="banner-log" style="display:none"><span>&#9888; Editing <strong id="banner-log-lbl"></strong></span><button class="today-btn" onclick="goToToday()">Go to Today</button></div>
 
-      <div class="card owner-only" id="mp-today-card" style="margin-bottom:14px"></div>
       <div class="card" style="padding-bottom:14px">
         <div class="card-title" style="margin-bottom:10px">🍽 Food</div>
         <div style="font-size:11px;color:#888;margin-bottom:6px">Logging as:</div>
@@ -1860,7 +1863,7 @@
   </div>
 </div>
 
-<script src="app.js?v=456"></script>
+<script src="app.js?v=457"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>
