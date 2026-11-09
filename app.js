@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v459 — 2026-11-08";
+var APP_BUILD = "v460 — 2026-11-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3359,6 +3359,7 @@ function saveHealthSettings(){
   });
   store.set("ft_labs",JSON.stringify(labs));
   store.set("ft_habits", JSON.stringify(collectHabitsFromEditor()));
+  store.set("ft_cfg_ts", String(Date.now()));
   var msg=document.getElementById("ft-settings-msg"); if(msg){ msg.textContent="✓ Saved"; setTimeout(function(){msg.textContent="";},2500); }
   var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display=url?"block":"none";
   pushConfig();
@@ -3856,7 +3857,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk"];
+  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3868,10 +3869,16 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1};
+  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1};
+  // Settings saved on this device are timestamped (ft_cfg_ts). If the Sheet's copy is
+  // older (e.g. a background pull lands before the Save push reaches Apps Script),
+  // keep the local ft_* settings instead of reverting them, and re-push them.
+  var _myTs=parseInt(store.get('ft_cfg_ts'),10)||0, _inTs=parseInt(cfg.ft_cfg_ts,10)||0;
+  var _staleSettings=_myTs>_inTs;
+  if(_staleSettings){ try{ dsQueueConfigPush(); }catch(e){} }
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
-  Object.keys(cfg).forEach(function(k){ if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
+  Object.keys(cfg).forEach(function(k){ if(_staleSettings&&k.indexOf('ft_')===0) return; if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
   if(_planChanged){
     // DS_SESSIONS is built once at startup, so a newly synced plan needs a reload.
     toast("Exercise plan synced from Sheet \u2014 reloading\u2026");
