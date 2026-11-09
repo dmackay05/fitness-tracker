@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v458 — 2026-11-08";
+var APP_BUILD = "v459 — 2026-11-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8522,6 +8522,29 @@ function mpRenderToday(){
     '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:4px">Week '+(pos.week+1)+' · '+MP_DOW[pos.day]+' · '+calGoalLabelForKey(key)+'</div>'+
     rows+
     '<div style="font-size:12px;margin-top:8px;color:#9a9d8c">Plan total: '+mpStatLine(s,goal)+'</div>'+tu;
+  try{ mpRenderTomorrow(); }catch(e){}
+}
+// v459: tomorrow's breakfast and lunch (plus a dinner heads-up) so they can be prepped tonight.
+function mpRenderTomorrow(){
+  var el=document.getElementById("mp-tomorrow-card"); if(!el) return;
+  var d=mpParse(activeDate); d.setDate(d.getDate()+1);
+  var key=localDateKey(d), pos=mpPos(key), list=mpMealsAt(pos.week,pos.day,key);
+  var rows=list.filter(function(x){return x.slot==="Breakfast"||x.slot==="Lunch";}).map(function(x){
+    var m=x.meal;
+    var opts=MP_DATA.meals.filter(function(o){return o.slot===x.slot;}).map(function(o){
+      return '<option value="'+o.id+'"'+(o.id===m.id?' selected':'')+'>'+o.name+'</option>'; }).join("");
+    return '<div style="padding:9px 0;border-bottom:1px solid #ffffff0d">'+
+      '<div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+(x.swapped?' · swapped':'')+'</div>'+
+      '<div style="font-size:14px;color:#e8e8e0;font-weight:600">'+m.name+'</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:2px"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+mpRecipeBlock(m.id)+
+      '<select style="margin-top:6px;flex:1;min-width:150px" onchange="mpSwap(\''+key+'\',\''+x.slot+'\',this.value)">'+opts+'</select></div>'+
+    '</div>';
+  }).join("");
+  var din=list.filter(function(x){return x.slot==="Dinner";})[0];
+  el.innerHTML='<div class="card-title" style="margin-bottom:2px">🌙 Prep for Tomorrow</div>'+
+    '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:4px">'+MP_DOW[pos.day]+' · Week '+(pos.week+1)+'</div>'+rows+
+    (din?'<div style="font-size:12px;color:#9a9d8c;margin-top:8px">Dinner tomorrow: <b style="color:#d8d8d0">'+din.meal.name+'</b> — thaw or marinate tonight if needed.</div>':'');
 }
 function mpSetView(w,d){ if(w!=null) mpViewWeek=w; if(d!=null) mpViewDay=d; mpRenderPlan(); }
 function mpToggleWeekOff(){ try{ store.set("ft_mp_weekoff", mpWeekOff()?"0":"1"); }catch(e){} mpViewWeek=null; renderAll(); mpRenderPlan(); }
