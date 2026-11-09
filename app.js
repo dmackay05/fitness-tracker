@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v457 — 2026-11-08";
+var APP_BUILD = "v458 — 2026-11-08";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8534,13 +8534,34 @@ function mpAddGroceries(w){
   renderGrocery("meals-grocery");
   var b=document.getElementById("mp-gr-btn"); if(b){ b.textContent=added?("Added "+added+" items"):"Already on list"; setTimeout(function(){ b.textContent="Add Week "+(w+1)+" to grocery list"; },1800); }
 }
+// v458: a recipe opens in its own full-screen view. The meal cards re-render often, which
+// collapsed an inline "How to make it"; the overlay lives outside them so it stays open.
 function mpRecipeBlock(id){
   var r=RL_DATA.filter(function(x){return x.id===id;})[0]; if(!r||!r.steps) return '';
-  var esc=function(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");};
-  return '<details style="margin-top:6px"><summary style="font-size:11px;color:#8b8b9c;cursor:pointer">How to make it</summary>'+
-    '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Ingredients (family batch)</b><ul style="margin:2px 0 6px 18px;padding:0">'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'+
-    '<b style="color:#d8d8d0">Directions</b><ol style="margin:2px 0 0 18px;padding:0">'+r.steps.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ol></div></details>';
+  return '<button class="bs" style="margin-top:6px" onclick="rvOpen(\''+id+'\')">📖 Open recipe</button>';
 }
+function rvOpen(id){
+  var r=RL_DATA.filter(function(x){return x.id===id;})[0]; if(!r) return;
+  var esc=function(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");};
+  var ov=document.getElementById('rv-overlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='rv-overlay'; document.body.appendChild(ov); }
+  var owner=document.body.classList.contains('is-owner');
+  var h='<div class="rv-sheet"><div class="rv-top"><button class="rv-close" onclick="rvClose()" aria-label="Close">✕</button></div>'+
+    '<div class="rv-title">'+esc(r.name)+'</div>'+
+    (r.why?'<div class="rv-why">'+esc(r.why)+'</div>':'')+
+    ((owner&&r.me)?'<div class="rv-box"><div class="rv-h" style="color:#5eead4">Your portion · '+r.me.cal+' kcal · '+r.me.protein+'g P · '+r.me.carbs+'g C · '+r.me.fat+'g F</div><ul>'+r.me.items.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul></div>':'')+
+    '<div class="rv-h">Ingredients'+(r.src==='plan'?' (family batch)':'')+'</div><ul>'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'+
+    '<div class="rv-h">Directions</div><ol class="rv-steps">'+r.steps.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ol>'+
+    (r.serve?'<div class="rv-note"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+
+    (r.family?'<div class="rv-note"><b>Family:</b> '+esc(r.family)+'</div>':'')+
+    (r.picky?'<div class="rv-note"><b>Picky plate:</b> '+esc(r.picky)+'</div>':'')+
+    ((owner&&r.me)?'<button class="bs" style="margin-top:12px;width:100%" onclick="rlLog(\''+r.id+'\',1);rvClose()">Log my portion</button>':'')+
+    '</div>';
+  ov.innerHTML=h; ov.classList.add('on'); ov.scrollTop=0;
+  try{ history.pushState({rv:1},''); }catch(e){}
+}
+function rvClose(){ var ov=document.getElementById('rv-overlay'); if(ov) ov.classList.remove('on'); }
+window.addEventListener('popstate',function(){ var ov=document.getElementById('rv-overlay'); if(ov&&ov.classList.contains('on')) ov.classList.remove('on'); });
 function mpRenderPlan(){
   var el=document.getElementById("meals-plan"); if(!el) return;
   var now=mpPos(todayKey());
