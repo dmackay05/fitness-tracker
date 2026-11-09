@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v461 — 2026-11-09";
+var APP_BUILD = "v462 — 2026-11-09";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -146,7 +146,7 @@ var GOALS = {
   calActive:   parseInt(store.get('ft_cal_active'))   || 2250,
   calRide:     parseInt(store.get('ft_cal_ride'))      || 2350,
   calRecovery: parseInt(store.get('ft_cal_recovery'))  || 2200,
-  calMaint:    parseInt(store.get('ft_cal_maint'))     || 0, // v404: no stale 2600 default; see dsMaintFallback()
+  calMaint:    parseInt(store.get('ft_cal_maint'))     || 0, // v404: no fixed default; see dsMaintFallback()
   protein: parseInt(store.get('ft_protein')) || 170,
   carbs:   parseInt(store.get('ft_carbs'))   || 200,
   fat:     parseInt(store.get('ft_fat'))     || 65,
@@ -204,7 +204,7 @@ function dsDaysOfType(t){
 // ── CALORIE GOAL MODE — one maintenance number drives every target ──────
 // v404: every calorie target in the app is built the same way:
 //   measured maintenance  +  goal offset (cut / recomp / gain)  +  small day-type nudge.
-// The old fixed day-type numbers (2050/2200/2250/2350), the stale 2600 default,
+// The old fixed day-type numbers (2050/2200/2250/2350), the old fixed default,
 // and the separate Maintenance/Bulk toggles each told a different story; they're
 // folded into this. Day nudges average to zero across the week, so the weekly
 // average equals maintenance + goal offset exactly.
