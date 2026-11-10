@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v472 — 2026-11-10";
+var APP_BUILD = "v473 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -248,7 +248,7 @@ function dsAvgSteps(days){
     var v=dd&&dd.wellness&&+dd.wellness.steps; if(v>0){t+=v;n++;} }
   return n>=5?{avg:Math.round(t/n),n:n}:null;
 }
-// v472: resistance training and yoga on top of steps. Walks/cardio are left out
+// v472: resistance training, yoga and (v473) bike rides on top of steps. Walks/runs are left out
 // because their movement already shows up in the step count. Net METs (above
 // rest): band/resistance work ~2.5, yoga ~1.5. Averaged over every day in the
 // window, so rest days count as zero.
@@ -260,8 +260,14 @@ function dsAvgTrainingKcal(days, kg){
       var m=0; try{ m=dsEstimateSeconds(ex)/60; }catch(e){} if(!(m>0)) return;
       var net=(ex.type==='yoga'||/yoga|stretch|mobility|flow/i.test(nm))?1.5:2.5;
       kcal+=net*kg*m/60; min+=m;
+    });
+    // v473: bike rides — no steps, so they'd otherwise be invisible. Net ~5 METs
+    // (moderate leisure/trail riding). Duration if logged, else miles at ~10 mph.
+    (dd&&dd.rides||[]).forEach(function(r){
+      var m=parseFloat(r.duration)||0; if(!m && parseFloat(r.miles)>0) m=parseFloat(r.miles)*6;
+      if(m>0){ kcal+=5*kg*Math.min(m,240)/60; min+=m; }
     }); }
-  return {kcal:Math.min(400,Math.round(kcal/days)), min:Math.round(min/days)};
+  return {kcal:Math.min(600,Math.round(kcal/days)), min:Math.round(min/days)};
 }
 function dsFormulaMaint(){
   var hIn=parseFloat(store.get('ft_height_in'))||0, age=parseInt(store.get('ft_age'))||0;
@@ -1585,7 +1591,7 @@ function dsUsedMaintHtml(r){
     +'<div><b style="color:#a78bfa">Used for targets: '+u.tdee+' kcal</b> <span style="color:#8b8b9c">('+why+')</span></div>'
     +'<div style="color:#8b8b9c;font-size:11px">Size/activity estimate: '+f.tdee+' kcal = BMR '+f.bmr+' \u00d7 '+f.pal+' ('
     +(f.stepsLogged?f.steps.toLocaleString()+' steps/day avg, '+f.stepDays+' days logged':'no steps logged \u2014 assuming 5,000/day')+')'
-    +' + training '+f.trainKcal+' kcal/day (~'+f.trainMin+' min/day logged, 14-day avg)</div></div>';
+    +' + training & rides '+f.trainKcal+' kcal/day (~'+f.trainMin+' min/day logged, 14-day avg)</div></div>';
 }
 function renderTdeePanel(){
   var el=document.getElementById("dash-tdee"); if(!el) return;
