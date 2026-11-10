@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v476 — 2026-11-10";
+var APP_BUILD = "v477 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -10343,8 +10343,8 @@ function dsRenderItem(rawItem,idx,accent){
     var _deloadFill = dsDeloadActive() && st._load && !st._loadTouched;
     var loadFld = dsWantsLoad(item) ? '<input class="ds-wt'+(_deloadFill?' ds-wt-deload':'')+'" id="ds-load-'+item.id+'" placeholder="band / lb" title="'+(_deloadFill?'Suggested \u2014 ~30% below last session for deload week':'')+'" value="'+(st._load||'')+'" oninput="dsRememberLoad(\''+item.id+'\')">'+(dsIsElasticBand(item)?dsBandPickerHTML(item.id):'') : '';
     if(dsIsUnilateral(item)){
-      h+='<div class="ds-logrow"><span class="ds-lbl">L</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-repsL-'+item.id+'" value="'+(st._repsL||10)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'L\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'L\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',1)">+</button></div>'
-        +'<span class="ds-lbl" style="margin-left:8px">R</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-repsR-'+item.id+'" value="'+(st._repsR||10)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'R\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'R\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',1)">+</button></div>'
+      h+='<div class="ds-logrow"><span class="ds-lbl">L</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',-1)">\u2212</button><input type="number" inputmode="numeric" min="0" max="999" class="ds-stepval ds-stepinput" id="ds-repsL-'+item.id+'" value="'+_dsSideVal(st._repsL)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'L\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'L\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',1)">+</button></div>'
+        +'<span class="ds-lbl" style="margin-left:8px">R</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',-1)">\u2212</button><input type="number" inputmode="numeric" min="0" max="999" class="ds-stepval ds-stepinput" id="ds-repsR-'+item.id+'" value="'+_dsSideVal(st._repsR)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'R\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'R\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',1)">+</button></div>'
         +loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
     } else {
       h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
@@ -11432,9 +11432,11 @@ function dsToggleSwap(id){ var st=dsItemState(id); st._swapOpen=!st._swapOpen; d
 function dsToggleMistakes(id){ var st=dsItemState(id); st._mistakesOpen=!st._mistakesOpen; dsSaveUI(); dsRender(); }
 function dsPickVariant(id,i){ var _ri=dsRawItem(id); DS_SWAPS[_ri?dsSwapKey(_ri):id]=i; dsSaveSwaps(); var st=dsItemState(id); st._swapOpen=false; dsSaveUI(); dsRender(); }
 function dsBump(id,delta){ var st=dsItemState(id); st._reps=Math.max(1,(st._reps||10)+delta); var el=document.getElementById('ds-reps-'+id); if(el)el.value=st._reps; dsSaveUI(); }
-function dsBumpSide(id,side,delta){ var st=dsItemState(id); var k='_reps'+side; st[k]=Math.max(1,(st[k]||10)+delta); var el=document.getElementById('ds-reps'+side+'-'+id); if(el)el.value=st[k]; dsSaveUI(); }
-function dsRepsInputSide(id,side){ var el=document.getElementById('ds-reps'+side+'-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ dsItemState(id)['_reps'+side]=Math.min(999,v); dsSaveUI(); } }
-function dsRepsBlurSide(id,side){ var st=dsItemState(id); var el=document.getElementById('ds-reps'+side+'-'+id); if(el)el.value=st['_reps'+side]||10; }
+// v477: one side may be 0 (skipping an injured side); the other side keeps a min of 1 via logging.
+function _dsSideVal(v){ return (v===0||v==='0')?0:(+v||10); }
+function dsBumpSide(id,side,delta){ var st=dsItemState(id); var k='_reps'+side; st[k]=Math.max(0,_dsSideVal(st[k])+delta); var el=document.getElementById('ds-reps'+side+'-'+id); if(el)el.value=st[k]; dsSaveUI(); }
+function dsRepsInputSide(id,side){ var el=document.getElementById('ds-reps'+side+'-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=0){ dsItemState(id)['_reps'+side]=Math.min(999,v); dsSaveUI(); } }
+function dsRepsBlurSide(id,side){ var st=dsItemState(id); var el=document.getElementById('ds-reps'+side+'-'+id); if(el)el.value=_dsSideVal(st['_reps'+side]); }
 
 function dsRepsInput(id){ var el=document.getElementById('ds-reps-'+id); if(!el)return; var v=parseInt(el.value,10); if(!isNaN(v)&&v>=1){ dsItemState(id)._reps=Math.min(999,v); dsSaveUI(); } }
 function dsRepsBlur(id){ var st=dsItemState(id); var el=document.getElementById('ds-reps-'+id); if(el)el.value=st._reps||10; }
@@ -11487,7 +11489,8 @@ function dsAutoregulate(id){
   // For unilateral moves, autoregulate the PER-SIDE rep count (what the L/R steppers
   // actually show and what dsLogSet actually reads), not the combined L+R total.
   // Using the combined total here was the source of the runaway "holding at 54/58" bug.
-  var curReps=_uni?(st._repsL||lastSet.repsL||10):(st._reps||lastSet.reps||10);
+  var _skipL=_uni&&_dsSideVal(st._repsL)===0, _skipR=_uni&&_dsSideVal(st._repsR)===0;
+  var curReps=_uni?(_skipL?(st._repsR||lastSet.repsR||10):(st._repsL||lastSet.repsL||10)):(st._reps||lastSet.reps||10);
   var note='', newReps=curReps, capped=false;
   if(rir<=0.5){ newReps=Math.max(1,curReps-2); note='\u25BC Near max on that set \u2014 dropping to '+newReps+' reps next set'; }
   else if(rir<=1.5){ newReps=Math.max(1,curReps-1); note='\u2192 Tough set \u2014 trimming to '+newReps+' reps next set'; }
@@ -11509,9 +11512,9 @@ function dsAutoregulate(id){
     }
   }
   if(_uni){
-    st._repsL=newReps; st._repsR=newReps; st._autoNote=note;
-    var repsLEl=document.getElementById('ds-repsL-'+id); if(repsLEl) repsLEl.value=newReps;
-    var repsREl=document.getElementById('ds-repsR-'+id); if(repsREl) repsREl.value=newReps;
+    st._repsL=_skipL?0:newReps; st._repsR=_skipR?0:newReps; st._autoNote=note;
+    var repsLEl=document.getElementById('ds-repsL-'+id); if(repsLEl) repsLEl.value=st._repsL;
+    var repsREl=document.getElementById('ds-repsR-'+id); if(repsREl) repsREl.value=st._repsR;
   } else {
     st._reps=newReps; st._autoNote=note;
     var repsEl=document.getElementById('ds-reps-'+id); if(repsEl) repsEl.value=newReps;
@@ -11524,7 +11527,8 @@ function dsLogSet(id,target){
   var le=document.getElementById('ds-load-'+id); var load=(le?le.value:'')||st._load||'';
   var reps, setObj;
   if(_uni){
-    var repsL=st._repsL||10, repsR=st._repsR||10;
+    var repsL=_dsSideVal(st._repsL), repsR=_dsSideVal(st._repsR);
+    if(repsL+repsR<=0){ toast('Log at least one side'); return; }
     reps=repsL+repsR;
     setObj={reps:reps,repsL:repsL,repsR:repsR,load:load,rir:(st._rir!=null?st._rir:null),ts:Date.now()};
   } else {
