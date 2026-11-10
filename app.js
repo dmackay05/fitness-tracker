@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v468 — 2026-11-10";
+var APP_BUILD = "v469 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9167,9 +9167,17 @@ function dsRenderMuscleVolume(){
       var h='';
       if(missing.length){
         h+='<div class="card" style="border:1px solid #f8717140">'
-          +'<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">\u26A0\uFE0F Needs Attention \u2014 below MEV, nothing scheduled</div>'
-          +'<div style="font-size:11px;color:#ccc">'+missing.map(function(r){return r.m+' ('+r.v.toFixed(1)+'/'+r.land[0]+')';}).join(' \u00b7 ')+'</div>'
-          +'<div style="font-size:11px;color:#888;margin-top:6px">Nothing in the next 7 days covers '+(missing.length>1?'these':'this')+' \u2014 add 2\u20133 direct sets before adding volume anywhere else</div>'
+          +'<div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">\u26A0\uFE0F Needs Attention \u2014 below MEV even after what\u2019s scheduled</div>'
+          +missing.map(function(r){
+            var tot=r.v+r.ahead.sets, gap=Math.max(0,r.land[0]-tot);
+            return '<div style="font-size:11px;color:#ccc;margin-top:4px"><b>'+r.m+'</b> '+r.v.toFixed(1)+'/'+r.land[0]
+              +(r.ahead.sets>0
+                ? ' \u2192 '+tot.toFixed(1)+' once '+r.ahead.days.map(function(d){return d.charAt(0).toUpperCase()+d.slice(1,3);}).join(' + ')+' '+(r.ahead.days.length>1?'are':'is')+' done \u00b7 still ~'+Math.ceil(gap)+' sets short'
+                  +'<div style="color:#888">'+r.ahead.moves.join(', ')+'</div>'
+                : ' \u00b7 nothing scheduled in the next 7 days')
+              +'</div>';
+          }).join('')
+          +'<div style="font-size:11px;color:#888;margin-top:6px">Add the missing direct sets (or a set to what\u2019s already scheduled) before adding volume anywhere else</div>'
           +'</div>';
       }
       if(scheduled.length){
