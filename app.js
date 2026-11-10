@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v473 — 2026-11-10";
+var APP_BUILD = "v474 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1632,7 +1632,12 @@ function renderTdeePanel(){
     hu+='<div style="margin-top:6px;color:#8b8b9c;line-height:1.4">Slope is a robust (Theil-Sen) fit, so one bloated morning will not move it much. A direction, not a dose.</div>';
     el.innerHTML=hu; return;
   }
-  var h='<div><b style="color:#fbbf24;font-size:15px">\u2248'+r.tdee+' kcal</b> <span style="color:#888">measured maintenance'+(r.smoothed?' (smoothed)':'')+'</span> <span style="color:#8b8b9c;font-size:11px">(likely '+rangeTxt+')</span></div>'
+  var _u=dsUsedMaint(r), _gap=_u.f?(_u.f.tdee-r.tdee):0;
+  var h='<div><b style="color:#a78bfa;font-size:15px">\u2248'+_u.tdee+' kcal</b> <span style="color:#888">maintenance \u2014 what your targets use</span></div>'
+   +'<div style="color:#ccc;margin-top:4px;line-height:1.5">Your logs say <b>\u2248'+r.tdee+'</b> <span style="color:#8b8b9c;font-size:11px">(likely '+rangeTxt+')</span>'
+   +(_u.f?' \u00b7 your size &amp; activity say <b>\u2248'+_u.f.tdee+'</b>':'')+'</div>'
+   +(_u.f&&_gap>250?'<div style="color:#fbbf24;margin-top:3px;line-height:1.45">Logs run '+_gap+' kcal under the size/activity estimate. That gap is usually unweighed food (oil, portions) rather than a slow metabolism \u2014 weighing food for 2\u20133 weeks closes it, and the logged number will rise to meet the truth.</div>':'')
+   +(_u.f&&_gap<-250?'<div style="color:#fbbf24;margin-top:3px;line-height:1.45">Logs run '+(-_gap)+' kcal over the size/activity estimate \u2014 you may be more active than your steps show, or some days are over-logged.</div>':'')
    +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal'
    +(r.nPartial?(', with '+r.nPartial+' partial '+(r.nPartial===1?'day':'days')+' set aside'):'')
    +'. '+trendTxt+'</div>';
