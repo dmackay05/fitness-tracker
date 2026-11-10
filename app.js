@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v471 — 2026-11-10";
+var APP_BUILD = "v472 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -248,6 +248,21 @@ function dsAvgSteps(days){
     var v=dd&&dd.wellness&&+dd.wellness.steps; if(v>0){t+=v;n++;} }
   return n>=5?{avg:Math.round(t/n),n:n}:null;
 }
+// v472: resistance training and yoga on top of steps. Walks/cardio are left out
+// because their movement already shows up in the step count. Net METs (above
+// rest): band/resistance work ~2.5, yoga ~1.5. Averaged over every day in the
+// window, so rest days count as zero.
+function dsAvgTrainingKcal(days, kg){
+  var kcal=0, min=0;
+  for(var i=1;i<=days;i++){ var d=new Date(); d.setDate(d.getDate()-i); var dd=appData[localDateKey(d)];
+    (dd&&dd.exercises||[]).forEach(function(ex){
+      var nm=String(ex.name||''); if(ex.type==='cardio'||/^walk|run|ride|bike/i.test(nm)) return;
+      var m=0; try{ m=dsEstimateSeconds(ex)/60; }catch(e){} if(!(m>0)) return;
+      var net=(ex.type==='yoga'||/yoga|stretch|mobility|flow/i.test(nm))?1.5:2.5;
+      kcal+=net*kg*m/60; min+=m;
+    }); }
+  return {kcal:Math.min(400,Math.round(kcal/days)), min:Math.round(min/days)};
+}
 function dsFormulaMaint(){
   var hIn=parseFloat(store.get('ft_height_in'))||0, age=parseInt(store.get('ft_age'))||0;
   if(!(hIn>0&&age>0)) return null;
@@ -257,7 +272,8 @@ function dsFormulaMaint(){
   var bmr=10*(w/2.2046)+6.25*(hIn*2.54)-5*age+(sex==='f'?-161:5);
   var st=dsAvgSteps(14), steps=st?st.avg:5000;
   var pal=1.2+Math.max(0,Math.min(0.3,(steps-3000)/1000*0.04));
-  return {tdee:Math.round(bmr*pal), bmr:Math.round(bmr), pal:Math.round(pal*100)/100, steps:steps, stepsLogged:!!st, stepDays:st?st.n:0};
+  var tr=dsAvgTrainingKcal(14, w/2.2046);
+  return {tdee:Math.round(bmr*pal+tr.kcal), bmr:Math.round(bmr), pal:Math.round(pal*100)/100, steps:steps, stepsLogged:!!st, stepDays:st?st.n:0, trainKcal:tr.kcal, trainMin:tr.min};
 }
 // What the calorie targets actually use: the measured number, kept within
 // ±300 kcal of the formula when it's reliable, or averaged with the formula
@@ -1567,8 +1583,9 @@ function dsUsedMaintHtml(r){
          :(u.how==='clamped'?'held within 300 kcal of the size/steps estimate':'measured number, consistent with your size and steps');
   return '<div style="margin-top:6px;padding:6px 8px;border:1px solid #a78bfa40;border-radius:8px;line-height:1.5">'
     +'<div><b style="color:#a78bfa">Used for targets: '+u.tdee+' kcal</b> <span style="color:#8b8b9c">('+why+')</span></div>'
-    +'<div style="color:#8b8b9c;font-size:11px">Size/steps estimate: '+f.tdee+' kcal = BMR '+f.bmr+' \u00d7 '+f.pal+' ('
-    +(f.stepsLogged?f.steps.toLocaleString()+' steps/day avg, '+f.stepDays+' days logged':'no steps logged \u2014 assuming 5,000/day')+')</div></div>';
+    +'<div style="color:#8b8b9c;font-size:11px">Size/activity estimate: '+f.tdee+' kcal = BMR '+f.bmr+' \u00d7 '+f.pal+' ('
+    +(f.stepsLogged?f.steps.toLocaleString()+' steps/day avg, '+f.stepDays+' days logged':'no steps logged \u2014 assuming 5,000/day')+')'
+    +' + training '+f.trainKcal+' kcal/day (~'+f.trainMin+' min/day logged, 14-day avg)</div></div>';
 }
 function renderTdeePanel(){
   var el=document.getElementById("dash-tdee"); if(!el) return;
@@ -15999,7 +16016,7 @@ function dsRenderStepsCard(){
     +'<button class="bw" style="width:100%;margin-top:6px" onclick="dsImportSteps()">Import steps</button>'
     +'<div class="rlbl">Height &amp; age (for the maintenance sanity check)</div>'
     +'<div style="display:flex;gap:8px"><input type="number" id="ft-height-ft" placeholder="ft" value="'+(hIn?Math.floor(hIn/12):'')+'" style="flex:1;margin-bottom:0"/><input type="number" id="ft-height-inch" placeholder="in" value="'+(hIn?Math.round(hIn%12):'')+'" style="flex:1;margin-bottom:0"/><input type="number" id="ft-age2" placeholder="age" value="'+(store.get('ft_age')||'')+'" style="flex:1;margin-bottom:0"/><button class="bp" onclick="dsSaveBodyBasics()">Save</button></div>'
-    +(f?'<div style="font-size:11px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:6px">Size/steps maintenance estimate: <b style="color:#ddd">'+f.tdee+' kcal</b> (BMR '+f.bmr+' \u00d7 '+f.pal+')</div>':'');
+    +(f?'<div style="font-size:11px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:6px">Size/steps maintenance estimate: <b style="color:#ddd">'+f.tdee+' kcal</b> (BMR '+f.bmr+' \u00d7 '+f.pal+' + '+f.trainKcal+' training)</div>':'');
 }
 (function(){ // seed David's basics once (from chat, Nov 10 2026)
   try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_height_in')){ store.set('ft_height_in',72); if(!store.get('ft_age')) store.set('ft_age',45); } }catch(e){}
