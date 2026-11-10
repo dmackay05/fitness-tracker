@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=478">
+<link rel="stylesheet" href="styles.css?v=479">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -44,7 +44,7 @@
     <div class="header-top">
       <div>
         <div class="greeting" id="greeting">Good Morning</div>
-        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-phase-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#c084fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-deload-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><span id="ds-maint-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#7dd3fc;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" aria-label="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><span id="header-refresh-dash" style="display:none"><button onclick="doRefresh('dash')" title="Refresh" aria-label="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="hname" id="hname">Athlete 💪</div><span id="ds-deload-badge" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:#0d0d1a;background:#cfe84f;padding:2px 7px;border-radius:10px;font-weight:700;white-space:nowrap"></span><button id="qt-fab-inline" onclick="qtOpen()" title="Timer" aria-label="Timer" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1;display:flex;align-items:center;gap:3px;"><span id="qt-fab-icon">⏱</span><span id="qt-fab-time" style="font-size:11px;font-family:'DM Mono',monospace;font-weight:700;color:#cfe84f;"></span></button><span id="header-refresh-dash" style="display:none"><button onclick="doRefresh('dash')" title="Refresh" aria-label="Refresh" style="background:transparent;border:none;color:#5eead4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1"><span id="refresh-icon-dash">↻</span></button></span></div>
       </div>
       <div class="date-nav">
         <div class="date-nav-row">
@@ -147,7 +147,7 @@
             <input type="number" inputmode="decimal" id="trk-m-hr" placeholder="avg HR" style="flex:0 0 72px;margin-bottom:0"/>
             <button class="bp" onclick="trkSaveManual()">Save</button>
           </div>
-          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:4px">Avg HR is optional \u2014 used to classify the ride into a heart-rate zone (Zone 2 = ~60\u201370% of max HR). Set your age or max HR in Settings first.</div>
+          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:4px">Avg HR is optional — used to classify the ride into a heart-rate zone (Zone 2 = ~60–70% of max HR). Set your age or max HR in Settings first.</div>
         </div>
       </div>
   </div>
@@ -631,7 +631,7 @@
       <div class="card" style="margin-top:10px;border-left:4px solid #5eead4">
         <div class="card-title">10 · Energy systems in brief</div>
         <div style="font-size:13px;line-height:1.5">Muscles run on three overlapping fuel systems. <b>Phosphagen (ATP-PC):</b> instant, all-out power for ~10 seconds — a heavy single or a sprint. <b>Glycolytic:</b> fast but fatiguing, dominant from ~10 s to ~2 min — a hard set of 10–20 reps, which is where the burn comes from. <b>Aerobic (oxidative):</b> slower and sustainable for long efforts — walking, steady riding, recovery between sets.</div>
-        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>In your plan:</b> Lifting sets live mostly in the first two; walk-run intervals and Saturday rides train the aerobic system. Better aerobic fitness also speeds recovery between sets. Fitbit heart rate zones are a rough window into which system is doing the work.</div>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>In your plan:</b> Lifting sets live mostly in the first two; walk-run intervals and bike rides train the aerobic system. Better aerobic fitness also speeds recovery between sets. Fitbit heart rate zones are a rough window into which system is doing the work.</div>
         <details style="margin-top:8px"><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:'DM Mono',monospace">Evidence</summary>
           <div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px">Gastin 2001, <i>Sports Med</i> (review, energy system interaction) · Baker, McCormick &amp; Robergs 2010, <i>J Nutr Metab</i> (review, interaction of energy systems)</div></details>
       </div>
@@ -705,7 +705,7 @@
       <div class="card" style="margin-top:10px;border-left:4px solid #4ade80">
         <div class="card-title">8 · Cardio doesn't kill gains <span style="font-size:11px;color:#4ade80;font-weight:400">— Strong</span></div>
         <div style="font-size:13px;line-height:1.5">Adding endurance work to resistance training doesn't meaningfully reduce muscle growth or maximal strength. The "interference effect" mostly shows up in explosive power, and when very high cardio volumes crowd out recovery.</div>
-        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>In your plan:</b> The walk-run intervals and Saturday rides are compatible with building muscle. Keeping hard cardio away from your hardest leg sessions is a sensible buffer.</div>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px"><b>In your plan:</b> The walk-run intervals and bike rides are compatible with building muscle. Keeping hard cardio away from your hardest leg sessions is a sensible buffer.</div>
         <details style="margin-top:8px"><summary style="font-size:11px;color:#5eead4;cursor:pointer;font-family:'DM Mono',monospace">Evidence</summary>
           <div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px">Schumann et al. 2022, <i>Sports Med</i> (meta-analysis, concurrent training)</div></details>
       </div>
@@ -1500,7 +1500,7 @@
       </div>
       <div class="card">
         <div class="card-title">🔁 Session Rotation</div>
-        <div id="ds-rotate-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.</div>
+        <div id="ds-rotate-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">Shifts the four resistance sessions one weekday per week, so the same session isn't always on the same day. Wednesday yoga, Saturday Upper C and Sunday rest stay put.</div>
         <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
           <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Rotate weekly</span>
           <input type="checkbox" id="ds-rotate-toggle" onchange="dsToggleRotate(this.checked)" style="width:20px;height:20px;accent-color:#cfe84f;cursor:pointer" />
@@ -1534,19 +1534,12 @@
         <button data-mu="1" class="bs bfull" onclick="dsResetCustomPlan()" style="margin-top:6px">↺ Revert to Default Plan</button>
         <button data-mu="1" class="bs bfull" onclick="dsTogglePlanReplace()" style="margin-top:6px">⇄ Toggle Missing-Day Behavior</button>
         <button data-mu="1" class="bs bfull" onclick="dsExportPlanTemplate()" style="margin-top:6px">⬇ Export Current Plan as Template</button>
-        <div data-mu="1" style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
+        <div data-mu="1" style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:8px;line-height:1.5">Export first — it writes out a working my-plan.json to edit, including the <code>mv</code> muscle map the Volume tab needs. Exercise ids must be unique across the whole file. Days your file leaves out keep the built-in plan by default; set <code>"replace": true</code> in the JSON (or use the toggle above) to make them Rest Days instead — that's what you want when handing this app to someone else.</div>
       </div>
       <div class="card" data-mu="1">
         <div class="card-title">🏋️ Custom Exercise Set</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
         <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
-      </div>
-      <div class="card" data-mu="1">
-        <div class="card-title">📋 Plan Source</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">"View Full Plan" loads from <code>plan.json</code> next to this app by default. To use a different plan (e.g. someone else's goals), paste a URL to their own plan.json here. Leave blank to use the default.</div>
-        <div class="rlbl" style="margin-top:0">Plan JSON URL (optional)</div>
-        <input type="text" id="ft-plan-url" placeholder="leave blank for plan.json" style="font-size:11px;margin-bottom:4px" />
-        <button class="bs bfull" onclick="planReload()" style="margin-top:6px">↻ Reload Plan</button>
       </div>
         </div>
       </details>
@@ -1580,28 +1573,6 @@
           <div><div class="rlbl">Activity (min/wk)</div><input type="number" inputmode="decimal" id="ft-activity" style="margin-bottom:0"/></div>
         </div>
         <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;margin-top:6px">Cadence default is 105 steps/min. Check your phone's Health app (iPhone) or Google Fit (Android) after a walk, divide steps by minutes, and enter your real number here for more accurate estimates.</div>
-      </div>
-      <div class="card" style="display:none">
-        <div class="card-title">▶️ Maintenance Mode</div>
-        <div id="ds-maint-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A maintenance block — sits at your measured maintenance instead of the deficit, for as long as you leave it on. Counters metabolic adaptation from sustained dieting and lets training intensity/recovery catch up. Tracks your measured maintenance as it updates, and stays on until you manually turn it off. Keep protein at 170g+ and train as normal.</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Maintenance mode active</span>
-          <input type="checkbox" id="ds-maint-toggle" onchange="dsSetMaint(this.checked)" style="width:20px;height:20px;accent-color:#7dd3fc;cursor:pointer" />
-        </label>
-        <div id="ds-maint-preview" style="font-size:11px;color:#7dd3fc;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
-      </div>
-      <div class="card" style="display:none">
-        <div class="card-title">⬆️ Bulk Phase</div>
-        <div id="ds-bulk-desc" style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;margin-bottom:12px;line-height:1.6">A deliberate muscle-building surplus — sits at your measured maintenance plus a modest surplus (default +350 kcal) for as long as you leave it on, and bumps protein to 190g. Keep the surplus lean-leaning (fiber-dense carbs, unsaturated fats) over saturated fat/added sugar. Mutually exclusive with Maintenance Mode. Stays on until you turn it off — check in with your doctor/dietitian on A1c and cholesterol during this phase.</div>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;margin-bottom:12px">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Surplus (kcal over maintenance)</span>
-          <input type="number" inputmode="decimal" id="ds-bulk-surplus" value="350" step="25" onchange="dsSetBulkSurplus(this.value)" style="width:70px;background:#1a1a2e;border:1px solid #333;border-radius:6px;color:#f0f0f0;padding:6px 8px;font-family:'DM Mono',monospace;font-size:12px;text-align:right" />
-        </label>
-        <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
-          <span style="font-size:12px;color:#f0f0f0;font-family:'DM Mono',monospace">Bulk phase active</span>
-          <input type="checkbox" id="ds-bulk-toggle" onchange="dsSetBulk(this.checked)" style="width:20px;height:20px;accent-color:#fb923c;cursor:pointer" />
-        </label>
-        <div id="ds-bulk-preview" style="font-size:11px;color:#fb923c;margin-top:10px;line-height:1.7;font-family:'DM Mono',monospace"></div>
       </div>
       <div class="card">
         <div class="card-title">Supplements</div>
@@ -1686,7 +1657,7 @@
     </div>
 
     <div class="card" id="ds-custom-today-tools" style="display:none">
-      <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;line-height:1.6;margin-bottom:10px">Pick the exercises for <b style="color:#fbbf24">today only</b>. This replaces today\u2019s regular session and goes away on its own tomorrow \u2014 your normal plan isn\u2019t touched. Close this screen to save.</div>
+      <div style="font-size:11px;color:#aaa;font-family:'DM Mono',monospace;line-height:1.6;margin-bottom:10px">Pick the exercises for <b style="color:#fbbf24">today only</b>. This replaces today’s regular session and goes away on its own tomorrow — your normal plan isn’t touched. Close this screen to save.</div>
       <div style="display:flex;gap:8px">
         <button class="bs" id="ds-oneday-preset" style="flex:1;padding:9px 10px" onclick="dsOneDayLoadPreset()">Chest · Arms · Core</button>
         <button class="bs" style="padding:9px 14px" onclick="dsOneDayClearPick()">Clear</button>
@@ -1709,15 +1680,6 @@
   </div>
 </div>
 
-<!-- MY PLAN OVERLAY -->
-<div id="plan-overlay" style="display:none;position:fixed;inset:0;background:#0d0d1a;z-index:9998;flex-direction:column;overflow-y:auto">
-  <div style="position:sticky;top:0;background:#0d0d1a;border-bottom:1px solid #1e1e35;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2">
-    <button class="bs" onclick="planClose()">✕ Close</button>
-    <div style="font-size:15px;font-weight:800;color:#f0f0f0">📋 My Plan</div>
-    <div style="width:60px"></div>
-  </div>
-  <div style="padding:18px;max-width:520px;margin:0 auto;width:100%" id="plan-content"></div>
-</div>
 
 
 
@@ -1868,7 +1830,7 @@
   </div>
 </div>
 
-<script src="app.js?v=478"></script>
+<script src="app.js?v=479"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>

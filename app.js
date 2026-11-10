@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v478 — 2026-11-10";
+var APP_BUILD = "v479 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -164,7 +164,6 @@ var DAY_TYPE_MAP = {0:"rest", 1:"active", 2:"active", 3:"recovery", 4:"active", 
 function dayTypeForKey(dateKey){
   var d = keyToDate(dateKey);
   if(dsGuestMode()){ var gt=dsGuestDayTypes()[DS_WEEKMAP_CAL[d.getDay()]]; if(gt) return gt; }
-  if(typeof dsFullBodyOn==='function' && dsFullBodyOn()) return ({0:"rest",1:"active",2:"recovery",3:"active",4:"recovery",5:"active",6:"ride"})[d.getDay()];
   return DAY_TYPE_MAP[d.getDay()] || "active";
 }
 var DS_WEEKMAP_CAL=['sun','mon','tue','wed','thu','fri','sat'];
@@ -341,13 +340,6 @@ function dsRenderGoalUI(){
       +'<div style="color:#8b8b9c;margin-top:6px">Weekly average: <b style="color:#f0f0f0">'+Math.round(base+m.off)+'</b> kcal. Protein stays at '+GOALS.protein+' g every day.</div>';
   }
 }
-function _legacyCalGoalLabelForKey(dateKey){
-  var t = dayTypeForKey(dateKey);
-  if(t==="rest") return "Rest day";
-  if(t==="ride") return dsGuestMode()?"Long cardio day":"Ride day";
-  if(t==="recovery") return "Active recovery";
-  return "Active/lift day";
-}
 var WATER_GOAL = parseInt(store.get('ft_water')) || 64;
 var USER_AGE = parseInt(store.get('ft_age')) || 0; // used only to estimate max HR if Max HR isn't set directly
 var USER_MAXHR = parseInt(store.get('ft_maxhr')) || 0; // if unset, estimated with the Tanaka formula (208 - 0.7 x age)
@@ -392,204 +384,7 @@ function dsRenderDeloadUI(){
   if(badge) badge.textContent = "⏸ Deload — day "+(dsDeloadDaysElapsed()+1)+"/7";
 }
 
-// ── MAINTENANCE MODE — manual toggle, persists until turned off ─────────────
-// Extended maintenance block: sits at measured maintenance for as long as
-// toggled on (no fixed end date), to let training intensity/recovery catch up
-// and bank some size before returning to a deficit.
-var MAINT_START = store.get('ft_maint_start') || null;
-function dsMaintDaysElapsed(){
-  if(!MAINT_START) return 0;
-  var ms = Date.now() - keyToDate(MAINT_START).getTime();
-  return Math.floor(ms/86400000);
-}
-function dsMaintActive(){ return false; } // v404: folded into Goal Mode (Recomp)
-// Live measured maintenance when there's enough data to trust it; otherwise
-// falls back to the stored/manual calMaint figure. Guards against
-// measuredTDEE() -> intakeDaysDetail() -> calGoalForKey() -> here recursion.
-var _dsMaintTdeeGuard = false;
-function dsMaintTargetCal(){
-  if(_dsMaintTdeeGuard) return dsMaintFallback();
-  _dsMaintTdeeGuard = true;
-  var cal;
-  try{
-    var r = measuredTDEE();
-    cal = (r && r.ok && r.tdee) ? r.tdee : dsMaintFallback();
-  } finally { _dsMaintTdeeGuard = false; }
-  return cal;
-}
-function dsSetMaint(on){
-  if(on){
-    MAINT_START = todayKey(); store.set('ft_maint_start', MAINT_START);
-    if(dsBulkActive()){ dsSetBulk(false); } // bulk outranks maintenance in calGoalForKey, so leaving it on would silently hide this toggle
-  }
-  else { MAINT_START = null; store.remove('ft_maint_start'); }
-  try{ renderAll(); }catch(e){}
-  dsRenderMaintUI(); dsRenderBulkUI();
-}
-function dsRenderMaintUI(){
-  var badge = document.getElementById('ds-maint-badge');
-  var toggle = document.getElementById('ds-maint-toggle');
-  var preview = document.getElementById('ds-maint-preview');
-  var active = dsMaintActive();
-  var cal = dsMaintTargetCal();
-  if(toggle) toggle.checked = active;
-  if(preview) preview.textContent = active
-    ? ("Active — day "+(dsMaintDaysElapsed()+1)+". Calorie target: "+cal+" every day (was periodized "+GOALS.calRest+"–"+GOALS.calRide+"), tracking your measured maintenance as it updates. Keep protein at "+GOALS.protein+"g+ or a bit higher. Train as normal. Stays on until you turn it off.")
-    : "Off. Turning this on sets every day's calorie target to your measured maintenance (currently "+cal+", recalculated as new data comes in) and stays there until you turn it back off.";
-  if(badge) badge.style.display = active ? "" : "none";
-  if(badge) badge.textContent = "\u25B6 Maintenance — day "+(dsMaintDaysElapsed()+1);
-}
 
-// ── BULK PHASE — manual toggle, persists until turned off ────────────────
-// Deliberate muscle-building surplus block: sits at measured maintenance PLUS
-// a modest surplus (default +350 kcal) for as long as it's toggled on, and
-// bumps the protein target into the 185-200g range discussed for the phase.
-// Mutually exclusive with Maintenance Mode (turning one on turns the other off)
-// since both drive a single flat daily calorie target.
-var BULK_START = store.get('ft_bulk_start') || null;
-var BULK_SURPLUS = parseInt(store.get('ft_bulk_surplus')) || 350;
-var BULK_PROTEIN = parseInt(store.get('ft_bulk_protein')) || 190;
-function dsBulkDaysElapsed(){
-  if(!BULK_START) return 0;
-  var ms = Date.now() - keyToDate(BULK_START).getTime();
-  return Math.floor(ms/86400000);
-}
-function dsBulkActive(){ return false; } // v404: folded into Goal Mode (Lean gain)
-var _dsBulkTdeeGuard = false;
-function dsBulkTargetCal(){
-  if(_dsBulkTdeeGuard) return dsMaintFallback()+BULK_SURPLUS;
-  _dsBulkTdeeGuard = true;
-  var cal;
-  try{
-    var r = measuredTDEE();
-    cal = (r && r.ok && r.tdee) ? r.tdee : dsMaintFallback();
-  } finally { _dsBulkTdeeGuard = false; }
-  return cal + BULK_SURPLUS;
-}
-function dsSetBulk(on){
-  if(on){
-    BULK_START = todayKey(); store.set('ft_bulk_start', BULK_START);
-    if(dsMaintActive()){ MAINT_START=null; store.remove('ft_maint_start'); }
-    if(!store.get('ft_protein_prebulk')) store.set('ft_protein_prebulk', GOALS.protein);
-    GOALS.protein = BULK_PROTEIN; store.set('ft_protein', BULK_PROTEIN);
-  } else {
-    BULK_START = null; store.remove('ft_bulk_start');
-    var prior = parseInt(store.get('ft_protein_prebulk'));
-    if(prior){ GOALS.protein = prior; store.set('ft_protein', prior); store.remove('ft_protein_prebulk'); }
-  }
-  try{ renderAll(); }catch(e){}
-  dsRenderBulkUI(); dsRenderMaintUI();
-}
-function dsSetBulkSurplus(v){
-  BULK_SURPLUS = parseInt(v)||350; store.set('ft_bulk_surplus', BULK_SURPLUS);
-  try{ renderAll(); }catch(e){}
-  dsRenderBulkUI();
-}
-function dsRenderBulkUI(){
-  var badge = document.getElementById('ds-bulk-badge');
-  var toggle = document.getElementById('ds-bulk-toggle');
-  var preview = document.getElementById('ds-bulk-preview');
-  var surplusInput = document.getElementById('ds-bulk-surplus');
-  var active = dsBulkActive();
-  var cal = dsBulkTargetCal();
-  if(toggle) toggle.checked = active;
-  if(surplusInput) surplusInput.value = BULK_SURPLUS;
-  if(preview) preview.textContent = active
-    ? ("Active — day "+(dsBulkDaysElapsed()+1)+". Calorie target: "+cal+" every day (measured maintenance + "+BULK_SURPLUS+" kcal surplus, was periodized "+GOALS.calRest+"–"+GOALS.calRide+"). Protein bumped to "+BULK_PROTEIN+"g. Keep the surplus lean — fiber-dense carbs and unsaturated fats over saturated fat/added sugar, given the A1c/cholesterol focus. Stays on until you turn it off.")
-    : "Off. Turning this on sets every day's calorie target to measured maintenance + a "+BULK_SURPLUS+" kcal surplus (currently "+cal+" total), bumps protein to "+BULK_PROTEIN+"g, and stays there until you turn it back off. Turns off Maintenance Mode if that's active.";
-  if(badge) badge.style.display = active ? "" : "none";
-  if(badge) badge.textContent = "\u2B06 Bulk — day "+(dsBulkDaysElapsed()+1);
-}
-
-// ── TRAINING PHASE CYCLE — Base / Supercompensation / Deload (Max Effort removed v405) ──
-// 13-week wave, adapted from Jeff Nippard's Ultimate PPL periodization for
-// home band/DB training: Phase 1 wk1-6 (Base — moderate volume, RPE 8-9/9-10),
-// Phase 2 wk7-10 (Max Effort — 1-2 sets, RPE 9-10), Phase 3 wk11-12
-// (Supercompensation — high volume, 15-20 reps), Deload wk13. Repeats after
-// wk13. Rehab/joint-flagged exercises (elbow eccentric work, wrist curls,
-// SI-flagged rotational moves) are intentionally left out of DS_PHASE_RX
-// below and never get phase-scaled — they're protective, not hypertrophy work.
-var PHASE_START = store.get('ft_phase_start') || null;
-var PHASE_MANUAL = store.get('ft_phase_manual') || null; // 'p1'|'p2'|'p3'|'deload'|null(auto by date)
-var PHASE_LABELS = {p1:'Phase 1 \u2014 Base',p2:'Phase 2 \u2014 Max Effort',p3:'Phase 3 \u2014 Supercompensation',deload:'Deload'};
-// v406: the wave is retired for this band program (one steady block + deloads
-// when due). Phase functions return null so every exercise uses its base rx.
-var DS_PHASES_RETIRED = true;
-try{ if(PHASE_START||PHASE_MANUAL){ store.remove('ft_phase_start'); store.remove('ft_phase_manual'); PHASE_START=null; PHASE_MANUAL=null; } }catch(e){}
-function dsPhaseWeekInfo(){
-  if(DS_PHASES_RETIRED) return null;
-  if(!PHASE_START) return null;
-  var ms = Date.now() - keyToDate(PHASE_START).getTime();
-  var days = Math.floor(ms/86400000);
-  var weekNum = Math.floor(days/7)+1;      // 1-indexed week since cycle start
-  var cyclePos = ((weekNum-1)%13)+1;       // 1..13 position within the wave
-  var cycleNum = Math.floor((weekNum-1)/13)+1;
-  var phase, weekInPhase, totalInPhase;
-  // v405: the low-rep Max Effort block (old weeks 7-10) is gone. It's a barbell
-  // idea that fits bands poorly: bands are lightest in the stretch, so 1-2 sets
-  // of 6-10 reps mostly trains the top half and cuts weekly volume in half.
-  // Base now runs weeks 1-10.
-  if(cyclePos<=10){ phase='p1'; weekInPhase=cyclePos; totalInPhase=10; }
-  else if(cyclePos<=12){ phase='p3'; weekInPhase=cyclePos-10; totalInPhase=2; }
-  else { phase='deload'; weekInPhase=1; totalInPhase=1; }
-  return {phase:phase,weekInPhase:weekInPhase,totalInPhase:totalInPhase,cycleNum:cycleNum,cyclePos:cyclePos};
-}
-if(PHASE_MANUAL==='p2'){ PHASE_MANUAL='p1'; try{ store.set('ft_phase_manual','p1'); }catch(e){} }
-// v405 one-time: today's cached rep targets were computed under Max Effort ranges.
-try{ if(!store.get('ft_v406_progreset')){
-  var _pr={}; try{ _pr=JSON.parse(store.get('ds_prog')||'{}'); }catch(e){}
-  var _tk=todayKey(); Object.keys(_pr).forEach(function(k){ if(_pr[k]&&_pr[k].day===_tk) delete _pr[k]; });
-  store.set('ds_prog', JSON.stringify(_pr)); store.set('ft_v406_progreset','1');
-} }catch(e){}
-function dsCurrentPhase(){
-  if(DS_PHASES_RETIRED) return null;
-  if(PHASE_MANUAL==='p2') return 'p1';
-  if(PHASE_MANUAL) return PHASE_MANUAL;
-  var info = dsPhaseWeekInfo();
-  return info ? info.phase : null;
-}
-function dsSetPhaseCycleStart(on){
-  if(on){ PHASE_START = todayKey(); store.set('ft_phase_start', PHASE_START); }
-  else { PHASE_START = null; store.remove('ft_phase_start'); }
-  PHASE_MANUAL = null; store.remove('ft_phase_manual');
-  try{ renderAll(); }catch(e){}
-  dsRenderPhaseUI();
-}
-function dsSetPhaseManual(key){
-  if(key){ PHASE_MANUAL = key; store.set('ft_phase_manual', key); }
-  else { PHASE_MANUAL = null; store.remove('ft_phase_manual'); }
-  try{ renderAll(); }catch(e){}
-  dsRenderPhaseUI();
-}
-function dsRenderPhaseUI(){
-  var badge = document.getElementById('ds-phase-badge');
-  var toggle = document.getElementById('ds-phase-toggle');
-  var preview = document.getElementById('ds-phase-preview');
-  var select = document.getElementById('ds-phase-manual-select');
-  var phase = dsCurrentPhase();
-  var info = dsPhaseWeekInfo();
-  if(toggle) toggle.checked = !!PHASE_START;
-  if(select) select.value = PHASE_MANUAL || '';
-  if(preview){
-    if(!PHASE_START && !PHASE_MANUAL){
-      preview.textContent = "Off. Turning this on starts the 13-week wave (Base \u2192 Supercompensation \u2192 Deload) from today \u2014 every exercise's sets/reps/RPE/rest below will follow it automatically, week by week.";
-    } else if(PHASE_MANUAL){
-      preview.textContent = "Manually pinned to "+PHASE_LABELS[PHASE_MANUAL]+". Every exercise reflects this phase until you change it or clear the pin below.";
-    } else if(info){
-      preview.textContent = PHASE_LABELS[info.phase]+" \u2014 Week "+info.weekInPhase+" of "+info.totalInPhase+" (cycle week "+info.cyclePos+"/13, cycle #"+info.cycleNum+"). Numbers update automatically each week \u2014 nothing to do but train.";
-    }
-  }
-  if(badge){
-    var active = !!phase && DS_ACTIVE_TAB==='today';
-    badge.style.display = active ? "" : "none";
-    if(active) badge.textContent = "\ud83d\udcc8 "+(PHASE_LABELS[phase]||phase)+(info&&!PHASE_MANUAL?" \u00b7 wk "+info.weekInPhase+"/"+info.totalInPhase:" \u00b7 pinned");
-  }
-}
-// Per-exercise phase overlay: sets/reps text, RPE, and rest per phase. Any
-// exercise id NOT listed here (rehab work, SI/elbow-flagged movements, the
-// intentionally-light Friday goblet squat, etc.) keeps its normal fixed rx
-// in every phase — see the wave-plan doc for why each of those is excluded.
-var DS_PHASE_RX = {};
 try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
 var TREND_METRICS=[
   {key:"weight",  label:"Weight",   unit:"lbs", dir:"lower",   color:"#a78bfa", goal:function(){return GOAL_WEIGHT||0;}, get:function(d){return (d.weight!=null&&d.weight!=="")?d.weight:null;}},
@@ -690,7 +485,6 @@ try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; 
     if(changed){ store.set("ft_data",JSON.stringify(appData)); }
   }catch(e){}
 })();
-try{ migrateHabitsToNameKeys(); }catch(e){}
 var activeDate = todayKey();
 var wellnessRatings = {sleepQ:0, energy:0, mood:0, medClarity:0};
 var medType = "";
@@ -1395,7 +1189,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){}}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} try{dsRenderStepsCard();}catch(e){} }
+function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderGoalUI();}catch(e){} try{mpRenderToday();}catch(e){} try{dsRenderStepsCard();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -2018,17 +1812,7 @@ function dsIsYogaOrRecoveryItem(ex){
 function dsHasNonYogaTraining(day){
   return !!(day && day.exercises && day.exercises.some(function(e){ return !dsIsYogaOrRecoveryItem(e); }));
 }
-function dsConsecutiveTrainingDays(){
-  var n=0, d=new Date(), todK=todayKey();
-  var cursor=new Date(d);
-  if(!dsHasNonYogaTraining(appData[todK])) cursor.setDate(cursor.getDate()-1);
-  for(var guard=0; guard<30; guard++){
-    var k=localDateKey(cursor), day=appData[k];
-    if(dsHasNonYogaTraining(day)){ n++; cursor.setDate(cursor.getDate()-1); } else break;
-  }
-  return n;
-}
-// Same walk as dsConsecutiveTrainingDays, but returns what actually got counted
+// Walks back from today over consecutive training days and returns what got counted
 // on each day — a wrong count is worse than no count if it can't be checked.
 function dsConsecutiveTrainingDetail(){
   var out=[], d=new Date(), todK=todayKey();
@@ -2226,7 +2010,6 @@ function renderDashFocus(){
 // ── DASHBOARD VIEWS: Daily / Progress, plus collapsible Progress cards ──
 // Display only. Every card keeps its element ids, so every renderer still works
 // whichever view is showing.
-var DASH_VIEW = store.get('ft_dash_view') || 'daily';
 var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['streaks','Streaks','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep'],['volume','Volume','deep'],['intake','Intake avg','deep'],['distance','Distance','deep']];
 function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ return {}; } }
 function dashJump(id,sec){
@@ -2411,10 +2194,9 @@ function renderBigPicture(){
     h+='<div style="display:flex;gap:6px">'+wTile+waTile+aTile+'</div>';
     h+=_bpSpark();
     // Training + effort
-    var ph=dsCurrentPhase(), phInfo=dsPhaseWeekInfo();
     h+='<div style="margin-top:10px;font-size:12px;line-height:1.55;color:#cfcfda">'
       +'<b>Training:</b> '+tr7.sessions+' lifting session'+(tr7.sessions===1?'':'s')+' this week · '+tr28.sessions+' in the last 4 weeks'
-      +(ph&&PHASE_LABELS[ph]?' · <span style="color:#c084fc">'+PHASE_LABELS[ph]+(phInfo&&!PHASE_MANUAL?' (wk '+phInfo.weekInPhase+'/'+phInfo.totalInPhase+')':'')+'</span>':'')+'</div>';
+      +'</div>';
     if(tr14.samePct!=null && tr14.multi>=6){
       var eff = tr14.samePct>=50
         ? '<span style="color:#fbbf24">'+tr14.samePct+'% of your exercises in the last 2 weeks had the exact same reps every set.</span> That usually means stopping at the target instead of near failure. Treat the target as a minimum: keep going until 0–2 reps are left, and let the numbers fall off set to set.'
@@ -2580,7 +2362,6 @@ function switchTab(id){
   // rather than at the top of the dashboard panel, so it needs to hide
   // itself on every other tab instead of relying on the panel's own display.
   var hrd=document.getElementById("header-refresh-dash"); if(hrd) hrd.style.display=(id==="dash")?"flex":"none";
-  if(typeof dsRenderPhaseUI==="function") dsRenderPhaseUI(); // phase badge is Today-only, same reasoning as above
   if(id==="yoga" && typeof yogaSwitchTab==="function") yogaSwitchTab("presets"); // always land on Presets, rendered
   if(id==="today" && typeof renderToday==="function") renderToday();
   if(id==="log" && typeof ldInit==="function") ldInit();
@@ -2907,17 +2688,6 @@ function renderBodyCompHistory(){
 // ── LOG: WELLNESS ───────────────────────────────────────────────────────
 function setMedType(el){ medType=el.dataset.type;
   document.querySelectorAll(".med-type-btn").forEach(function(b){b.classList.toggle("sel",b===el);}); }
-function saveWellness(){
-  var d=getDay(); d.wellness=d.wellness||{};
-  var slEl=document.getElementById("sleep-hrs");
-  if(slEl) d.wellness.sleepHours=parseFloat(slEl.value)||0;
-  if(wellnessRatings.sleepQ) d.wellness.sleepQ=wellnessRatings.sleepQ;
-  if(wellnessRatings.energy) d.wellness.energy=wellnessRatings.energy;
-  if(wellnessRatings.mood) d.wellness.mood=wellnessRatings.mood;
-  saveDay(d);
-  var m=document.getElementById("well-msg"); m.textContent="✓ Wellness saved"; setTimeout(function(){m.textContent="";},2500);
-  renderDash();
-}
 // ── Multiple RHR / BP readings per day ──────────────────────────────────
 function _nowTime(){ var d=new Date(); var h=d.getHours(),mi=d.getMinutes(); var ap=h>=12?"PM":"AM"; var h12=h%12; if(h12===0)h12=12; return h12+":"+(mi<10?"0":"")+mi+" "+ap; }
 function addRhrReading(){
@@ -2970,7 +2740,6 @@ function saveMeditation(){
   saveDay(d);
   document.getElementById("med-mins").value=""; medType=""; wellnessRatings.medClarity=0;
   document.querySelectorAll(".med-type-btn").forEach(function(b){b.classList.remove("sel");});
-  document.querySelectorAll(".rbtn[data-field=medClarity]").forEach(function(b){b.classList.remove("sel");});
   var m=document.getElementById("med-msg"); m.textContent="✓ Session logged"; setTimeout(function(){m.textContent="";},2500);
   renderMedHistory();
 }
@@ -2981,14 +2750,9 @@ function renderMedHistory(){
 }
 function renderWellness(){
   var w=getDay().wellness||{};
-  var slEl=document.getElementById("sleep-hrs"); if(slEl) slEl.value=w.sleepHours||"";
   document.getElementById("rhr-in").value="";
   document.getElementById("bp-sys-in").value="";
   document.getElementById("bp-dia-in").value="";
-  ["sleepQ","energy","mood"].forEach(function(f){
-    var v=w[f]||wellnessRatings[f]||0; wellnessRatings[f]=v;
-    document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
-  });
   renderRhrHistory();
   renderBpHistory();
 }
@@ -3413,7 +3177,7 @@ document.addEventListener("visibilitychange",function(){
 function renderLog(){
   var banner=document.getElementById("banner-log");
   if(isToday()){ banner.style.display="none"; } else { banner.style.display="flex"; document.getElementById("banner-log-lbl").textContent=prettyDate(activeDate); }
-  renderFoodLog(); renderHabits(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderWeightHistory(); renderSupps();
+  renderFoodLog(); renderExLog(); renderWater(); renderWellness(); renderMedHistory(); renderMeasurements(); renderBodyComp(); renderWeightHistory(); renderSupps();
   document.getElementById("wt-input").value="";
   var _mt=dsMealTagGet(), _mtEl=document.getElementById("meal-tag-picker");
   if(_mtEl){ Array.prototype.forEach.call(_mtEl.children, function(btn){ btn.classList.toggle("on", btn.getAttribute("data-tag")===_mt); }); }
@@ -3425,7 +3189,6 @@ function saveHealthSettings(){
   var nm=g("ft-name-input").trim(); store.set("ft_name",nm); USER_NAME=nm;
   var hn=document.getElementById("hname"); if(hn) hn.textContent=(nm?nm:"Athlete")+" 💪";
   var url=g("ft-sheets-url").trim(); store.set("ft_sheets_url",url); SHEETS_URL=url;
-  var planUrl=g("ft-plan-url").trim(); store.set("ft_plan_url",planUrl); PLAN_URL=planUrl;
   var pin=g("ft-pin-input").trim(); if(/^\d{4}$/.test(pin)){ store.set("ft_pin",pin); APP_PIN=pin; } else { store.set("ft_pin",""); APP_PIN=""; }
   var sw=parseFloat(g("ft-start-weight"))||0; if(sw>0){ store.set("ft_start_weight",sw); START_WEIGHT=sw; }
   var gw=parseFloat(g("ft-goal-weight"))||0; store.set("ft_goal_weight",gw||""); GOAL_WEIGHT=gw;
@@ -3437,12 +3200,6 @@ function saveHealthSettings(){
   var mhr=parseInt(g("ft-maxhr"))||0; if(mhr>0){ store.set("ft_maxhr",mhr); USER_MAXHR=mhr; } else { store.set("ft_maxhr",""); USER_MAXHR=0; }
   var supps=[]; document.querySelectorAll(".ft-sup-inp").forEach(function(el,i){ if(el.value.trim()) supps.push({id:"s"+i,name:el.value.trim(),desc:"",emoji:"💊"}); });
   SUPPS=supps; store.set("ft_supps",JSON.stringify(supps));
-  var labs=[]; document.querySelectorAll("#ft-labs .ft-lab-row").forEach(function(r){
-    var n=r.querySelector(".ft-lab-name").value.trim();
-    if(n) labs.push({name:n,target:r.querySelector(".ft-lab-tgt").value.trim(),current:r.querySelector(".ft-lab-val").value.trim()});
-  });
-  store.set("ft_labs",JSON.stringify(labs));
-  store.set("ft_habits", JSON.stringify(collectHabitsFromEditor()));
   store.set("ft_cfg_ts", String(Date.now()));
   var msg=document.getElementById("ft-settings-msg"); if(msg){ msg.textContent="✓ Saved"; setTimeout(function(){msg.textContent="";},2500); }
   var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display=url?"block":"none";
@@ -3460,7 +3217,6 @@ function initHealthSettings(){
   var setv=function(id,val){var e=document.getElementById(id); if(e) e.value=val;};
   setv("ft-name-input", store.get("ft_name")||"");
   setv("ft-sheets-url", store.get("ft_sheets_url")||"");
-  setv("ft-plan-url", store.get("ft_plan_url")||"");
   setv("ft-pin-input", store.get("ft_pin")||"");
   setv("ft-start-weight", store.get("ft_start_weight")||"");
   setv("ft-goal-weight", store.get("ft_goal_weight")||"");
@@ -3469,8 +3225,6 @@ function initHealthSettings(){
   var wd=document.getElementById("ft-weighin-day"); if(wd) wd.value=WEIGHIN_DAY;
   var sups=document.querySelectorAll(".ft-sup-inp");
   for(var i=0;i<sups.length;i++) sups[i].value=(SUPPS[i]&&SUPPS[i].name)||"";
-  renderLabEditor();
-  renderHabitEditor();
   if (store.get("ft_sheets_url")) { var b=document.getElementById("ft-open-sheet-btn"); if(b) b.style.display="block"; }
   var ts = store.get("ft_last_backup");
   var lbl = document.getElementById("bk-last");
@@ -3564,12 +3318,6 @@ function checkPin(){
 
 document.querySelectorAll(".tab-btn").forEach(function(btn){ btn.addEventListener("click",function(){ switchTab(btn.dataset.tab); }); });
 // v286: the app now opens on Today (index.html marks it active; renderAll renders it).
-document.querySelectorAll(".rbtn[data-field]").forEach(function(btn){
-  btn.addEventListener("click",function(){
-    var f=btn.dataset.field, v=parseInt(btn.dataset.val); wellnessRatings[f]=v;
-    document.querySelectorAll(".rbtn[data-field="+f+"]").forEach(function(b){b.classList.toggle("sel",parseInt(b.dataset.val)===v);});
-  });
-});
 
 setTimeout(renderAll, 0);
 if(typeof ldInit==="function"){ try{ldInit();}catch(e){} }
@@ -3580,35 +3328,6 @@ function renderWeightTargets(){
   var el=document.getElementById("weight-targets"); if(!el) return;
   el.textContent="Start: "+START_WEIGHT+" lbs"+((GOAL_WEIGHT&&DASH_FOCUS!=="muscle")?" \u00b7 Goal: "+GOAL_WEIGHT+" lbs":"");
 }
-function renderLabs(){
-  var card=document.getElementById("labs-card"); if(!card) return;
-  var labs=[]; try{labs=JSON.parse(store.get("ft_labs")||"[]");}catch(e){}
-  labs=labs.filter(function(l){return l&&l.name;});
-  if(!labs.length){ card.style.display="none"; return; }
-  card.style.display="block";
-  var el=document.getElementById("labs-list"); if(!el) return;
-  el.innerHTML=labs.map(function(l){
-    return '<div class="lab-row"><div><div style="font-size:12px;font-weight:700">'+escH(l.name)+'</div>'+
-      '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace">Target: '+escH(l.target||"\u2014")+'</div></div>'+
-      '<span class="tag" style="background:#5eead422;color:#5eead4;border:1px solid #5eead444">'+escH(l.current||"\u2014")+'</span></div>';
-  }).join("");
-}
-// settings editors
-function _labRowHtml(l){ l=l||{};
-  return '<div class="ft-lab-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-bottom:8px;align-items:center">'+
-    '<input class="ft-lab-name" placeholder="Lab (e.g. A1c)" value="'+escH(l.name||"")+'" style="margin-bottom:0"/>'+
-    '<input class="ft-lab-tgt" placeholder="Target" value="'+escH(l.target||"")+'" style="margin-bottom:0"/>'+
-    '<input class="ft-lab-val" placeholder="Current" value="'+escH(l.current||"")+'" style="margin-bottom:0"/>'+
-    '<button class="bd" onclick="removeLabRow(this)" style="padding:8px 10px">\u2715</button></div>';
-}
-function renderLabEditor(){
-  var el=document.getElementById("ft-labs"); if(!el) return;
-  var labs=[]; try{labs=JSON.parse(store.get("ft_labs")||"[]");}catch(e){}
-  if(!labs.length) labs=[{name:"",target:"",current:""}];
-  el.innerHTML=labs.map(function(l){return _labRowHtml(l);}).join("");
-}
-function addLabRow(){ var el=document.getElementById("ft-labs"); if(!el) return; var d=document.createElement("div"); d.innerHTML=_labRowHtml({}); el.appendChild(d.firstChild); }
-function removeLabRow(btn){ var r=btn.closest(".ft-lab-row"); if(r) r.remove(); }
 
 
 function dsRenderRotatePreview(){
@@ -3663,7 +3382,7 @@ function dsGuestSettingsText(){
   set('ds-maint-desc', "A maintenance block — sits at your measured maintenance instead of the deficit, for as long as you leave it on. Counters metabolic adaptation from sustained dieting and lets training intensity/recovery catch up. Tracks your measured maintenance as it updates, and stays on until you manually turn it off. Keep protein at "+GOALS.protein+"g+ and train as normal.");
   set('ds-rotate-desc', g
     ? "Not available with a custom plan \u2014 it assumes the built-in week (recovery Wed, ride Sat) and would scramble your own days."
-    : "Shifts the four resistance sessions one weekday per week, so Lower Strength isn't always Friday. Wednesday recovery, Saturday ride and Sunday rest stay put.");
+    : "Shifts the four resistance sessions one weekday per week, so the same session isn't always on the same day. Wednesday yoga, Saturday Upper C and Sunday rest stay put.");
   var rt=document.getElementById('ds-rotate-toggle'); if(rt){ rt.disabled=g; if(g) rt.checked=false; }
   set('ds-cal-days-rest', '('+dsDaysOfType('rest')+')');
   set('ds-cal-days-recovery', '('+dsDaysOfType('recovery')+')');
@@ -3673,7 +3392,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderFullBodyUI(); dsRenderDeloadUI(); dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){} dsRenderBulkUI(); dsRenderPhaseUI(); var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
+function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); try{dsRenderGoalUI();}catch(e){} var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 // v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
 // Off by default. The Revert button is never hidden while a custom plan is active,
@@ -4007,7 +3726,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj","ft_lr_force"];
+  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ds_swaps","ds_usermoves","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj","ft_lr_force"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -4019,7 +3738,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1,ft_proj:1,ft_lr_force:1};
+  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ds_swaps:1,ds_usermoves:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1,ft_proj:1,ft_lr_force:1};
   // Settings saved on this device are timestamped (ft_cfg_ts). If the Sheet's copy is
   // older (e.g. a background pull lands before the Save push reaches Apps Script),
   // keep the local ft_* settings instead of reverting them, and re-push them.
@@ -4067,7 +3786,6 @@ function applyConfig(cfg){
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
-  if(store.get('ds_fullbody')!=null){ DS_FB_ON=(store.get('ds_fullbody')==='1'); dsApplyFullBody(); }
   renderAll();
   return true;
 }
@@ -4089,60 +3807,6 @@ function pullConfigManual(){
 
 // ── BATCH D: PROGRESSIVE OVERLOAD HELPERS ──────────────────────────────
 function exDetailStr(e){ if(!e||(!e.sets&&!e.reps&&!e.load&&!e.avgHR)) return ""; var sr=""; if(e.sets&&e.reps) sr=e.sets+"\u00d7"+e.reps; else if(e.sets) sr=e.sets+"\u00d7?"; else if(e.reps) sr=/^\d+$/.test(String(e.reps).trim())?(e.reps+" reps"):String(e.reps); var hr=e.avgHR?("\u2764 "+e.avgHR+(e.peakHR?("/"+e.peakHR):"")+"bpm"):""; return [sr+(e.load?(" @ "+e.load):""),hr].filter(Boolean).join(" \u00b7 ").trim(); }
-// ── BATCH D: DAILY HABITS + STREAKS ─────────────────────────────────────
-function loadHabits(){ try{ var a=JSON.parse(store.get("ft_habits")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
-// One-time migration: old d.habits objects were keyed by a local random habit id,
-// which never survives a cache clear/device swap and can't be synced (Code.gs never
-// sees the id->name mapping). Re-key by habit NAME so completion is self-describing
-// and can round-trip through the "Habits Completed" sheet column like everything else.
-function migrateHabitsToNameKeys(){
-  var defs=loadHabits(); if(!defs.length) return;
-  var idToName={}; defs.forEach(function(h){ if(h.id&&h.name) idToName[h.id]=h.name; });
-  var changed=false;
-  Object.keys(appData).forEach(function(k){
-    var d=appData[k]; if(!d||!d.habits) return;
-    var out={}, any=false;
-    Object.keys(d.habits).forEach(function(key){
-      if(!d.habits[key]) return;
-      var name = idToName[key] || key; // already a name (post-migration) falls through unchanged
-      out[name]=true; any=true;
-    });
-    if(any || Object.keys(d.habits).length){ d.habits=out; changed=true; }
-  });
-  if(changed){ try{ store.set("ft_data",JSON.stringify(appData)); }catch(e){} }
-}
-function toggleHabit(name){ var d=getDay(); d.habits=d.habits||{}; d.habits[name]=!d.habits[name]; saveDay(d); renderHabits(); }
-function habitStreak(name){
-  var streak=0, d=new Date(), todK=todayKey();
-  if(!(appData[todK]&&appData[todK].habits&&appData[todK].habits[name])) d.setDate(d.getDate()-1);
-  for(var guard=0; guard<400; guard++){ var k=localDateKey(d); if(appData[k]&&appData[k].habits&&appData[k].habits[name]){ streak++; d.setDate(d.getDate()-1); } else break; }
-  return streak;
-}
-function renderHabits(){
-  var el=document.getElementById("habits-list"); if(!el) return;
-  var habits=loadHabits();
-  if(!habits.length){ el.innerHTML='<div class="empty" style="padding:8px 0">Add daily habits in Settings \u2699 (e.g. Yoga, glute activation, wrist curls).</div>'; return; }
-  var hb=getDay().habits||{};
-  el.innerHTML=habits.map(function(h){
-    var on=!!hb[h.name], st=habitStreak(h.name);
-    return '<div class="row" style="cursor:pointer" onclick="toggleHabit(\''+h.name.replace(/'/g,"\\'")+'\')"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">'+
-      '<span style="font-size:18px">'+(on?"\u2705":"\u2b1c")+'</span>'+
-      '<span class="row-name" style="'+(on?"":"color:#aaa")+'">'+escH(h.name)+'</span></div>'+
-      (st>0?'<span class="tag" style="background:#fb923c22;color:#fb923c;border:1px solid #fb923c44">\ud83d\udd25 '+st+'</span>':'')+'</div>';
-  }).join("");
-}
-function _habitRow(h){ h=h||{}; return '<div class="ft-habit-row" style="display:flex;gap:6px;margin-bottom:8px;align-items:center"><input class="ft-habit-name" placeholder="Habit (e.g. Yoga 20 min)" value="'+escH(h.name||"")+'" style="margin-bottom:0;flex:1"/><button class="bd" onclick="removeHabitRow(this)" style="padding:8px 10px">\u2715</button></div>'; }
-function renderHabitEditor(){ var el=document.getElementById("ft-habits"); if(!el) return; var hs=loadHabits(); if(!hs.length) hs=[{name:""}]; el.innerHTML=hs.map(_habitRow).join(""); }
-function removeHabitRow(btn){ var r=btn.closest(".ft-habit-row"); if(r) r.remove(); }
-function collectHabitsFromEditor(){
-  var existing=loadHabits(), out=[];
-  document.querySelectorAll("#ft-habits .ft-habit-row").forEach(function(r){
-    var nm=r.querySelector(".ft-habit-name").value.trim(); if(!nm) return;
-    var prev=existing.filter(function(x){return (x.name||"").toLowerCase()===nm.toLowerCase();})[0];
-    out.push({ id: prev?prev.id : ("h"+Date.now().toString(36)+Math.floor(Math.random()*1000)), name:nm });
-  });
-  return out;
-}
 
 
 // ── MEDITATION POP-OUT TIMER ────────────────────────────────────────────
@@ -4401,33 +4065,8 @@ setInterval(function(){
 try{ trkTryRestore(); }catch(e){}
 
 
-// ── WEDNESDAY YOGA ↔ TRACKER BRIDGE ─────────────────────────────────────
-// One tap in the Guide marks the yoga flow complete in eg_done (streak,
-// week view, auto-push to Workout Log) AND logs a 130 cal exercise entry
-// to TODAY's tracker day (Calories Burned, dashboards, Exercises column).
-var TG_YOGA_ID="wednesday-yoga-flow", TG_YOGA_CAL=110, TG_YOGA_NAME="Wednesday Yoga Flow — Focus (~30 min)";
-function tgYogaRefresh(){
-  var b=document.getElementById("yoga-complete-btn"); if(!b) return;
-  var on=(typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID);
-  b.textContent=on?"\u2713 Yoga Complete \u2014 tap to undo":"Mark Wednesday Yoga Complete";
-  b.style.background=on?"var(--accent)":"transparent";
-  b.style.color=on?"#0f0f0f":"var(--accent)";
-}
-function tgYogaToggle(){
-  var on=!((typeof egIsDone==="function")&&egIsDone(TG_YOGA_ID));
-  if(typeof egSetDone==="function") egSetDone(TG_YOGA_ID,on);
-  var tk=todayKey(), day=getDay(tk), exId="tg-yoga-"+tk;
-  if(on){
-    if(!day.exercises.some(function(e){return e.id===exId;})){
-      dsAddEx(day,{name:TG_YOGA_NAME,calories:calAdj(TG_YOGA_CAL),type:"yoga",id:exId,actualSecs:1800});
-    }
-  } else {
-    day.exercises=day.exercises.filter(function(e){return e.id!==exId;});
-  }
-  saveDay(day,tk); renderAll(); tgYogaRefresh();
-  try { ygRenderStatsBar(); } catch(e) {}
-  toast(on?("\u2713 Yoga logged \u2014 "+calAdj(TG_YOGA_CAL)+" cal"):"Yoga unmarked");
-}
+
+var TG_YOGA_ID="wednesday-yoga-flow"; // key for the flow in eg_done (see egSetDone)
 
 // ── WEDNESDAY GUIDED FLOW — hands-free auto-advance through the 14-pose sequence ──
 // Start Flow times each pose (or paces the one rep-based move), marks it done
@@ -4514,7 +4153,6 @@ function dsFixWeightSpikes468(){
 try{ setTimeout(function(){ try{dsFixWeightSpikes468();}catch(e){} },4000); }catch(e){}
 
 function dsFlowActiveIds(){
-  if(typeof dsFbFlowIds==='function'){ var _fb=dsFbFlowIds(); if(_fb) return _fb; }
   if(DS_FLOW_CUSTOM.active && DS_FLOW_CUSTOM.ids && DS_FLOW_CUSTOM.ids.length) return DS_FLOW_CUSTOM.ids;
   return DS_FLOW_SEQUENCES[dsFlowSeqIndex(activeDate)];
 }
@@ -4689,12 +4327,11 @@ function dsFlowFinishAll(){
   if(DS_FLOW.interval){ clearInterval(DS_FLOW.interval); DS_FLOW.interval=null; }
   dsToast('\u2713 Yoga flow complete');
   // Just flip the "done" badge — don't also add the flat Wednesday Yoga Flow
-  // summary exercise (dsAddEx via tgYogaToggle). Each pose was already logged
+  // summary exercise. Each pose was already logged
   // individually with its own real calories/actualSecs, so adding the summary
   // here double-counted calories and, since that summary entry never carries
   // actualSecs, dragged total logged time down to a bogus flat 90s estimate.
   try{ if(typeof egSetDone==='function' && !((typeof egIsDone==='function')&&egIsDone(TG_YOGA_ID))) egSetDone(TG_YOGA_ID,true); }catch(e){}
-  try{ tgYogaRefresh(); }catch(e){}
   dsRender(); renderAll();
 }
 function dsFlowPaintBar(){
@@ -4724,7 +4361,7 @@ function dsFlowBarHtml(sk){
       +'<div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:4px">This week: '+_seqLabel+'</div>'
       +'<div style="font-size:11px;color:#999;margin-bottom:10px">Auto-advances through all '+n+' poses, times each hold, and marks them done as it goes</div>'
       +'<button onclick="dsFlowStart()" style="width:100%;padding:12px;border-radius:12px;border:none;background:#c9a96e;color:#0a0a12;font-weight:700;font-size:13px;cursor:pointer">\u25B6 Start Flow</button>'
-      +((DS_FLOWEDIT_OPEN||(typeof dsFbFlowIds==='function'&&dsFbFlowIds()))?'':'<div style="margin-top:8px;font-size:11px;color:#7dd3fc;text-decoration:underline;cursor:pointer" onclick="dsFlowEditOpen()">Reorder / swap poses</div>')
+      +(DS_FLOWEDIT_OPEN?'':'<div style="margin-top:8px;font-size:11px;color:#7dd3fc;text-decoration:underline;cursor:pointer" onclick="dsFlowEditOpen()">Reorder / swap poses</div>')
       +'</div>';
   }
   var raw=dsFlowCurrentItem(); var nm=raw?(raw.name+(DS_FLOW.side?' \u2014 '+(DS_FLOW.side==='L'?'Left':'Right'):'')):'';
@@ -6064,17 +5701,9 @@ var DS_MOBILITY={"key": "mobility", "title": "Mobility", "accent": "#a78bfa", "m
       setup:'Seated, soles of the feet together, knees drop open to the sides. Sit tall on your sit bones rather than rounding forward — let gravity and the breath open the knees, don\'t press down on them. Hands can rest on the feet or ankles. Deep, passive inner-thigh stretch.'}
 ]};;
 
-var DS_ATG={key:"atg",title:"ATG Bulletproofing (adapted)",accent:"#f472b6",meta:"~20 min · optional add-on",
-  blurb:"Adapted from Ben Patrick's Athletic Truth Group system (via Will Tennyson's video). Depth and eccentric intensity are capped for your SI joint and elbow. The three ⚠ moves (ATG split squat, full ROM squat, Nordic curl) are included but flagged — they're the highest SI-joint/eccentric demand in the original standard, so treat them as optional per session rather than a default.",
-  moves:[]};
-
-var DS_BWLEG={key:"bwleg",title:"Bodyweight Leg Circuit",accent:"#4ec98a",meta:"~20 min · optional add-on · no equipment",
-  blurb:"From a bodyweight leg circuit video — 8 moves, one round through, 20-min target. Add sets or hold light dumbbells once it gets easy. Reps are as demonstrated; dial back range on anything that pokes the right SI joint, left knee, or right elbow.",
-  moves:[]};
 
 
 /* ============================ DS_SESSIONS (Mon–Sun) ============================ */
-function dsCore(id,name,rx,cal,cue,demo){return {id:id,name:name,slot:'Core',target:'Core',equip:'Bodyweight',rx:rx,cal:cal,cue:cue,demo:demo||null,log:'setsreps',sets:3};}
 var DS_WARMUP_ARMCIRCLE={id:'warmup-armcircle',name:'Arm Circles + Shoulder Rolls',demo:'shouldercar',slot:'Warm-up',target:'Shoulders · Upper Body Mobility',equip:'Bodyweight',rx:'2 min',cal:10,cue:'Small circles forward 20s, then backward 20s. Follow with big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction — loosen everything before you load it.',log:'time',secs:120};
 var DS_WARMUP_HIPFLOW7={id:'warmup-hipflow-7',name:'Leg Swings + 90/90s',demo:'legswing',slot:'Warm-up',target:'Hips · SI Joint Mobility',equip:'Bodyweight',rx:'5 min',cal:25,cue:'Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches for 8 reps/side and slow hip circles 30s each direction — get the hips moving before squats and deadlifts load them.',log:'time',secs:300};
 // Replaces the KB Halo as the shoulder-specific warm-up on upper days — same
@@ -6083,23 +5712,8 @@ var DS_WARMUP_HIPFLOW7={id:'warmup-hipflow-7',name:'Leg Swings + 90/90s',demo:'l
 // through the range instead of one fixed light weight the whole way.
 var DS_WARMUP_BANDSHOULDER={id:'warmup-bandshoulder',name:'Banded Shoulder Pass-Through',demo:'shouldercar',slot:'Warm-up',target:'Shoulders · Overhead Mobility',equip:'Tube 10–20 lb (wide grip)',rx:'10–12 reps',cal:12,cue:'Wide overhand grip on the band, arms straight — raise it overhead and back behind you, then return to the front. Keep the circle tight on the right side, same overhead path where your right shoulder history shows up.',log:'setsreps',sets:1,
   setup:'Hold the band with a wide, overhand grip — wider than shoulder-width, the tighter the grip the harder this gets, so start wide. Arms straight the whole time, raise the band up and overhead, continuing back behind you as far as comfortable, then reverse back to the front. 10-12 slow reps. Widen your grip if the shoulders round or the lower back arches to compensate.',
-// Short embedded pre-hab, folded straight into warm-up on the days that need it most,
-// rather than living only in the optional Extras > Mobility tab. Abbreviated versions of
-// the full CARs + PAILs/RAILs protocol (~90s vs. the ~4 min Extras version) — same idea
-// (own the joint through a slow circle, then a brief end-range contraction), just enough
-// to prime the joint before it gets loaded. The full versions (mob-hip, mob-shoulder)
-// are still in Extras for anyone who wants the deeper 4-min version too.
   variants:[{name:'PVC/Broomstick Pass-Through',equip:'Broomstick or dowel',rx:'10–12 reps',cue:'No band needed — same wide-grip pass-through pattern with a stick instead. Useful on a day even light band tension feels like too much before you\'re warm.',demo:'shouldercar'}]};
-// RAMP-protocol "Raise" phase — the mobility drills below cover Mobilize
-// and (via the per-exercise ramp sets) Potentiate, but nothing was actually
-// raising heart rate/tissue temperature first. A short bout of easy general
-// movement before the joint-specific work is the standard piece that was missing.
-var DS_WARMUP_RAISE={id:'warmup-raise',name:'March or Jog in Place — General Warm-up',demo:'walk',slot:'Warm-up',target:'General · Heart Rate & Tissue Temp',equip:'Bodyweight',rx:'60–90 sec',cal:15,cue:'March or light jog in place, knees driving up — easy, steady pace. The goal is raising your heart rate and warming the tissues before the mobility work below, not a cardio effort.',log:'time',secs:75};
-var DS_WARMUP_HIPCARS={id:'wu-hip-cars',name:'Hip CARs',demo:'hipcircle',slot:'Warm-up · Prehab',target:'Hip Joint · SI Joint Prep',equip:'Wall or chair for balance',rx:'3×/way/leg',cal:10,cue:'Stand tall holding a wall. Lift one knee to hip height, then draw the biggest, slowest circle you can with that knee — out to the side, around behind you, back to front. About 5 seconds per circle. Brace your core and keep the rest of your body still; only the hip moves. 3 each direction, then switch legs.',log:'time',secs:75};
-var DS_WARMUP_SHOULDERCARS={id:'wu-shoulder-cars',name:'Shoulder CARs',demo:'shouldercar',slot:'Warm-up · Prehab',target:'Shoulder Joint',equip:'Bodyweight',rx:'3×/way/arm',cal:8,cue:'Stand tall, make a fist and squeeze the rest of your body tight. Reach the arm forward and up overhead, then rotate the palm out and sweep it down and behind you in the biggest, slowest circle you can — about 5 seconds per circle. Only the shoulder moves; ribs stay down, no leaning. 3 each direction, then switch arms. Go extra slow on the right side through any spot that clicks.',log:'time',secs:60};
 
-// Saturday heat circuit removed (v441).
-var DS_SAT_HEAT_ON={};
 /* ── v410: Upper Total — one-session swap day hitting every upper muscle once.
    Picks reuse plan ids (history/volume stay linked), ordered by door-anchor
    position (mid → high → low → floor) with set counts trimmed to ~2 each. ── */
@@ -6281,7 +5895,7 @@ var DS_ONEDAY_PRESET=['mon-pushup#High-to-Low','mon-curl#Bayesian','sat-chest','
 function dsOneDayOn(){ return !!(DS_ONEDAY && DS_ONEDAY.date===activeDate && DS_ONEDAY.ids && DS_ONEDAY.ids.length && !DS_DAY_OVERRIDE); }
 function dsOneDaySession(){
   if(!dsOneDayOn()) return null;
-  var key=DS_ONEDAY.ids.join(',')+'|'+(typeof DS_FB_ON!=='undefined'?DS_FB_ON:'')+'|'+DS_ONEDAY.date;
+  var key=DS_ONEDAY.ids.join(',')+'|'+DS_ONEDAY.date;
   if(DS_ONEDAY_CACHE && DS_ONEDAY_CACHE.key===key) return DS_ONEDAY_CACHE.sess;
   var moves=DS_ONEDAY.ids.map(dsPickResolve).filter(Boolean);
   var sess=moves.length?{title:'Custom Session',sub:'Your picks \u00b7 today only \u2014 back to the regular plan tomorrow',accent:'var(--accent)',moves:moves,_oneday:true}:null;
@@ -6322,24 +5936,15 @@ function dsOneDayClearPick(){ DS_CUSTOM_PICK=[]; dsCustomRenderSelected(); dsCus
 // ══ THE PLAN ═══════════════════════════════════════════════════════════
 // One definition. What you see here is exactly what the app runs — nothing
 // rewrites it at load (the old streamline + v274…v370 tuning passes were folded in).
-// Ids are permanent keys for logs, swaps and phase prescriptions, so a few carry the
+// Ids are permanent keys for logs and swaps, so a few carry the
 // prefix of the day they were first built on (e.g. thu-facepull is Monday's rear-delt
 // slot, mon-inclinepress is Thursday's chest press) — renaming them would orphan history.
-// Moves cut from the plan live in DS_RESERVE_MOVES (below) so one-day picks, full-body
-// mode and old logs still resolve. Change set counts here AND in DS_PHASE_RX (p1).
+// Moves cut from the plan live in DS_RESERVE_MOVES (below) so one-day picks and old
+// logs still resolve.
 //
 //   Order = door-anchor height (high → chest → low) so the band moves as little as possible.
 //   Same "pair" letter = superset: alternate sets, ~60 s between. Core always renders last.
-//   MON  Upper Body A
-//     A Push-ups 4 + Bent-Over Row 4 · Stretch Fly 3 · B Overhand Pulldown 3 + Overhead Press 3 · C Rear Delt Fly 3 + Lateral Raise 3 · D Bayesian Curl 4 + Overhead Triceps 4 · Ball Preacher Curl 2 · Hollow Hold 2
-//   TUE  Lower Body Push
-//     Front Squat 4 · Spanish Squat 3 · (75 lb loop, bottom anchor) Leg Extension 4 · Kneeling Hip Thrust 4 · Lying Leg Curl 3 · A Calf Raise 3 + Band Wrist Curl 3 · Leg Raise 3
-//   THU  Upper Body B
-//     Wall Walks 1 (warm-up) · A Incline Press 4 + Lateral Raise 3 · B Underhand Pulldown 4 + Standing Press 4 · Kneeling Row 3 · C Hammer Curl 5 + Overhead Triceps 4
-//   FRI  Lower Body Pull
-//     RDL 4 · Good Morning 3 · A Lying Leg Curl 4 + Adductor Raise 3 · Leg Extension 3 · Seated Leg Curl 3 · Pallof 3 · Kneeling Band Crunch 4 · Plank
-//   SAT  Upper Body C
-//     A Face Pull 3 + Lateral Raise 2 · Standing Chest Press 3 · External Rotation 2 · B Stretch Fly 3 + Bayesian Curl 2 · C Overhead Triceps 2 + Ball Preacher 2 · Forearm Curls 4 · D Wrist Curl 4 + Wrist Ext 2 + Pronation/Supination 2 · Kneeling Band Crunch 2
+//   (The per-day exercise list that used to be copied here went stale; DS_SESSIONS below is the list.)
 //   v434 LOCKED (Nov 2 2026, 8 weeks): skull crusher removed (Thu = overhead extension), Mon kickback 4,
 //   Sat overhead ext 3, Sat press ⇄ row superset (new sat-row), Sat forearm curls 4→2,
 //   loaded band crunch on all three upper days (Mon 3 new, Sat 3), Thu leg raise 3 (thu2-legraise).
@@ -6370,7 +5975,7 @@ var DS_SESSIONS={
       {"id":"sat-hipthrust","name":"Banded Hip Thrust","lockVar":2,"slot":"Hinge · Glutes","target":"Glutes","equip":"Tube band across hips · bench or stable surface for shoulders","rx":"3×12–15","cal":30,"cue":"Your only direct glute isolation of the week — on Tuesday so the glutes are fully recovered from Friday's hinges. Upper back braced on a bench or the piano bench, band looped across your hips and anchored under your feet, feet planted hip-width. Drive hips up until torso is in line with thighs, squeeze glutes hard at the top for a 1-count, lower under control without letting the hips touch down between reps.","demo":"bridge","log":"setsreps","sets":3,"setup":"Sit with upper back against a bench edge, band looped over your hips, feet flat on the floor hip-width apart, knees bent ~90°. Drive through the heels, extending the hips up until your body forms a straight line from shoulders to knees — squeeze glutes at the top, then lower with control, keeping tension on through the whole set rather than resting at the bottom. Getting out with a heavy band: lower your hips all the way to the floor, slide your butt forward away from the bench so the knees bend more and the band slackens, push the band down your thighs past the knees one side at a time, then pull your feet out. Get in the same way in reverse.","variants":[{"name":"Floor Glute Bridge","equip":"Tube band across hips","rx":"3×15–20","cue":"Shoulders on the floor instead of a bench — shorter range of motion, gentler entry point while the movement feels new. Same drive-and-squeeze cue.","demo":"bridge"},{"name":"Kneeling Banded Hip Thrust","equip":"75 lb 41″ loop band, bottom door anchor · cushion or folded mat under the knees","rx":"3×12–15","cue":"Band from the low door anchor across your hip crease, kneeling upright facing away from the door. Sit the hips back toward the heels with the chest up, then drive the hips forward to stand tall on your knees and squeeze the glutes for 1 sec. Finish with the glutes, not by leaning back or arching the low back. Easy exit: shuffle back toward the door until the band goes slack."}]},
       {"id":"tue-clamshell","name":"Side-Lying Clamshell","slot":"Hip Stability","target":"Glute Med · Hip Stability","equip":"Mat · mini band above knees optional (start without)","rx":"2×12–15/side","cal":10,"cue":"Feet stay together, hips stacked — open the top knee without the pelvis rolling back. Slow, 1-sec pause at the top.","demo":"clamshell","log":"setsreps","sets":2,"rehab":true},
       {"id":"mon-calf","pair":"A","name":"Standing Calf Raise","slot":"Calves","target":"Calves","equip":"Step edge · bodyweight (stand on a tube once 20 reps is easy)","rx":"3×15–20","cal":15,"cue":"Tuesday leg day. Heel off the step — full stretch at the bottom, 2-sec squeeze at the top, slow lower.","demo":"calf","log":"setsreps","sets":3,"variants":[{"name":"Single-Leg Calf Raise","equip":"Step edge · bodyweight","cue":"One heel hangs off the step — full stretch, 2-sec squeeze. Reps are per leg.","demo":"calf"},{"name":"Seated Banded Calf Raise","equip":"Tube 20–30 lb · looped over the knees","cue":"Seated, band over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Biases the soleus.","demo":"calf"}]},
-      {"id":"mon-elbow","pair":"A","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Red Theraband or light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
+      {"id":"mon-elbow","pair":"A","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
       {"id":"thu-legraise","name":"Leg Raise","slot":"Core","target":"Core","equip":"Bodyweight","rx":"3×10–12","cal":20,"cue":"Low back stays flat — lower only as far as it stays down","demo":null,"log":"setsreps","sets":3}
     ]},
   wed:{title:'Wednesday Yoga Flow',sub:'Focus flow · 11 poses · ~30 min · hips, hamstrings, T-spine',accent:'var(--purple)',
@@ -6751,8 +6356,8 @@ var DS_DAYLABEL={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun
 
 // ── WEEKLY OFFSET ROTATION ──────────────────────────────────────────────
 // Shifts which resistance session lands on which weekday, one slot per week,
-// so the same session isn't always on the same day. Wed (recovery), Sat (ride)
-// and Sun (rest) stay anchored — rotating those would put a ride midweek.
+// so the same session isn't always on the same day. Wed (recovery), Sat (Upper C)
+// and Sun (rest) stay anchored.
 var DS_ROTATE_POOL=['mon','tue','thu','fri'];
 var DS_ROTATE_EPOCH='2026-03-30'; // Monday of week 1; week index counts from here
 var DS_ROTATE=false; try{ DS_ROTATE=store.get('ds_rotate')==='1'; }catch(e){ DS_ROTATE=false; }
@@ -6815,7 +6420,7 @@ var DS_EXTRAS_ACTIVE=false; // when true, the Extras tab is showing instead of a
 function dsRealSessionKey(dk){
   var d=new Date(dk+'T12:00:00');
   var base=DS_WEEKMAP[d.getDay()];
-  if(!DS_ROTATE || dsGuestMode() || (typeof dsFullBodyOn==='function'&&dsFullBodyOn())) return base;
+  if(!DS_ROTATE || dsGuestMode()) return base;
   var slot=DS_ROTATE_POOL.indexOf(base);
   if(slot<0) return base; // wed / sat / sun are anchored
   var n=DS_ROTATE_POOL.length;
@@ -7099,7 +6704,6 @@ DS_DEMOCAP.ruck="pack high and tight, posture tall — the load should hug the b
 /* ===== end Figure Patch v36 ===== */
 
 var DS_PULLUP={key:"pullup",title:"Pull-Up Progression",accent:"#7dd3fc",meta:"toward your first rep \u00b7 alternating days",blurb:"Your road to the first unassisted pull-up \u2014 a 10-stage ladder from Dead Hang to strict Bodyweight Pull-ups. Log each drill so the numbers climb \u2014 that climb is the progress. Hit the milestone rep/hold target for 3 sets before advancing to the next stage. Take the hardest drill close to failure; ease off if the elbow flares.",moves:[]};
-function dsSetRir(id,v){ var st=dsItemState(id); st._rir=(st._rir===v?null:v); dsSaveUI(); dsRender(); }
 // ── REACTIVE DELOAD: check actual recovery signals, not a fixed week count ──
 function dsRirValue(raw){
   if(raw==null||raw==='') return null;
@@ -7235,8 +6839,8 @@ var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};
 var DS_PAIN={}; try{ DS_PAIN=JSON.parse(store.get("ds_pain")||"{}"); }catch(e){ DS_PAIN={}; }
 var DS_PAIN_SITES=['R elbow','R shoulder','R SI joint','L knee','Low back','Other'];
 var DS_PAIN_LVL=['','niggle','sore','sharp'];
-// Both DS_PAIN and DS_SAT_HEAT_ON are keyed by calendar date, so unlike the exercise-id-
-// or weekday-keyed maps (DS_PROG, DS_SWAPS, DS_USERMOVES) they'd otherwise grow forever
+// DS_PAIN is keyed by calendar date, so unlike the exercise-id-
+// or weekday-keyed maps (DS_PROG, DS_SWAPS, DS_USERMOVES) it would otherwise grow forever
 // once synced. The pain dashboard only ever reports the trailing 90 days (see
 // dsPainReport), so keeping ~120 days of headroom preserves that while keeping the
 // settings-sync payload bounded.
@@ -7333,26 +6937,10 @@ function dsMigrateSwaps(){
   return true;
 }
 try{ if(dsMigrateSwaps()) store.set("ds_swaps",JSON.stringify(DS_SWAPS)); }catch(e){}
-// ── FULL-BODY MODE — settings toggle, persists until turned off ─────────────
-// Swaps the Upper/Lower split for three full-body days (Mon/Wed/Fri) with the
-// yoga + walk-run recovery session on Tue/Thu, Sat ride, Sun rest. Reuses the
-// SAME exercise objects/ids as the split, so logs, progression, swaps and PRs
-// carry straight across in both directions. Each move is capped at 2–3 sets
-// per session (the id:N suffix below) since every muscle is hit 3x/week; the
-// cap also applies on top of the phase overlay. Dropped: jump squat, rotational
-// slam, obliques chop, band crunch and the duplicate hollow/forearm/tib sets. Turning it off restores the split exactly. Disabled for imported plans.
-// Full-body mode removed (v441) — split only. Stubs keep older call sites inert.
-var DS_FB_ON=false, DS_SPLIT_SESSIONS=null, DS_FB_CAPS={};
-function dsFbCapOf(id){ return 0; }
-function dsFbFlowIds(){ return null; }
-function dsFullBodyOn(){ return false; }
 function dsFlowDay(sk){ return sk==='wed'; }
 function dsSplitDaysMap(){ return {mon:1,tue:1,thu:1,fri:1}; }
-function dsApplyFullBody(){}
-function dsRenderFullBodyUI(){}
-
 // Moves that are not in the weekly plan (cut, replaced or superseded) but must still resolve:
-// full-body mode, one-day picks and exercise history all look them up here.
+// one-day picks and exercise history look them up here.
 var DS_RESERVE_MOVES=[
   // v453: cut from Tue/Fri for the 8-week lower-body recovery block (Nov 9 2026). Bring back in wks 5–8.
   {"id":"tue-squat","name":"Banded Squat","slot":"Squat","target":"Quads · Glutes","equip":"Clench mini loop above knees","rx":"4×12–15","cal":40,"cue":"Mini loop above the knees — sit back and down, knees push out against the band","demo":"squat","log":"setsreps","sets":4,"ramp":"1 set bodyweight × 10, 1 set with a lighter band × 8, then your working sets. If you are on the Heavy Band Front Squat variant, ramp through 2 lighter bands before the working band.","variants":[{"name":"Long-Length Partial Squat","equip":"Mini loop above knees or bodyweight","rx":"3×15–20","cue":"Drop to the bottom of the squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in the deep stretch the whole set; quads burn fast.","demo":"squat"},{"name":"Ball Wall Squat","equip":"Stability ball against wall","rx":"3×15","cue":"Ball in the low back against the wall — roll down to parallel, drive up through the heels. Very SI-friendly","demo":"squat"},{"name":"Heavy Band Front Squat","equip":"Clench 35–75 lb band now → green 75–150 lb band once it arrives","rx":"4×10–12","cue":"Your main quad lift. Stand centered on the band, handles racked at the shoulders, torso upright — sit straight down, drive up through the whole foot. 1–2 reps in reserve. Move to the green band once you hit 12 reps twice.","demo":"squat","setup":"Step both feet onto the middle of the band, shoulder-width apart, and bring the handles to the front of your shoulders with elbows up. Squat down with the torso upright, then drive up. Bands are lightest at the bottom and heaviest at the top, so control the descent and push hard through lockout. Wider feet on the band = more tension."},{"name":"Myo-Rep Partial Squat Finisher","equip":"Bodyweight or light band","rx":"1 set to ~15 reps, then 3–4 myo-rep clusters of 3–5","cue":"A quad-fatigue finisher, not a strength set — run it after your working sets, not instead of them.","demo":"squat","setup":"Take one set of shallow, partial-range squats — only come up about two-thirds of the way before sinking back down, never fully standing — to a real, near-failure effort (roughly 15-20 reps). Rest just 5–10 seconds, then squeeze out 3–5 more partial reps. Repeat that short rest + mini-set pattern 3–4 times. Keeping the range partial and the load light means you can chase real quad fatigue here without any extra load on the knees or spine — good for a day the quads need more work but the joints don't need more stress."}],"lockVar":3},
@@ -7366,7 +6954,7 @@ var DS_RESERVE_MOVES=[
   {"id":"ut-slpulldown","name":"Single-Arm Lat Pulldown","slot":"Pull · Vertical Pull","target":"Lats","equip":"Tube 30–50 lb → loop on Clench handles · high door anchor","rx":"2×12–20/side","cal":25,"tempo":"2-1-1-1","demo":"pulldown","log":"setsreps","sets":2,"cue":"One arm at a time so each lat gets the whole band. Reach up and slightly across for a full lat stretch, then drive the elbow down toward your hip and pause 1 sec. Hips square, brace — only a slight lean toward the working side.","setup":"Anchor the band at the top of a door and close and lock it. Kneel or half-kneel a step back, one handle in the working hand, arm reaching up and slightly across your body so you feel the lat stretch. Pull the elbow down and back to your side, pause, then return over 2–3 sec. Finish all reps on one side, then switch."},
       {"id":"fri-bulg","name":"Banded Bulgarian Split Squat","slot":"Unilateral Squat","target":"Quads · Balance","equip":"Tube 20–30 → 40–50 lb","rx":"3×10/leg","cal":40,"cue":"Front heel drives through the floor — torso stays tall","demo":"splitsquat","log":"setsreps","sets":3,"variants":[{"name":"Banded Reverse Lunge","equip":"Tube 20–30 lb","rx":"3×10/leg","cue":"Step back, drop the knee, drive through the front heel — easier to balance than Bulgarians, same quad work","demo":"splitsquat"},{"name":"Upright Walking Lunge (short steps)","equip":"Bodyweight (tube under the front foot to load it)","rx":"3×10–12/leg","cue":"Short steps, torso upright (not leaning forward) — front knee tracks straight over the toes, not past them. The short step + upright torso keeps this quad-dominant and pulls in adductors and calves too, unlike a long-step glute-focused lunge. Walk forward continuously, alternating legs each step.","demo":"splitsquat"},{"name":"Front-Elevated Split Squat (glute-biased)","equip":"Yoga block or low step · bodyweight or tube under the front foot","rx":"3×10–12/leg","cue":"Front foot elevated on a block, back foot stepped far behind you — this shifts the emphasis onto the front glute and takes the front knee through a deeper range than the standard Bulgarian. Torso can lean forward slightly here (unlike the upright cue on the standard version) to load the hip more than the knee.","demo":"splitsquat"}]},
   {"id":"mon-elbowrot","name":"Elbow — Band Pronation/Supination","slot":"Rehab","target":"Medial epicondyle · Forearm rotators","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb) · under your foot","rx":"2×12–15/direction","cal":8,"demo":"extrot","log":"setsreps","sets":2,"cue":"Elbow pinned to your side — only the forearm rotates. Slow 3–4 sec return. Mild muscle burn is fine; sharp inner-elbow pain means a lighter stretch.","setup":"Sit with your forearm on your knee, elbow bent 90° and tucked near your side, wrist just past the edge. Loop one end of the orange band under your foot and hold the other end in your fist. Rotate the forearm against the band (palm turning down = pronation), then return slowly over 3–4 seconds. Switch which side of the hand the band pulls from to train supination (palm turning up) the same way. 2×12–15 each direction.","variants":[{"name":"Isometric Pronation Hold","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb)","rx":"3×30–45s","cue":"Rotate to mid-range and hold still against the band — steady tension, no movement. Gentlest way to load an irritated tendon; use it on days the reps feel aggravating.","demo":"extrot"}]},
-  {"id":"thu-elbow","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Red Theraband or light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
+  {"id":"thu-elbow","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
   {"id":"tue-jump","name":"Jump Squat","slot":"Power","target":"Quads · Glutes","equip":"Bodyweight","rx":"3×3–5","cal":30,"cue":"Power move, not a burnout set — 3–5 max-effort reps, then rest. Land softly, toes first, knees bending to absorb. Past rep 5 you're not jumping any higher, just stacking landings on a left knee/right SI history that doesn't need the extra impact.","demo":"squat","log":"setsreps","sets":3,"variants":[{"name":"Squat to Calf Raise","equip":"Tube 30–40 lb","rx":"3×12","cue":"Zero-impact power swap — squat, drive up, finish tall on the toes with a 1-sec squeeze","demo":"squat"}]},
   {"id":"mon-pressaround","name":"Single-Arm Band Press-Around","lockVar":2,"slot":"Push · Chest Finisher","target":"Chest","equip":"Tube 10–20 lb, chest-height anchor","rx":"3×10–12/side","cal":25,"cue":"Anchor behind you at chest height — press the handle across your body in a wide arc, squeezing the chest hard at full extension where the pec fibers cross the midline, then control the return","demo":"fly","log":"setsreps","sets":3,"setup":"Anchor the band behind you at chest height. Standing side-on to the anchor, hold the handle at your chest with the working arm, then press and sweep it across your body in an arc until the arm is fully extended toward the opposite side — this crossing motion loads the chest at its peak contraction, which a straight-ahead press or fly does not reach. Squeeze hard at the end range, then return under control. Do all reps one side before switching.","variants":[{"name":"Standing Band Fly (stretch-biased)","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · anchored behind you at chest height","rx":"3×12–15","cue":"Split stance, step forward until the band is already tight with your arms open wide — that pre-tension is what loads the stretch. Slight fixed elbow bend, 1-sec pause wide, hug the handles together in front, control back. Open only as far as the shoulder is comfortable — never past the line of your body.","demo":"fly"},{"name":"Low-Anchor Band Fly (rest-pause)","tempo":"2-0-1-1","equip":"Two loop/tube bands · door anchor at the bottom hinge, arm's-width apart","rx":"2×10–12 + 1 rest-pause set","cue":"Face away from a low door anchor, split stance. Sweep the hands from low to high, finishing just below chin level — elbows stay low and slightly bent. Squeeze hard at the top, 1–2 sec lowering. Sets 1–2: 10–12 reps at 1–2 RIR. Set 3 (weekly anchor set): same band, rep to failure → 15 deep breaths → failure → 15 breaths → failure. If chest is still sore by Thursday, skip the rest-pause for a week.","demo":"fly"}]},
   {"id":"mon-legraise","name":"Leg Raise","slot":"Core","target":"Core","equip":"Bodyweight","rx":"1×10–12","cal":20,"cue":"Low back stays flat — lower only as far as it stays down","demo":null,"log":"setsreps","sets":3},
@@ -7393,7 +6981,6 @@ function dsSwapShiftV302(){
 dsSwapShiftV302();
 
 
-dsApplyFullBody();
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
 // Shared debounce for anything that should ride along on the settings-sync channel
 // (see "Batch C: SETTINGS SYNC TO SHEET") so a change on one device reaches others
@@ -7428,8 +7015,6 @@ function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catc
 function dsRepRange(id){
   var raw=dsRawItem(id); if(!raw||raw.log!=='setsreps') return null;
   var v=dsViewOf(raw), rx=v.rx||'';
-  var ph=dsCurrentPhase(), po=ph&&DS_PHASE_RX[id]&&DS_PHASE_RX[id][ph];
-  if(po&&po.rx) rx=po.rx;
   var tail=String(rx).split('\u00d7').pop();          // text after the last "×"
   if(/\d\s*s\b|sec|min/i.test(tail)) return null;     // timed holds, not reps
   var m=tail.match(/(\d+)\s*[\u2013\-]\s*(\d+)/);
@@ -7583,7 +7168,7 @@ function dsStartTimer(id,secs){
   dsTimerPaint(id,secs);
 }
 
-function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
+function dsAllItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.concat(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves); items=items.concat(dsCustomMoves(sk)); items=items.concat(dsUserCustomMoves(sk)); return items; }
 /* Items that count toward the daily done/total bar: the session and custom set only. Optional extras log normally but don't inflate the target. */
 function dsVisibleItems(){ var sk=dsSessionKey(activeDate); var items=dsSessOf(sk).moves.slice(); items=items.concat(dsCustomMoves(sk)); var seen={},out=[]; items.forEach(function(m){ if(!seen[m.id]){seen[m.id]=1;out.push(m);} }); return out; }
 function dsRawItem(id){
@@ -7597,7 +7182,7 @@ function dsRawItem(id){
     if(fallback)return;
     var sess=DS_SESSIONS[dk]; if(sess&&sess.moves){ sess.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); }
   });
-  [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP,DS_ATG,DS_BWLEG].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
+  [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
   // Reserve moves (cut from the plan but reachable via search / one-day picks) were missing here,
   // so Log set on e.g. High-Anchor Band Fly got null and threw silently (v407).
   if(!fallback && typeof DS_RESERVE_MOVES!=='undefined'){ DS_RESERVE_MOVES.some(function(m){ if(m&&m.id===id){fallback=m;return true;} return false; }); }
@@ -7879,9 +7464,8 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  if(typeof DS_SPLIT_SESSIONS!=='undefined' && DS_SPLIT_SESSIONS) DS_ORDER.forEach(function(d){ if(DS_SPLIT_SESSIONS[d]&&DS_SPLIT_SESSIONS[d].moves) groups.push(DS_SPLIT_SESSIONS[d].moves); });
   if(typeof DS_RESERVE_MOVES!=='undefined' && DS_RESERVE_MOVES.length) groups.push(DS_RESERVE_MOVES);
-  if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves,DS_ATG.moves,DS_BWLEG.moves);
+  if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves);
   var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
   dsRegisterLibraryMV(libs);
   // v348: gym ideas always lead the picker (plan-supplied library first, then the built-in gym list).
@@ -7995,128 +7579,6 @@ function dsCustomClose(){
   document.getElementById("ds-custom-overlay").style.display="none";
   dsRender();
 }
-
-// ── MEAL IDEAS ────────────────────────────────────────────────────────
-var MEAL_IDEAS = [
-  {id:"m1",  meal:"lunch",  name:"Build-a-Bowl (your everyday lunch)", protein:"~40g", tags:["fish-free","quick","family"],
-    desc:"Greens or grain base + 6oz batch-cooked chicken + olive oil &amp; avocado + whatever veg is in the fridge. Same formula every day — only the veg changes."},
-  {id:"m1b", meal:"lunch",  name:"Tuna &amp; white bean salad", protein:"~36g", tags:["fish-free","quick","solo"],
-    desc:"Canned tuna, white beans, olive oil, lemon, red onion, over greens. A second lunch option for when chicken feels repetitive — counts toward your omega-3s too."},
-  {id:"m1c", meal:"lunch",  name:"Tuna avocado lettuce wraps", protein:"~32g", tags:["fish-free","quick","solo"],
-    desc:"Canned tuna mixed with mashed avocado instead of mayo, scooped into large lettuce leaves with diced tomato and cucumber. Light, no cooking required."},
-  {id:"m1d", meal:"lunch",  name:"Mediterranean tuna pasta salad", protein:"~34g", tags:["fish-free","family"],
-    desc:"Whole wheat pasta, canned tuna, cherry tomatoes, cucumber, olives, feta, olive oil and lemon dressing. Served cold — easy to make ahead for a few lunches at once and mild enough for the family."},
-  {id:"m1e", meal:"lunch",  name:"Tuna-stuffed bell peppers", protein:"~32g", tags:["fish-free","produce","solo"],
-    desc:"Canned tuna mixed with quinoa or rice, olive oil, herbs, stuffed into halved bell peppers and baked until the pepper softens. Built-in extra vegetable serving."},
-  {id:"m2",  meal:"dinner", name:"Lemon-herb chicken, white beans &amp; spinach", protein:"~42g", tags:["fish-free","family"],
-    desc:"Grilled or pan-seared chicken breast, white beans and tomatoes simmered in olive oil, spinach wilted in at the end. Lemon and herbs to finish."},
-  {id:"m3",  meal:"dinner", name:"Turkey taco bowls", protein:"~42g", tags:["fish-free","solo","kid-friendly"],
-    desc:"Ground turkey, black beans, rice, salsa, avocado. Good solo dinner — swap in ground beef instead if turkey isn't landing with the family."},
-  {id:"m4",  meal:"dinner", name:"Chicken stir-fry, peppers &amp; brown rice", protein:"~40g", tags:["fish-free","family","quick"],
-    desc:"Chicken, peppers, snap peas, brown rice, cooked in olive oil. Fast weeknight option, easily doubled for the family."},
-  {id:"m5",  meal:"dinner", name:"Lean beef &amp; vegetable stew with chickpeas", protein:"~40g", tags:["fish-free","family"],
-    desc:"90%+ lean ground beef or stew meat, root vegetables, chickpeas. One pot, makes great leftovers."},
-  {id:"m6",  meal:"dinner", name:"Sheet pan chicken thighs, olives &amp; roasted veg", protein:"~40g", tags:["fish-free","family","quick"],
-    desc:"Chicken thighs, olives, tomatoes, and whatever roasting veg you have, all on one tray in olive oil. Minimal cleanup."},
-  {id:"m7",  meal:"dinner", name:"Turkey chili with beans", protein:"~40g", tags:["fish-free","solo","quick"],
-    desc:"Ground turkey, mixed beans, peppers, a dollop of Greek yogurt on top instead of sour cream. Good freezer-backup solo meal — try ground beef if making it for the whole family."},
-  {id:"m8",  meal:"dinner", name:"Pork tenderloin, sweet potato &amp; broccoli", protein:"~36g", tags:["fish-free","family"],
-    desc:"Roasted pork tenderloin, roasted sweet potatoes, steamed broccoli. Simple, mild flavors that work for the whole table."},
-  {id:"m9",  meal:"dinner", name:"Lentil &amp; chicken soup", protein:"~36g", tags:["fish-free","family","quick"],
-    desc:"Chicken, lentils, vegetables, whole grain bread on the side. Good cold-weather rotation option, easy to stretch for leftovers."},
-  {id:"m12", meal:"dinner", name:"Seared tuna steak, white beans &amp; greens", protein:"~40g", tags:["fish","solo","quick"],
-    desc:"Fresh tuna steak (not canned) seared a few minutes per side, white beans and greens on the side in olive oil. Milder and meatier than salmon if you're more tolerant of tuna than other fish — worth testing as a solo dinner."},
-  {id:"m13", meal:"snack",  name:"Greek yogurt &amp; berry bowl", protein:"~18g", tags:["fish-free","quick","produce","family"],
-    desc:"Greek yogurt, mixed berries, a drizzle of honey, walnuts on top. Doubles as breakfast or an afternoon snack — easy to scale for the whole family."},
-  {id:"m14", meal:"snack",  name:"Cottage cheese &amp; pineapple", protein:"~25g", tags:["fish-free","quick","produce","solo"],
-    desc:"Cottage cheese with fresh or canned (in juice, not syrup) pineapple chunks. Sweet enough to feel like a treat, still protein-forward."},
-  {id:"m15", meal:"snack",  name:"Hummus &amp; veggie plate", protein:"~8g", tags:["fish-free","quick","produce","family"],
-    desc:"Hummus with carrots, bell peppers, cucumber, cherry tomatoes for dipping. Good side dish at dinner or a standalone snack — easy to put out for everyone at once."},
-  {id:"m16", meal:"snack",  name:"Apple slices with almond butter", protein:"~7g", tags:["fish-free","quick","produce","kid-friendly"],
-    desc:"Sliced apple with a tablespoon of almond butter. Simple, kid-friendly, and an easy way to work fruit in without much effort."},
-  {id:"m17", meal:"snack",  name:"Roasted vegetable medley (side dish)", protein:"~4g", tags:["fish-free","produce","family"],
-    desc:"Broccoli, bell peppers, zucchini, or whatever's in the fridge, tossed in olive oil and roasted. A standing side to pair with any of the dinner options above when you want more vegetables on the plate."},
-  {id:"m18", meal:"snack",  name:"Mixed citrus &amp; walnut snack", protein:"~5g", tags:["fish-free","quick","produce","solo"],
-    desc:"An orange or grapefruit with a small handful of walnuts. Good mid-afternoon option that leans into fruit and the omega-3s walnuts provide as a fish-free alternative."},
-  {id:"m19", meal:"lunch",  name:"Chicken quesadillas", protein:"~35g", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"Shredded chicken and cheese in a whole wheat tortilla, pan-crisped until golden. Cheese-forward and no sauce needed, so it's an easy yes for picky eaters."},
-  {id:"m20", meal:"lunch",  name:"Turkey &amp; cheese roll-ups", protein:"~28g", tags:["fish-free","quick","solo"],
-    desc:"Deli turkey and cheese rolled in a whole wheat tortilla and sliced into pinwheels. Treat as a solo lunch or swap in chicken if making it for the table."},
-  {id:"m21", meal:"lunch",  name:"Egg salad sandwiches", protein:"~22g", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"Hard-boiled eggs mashed with Greek yogurt and mustard instead of mayo, on whole grain bread. Eggs are a safe bet across the board."},
-  {id:"m22", meal:"lunch",  name:"Chicken Caesar pasta salad", protein:"~32g", tags:["fish-free","family","kid-friendly"],
-    desc:"Bowtie pasta, chicken breast, parmesan, a light Caesar dressing, with romaine served on the side so picky eaters can skip the greens."},
-  {id:"m24", meal:"dinner", name:"Chicken &amp; veggie skewers", protein:"~38g", tags:["fish-free","family","kid-friendly"],
-    desc:"Cubed chicken, peppers, and zucchini on skewers, grilled or oven-roasted, served with rice. Pull a few pieces off plain for picky eaters."},
-  {id:"m25", meal:"dinner", name:"One-pot chicken &amp; rice", protein:"~34g", tags:["fish-free","family","kid-friendly"],
-    desc:"Chicken thighs simmered with rice, carrots, and peas in broth. Mild, comfort-food flavor that's easy to serve plain."},
-  {id:"m26", meal:"dinner", name:"Turkey meatballs with whole wheat pasta", protein:"~36g", tags:["fish-free","solo"],
-    desc:"Ground turkey meatballs (egg and oats as the binder, no breadcrumbs) over marinara and whole wheat pasta. Turkey isn't a family favorite — swap in beef for the table, or keep this one solo."},
-  {id:"m27", meal:"dinner", name:"Tuna noodle bake", protein:"~32g", tags:["fish","family","kid-friendly"],
-    desc:"Canned tuna and whole wheat egg noodles in a Greek yogurt-based sauce instead of canned soup, with peas and a light cheese topping. Built around two foods that already work for the family."},
-  {id:"m28", meal:"dinner", name:"Chicken fajita bowls", protein:"~38g", tags:["fish-free","family","kid-friendly"],
-    desc:"Sliced chicken, peppers, and onions sautéed in olive oil over rice with a toppings bar — cheese, avocado, salsa. Deconstructed so everyone builds their own."},
-  {id:"m29", meal:"snack",  name:"Cheese &amp; whole grain crackers", protein:"~7g", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"String cheese or cheese cubes with whole grain crackers. About as easy a grab-and-go as it gets."},
-  {id:"m30", meal:"snack",  name:"Yogurt parfait cups", protein:"~15g", tags:["fish-free","produce","family","kid-friendly"],
-    desc:"Layered Greek yogurt, fruit, and granola in small cups, prepped Sunday for the week. Kids like the layered look as much as the taste."},
-  {id:"m31", meal:"snack",  name:"Banana with nut butter", protein:"~5g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Banana slices with peanut or almond butter, a few oats on top if you like. A reliable kid favorite that needs no prep."},
-  {id:"m32", meal:"snack",  name:"Homemade trail mix", protein:"~6g", tags:["fish-free","quick","produce","family"],
-    desc:"Walnuts or almonds, dried fruit, a few whole grain cereal pieces. Portable, and the walnuts add an omega-3 boost."},
-  {id:"m33", meal:"snack",  name:"Mini egg muffins", protein:"~12g/2", tags:["fish-free","produce","family","kid-friendly"],
-    desc:"Eggs baked in a muffin tin with cheese and diced veggies, batch-prepped Sunday. Kid-sized, grab-and-go protein."},
-  {id:"m34", meal:"snack",  name:"Boiled eggs", protein:"~6g/egg", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"Hard-boiled eggs, batch-prepped Sunday alongside the egg muffins. The fastest grab-and-go protein in the house."},
-  {id:"m35", meal:"breakfast", name:"Overnight oats (your usual)", protein:"~15g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Oats, chia, flax, banana — about 13g fiber. Add a handful of blueberries or raspberries on top instead of extra honey to keep sugar in check."},
-  {id:"m36", meal:"breakfast", name:"Blueberry banana oatmeal bowl", protein:"~12g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Rolled oats cooked in milk, topped with blueberries, sliced banana, and a spoon of Greek yogurt stirred in for extra protein. Mild and sweet enough for picky eaters."},
-  {id:"m37", meal:"breakfast", name:"Veggie &amp; egg scramble", protein:"~20g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Eggs scrambled with diced spinach, tomato, and bell pepper, cheese melted in at the end. Serve the veggies on the side for anyone who wants theirs plain."},
-  {id:"m38", meal:"breakfast", name:"Apple cinnamon baked oatmeal", protein:"~10g", tags:["fish-free","produce","family","kid-friendly"],
-    desc:"Oats, diced apple, cinnamon, and eggs baked in one dish — make Sunday, cut into squares, reheat all week. Naturally sweet, no added sugar needed."},
-  {id:"m39", meal:"breakfast", name:"Savory oatmeal with egg &amp; spinach", protein:"~18g", tags:["fish-free","quick","produce","solo"],
-    desc:"Steel-cut oats cooked savory (no fruit), topped with a fried or soft-boiled egg and wilted spinach, a little parmesan on top. A break from sweet breakfasts."},
-  {id:"m40", meal:"lunch", name:"Strawberry spinach salad with chicken", protein:"~38g", tags:["fish-free","produce","solo"],
-    desc:"Spinach, sliced strawberries, grilled chicken, walnuts, and a light vinaigrette. Bright, fast lunch that uses up berries before they turn."},
-  {id:"m41", meal:"lunch", name:"Roasted veggie &amp; quinoa bowl", protein:"~20g", tags:["fish-free","produce","solo"],
-    desc:"Quinoa, roasted broccoli, sweet potato, and chickpeas, olive oil and lemon dressing. Add leftover chicken to push protein higher if you want a fuller lunch."},
-  {id:"m42", meal:"dinner", name:"Chicken &amp; vegetable soup with sweet potato", protein:"~34g", tags:["fish-free","family","kid-friendly"],
-    desc:"Chicken, sweet potato, carrots, celery, spinach stirred in at the end. Mild broth-based dinner that's easy to portion for picky eaters — just fish out the veg they skip."},
-  {id:"m43", meal:"dinner", name:"Veggie-loaded beef chili", protein:"~38g", tags:["fish-free","family"],
-    desc:"Ground beef chili with extra bell pepper, zucchini, and carrot diced small and cooked down into the sauce — added vegetables without changing the texture much for picky eaters."},
-  {id:"m44", meal:"snack", name:"Raspberry chia pudding", protein:"~8g", tags:["fish-free","quick","produce","solo"],
-    desc:"Chia seeds soaked overnight in milk, topped with raspberries. Make-ahead, high fiber, good blood-sugar-friendly snack or light breakfast."},
-  {id:"m45", meal:"snack", name:"Banana berry 'nice cream'", protein:"~4g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Frozen banana blended until creamy, blueberries or strawberries blended in. Tastes like soft-serve — an easy way to get the family excited about fruit."},
-  {id:"m46", meal:"snack", name:"Veggie sticks with Greek yogurt dip", protein:"~10g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Carrots, cucumber, bell pepper strips with a Greek yogurt ranch or herb dip. Higher protein than a standard veggie plate, still easy for picky eaters to pick around."},,
-  {id:"w1", meal:"breakfast", name:"Black bean &amp; egg breakfast burritos", protein:"~24g", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"Scrambled eggs, black beans, and cheese in a whole wheat tortilla. Wrap and freeze a batch Sunday; reheat for a grab-and-go breakfast. Leave the beans out of the kids' versions if needed."},
-  {id:"w2", meal:"breakfast", name:"Cottage cheese oat pancakes", protein:"~26g", tags:["fish-free","quick","produce","family","kid-friendly"],
-    desc:"Blend oats, cottage cheese, eggs, and a splash of milk, then cook like pancakes and top with berries. Grain-based, protein-heavy, and no meat."},
-  {id:"w3", meal:"lunch", name:"Lentil &amp; veggie soup with whole grain bread", protein:"~22g", tags:["fish-free","family","produce"],
-    desc:"Brown or green lentils simmered with carrots, celery, tomatoes, and spinach. A good winter-style pot that makes leftovers for several lunches."},
-  {id:"w4", meal:"lunch", name:"Chickpea, feta &amp; cucumber salad", protein:"~20g", tags:["fish-free","quick","produce","solo"],
-    desc:"Chickpeas, cucumber, cherry tomatoes, red onion, and feta with olive oil and lemon. Add a hard-boiled egg or two to push protein past 30g."},
-  {id:"w5", meal:"lunch", name:"Black bean &amp; cheese quesadillas", protein:"~24g", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"Mashed black beans and cheese in a whole wheat tortilla, pan-crisped. Serve with salsa and avocado on the side."},
-  {id:"w6", meal:"dinner", name:"Lentil bolognese over whole wheat pasta", protein:"~30g", tags:["fish-free","family","kid-friendly"],
-    desc:"Red or brown lentils cooked down with tomato sauce, carrot, and onion, served over pasta with parmesan. Looks and tastes like a regular pasta night, which helps with picky eaters."},
-  {id:"w7", meal:"dinner", name:"Baked ziti with ricotta &amp; spinach", protein:"~32g", tags:["fish-free","family","kid-friendly"],
-    desc:"Whole wheat ziti, ricotta, mozzarella, marinara, and spinach folded in. Dairy-based protein with no meat, and it feeds a crowd."},
-  {id:"w8", meal:"dinner", name:"Tofu &amp; vegetable stir-fry with brown rice", protein:"~28g", tags:["fish-free","quick","solo"],
-    desc:"Pressed, cubed tofu pan-seared in olive oil with broccoli, peppers, and snap peas over brown rice. Quick solo dinner; the same sauce and veggies work for the family with whatever protein they prefer."},
-  {id:"w9", meal:"dinner", name:"Shakshuka with chickpeas", protein:"~26g", tags:["fish-free","produce","family"],
-    desc:"Eggs poached in a spiced tomato and pepper sauce with chickpeas, served with whole grain bread. Breakfast-for-dinner style that works for eggs-accepting eaters."},
-  {id:"w10", meal:"dinner", name:"Baked tilapia with lemon, rice &amp; green beans", protein:"~36g", tags:["fish","quick","family"],
-    desc:"Tilapia fillets baked with olive oil, lemon, and herbs, served over rice with green beans. Mild white fish that fits the family's fish preferences."},
-  {id:"w11", meal:"snack", name:"Warm cocoa made with milk", protein:"~8g", tags:["fish-free","quick","family","kid-friendly"],
-    desc:"Milk heated with unsweetened cocoa and a little honey. A warm, non-coffee, non-tea drink for cold evenings, with calcium and protein from the milk."},
-  {id:"w12", meal:"snack", name:"Roasted chickpeas", protein:"~7g", tags:["fish-free","quick","family"],
-    desc:"Canned chickpeas dried, tossed in olive oil and spices, and roasted until crunchy. A crunchy snack with fiber and plant protein."}
-];
 
 var FRUIT_TIPS = [
   {name:"Raspberries", tip:"Best for managing blood sugar — highest fiber, lowest sugar of common fruits.", emoji:"🍇"},
@@ -8304,67 +7766,6 @@ function renderMythGuide(targetId){
     '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+
     MYTH_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
-}
-function miFavs(){ try{ return JSON.parse(store.get("mi_favs")||"[]"); }catch(e){ return []; } }
-function miToggleFav(id){
-  var f=miFavs(); var i=f.indexOf(id);
-  if(i>=0) f.splice(i,1); else f.push(id);
-  store.set("mi_favs", JSON.stringify(f));
-  miRender();
-}
-// Word of Wisdom: every idea above is free of alcohol, tobacco, coffee and tea.
-// "meat-light" marks ideas without poultry, beef, pork or deli meat (meat "used sparingly").
-(function(){
-  var re=/chicken|turkey|beef|pork|meatball|bacon|\bham\b|sausage|stew meat/i;
-  MEAL_IDEAS.forEach(function(m){
-    if(!re.test(m.name+" "+m.desc) && m.tags.indexOf("meat-light")<0) m.tags.push("meat-light");
-  });
-})();
-var MI_FILTERS=["fish-free","fish","quick","family","solo","kid-friendly","produce","meat-light"];
-var MI_ACTIVE_FILTERS=[];
-function miToggleFilter(tag){
-  var i=MI_ACTIVE_FILTERS.indexOf(tag);
-  if(i>=0) MI_ACTIVE_FILTERS.splice(i,1); else MI_ACTIVE_FILTERS.push(tag);
-  miRender();
-}
-function miRenderFilters(targetId){
-  var el=document.getElementById(targetId||"meals-filters"); if(!el) return;
-  el.innerHTML = MI_FILTERS.map(function(t){
-    var on=MI_ACTIVE_FILTERS.indexOf(t)>=0;
-    return '<span class="tag" style="cursor:pointer;background:'+(on?"#4ade8022":"#88888816")+';color:'+(on?"#4ade80":"#aaa")+';border:1px solid '+(on?"#4ade8055":"#88888830")+'" onclick="miToggleFilter(\''+t+'\')">'+t+(on?" ✓":"")+'</span>';
-  }).join(" ");
-}
-function miRender(){
-  miRenderFilters("meals-filters");
-  var favs=miFavs();
-  var list=MEAL_IDEAS.filter(function(m){
-    if(!MI_ACTIVE_FILTERS.length) return true;
-    return MI_ACTIVE_FILTERS.every(function(t){ return m.tags.indexOf(t)>=0; });
-  });
-  var breakfasts=list.filter(function(m){return m.meal==="breakfast";});
-  var lunches=list.filter(function(m){return m.meal==="lunch";});
-  var snacks=list.filter(function(m){return m.meal==="snack";});
-  var dinners=list.filter(function(m){return m.meal==="dinner";});
-  function card(m){
-    var on=favs.indexOf(m.id)>=0;
-    return '<div class="card" style="margin-bottom:10px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
-        '<div class="card-title" style="margin-bottom:4px">'+m.name+'</div>'+
-        '<button onclick="miToggleFav(\''+m.id+'\')" style="font-size:18px;line-height:1;background:transparent;border:none;color:'+(on?"#fbbf24":"#555")+';cursor:pointer;flex-shrink:0">'+(on?"★":"☆")+'</button>'+
-      '</div>'+
-      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-bottom:6px">'+m.desc+'</div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
-        '<span class="tag" style="background:#5eead416;color:#5eead4;border:1px solid #5eead430">'+m.protein+' protein</span>'+
-        m.tags.map(function(t){return '<span class="tag" style="background:#88888816;color:#999;border:1px solid #88888830">'+t+'</span>';}).join("")+
-      '</div></div>';
-  }
-  var html="";
-  if(breakfasts.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:4px 0 8px">Breakfast</div>'+breakfasts.map(card).join("");
-  if(lunches.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Lunch</div>'+lunches.map(card).join("");
-  if(snacks.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Snacks &amp; Sides</div>'+snacks.map(card).join("");
-  if(dinners.length) html += '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9a9d8c;margin:16px 0 8px">Dinner</div>'+dinners.map(card).join("");
-  if(!list.length) html = '<div style="text-align:center;color:#8b8b9c;font-size:12px;font-family:\'DM Mono\',monospace;padding:30px 0">No meals match those filters — try removing one.</div>';
-  document.getElementById("meals-list").innerHTML = html;
 }
 // Info tab sections: collapsed by default, open/closed state remembered per section.
 function infoSecInit(){
@@ -8797,78 +8198,6 @@ function mpRenderPlan(){
 }
 
 
-// ── MY PLAN ───────────────────────────────────────────────────────────
-// The plan is loaded from an external JSON file at runtime, not hardcoded
-// here. Default source is plan.json sitting next to this index.html file
-// (works automatically on GitHub Pages with zero setup). To use a
-// different plan, set a custom URL in Settings > Plan Source, or replace
-// plan.json itself. The file just needs a `sections` array; each section
-// has a `type` of "stats", "text", "list", "rows", or "timeline" — see
-// plan.json for the exact shape of each type.
-var PLAN_URL = store.get('ft_plan_url') || "";
-var PLAN_LOADED = false;
-// Minimal fallback shown only if plan.json can't be fetched at all
-// (e.g. first load while offline, or the file is missing/misnamed).
-var PLAN_CONFIG = {
-  title: "My Plan",
-  subtitle: "",
-  sections: [
-    {type:"text", heading:"Plan not loaded", body:"Couldn't load plan.json. Check that the file exists next to index.html, or set a custom Plan JSON URL in Settings, then tap Reload Plan."}
-  ]
-};
-function planSourceUrl(){
-  return (PLAN_URL && PLAN_URL.trim()) ? PLAN_URL.trim() : "plan.json";
-}
-function planLoad(cb){
-  fetch(planSourceUrl(), {cache:"no-store"})
-    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-    .then(function(data){
-      if(data && Array.isArray(data.sections)){ PLAN_CONFIG = data; PLAN_LOADED = true; }
-      if(cb) cb(true);
-    })
-    .catch(function(err){
-      console.warn("Plan load failed:", err);
-      if(cb) cb(false);
-    });
-}
-function planReload(){
-  PLAN_URL = (document.getElementById("ft-plan-url")||{}).value || PLAN_URL;
-  toast("Reloading plan\u2026");
-  planLoad(function(ok){
-    toast(ok ? "Plan reloaded" : "Couldn't load plan \u2014 check the URL/file");
-    if(document.getElementById("plan-overlay").style.display==="flex") planRender();
-  });
-}
-function planRenderSection(s){
-  var h='<div class="card" style="margin-bottom:10px"><div class="card-title" style="margin-bottom:8px">'+escH(s.heading)+'</div>';
-  if(s.type==="stats"){
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+s.stats.map(function(st){
-      return '<div style="background:#ffffff08;border-radius:8px;padding:8px 10px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">'+escH(st.label)+'</div><div style="font-size:14px;font-weight:700;color:#cfe84f">'+escH(st.value)+'</div></div>';
-    }).join("")+'</div>';
-  } else if(s.type==="text"){
-    h+='<div style="font-size:12px;color:#9a9d8c;line-height:1.6">'+escH(s.body)+'</div>';
-  } else if(s.type==="list"){
-    h+='<ul style="margin:0;padding-left:18px;font-size:12px;color:#9a9d8c;line-height:1.7">'+s.items.map(function(it){return '<li style="margin-bottom:6px">'+escH(it)+'</li>';}).join("")+'</ul>';
-  } else if(s.type==="rows"){
-    h+=s.rows.map(function(r){
-      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #ffffff0d"><span style="font-size:11px;color:#888;flex-shrink:0">'+escH(r.a)+'</span><span style="font-size:12px;color:#ddd;text-align:right">'+escH(r.b)+'</span></div>';
-    }).join("");
-  } else if(s.type==="timeline"){
-    h+=s.items.map(function(it){
-      return '<div style="margin-bottom:10px"><div style="font-size:11px;color:#cfe84f;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">'+escH(it.when)+'</div><div style="font-size:12px;color:#9a9d8c;line-height:1.5">'+escH(it.what)+'</div></div>';
-    }).join("");
-  }
-  h+='</div>';
-  return h;
-}
-function planRender(){
-  var html='<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.08em">'+escH(PLAN_CONFIG.subtitle||"")+'</div><div style="font-size:19px;font-weight:800;color:#f0f0f0;margin-top:4px">'+escH(PLAN_CONFIG.title||"My Plan")+'</div></div>';
-  html += (PLAN_CONFIG.sections||[]).map(planRenderSection).join("");
-  document.getElementById("plan-content").innerHTML = html;
-}
-function planClose(){
-  document.getElementById("plan-overlay").style.display="none";
-}
 var DS_CUSTOM_PICK_ORIGINAL=null;
 function dsCustomCommit(){
   // Any day that previously held this exact working set but got unchecked: clear it.
@@ -9000,14 +8329,14 @@ function dsSwapKey(item){ return (item&&item.lockVar!=null)?('L:'+item.id):(item
 function dsManualIdx(item){ if(!item)return null; var v=DS_SWAPS[dsSwapKey(item)]; return (v==null)?null:v; }
 // Curated weekly rotation for chest slots: only these options rotate (by name;
 // first entry = even weeks). Slots not listed keep their lock / normal rotation.
-var DS_ROTATE_POOL={
+var DS_CHEST_ROTATE_POOL={
   'mon-pushup':['High-to-Low Band Press'], // v429: push-ups paused for elbows
   'mon-pressaround':['Low-Anchor Band Fly (rest-pause)','Standing Band Fly (stretch-biased)','Single-Arm Band Press-Around'],
   'mon-inclinepress':['Standing Band Chest Press (pyramid)','Incline Close-Grip Press'],
   'mon-standbandpress':['Low-to-High Band Fly'] // v429: push-ups paused for elbows
 };
 function dsPoolIdx(item){
-  var pool=DS_ROTATE_POOL[item.id]; if(!pool||!pool.length) return null;
+  var pool=DS_CHEST_ROTATE_POOL[item.id]; if(!pool||!pool.length) return null;
   var names=[item.name].concat((item.variants||[]).map(function(v){return v.name;}));
   var idx=pool.map(function(n){return names.indexOf(n);}).filter(function(i){return i>=0;});
   if(!idx.length) return null;
@@ -9474,7 +8803,6 @@ function dsSh(p,o){
   q.cx=95+o; return q;
 }
 function dsPic2(a,b,notes){ a.cx=95; return dsPic([a,dsSh(b,190)],notes); }
-var DS_TW='1 sec up · 1 sec squeeze · 3 sec down';
 var DS_STD={head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[95,192],[95,246],[112,246]]};
 var DS_HNG={head:[146,98],torso:[[129,109],[75,140]],legs:[[75,140],[88,194],[95,246],[112,246]]};
 function dsMk(base,over){ var o={}; for(var k in base) o[k]=base[k]; for(var j in over) o[j]=over[j]; return o; }
@@ -10236,14 +9564,14 @@ function dsIsCompound(item){
 // Superset label: moves sharing a "pair" letter in today's session are alternated.
 function dsPairMates(raw){
   try{
-    if(!raw||!raw.pair||typeof dsFullBodyOn==='function'&&dsFullBodyOn()||!DS_ITEM_CTX) return [];
+    if(!raw||!raw.pair||!DS_ITEM_CTX) return [];
     var S=DS_SESSIONS[DS_ITEM_CTX.sk]; if(!S||!S.moves) return [];
     return S.moves.filter(function(m){ return m&&m.pair===raw.pair&&m.id!==raw.id&&m.log==='setsreps'; }).map(function(m){ return m.id; });
   }catch(e){ return []; }
 }
 function dsPairNoteHtml(raw){
   try{
-    if(!raw||!raw.pair||typeof dsFullBodyOn==='function'&&dsFullBodyOn()||!DS_ITEM_CTX) return '';
+    if(!raw||!raw.pair||!DS_ITEM_CTX) return '';
     var S=DS_SESSIONS[DS_ITEM_CTX.sk]; if(!S||!S.moves) return '';
     var mates=S.moves.filter(function(m){ return m&&m.pair===raw.pair&&m.id!==raw.id; })
       .map(function(m){ var v=dsViewOf(m); return String((v&&v.name)||m.name).split(/ \u2014 | \(/)[0]; });
@@ -10253,19 +9581,6 @@ function dsPairNoteHtml(raw){
 }
 function dsRenderItem(rawItem,idx,accent){
   var item=dsViewOf(rawItem);
-  var _phase=dsCurrentPhase(); var _po=_phase && DS_PHASE_RX[item.id] && DS_PHASE_RX[item.id][_phase];
-  // v346: a one-side-at-a-time variant (rx ends "/leg" or "/side") keeps that suffix when the phase
-  // prescription swaps in the parent's rep range, so the L/R rep inputs still show.
-  var _uniM=/\/(side|leg)\b/i.exec(item.rx||''); var _uniSfx=(_uniM&&_po&&!/\/(side|leg)\b/i.test(_po.rx||''))?'/'+_uniM[1].toLowerCase():'';
-  if(_po){
-    item={id:item.id,name:item.name,tempo:item.tempo,slot:item.slot,target:item.target,equip:item.equip,
-      rx:_po.rx+_uniSfx+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''),
-      cal:item.cal,cue:item.cue,demo:item.demo,log:item.log,
-      sets:(_po.sets!=null?_po.sets:item.sets),
-      secs:item.secs,perMin:item.perMin,defMin:item.defMin,variants:item.variants};
-  }
-  var _fbc=(typeof dsFbCapOf==='function')?dsFbCapOf(item.id):0;
-  if(_fbc && _po && item.sets>_fbc){ item.sets=_fbc; item.rx=dsFbCapRx(_po.rx,_fbc)+_uniSfx+(_po.rpe?' @'+_po.rpe:'')+(_po.rest?' \u00b7 '+_po.rest:''); }
   var st=dsItemState(item.id); var done=dsComplete(item.id);
   var _q=(DS_SEARCH||'').trim();
   var cls='ds-move'+(st._open?' ds-open':'')+(done?' ds-done':'');
@@ -10330,14 +9645,14 @@ function dsRenderItem(rawItem,idx,accent){
     if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
     var _prog=DS_PROG[item.id];
     if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
-      var _prng=dsRepRange(item.id), _pph=dsCurrentPhase();
+      var _prng=dsRepRange(item.id);
       if(_prog.reps>_prog.prevReps){
         h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u2191 Target up to '+_prog.reps+' reps (was '+_prog.prevReps+') \u2014 you earned it last session.</div>';
       } else if(_prog.bandUp){
         h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u25B2 Progress day: step further back from the anchor (or slow the tempo) and restart at '+_prog.reps+' reps.</div>';
       } else if(_prng){
-        // Lower number only because the prescribed range itself changed (training phase).
-        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB '+(_pph&&PHASE_LABELS[_pph]?PHASE_LABELS[_pph]+' this week':'This week\u2019s plan')+': range is '+_prng.lo+'\u2013'+_prng.hi+'. The number is a minimum \u2014 keep going until you have 0\u20132 reps left, and log what you actually did.</div>';
+        // Lower number only because the prescribed range itself changed.
+        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB This week\u2019s plan: range is '+_prng.lo+'\u2013'+_prng.hi+'. The number is a minimum \u2014 keep going until you have 0\u20132 reps left, and log what you actually did.</div>';
       }
     }
     var _deloadFill = dsDeloadActive() && st._load && !st._loadTouched;
@@ -11399,7 +10714,7 @@ function dsRender(){
         +'<button onclick="dsUserAddToggle()" style="padding:10px 16px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#888;font-size:13px;cursor:pointer">Cancel</button>'
         +'</div></div>';
     }
-    html+='<div style="margin:18px 0 0;font-size:11px;color:#8b8b9c;">Optional morning, mobility, pull-up, ATG, and bodyweight-leg work moved to the <b>Extra</b> tab above.</div>';
+    html+='<div style="margin:18px 0 0;font-size:11px;color:#8b8b9c;">Optional morning, mobility and pull-up work is in the <b>Extra</b> tab above.</div>';
   }
   var _note=document.getElementById('ds-search-note');
   var _hasHit=_q&&DS_SEARCH_HITS>0;
@@ -14143,7 +13458,7 @@ var PRESETS = [
     id:"post-ride-hamstring",
     icon:"🚴",
     name:"Post-Ride Hamstring Reset",
-    desc:"Short Saturday option for straight after the bike. Hamstrings are warm and shortened from the saddle — this is passive, no forcing. Pairs with or replaces Post-Ride Recovery.",
+    desc:"Short option for straight after a bike ride. Hamstrings are warm and shortened from the saddle — this is passive, no forcing. Pairs with or replaces Post-Ride Recovery.",
     level:"beginner",
     duration:"~15 min",
     focus:"Post-Ride Hamstrings",
@@ -14216,7 +13531,7 @@ var PRESETS = [
     id:"post-ride",
     icon:"🚵",
     name:"Post-Ride Recovery",
-    desc:"Built specifically for after your Saturday mountain bike rides. Targets quads, hamstrings, IT band, and lower back.",
+    desc:"Built for after a mountain bike ride. Targets quads, hamstrings, IT band, and lower back.",
     level:"beginner",
     duration:"~20 min",
     focus:"Recovery",
@@ -14716,443 +14031,24 @@ if('serviceWorker' in navigator){
 /* ═══════ block boundary ═══════ */
 
 (function(){
-  function slug(s){return (s||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");}
+  // Yoga-flow completion store. Marks today's Wednesday flow done in eg_done and
+  // pushes the completion map to the Sheet's Workout Log tab. This is all that is
+  // still used of the old Training Guide module (removed v479).
   function pad(n){return String(n).padStart(2,"0");}
-  function dkey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
-  function today(){return dkey(new Date());}
+  function today(){var d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
   function loadDone(){try{return JSON.parse(localStorage.getItem("eg_done")||"{}")||{};}catch(e){return {};}}
   function saveDone(o){try{localStorage.setItem("eg_done",JSON.stringify(o));}catch(e){}}
   function url(){return localStorage.getItem("ft_sheets_url")||"";}
-  window.egSlug=slug; window.egToday=today;
-  // Bridge hooks for the tracker's yoga completion card (dash + streak + auto-push)
-  window.egIsDone=function(exid){ return !!((loadDone()[today()]||{})[exid]); };
-  window.egSetDone=function(exid,on){ var d=loadDone(),t=today(); d[t]=d[t]||{}; if(on)d[t][exid]=true; else delete d[t][exid]; if(!Object.keys(d[t]).length)delete d[t]; saveDone(d); renderDash(); scheduleSync(); };
-  document.addEventListener("DOMContentLoaded",function(){ if(typeof tgYogaRefresh==="function") tgYogaRefresh(); });
-
-  function tagCards(){
-    document.querySelectorAll(".exercise-card").forEach(function(card){
-      var nm=card.querySelector(".exercise-name"); if(nm) card.dataset.exid=slug(nm.textContent);
-    });
-  }
-  window.egOnDotChange=function(tracker){
-    var card=tracker.closest(".exercise-card"); if(!card) return;
-    var exid=card.dataset.exid||slug((card.querySelector(".exercise-name")||{}).textContent||"");
-    if(!exid) return;
-    var dots=tracker.querySelectorAll(".set-dot"), done=tracker.querySelectorAll(".set-dot.done").length;
-    var all=dots.length>0 && done===dots.length;
-    var d=loadDone(), t=today(); d[t]=d[t]||{};
-    if(all) d[t][exid]=true; else delete d[t][exid];
-    if(!Object.keys(d[t]).length) delete d[t];
-    saveDone(d); egCrossLog(); renderDash(); scheduleSync();
-  };
-
-  // Log estimated calories from completed strength exercises into TODAY's tracker day.
-  // Excludes the Wednesday yoga flow (logged separately) so it isn't double-counted.
-  function egCrossLog(){
-    try{
-      if(typeof getDay!=="function"||typeof saveDay!=="function"||typeof todayKey!=="function") return;
-      var tk=todayKey(), day=getDay(tk), id="eg-strength-"+tk;
-      day.exercises=(day.exercises||[]).filter(function(e){return e.id!==id;});
-      saveDay(day,tk);
-      if(typeof renderAll==="function") renderAll();
-    }catch(e){}
-  }
-
-  function restoreToday(){
-    var set=(loadDone()[today()])||{};
-    document.querySelectorAll(".exercise-card").forEach(function(card){
-      if(!set[card.dataset.exid]) return;
-      var tr=card.querySelector(".set-tracker"); if(!tr) return;
-      tr.querySelectorAll(".set-dot").forEach(function(dot){dot.classList.add("done");});
-      var msg=tr.querySelector(".set-complete-msg"); if(msg) msg.classList.add("show");
-    });
-  }
-
   var syncTimer=null;
-  function scheduleSync(){ if(!url())return; clearTimeout(syncTimer); syncTimer=setTimeout(function(){pushSync();},4000); }
-  function pushSync(cb){
-    var u=url(); if(!u){ if(cb)cb(false); return; }
-    setStatus("Saving\u2026");
+  function scheduleSync(){ if(!url())return; clearTimeout(syncTimer); syncTimer=setTimeout(pushSync,4000); }
+  function pushSync(){
+    var u=url(); if(!u) return;
     fetch(u,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/x-www-form-urlencoded"},
-      body:"data="+encodeURIComponent(JSON.stringify({workouts:loadDone()}))})
-      .then(function(){ localStorage.setItem("eg_last_sync",Date.now()); setStatus("\u2713 Saved "+new Date().toLocaleTimeString()); if(cb)cb(true); })
-      .catch(function(){ setStatus("Offline \u2014 will retry next time"); if(cb)cb(false); });
+      body:"data="+encodeURIComponent(JSON.stringify({workouts:loadDone()}))}).catch(function(){});
   }
-  function setStatus(s){ var el=document.getElementById("eg-sync-status"); if(el) el.textContent=s; }
-
-  window.egSaveUrl=function(){
-    var v=((document.getElementById("eg-url")||{}).value||"").trim();
-    localStorage.setItem("ft_sheets_url",v);
-    setStatus(v?"URL saved":"URL cleared");
-    if(v) pushSync();
-  };
-  window.egPushNow=function(){ if(!url()){setStatus("Enter your Apps Script URL first");return;} pushSync(); };
-  window.egOpenSettings=function(){ var o=document.getElementById("eg-settings"); if(!o)return; var ue=document.getElementById("eg-url"); if(ue)ue.value=url(); o.style.display="block"; };
-  window.egCloseSettings=function(){ var o=document.getElementById("eg-settings"); if(o)o.style.display="none"; };
-
-  function streak(d){
-    var s=0, day=new Date();
-    if(!(d[today()]&&Object.keys(d[today()]).length)) day.setDate(day.getDate()-1);
-    for(var g=0;g<400;g++){ var k=dkey(day); if(d[k]&&Object.keys(d[k]).length){s++;day.setDate(day.getDate()-1);}else break; }
-    return s;
-  }
-  function pretty(id){ return id.replace(/-/g," ").replace(/\b\w/g,function(c){return c.toUpperCase();}); }
-  function bestStreak(d){
-    var ks=Object.keys(d).filter(function(k){return Object.keys(d[k]).length;}).sort(), best=0,cur=0,prev=null;
-    ks.forEach(function(k){
-      if(prev){var diff=Math.round((new Date(k+"T00:00")-new Date(prev+"T00:00"))/86400000);cur=(diff===1)?cur+1:1;}else{cur=1;}
-      if(cur>best)best=cur; prev=k;
-    });
-    return best;
-  }
-  function renderDash(){
-    var el=document.getElementById("eg-dash"); if(!el) return;
-    var d=loadDone();
-    var allK=Object.keys(d).filter(function(k){return Object.keys(d[k]).length;}).sort();
-    var totalW=allK.length, totalEx=allK.reduce(function(a,k){return a+Object.keys(d[k]).length;},0);
-    var st=streak(d), best=bestStreak(d);
-    var now=new Date(), wd=(now.getDay()+6)%7, monday=new Date(now); monday.setDate(now.getDate()-wd);
-    var dl=["M","T","W","T","F","S","S"], wkTrained=0, wkCells=[];
-    for(var i=0;i<7;i++){var dt=new Date(monday);dt.setDate(monday.getDate()+i);var k=dkey(dt);var n=d[k]?Object.keys(d[k]).length:0;if(n)wkTrained++;var isT=k===today();
-      wkCells.push('<div style="flex:1;text-align:center"><div style="font-size:11px;color:#8b8b9c;margin-bottom:4px">'+dl[i]+'</div><div style="height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;'+(n?"background:var(--accent);color:#0f0f0f":"background:rgba(255,255,255,.05);color:#8b8b9c")+(isT?";outline:2px solid #7dd3fc;outline-offset:1px":"")+'">'+(n||"\u00b7")+'</div></div>');}
-    var heat="";
-    for(var j=34;j>=0;j--){var d2=new Date();d2.setDate(d2.getDate()-j);var k2=dkey(d2);var c2=d[k2]?Object.keys(d[k2]).length:0;
-      var bg=c2===0?"rgba(255,255,255,.05)":c2<3?"rgba(232,255,71,.35)":c2<5?"rgba(232,255,71,.65)":"var(--accent)";
-      heat+='<div title="'+k2+": "+c2+'" style="width:100%;padding-bottom:100%;border-radius:3px;background:'+bg+'"></div>';}
-    var weeks=[],labels=[];
-    for(var w=5;w>=0;w--){var ws=new Date(monday);ws.setDate(monday.getDate()-7*w);var c=0;for(var x=0;x<7;x++){var wk=new Date(ws);wk.setDate(ws.getDate()+x);var kk=dkey(wk);if(d[kk]&&Object.keys(d[kk]).length)c++;}weeks.push(c);labels.push((ws.getMonth()+1)+"/"+ws.getDate());}
-    var maxW=Math.max(1,Math.max.apply(null,weeks));
-    var bars=weeks.map(function(c,i){var hh=Math.round((c/maxW)*70);return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:11px;color:#aaa">'+c+'</div><div style="width:58%;height:'+hh+'px;min-height:3px;background:'+(c?"var(--accent)":"rgba(255,255,255,.12)")+';border-radius:4px 4px 0 0"></div><div style="font-size:11px;color:#8b8b9c">'+labels[i]+'</div></div>';}).join("");
-    var tally={}; allK.forEach(function(k){Object.keys(d[k]).forEach(function(ex){tally[ex]=(tally[ex]||0)+1;});});
-    var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];}).slice(0,5), maxT=top.length?tally[top[0]]:1;
-    var topHtml=top.length?top.map(function(ex){var pct=Math.round((tally[ex]/maxT)*100);return '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:#ccc">'+pretty(ex)+'</span><span style="color:#5eead4">'+tally[ex]+'\u00d7</span></div><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent)"></div></div></div>';}).join(""):'<div style="color:#8b8b9c">No data yet.</div>';
-    var recent=allK.slice().reverse().slice(0,8);
-    var recentHtml=recent.length?recent.map(function(k){var n=Object.keys(d[k]).length;return '<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="color:#ccc">'+k+'</span><span style="color:#5eead4;font-weight:600">'+n+' ex</span></div>';}).join(""):'<div style="color:#8b8b9c;padding:8px 0">No workouts logged yet \u2014 tap the set dots as you train.</div>';
-    function stat(v,l,c){return '<div style="flex:1;text-align:center;background:rgba(255,255,255,.03);border-radius:12px;padding:14px 4px"><div style="font-size:23px;font-weight:800;color:'+c+'">'+v+'</div><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+l+'</div></div>';}
-    function lbl(t){return '<div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin:22px 0 10px">'+t+'</div>';}
-    var h='<div style="display:flex;gap:8px">'+stat(st,"Streak","#86efac")+stat(best,"Best","#fbbf24")+stat(wkTrained+"/7","Week","#5eead4")+stat(totalW,"Workouts","#7dd3fc")+'</div>';
-    h+=lbl("This week")+'<div style="display:flex;gap:6px">'+wkCells.join("")+'</div>';
-    h+=lbl("Last 5 weeks")+'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+heat+'</div>';
-    h+=lbl("Workouts per week")+'<div style="display:flex;align-items:flex-end;gap:6px;height:104px;padding-top:6px">'+bars+'</div>';
-    h+=lbl("Most-trained exercises")+topHtml;
-    h+=lbl("Recent workouts")+recentHtml;
-    h+='<div style="font-size:11px;color:#8b8b9c;margin-top:16px;text-align:center">'+totalEx+' exercises completed all-time</div>';
-    el.innerHTML=h;
-  }
-
-  function weekdayIdx(){ return (new Date().getDay()+6)%7; }  // Mon=0 … Sun=6
-  window.showMode=function(mode){
-    var panels=document.querySelectorAll('.day-panel'), ti=weekdayIdx();
-    panels.forEach(function(p,i){
-      p.classList.remove('week-collapsed','week-open');
-      if(mode==='progress'){ p.style.display=(p.id==='day-10')?'block':'none'; }
-      else if(mode==='week'){ if(p.id==='day-10'){p.style.display='none';} else {p.style.display='block';p.classList.add('week-collapsed');} }
-      else { p.style.display=(i===ti)?'block':'none'; }
-    });
-    var tabs=document.querySelectorAll('.mode-nav .day-tab'), order={today:0,week:1,progress:2};
-    tabs.forEach(function(t,i){ t.classList.toggle('active', i===order[mode]); });
-    if(mode==='progress' && window.egRenderDash) egRenderDash();
-    try{window.scrollTo(0,0);}catch(e){}
-  };
-  document.addEventListener('click',function(e){
-    var hdr=e.target.closest && e.target.closest('.day-header'); if(!hdr) return;
-    var panel=hdr.closest('.day-panel'); if(!panel||!panel.classList.contains('week-collapsed')) return;
-    panel.classList.toggle('week-open');
-  });
-  function init(){
-    tagCards(); restoreToday(); renderDash(); showMode('today');
-    var ue=document.getElementById("eg-url"); if(ue) ue.value=url();
-    var ls=localStorage.getItem("eg_last_sync"); if(ls) setStatus("Last saved "+new Date(+ls).toLocaleString());
-  }
-  if(document.readyState!=="loading") init(); else document.addEventListener("DOMContentLoaded",init);
-})();;
-
-/* ═══════ block boundary ═══════ */
-
-(function(){
-  var KH="eg_hidden_v1", KC="eg_custom_v1", KM="eg_moved_v1";
-  function jget(k,f){try{return JSON.parse(localStorage.getItem(k))||f;}catch(e){return f;}}
-  function hidden(){return jget(KH,[]);}
-  function saveHidden(a){localStorage.setItem(KH,JSON.stringify(a));}
-  function custom(){return jget(KC,{});}
-  function saveCustom(o){localStorage.setItem(KC,JSON.stringify(o));}
-  function moved(){return jget(KM,{});}
-  function saveMoved(o){localStorage.setItem(KM,JSON.stringify(o));}
-  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-  function escA(s){return esc(s).replace(/'/g,"&#39;");}
-  function slug(s){return (window.egSlug?egSlug(s):String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""));}
-  function today(){return window.egToday?egToday():new Date().toISOString().slice(0,10);}
-  function uid(){return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-  function fmt(sec){sec=+sec||0;var m=Math.floor(sec/60),s=sec%60;return m+":"+(s<10?"0":"")+s;}
-  function lines(t){return String(t||"").split("\n").map(function(x){return x.trim();}).filter(Boolean);}
-  function dotsHtml(n){var s="";for(var i=1;i<=n;i++)s+='<div class="set-dot" onclick="dotClick(this)" title="Set '+i+'"></div>';return s;}
-  function cardExid(card){return card.dataset.exid||slug((card.querySelector(".exercise-name")||{}).textContent||"");}
-  function cardName(card){return (card.querySelector(".exercise-name")||{}).textContent||"";}
-  function dayTitle(pid){var p=document.getElementById(pid);return p?((p.querySelector(".day-title")||{}).textContent||pid):pid;}
-  function daySub(pid){var p=document.getElementById(pid);if(!p)return"";var s=(p.querySelector(".day-subtitle")||{}).textContent||"";return s.split("\u00b7")[0].trim();}
-  function panelsList(){var a=[];document.querySelectorAll("#tg-app .day-panel").forEach(function(p){if(p.id==="day-10")return;a.push({id:p.id,title:dayTitle(p.id),sub:daySub(p.id)});});return a;}
-  function anchorOf(panel){return panel.querySelector(".eg-add-btn");}
-
-  // ── TOAST ──
-  var toastT=null;
-  function toast(msg){var el=document.getElementById("eg-toast");if(!el){el=document.createElement("div");el.id="eg-toast";document.body.appendChild(el);}el.textContent=msg;el.classList.add("show");clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove("show");},1800);}
-
-  // ── CUSTOM CARDS ──
-  function buildCard(c){
-    var d=document.createElement("div");
-    d.className="exercise-card eg-custom";
-    d.setAttribute("onclick","toggle(this)");
-    d.dataset.custom=c.id;
-    d.dataset.exid=slug(c.name);
-    var h='<div class="card-header"><div class="exercise-num" style="color:#e8ff47">+</div>'
-      +'<div class="card-info"><div class="exercise-name">'+esc(c.name)+'</div><div class="exercise-meta">'
-      +(c.target?'<span class="tag tag-target">'+esc(c.target)+'</span>':'')
-      +(c.band?'<span class="tag tag-band">'+esc(c.band)+'</span>':'')
-      +'</div></div>'
-      +(c.setsReps?'<div class="sets-reps">'+esc(c.setsReps)+'<span>sets &times; reps</span></div>':'')
-      +'<div class="chevron">&#9660;</div></div>';
-    var b="";
-    if(c.cue) b+='<div class="mirror-cue">'+esc(c.cue)+'</div>';
-    if(c.setup) b+='<div class="section-label">Setup</div><div class="setup-box">'+esc(c.setup)+'</div>';
-    if(c.cues&&c.cues.length) b+='<div class="section-label">Form Cues</div><ul class="cues-list">'+c.cues.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>';
-    if(c.mistakes&&c.mistakes.length) b+='<div class="section-label">Common Mistakes</div><ul class="mistakes-list">'+c.mistakes.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>';
-    if(c.note) b+='<div class="note-box">&#128161; '+esc(c.note)+'</div>';
-    var dn=Math.max(1,+c.dots||3);
-    b+='<div class="set-tracker"><span class="set-tracker-label">Sets</span><div class="set-dots">'+dotsHtml(dn)+'</div><button class="set-reset" onclick="resetDots(this)" title="Reset">&#8634;</button><span class="set-complete-msg">Done! &#10003;</span></div>';
-    if(c.rest) b+='<div class="timer-row"><button class="timer-btn" onclick="tgStartTimer('+(+c.rest)+", 'Rest &mdash; "+escA(c.name)+"', 'REST')"+'"><span class="timer-icon">&#9201;</span>'+fmt(c.rest)+' rest</button></div>';
-    var tools='<div class="eg-tools"><button class="eg-t-btn move" data-act="move">Move</button><button class="eg-t-btn" data-act="edit">Edit</button><button class="eg-t-btn danger" data-act="del">Delete</button></div>';
-    d.innerHTML=h+'<div class="card-body">'+b+'</div>'+tools;
-    d.querySelector(".eg-tools").addEventListener("click",function(e){
-      e.stopPropagation();
-      var act=e.target.getAttribute("data-act");
-      if(act==="move") openMove({type:"custom",pid:d.dataset.panel,id:c.id,name:c.name,current:d.dataset.panel});
-      else if(act==="edit") openModal(d.dataset.panel,c.id);
-      else if(act==="del"){ if(confirm('Delete "'+c.name+'"? Your completion history is kept.')) delCustom(d.dataset.panel,c.id); }
-    });
-    return d;
-  }
-
-  function renderCustom(){
-    document.querySelectorAll("#tg-app .exercise-card.eg-custom").forEach(function(n){n.remove();});
-    var store=custom();
-    Object.keys(store).forEach(function(pid){
-      var panel=document.getElementById(pid); if(!panel) return;
-      var addBtn=anchorOf(panel);
-      (store[pid]||[]).forEach(function(c){
-        var card=buildCard(c); card.dataset.panel=pid;
-        if(addBtn) panel.insertBefore(card,addBtn); else panel.appendChild(card);
-      });
-    });
-    restoreCustomToday();
-  }
-
-  function restoreCustomToday(){
-    var set=(jget("eg_done",{})[today()])||{};
-    document.querySelectorAll("#tg-app .exercise-card.eg-custom").forEach(function(card){
-      if(!set[card.dataset.exid]) return;
-      var tr=card.querySelector(".set-tracker"); if(!tr) return;
-      tr.querySelectorAll(".set-dot").forEach(function(x){x.classList.add("done");});
-      var m=tr.querySelector(".set-complete-msg"); if(m) m.classList.add("show");
-    });
-  }
-
-  function delCustom(pid,id){
-    var s=custom(); if(s[pid]){ s[pid]=s[pid].filter(function(c){return c.id!==id;}); if(!s[pid].length) delete s[pid]; saveCustom(s); }
-    renderCustom();
-  }
-
-  function moveCustom(pid,id,target){
-    var s=custom(); if(!s[pid]) return;
-    var c=null;
-    s[pid]=s[pid].filter(function(x){ if(x.id===id){c=x;return false;} return true; });
-    if(!s[pid].length) delete s[pid];
-    if(c){ (s[target]=s[target]||[]).push(c); }
-    saveCustom(s); renderCustom();
-  }
-
-  // ── PREBUILT CARDS: tools + hide + move ──
-  function injectPrebuilt(){
-    document.querySelectorAll("#tg-app .exercise-card:not(.eg-custom)").forEach(function(card){
-      if(card.querySelector(".eg-tools")) return;
-      card.dataset.home=(card.closest(".day-panel")||{}).id||"";
-      var exid=cardExid(card);
-      if(hidden().indexOf(exid)>=0) card.classList.add("eg-hidden");
-      var t=document.createElement("div"); t.className="eg-tools";
-      t.innerHTML='<button class="eg-t-btn move" data-act="move">Move</button><button class="eg-t-btn" data-act="hide"></button>';
-      card.appendChild(t);
-      syncBtn(card);
-      t.addEventListener("click",function(e){
-        e.stopPropagation();
-        var act=e.target.getAttribute("data-act");
-        if(act==="move"){ openMove({type:"pre",card:card,name:cardName(card),current:(card.closest(".day-panel")||{}).id}); return; }
-        var h=hidden(),i=h.indexOf(exid);
-        if(i>=0){h.splice(i,1);card.classList.remove("eg-hidden");}
-        else{h.push(exid);card.classList.add("eg-hidden");}
-        saveHidden(h); syncBtn(card); updateCount();
-      });
-    });
-  }
-  function syncBtn(card){var b=card.querySelector('.eg-tools [data-act="hide"]'); if(b) b.textContent=card.classList.contains("eg-hidden")?"Restore":"Hide";}
-
-  function findPrebuilt(exid){
-    var found=null;
-    document.querySelectorAll("#tg-app .exercise-card:not(.eg-custom)").forEach(function(c){ if(!found && cardExid(c)===exid) found=c; });
-    return found;
-  }
-  function applyMoves(){
-    var mv=moved();
-    Object.keys(mv).forEach(function(exid){
-      var pid=mv[exid], panel=document.getElementById(pid); if(!panel) return;
-      var card=findPrebuilt(exid); if(!card) return;
-      var anchor=anchorOf(panel);
-      if(anchor) panel.insertBefore(card,anchor); else panel.appendChild(card);
-      if(card.dataset.home!==pid) card.classList.add("eg-moved-from-home");
-    });
-  }
-  function movePrebuilt(card,target){
-    var exid=cardExid(card), home=card.dataset.home||(card.closest(".day-panel")||{}).id||"", mv=moved();
-    if(target===home){ delete mv[exid]; card.classList.remove("eg-moved-from-home"); }
-    else { mv[exid]=target; card.classList.add("eg-moved-from-home"); }
-    saveMoved(mv);
-    var panel=document.getElementById(target), anchor=anchorOf(panel);
-    if(anchor) panel.insertBefore(card,anchor); else panel.appendChild(card);
-  }
-
-  // ── ADD BUTTONS + EDIT BAR ──
-  function injectAddButtons(){
-    document.querySelectorAll("#tg-app .day-panel").forEach(function(p){
-      if(p.id==="day-10"||p.querySelector(".eg-add-btn")) return;
-      var b=document.createElement("button"); b.className="eg-add-btn"; b.type="button"; b.textContent="+ Add exercise";
-      b.addEventListener("click",function(){openModal(p.id,null);});
-      p.appendChild(b);
-    });
-  }
-  function updateCount(){var el=document.querySelector("#tg-app .eg-hidden-count"); if(el){var n=hidden().length; el.textContent=n?(n+" hidden"):"";}}
-  function injectBar(){
-    var nav=document.querySelector("#tg-app .mode-nav"); if(!nav||document.querySelector("#tg-app .eg-editbar")) return;
-    var bar=document.createElement("div"); bar.className="eg-editbar";
-    bar.innerHTML='<button type="button" class="eg-edit-toggle">&#9999; Edit exercises</button><span class="eg-hidden-count"></span>';
-    nav.insertAdjacentElement("afterend",bar);
-    bar.querySelector(".eg-edit-toggle").addEventListener("click",function(){
-      var app=document.getElementById("tg-app"); app.classList.toggle("eg-edit");
-      this.innerHTML=app.classList.contains("eg-edit")?"&#10003; Done editing":"&#9999; Edit exercises";
-    });
-  }
-
-  // ── MOVE PICKER ──
-  function buildMoveModal(){
-    if(document.getElementById("eg-move")) return;
-    var m=document.createElement("div"); m.id="eg-move";
-    m.innerHTML='<div class="eg-move-sheet"><div class="eg-move-title">Move to\u2026</div><div class="eg-move-name" id="eg-move-name"></div><div class="eg-move-days" id="eg-move-days"></div><button type="button" class="eg-move-cancel" id="eg-move-cancel">Cancel</button></div>';
-    document.body.appendChild(m);
-    document.getElementById("eg-move-cancel").addEventListener("click",closeMove);
-    m.addEventListener("click",function(e){if(e.target===m)closeMove();});
-  }
-  function openMove(ctx){
-    buildMoveModal();
-    document.getElementById("eg-move-name").textContent=ctx.name||"";
-    var wrap=document.getElementById("eg-move-days"); wrap.innerHTML="";
-    panelsList().forEach(function(p){
-      var b=document.createElement("button"); b.type="button"; b.className="eg-day-opt";
-      b.innerHTML=esc(p.title)+(p.id===ctx.current?'<span class="eg-cur-tag">CURRENT</span>':'')+(p.sub?'<small>'+esc(p.sub)+'</small>':'');
-      if(p.id===ctx.current){ b.classList.add("cur"); b.disabled=true; }
-      else b.addEventListener("click",function(){ doMove(ctx,p.id); closeMove(); });
-      wrap.appendChild(b);
-    });
-    document.getElementById("eg-move").classList.add("open");
-  }
-  function closeMove(){var m=document.getElementById("eg-move"); if(m)m.classList.remove("open");}
-  function doMove(ctx,target){
-    if(ctx.type==="custom") moveCustom(ctx.pid,ctx.id,target);
-    else movePrebuilt(ctx.card,target);
-    toast("Moved to "+dayTitle(target));
-  }
-
-  // ── ADD / EDIT MODAL ──
-  function buildModal(){
-    if(document.getElementById("eg-modal")) return;
-    var dayOpts="";
-    panelsList().forEach(function(p){ dayOpts+='<option value="'+p.id+'">'+esc(p.title)+'</option>'; });
-    var m=document.createElement("div"); m.id="eg-modal";
-    m.innerHTML='<div class="eg-sheet">'
-      +'<h2 id="eg-m-title">Add exercise</h2><div class="eg-sub">Custom exercises live on this device and track sets just like the built-in ones.</div>'
-      +'<label>Name *</label><input id="eg-f-name" placeholder="e.g. Cable Face Pull"/>'
-      +'<label>Day</label><select id="eg-f-day">'+dayOpts+'</select>'
-      +'<div class="eg-row"><div><label>Target</label><input id="eg-f-target" placeholder="Rear Delts &middot; Traps"/></div><div><label>Band / Equipment</label><input id="eg-f-band" placeholder="Tube 20&ndash;30 lb"/></div></div>'
-      +'<div class="eg-row"><div><label>Sets &times; Reps</label><input id="eg-f-sr" placeholder="3&times;12&ndash;15"/></div><div><label>Set dots</label><input id="eg-f-dots" type="number" inputmode="decimal" min="1" max="8" value="3"/></div></div>'
-      +'<label>One-line cue</label><input id="eg-f-cue" placeholder="Pull to your forehead, elbows high"/>'
-      +'<label>Setup</label><textarea id="eg-f-setup" placeholder="How to get into position\u2026"></textarea>'
-      +'<label>Form cues <span class="eg-hint">one per line</span></label><textarea id="eg-f-cues" placeholder="Squeeze shoulder blades\nElbows stay high\nSlow return"></textarea>'
-      +'<label>Common mistakes <span class="eg-hint">one per line</span></label><textarea id="eg-f-miss" placeholder="Using momentum\nShrugging"></textarea>'
-      +'<label>Note (tip box)</label><textarea id="eg-f-note" placeholder="Optional coaching note\u2026"></textarea>'
-      +'<label>Rest timer (seconds) <span class="eg-hint">blank = no timer</span></label><input id="eg-f-rest" type="number" inputmode="decimal" min="0" max="600" placeholder="60"/>'
-      +'<div class="eg-actions"><button type="button" class="eg-cancel" id="eg-cancel">Cancel</button><button type="button" class="eg-save" id="eg-save">Save</button></div>'
-      +'</div>';
-    document.body.appendChild(m);
-    document.getElementById("eg-cancel").addEventListener("click",closeModal);
-    m.addEventListener("click",function(e){if(e.target===m)closeModal();});
-    document.getElementById("eg-save").addEventListener("click",saveModal);
-  }
-  var editing=null;
-  function setV(id,v){document.getElementById(id).value=v==null?"":v;}
-  function getV(id){return document.getElementById(id).value;}
-  function openModal(pid,id){
-    buildModal();
-    editing=null;
-    document.getElementById("eg-m-title").textContent=id?"Edit exercise":"Add exercise";
-    setV("eg-f-name","");setV("eg-f-target","");setV("eg-f-band","");setV("eg-f-sr","");setV("eg-f-dots",3);
-    setV("eg-f-cue","");setV("eg-f-setup","");setV("eg-f-cues","");setV("eg-f-miss","");setV("eg-f-note","");setV("eg-f-rest","");
-    setV("eg-f-day",pid||"day-0");
-    if(id){
-      var arr=custom()[pid]||[],c=null;
-      arr.forEach(function(x){if(x.id===id)c=x;});
-      if(c){
-        editing={pid:pid,id:id};
-        setV("eg-f-name",c.name);setV("eg-f-target",c.target);setV("eg-f-band",c.band);setV("eg-f-sr",c.setsReps);
-        setV("eg-f-dots",c.dots||3);setV("eg-f-cue",c.cue);setV("eg-f-setup",c.setup);
-        setV("eg-f-cues",(c.cues||[]).join("\n"));setV("eg-f-miss",(c.mistakes||[]).join("\n"));
-        setV("eg-f-note",c.note);setV("eg-f-rest",c.rest||"");
-      }
-    }
-    document.getElementById("eg-modal").classList.add("open");
-  }
-  function closeModal(){var m=document.getElementById("eg-modal"); if(m)m.classList.remove("open");}
-  function saveModal(){
-    var name=getV("eg-f-name").trim();
-    if(!name){alert("Give the exercise a name.");return;}
-    var rest=getV("eg-f-rest").trim();
-    var c={
-      name:name,target:getV("eg-f-target").trim(),band:getV("eg-f-band").trim(),
-      setsReps:getV("eg-f-sr").trim(),dots:Math.max(1,Math.min(8,+getV("eg-f-dots")||3)),
-      cue:getV("eg-f-cue").trim(),setup:getV("eg-f-setup").trim(),
-      cues:lines(getV("eg-f-cues")),mistakes:lines(getV("eg-f-miss")),
-      note:getV("eg-f-note").trim(),rest:rest?Math.max(0,+rest):0
-    };
-    var day=getV("eg-f-day"),s=custom();
-    if(editing){
-      c.id=editing.id;
-      if(s[editing.pid]) s[editing.pid]=s[editing.pid].filter(function(x){return x.id!==editing.id;});
-      if(s[editing.pid] && !s[editing.pid].length) delete s[editing.pid];
-      (s[day]=s[day]||[]).push(c);
-    } else {
-      c.id=uid();
-      (s[day]=s[day]||[]).push(c);
-    }
-    saveCustom(s); renderCustom(); closeModal();
-  }
-
-  function init(){
-    if(!document.getElementById("tg-app")) return;
-    injectBar();
-    injectAddButtons();   // anchors must exist before moves/custom inserts
-    injectPrebuilt();     // tools + stamp home + apply hidden
-    applyMoves();         // relocate moved built-in cards
-    renderCustom();       // render custom cards into their day
-    updateCount();
-  }
-  if(document.readyState!=="loading") setTimeout(init,0);
-  else document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0);});
-})();;
+  window.egIsDone=function(exid){ return !!((loadDone()[today()]||{})[exid]); };
+  window.egSetDone=function(exid,on){ var d=loadDone(),t=today(); d[t]=d[t]||{}; if(on)d[t][exid]=true; else delete d[t][exid]; if(!Object.keys(d[t]).length)delete d[t]; saveDone(d); scheduleSync(); };
+})();
 
 /* ═══════ block boundary ═══════ */
 
@@ -15719,7 +14615,7 @@ function dsTempoStart(id,spec,mates){
   if(c.st.sets.length>=c.total) { dsGPDone(); return; }
   dsGPSetup();
 }
-function dsTempoStop(){ dsGP.on=false; dsGPClear(); var o=document.getElementById('ds-gp'); if(o)o.style.display='none'; try{ if(dsGP.lock){dsGP.lock.release();dsGP.lock=null;} }catch(e){} var b=document.getElementById('ds-tp-bar'); if(b)b.style.display='none'; }
+function dsTempoStop(){ dsGP.on=false; dsGPClear(); var o=document.getElementById('ds-gp'); if(o)o.style.display='none'; try{ if(dsGP.lock){dsGP.lock.release();dsGP.lock=null;} }catch(e){} }
 function dsGPHead(c,extra){ return '<button class="gp-x" onclick="event.stopPropagation();dsTempoStop()">\u2715</button><div class="gp-name">'+c.item.name+'</div><div class="gp-set">Set '+Math.min(c.st.sets.length+1,c.total)+' of '+c.total+(dsGP.side?' \u00b7 '+dsGP.side+' side':'')+(extra||'')+'</div>'; }
 function dsGPAdj(d){ dsGP.target=Math.max(1,Math.min(60,dsGP.target+d)); var n=document.getElementById('gp-tgt'); if(n)n.textContent=dsGP.target; }
 function dsGPSetup(){
