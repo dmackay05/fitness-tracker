@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v474 — 2026-11-10";
+var APP_BUILD = "v475 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3754,6 +3754,12 @@ function sparkSVG(series,opt){
   var tMin=Math.min.apply(null,ts),tMax=Math.max.apply(null,ts);
   var vMin=Math.min.apply(null,vs),vMax=Math.max.apply(null,vs);
   if(opt.goal){ vMin=Math.min(vMin,opt.goal); vMax=Math.max(vMax,opt.goal); }
+  var projPts=null;
+  if(opt.proj){
+    var pS=new Date(opt.proj.start+'T00:00:00').getTime(), pE=Math.max(tMax, Date.now()+28*864e5);
+    tMax=pE; projPts=[]; var _st=Math.max(pS,tMin);
+    for(var _t=_st; _t<=pE+1; _t+=(pE-_st)/30){ var _v=dsProjAt(opt.proj,_t); projPts.push({t:_t,v:_v}); vMin=Math.min(vMin,_v); vMax=Math.max(vMax,_v); }
+  }
   var pad=(vMax-vMin)*0.12||1; vMin-=pad; vMax+=pad;
   function sx(t){ return tMax===tMin?(padL):padL+(t-tMin)/(tMax-tMin)*(W-padL-padR); }
   function sy(v){ return padT+(vMax-v)/(vMax-vMin)*(H-padT-padB); }
@@ -3763,6 +3769,10 @@ function sparkSVG(series,opt){
   if(opt.goal){ var gy=sy(opt.goal).toFixed(1);
     svg+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#5eead4" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>';
     svg+='<text x="'+(W-padR)+'" y="'+(gy-3)+'" text-anchor="end" font-size="9" fill="#5eead4" font-family="monospace">goal '+opt.goal+'</text>';
+  }
+  if(projPts&&projPts.length>1){
+    svg+='<polyline points="'+projPts.map(function(q){return sx(q.t).toFixed(1)+','+sy(q.v).toFixed(1);}).join(' ')+'" fill="none" stroke="#fbbf24" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.85"/>';
+    var _lp=projPts[projPts.length-1]; svg+='<text x="'+(sx(_lp.t)-2).toFixed(1)+'" y="'+(sy(_lp.v)-5).toFixed(1)+'" text-anchor="end" font-size="9" fill="#fbbf24" font-family="monospace">plan '+(Math.round(_lp.v*10)/10)+'</text>';
   }
   svg+='<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
   series.forEach(function(p,i){ var r=(i===series.length-1)?3.2:2; svg+='<circle cx="'+sx(p.t).toFixed(1)+'" cy="'+sy(p.v).toFixed(1)+'" r="'+r+'" fill="'+color+'"/>'; });
@@ -3849,7 +3859,8 @@ function renderTrends(){
     '</select>';
   var m=avail.filter(function(x){return x.key===sel;})[0];
   var hv={};
-  chartEl.innerHTML=_trendHdr(m.label.toUpperCase(), m._s, m.unit, m.dir)+sparkSVG(m._s,{color:m.color, goal:(m.goal?m.goal():0), hover:hv});
+  var _pj=(m.key==='weight')?dsProjGet():null;
+  chartEl.innerHTML=_trendHdr(m.label.toUpperCase(), m._s, m.unit, m.dir)+(_pj?dsProjStatusHtml(_pj):'')+sparkSVG(m._s,{color:m.color, goal:(m.goal?m.goal():0), hover:hv, proj:_pj});
   _wireTrendHover(chartEl,m,m._s,hv);
 }
 
@@ -3996,7 +4007,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts","ft_height_in","ft_age","ft_sex"];
+  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -4008,7 +4019,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1};
+  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1,ft_proj:1};
   // Settings saved on this device are timestamped (ft_cfg_ts). If the Sheet's copy is
   // older (e.g. a background pull lands before the Save push reaches Apps Script),
   // keep the local ft_* settings instead of reverting them, and re-push them.
@@ -16042,4 +16053,38 @@ function dsRenderStepsCard(){
       store.set('ft_steps_seed470','1'); saveAll(); try{pushToSheets();}catch(e){} renderAll();
     }catch(e){} },4500);
   }catch(e){}
+})();
+
+// ── v475: FAT-LOSS PROJECTION LINE on the Trends weight chart ──────────
+// Expected path from a start date/weight to the goal: ~0.7 lb/wk at the
+// start, tapering to ~0.5 lb/wk near goal (deficit shrinks as weight drops).
+function dsProjGet(){ try{ var p=JSON.parse(store.get('ft_proj')||'null'); return (p&&p.start&&p.w0>0)?p:null; }catch(e){ return null; } }
+function dsProjStart(){
+  var a=null; try{ a=weightAvgWindow(7); }catch(e){}
+  var w0=a&&a.avg?Math.round(a.avg*10)/10:parseFloat(getLatestWeight()); if(!(w0>0)) return;
+  store.set('ft_proj', JSON.stringify({start:todayKey(), w0:w0, fast:0.7, slow:0.5}));
+  try{ dsQueueConfigPush(); }catch(e){}
+}
+function dsProjAt(p, t){ // t = ms timestamp → projected weight
+  var goal=GOAL_WEIGHT||0, days=(t-new Date(p.start+'T00:00:00').getTime())/864e5;
+  if(days<=0) return p.w0;
+  var w=p.w0, span=Math.max(1,p.w0-goal);
+  for(var d=0; d<days; d++){
+    if(goal && w<=goal) return goal;
+    var frac=goal?Math.max(0,Math.min(1,(w-goal)/span)):1;
+    w-=(p.slow+(p.fast-p.slow)*frac)/7*Math.min(1,days-d);
+  }
+  return goal?Math.max(goal,w):w;
+}
+function dsProjStatusHtml(p){
+  var a=null; try{ a=weightAvgWindow(7); }catch(e){} if(!a||!a.avg) return '';
+  var exp=dsProjAt(p, new Date(todayKey()+'T00:00:00').getTime()), d=a.avg-exp;
+  var col=Math.abs(d)<=1?'#5eead4':(d>0?'#fb923c':'#5eead4');
+  var txt=Math.abs(d)<=1?'on plan':(d>0?Math.abs(d).toFixed(1)+' lb behind plan':Math.abs(d).toFixed(1)+' lb ahead of plan');
+  var eta=''; if(GOAL_WEIGHT){ var t=new Date(p.start+'T00:00:00').getTime(); for(var i=0;i<730;i+=7){ if(dsProjAt(p,t+i*864e5)<=GOAL_WEIGHT+0.05){ var dd=new Date(t+i*864e5); eta=' \u00b7 goal '+GOAL_WEIGHT+' ~'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dd.getMonth()]+' '+dd.getFullYear(); break; } } }
+  return '<div style="font-size:11px;font-family:\'DM Mono\',monospace;color:#8b8b9c;margin:0 0 4px">Plan (dashed): '+exp.toFixed(1)+' today \u00b7 7-day avg '+a.avg.toFixed(1)+' \u00b7 <span style="color:'+col+'">'+txt+'</span>'+eta
+    +' \u00b7 <a href="#" onclick="if(confirm(\'Restart the plan line from today\\\'s 7-day average?\'))dsProjStart();renderTrends();return false;" style="color:#a78bfa">restart</a></div>';
+}
+(function(){ // seed David's projection once (fat-loss plan agreed Nov 10, 2026)
+  try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_proj')) store.set('ft_proj', JSON.stringify({start:'2026-11-10', w0:213, fast:0.7, slow:0.5})); }catch(e){}
 })();
