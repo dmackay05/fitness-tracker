@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v467 — 2026-11-10";
+var APP_BUILD = "v468 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4412,6 +4412,21 @@ function dsMigrateFlow292(){
 }
 function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){} try{dsQueueConfigPush();}catch(e){} }
 try{ setTimeout(function(){ try{dsMigrateFlow292();}catch(e){} },0); }catch(e){}
+// v468 one-time fix: replace five confirmed bad scale readings (one-day spikes
+// that reversed the next weigh-in) with the average of the weigh-ins either
+// side. Only touches a day if it still holds the exact bad value, so a later
+// manual correction is never overwritten. Runs once, then pushes to the Sheet.
+function dsFixWeightSpikes468(){
+  if(store.get("ft_fix_wt468")) return;
+  if((store.get("ft_name")||"")!=="David") { store.set("ft_fix_wt468","skip"); return; }
+  var fixes={"2026-07-11":[217.6,221.1],"2026-07-27":[221.0,216.8],"2026-09-01":[215.6,213.2],"2026-09-28":[214.6,212.2],"2026-10-12":[212.0,209.8]};
+  var n=0;
+  Object.keys(fixes).forEach(function(k){ var d=appData[k]; if(d && d.weight!=null && Math.abs(+d.weight-fixes[k][0])<0.05){ d.weight=fixes[k][1]; n++; } });
+  store.set("ft_fix_wt468", String(n));
+  if(n){ try{ store.set("ft_data", JSON.stringify(appData)); }catch(e){} try{ pushToSheets(); }catch(e){} try{ renderAll(); }catch(e){} if(typeof toast==="function") toast("Smoothed "+n+" bad weigh-ins"); }
+}
+try{ setTimeout(function(){ try{dsFixWeightSpikes468();}catch(e){} },4000); }catch(e){}
+
 function dsFlowActiveIds(){
   if(typeof dsFbFlowIds==='function'){ var _fb=dsFbFlowIds(); if(_fb) return _fb; }
   if(DS_FLOW_CUSTOM.active && DS_FLOW_CUSTOM.ids && DS_FLOW_CUSTOM.ids.length) return DS_FLOW_CUSTOM.ids;
