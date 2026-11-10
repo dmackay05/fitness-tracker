@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v469 — 2026-11-10";
+var APP_BUILD = "v470 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -240,6 +240,34 @@ function dsMaintFallback(){
   var s=parseInt(store.get('ft_cal_maint')); if(s>0) return s;
   return Math.round((GOALS.calRest+GOALS.calRecovery+4*GOALS.calActive+GOALS.calRide)/7);
 }
+// v470: body-size + steps sanity check on measured maintenance.
+// Mifflin-St Jeor BMR (weight from the 7-day average, height/age from Settings)
+// × an activity factor from your logged daily steps (14-day average).
+function dsAvgSteps(days){
+  var t=0,n=0; for(var i=1;i<=days;i++){ var d=new Date(); d.setDate(d.getDate()-i); var dd=appData[localDateKey(d)];
+    var v=dd&&dd.wellness&&+dd.wellness.steps; if(v>0){t+=v;n++;} }
+  return n>=5?{avg:Math.round(t/n),n:n}:null;
+}
+function dsFormulaMaint(){
+  var hIn=parseFloat(store.get('ft_height_in'))||0, age=parseInt(store.get('ft_age'))||0;
+  if(!(hIn>0&&age>0)) return null;
+  var w=null; try{ var a=weightAvgWindow(7); w=a&&a.avg; }catch(e){}
+  if(!w) w=parseFloat(getLatestWeight()); if(!(w>0)) return null;
+  var sex=store.get('ft_sex')==='f'?'f':'m';
+  var bmr=10*(w/2.2046)+6.25*(hIn*2.54)-5*age+(sex==='f'?-161:5);
+  var st=dsAvgSteps(14), steps=st?st.avg:5000;
+  var pal=1.2+Math.max(0,Math.min(0.3,(steps-3000)/1000*0.04));
+  return {tdee:Math.round(bmr*pal), bmr:Math.round(bmr), pal:Math.round(pal*100)/100, steps:steps, stepsLogged:!!st, stepDays:st?st.n:0};
+}
+// What the calorie targets actually use: the measured number, kept within
+// ±300 kcal of the formula when it's reliable, or averaged with the formula
+// while the windows are settling (water swings).
+function dsUsedMaint(r){
+  var f=dsFormulaMaint(); if(!f) return {tdee:r.tdee, f:null, how:'measured'};
+  if(r.settling||!r.reliable) return {tdee:Math.round((r.tdee+f.tdee)/2/10)*10, f:f, how:'blend'};
+  var c=Math.max(f.tdee-300, Math.min(f.tdee+300, r.tdee));
+  return {tdee:c, f:f, how:c===r.tdee?'measured':'clamped'};
+}
 var _dsBaseMaintGuard=false;
 function dsBaseMaint(){
   if(_dsBaseMaintGuard) return dsMaintFallback();
@@ -247,9 +275,11 @@ function dsBaseMaint(){
   try{
     var r=measuredTDEE();
     if(r && r.ok && r.tdee){
-      if(GOALS.calMaint!==r.tdee){ GOALS.calMaint=r.tdee; try{ store.set('ft_cal_maint', r.tdee); }catch(e){} }
-      return r.tdee;
+      var u=dsUsedMaint(r);
+      if(GOALS.calMaint!==u.tdee){ GOALS.calMaint=u.tdee; try{ store.set('ft_cal_maint', u.tdee); }catch(e){} }
+      return u.tdee;
     }
+    var f0=dsFormulaMaint(); if(f0) return f0.tdee;
   }catch(e){}
   finally{ _dsBaseMaintGuard=false; }
   return dsMaintFallback();
@@ -1113,6 +1143,7 @@ function rowToDay(row){
     foods:[], exercises:[],
     wellness:{
       sleepHours:row["Sleep Hours"]?parseFloat(row["Sleep Hours"]):0,
+      steps:row["Steps"]?parseFloat(String(row["Steps"]).replace(/,/g,"")):0,
       sleepQ:row["Sleep Quality (1-5)"]?parseFloat(row["Sleep Quality (1-5)"]):0,
       energy:row["Energy (1-5)"]?parseFloat(row["Energy (1-5)"]):0,
       mood:row["Mood (1-5)"]?parseFloat(row["Mood (1-5)"]):0,
@@ -1235,6 +1266,7 @@ function mergeDay(key,remote){
     if(remote[grp]){ local[grp]=local[grp]||{};
       Object.keys(remote[grp]).forEach(function(k){
         if(k==='rhrLog'||k==='bpLog') return;
+        if(grp==='wellness'&&k==='steps'){ if((+remote[grp][k]||0)>(+local[grp][k]||0)) local[grp][k]=remote[grp][k]; return; }
         if(local[grp][k]==null && remote[grp][k]!=null) local[grp][k]=remote[grp][k];
       }); }
   });
@@ -1339,7 +1371,7 @@ function mergeRows(rows){
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){}}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} }
+function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderLabs(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderMaintUI(); try{dsRenderGoalUI();}catch(e){}}catch(e){} try{dsRenderBulkUI();}catch(e){} try{dsRenderPhaseUI();}catch(e){} try{mpRenderToday();}catch(e){} try{dsRenderStepsCard();}catch(e){} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -1526,6 +1558,16 @@ function dsGoalLineHtml(target){
   var m=GOAL_MODES[dsGoalMode()];
   return '<div style="margin-top:6px;color:'+m.col+';line-height:1.45">Goal: <b>'+m.label+'</b> ('+(m.off===0?'at maintenance':(m.off>0?'+'+m.off:'\u2212'+Math.abs(m.off))+' kcal')+'). Today\'s target: <b>'+target+'</b>. Change it in Settings \u2192 Nutrition.</div>';
 }
+function dsUsedMaintHtml(r){
+  var u=dsUsedMaint(r), f=u.f;
+  if(!f) return '<div style="margin-top:6px;color:#8b8b9c;line-height:1.45">Add your height and age in Settings \u2192 Nutrition \u2192 Steps & body, and log steps, to sanity-check this against your size and activity.</div>';
+  var why=u.how==='blend'?'averaged with the size/steps estimate while the windows settle'
+         :(u.how==='clamped'?'held within 300 kcal of the size/steps estimate':'measured number, consistent with your size and steps');
+  return '<div style="margin-top:6px;padding:6px 8px;border:1px solid #a78bfa40;border-radius:8px;line-height:1.5">'
+    +'<div><b style="color:#a78bfa">Used for targets: '+u.tdee+' kcal</b> <span style="color:#8b8b9c">('+why+')</span></div>'
+    +'<div style="color:#8b8b9c;font-size:11px">Size/steps estimate: '+f.tdee+' kcal = BMR '+f.bmr+' \u00d7 '+f.pal+' ('
+    +(f.stepsLogged?f.steps.toLocaleString()+' steps/day avg, '+f.stepDays+' days logged':'no steps logged \u2014 assuming 5,000/day')+')</div></div>';
+}
 function renderTdeePanel(){
   var el=document.getElementById("dash-tdee"); if(!el) return;
   var r=measuredTDEE();
@@ -1547,6 +1589,7 @@ function renderTdeePanel(){
      +(r.smoothed?'<div style="color:#888;margin-top:3px;line-height:1.45">Smoothed estimate: <b>≈'+r.tdee+' kcal</b>. Every calorie target in the app is built from this one number; it moves slowly on purpose.</div>':'')
      +'<div style="color:#888;margin-top:3px;line-height:1.45">Different window lengths disagree ('+chk+'). That almost always means a few pounds of water came on or off inside the shorter windows and are being read as fat. '+trendTxt+'</div>'
      +'<div style="margin-top:6px;color:#8b8b9c;line-height:1.45">Judge by the 7-day average for now. This tightens as the swing ages out of the windows.</div>';
+    hs+=dsUsedMaintHtml(r);
     hs+=dsGoalLineHtml(target);
     if(r.anchored) hs+='<div style="margin-top:6px;color:#888;line-height:1.45">Held within \u00b1'+TDEE_ANCHOR_BAND+' kcal of the last reliable reading ('+r.anchored+' kcal, '+(r.anchorAge===0?'today':r.anchorAge+' days ago')+') while this settles.</div>';
     hs+=tdeeDayListHtml(r,false);
@@ -1559,6 +1602,7 @@ function renderTdeePanel(){
      +'<div style="color:#888;margin-top:3px;line-height:1.45">Median of '+r.nIntake+' complete logged days is '+r.medIntake+' kcal. '+trendTxt
      +' Day-to-day scale swings are large enough that the data fits anything from '+rangeTxt+' (about \u00b1'+r.halfWidth+').</div>'
      +'<div style="margin-top:6px;color:#8b8b9c;line-height:1.45">This usually tightens up on its own as more steady weigh-ins accumulate. Until then, keep eating to plan and judge by the 7-day average rather than this card.</div>';
+    hu+=dsUsedMaintHtml(r);
     hu+=tdeeDayListHtml(r,false);
     hu+='<div style="margin-top:6px;color:#8b8b9c;line-height:1.4">Slope is a robust (Theil-Sen) fit, so one bloated morning will not move it much. A direction, not a dose.</div>';
     el.innerHTML=hu; return;
@@ -1571,6 +1615,7 @@ function renderTdeePanel(){
   h+='<div style="color:#8b8b9c;margin-top:4px;line-height:1.45">Mean-based estimate: '+r.tdeeMean+' kcal'
    +(spread>=100?' \u2014 a '+Math.round(spread)+' kcal gap, which means a few low days are still skewing the average. Trust the median.'
                 :' \u2014 within '+Math.round(spread)+' kcal of the median, so the logging looks consistent.')+'</div>';
+  h+=dsUsedMaintHtml(r);
   h+=dsGoalLineHtml(target);
   if(r.tdee<1900) h+='<div style="margin-top:6px;color:#fb923c;line-height:1.45">This lands below a plausible resting rate for your size, which usually means calories are going unlogged rather than unburned \u2014 cooking oil and estimated dinner portions are the usual pair.</div>';
   h+=tdeeDayListHtml(r,false);
@@ -3921,7 +3966,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts"];
+  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts","ft_height_in","ft_age","ft_sex"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3933,7 +3978,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1};
+  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1};
   // Settings saved on this device are timestamped (ft_cfg_ts). If the Sheet's copy is
   // older (e.g. a background pull lands before the Save push reaches Apps Script),
   // keep the local ft_* settings instead of reverting them, and re-push them.
@@ -15904,4 +15949,67 @@ function dsGPDone(){ var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='done'
     'Obliques / Rotation':'Standing Pallof Rotation'};
   for(var k in al){ if(!P[k]&&P[al[k]]) P[k]=P[al[k]]; }
   if(typeof YG_FLOWMAP!=='undefined'&&!YG_FLOWMAP['sun-flow']) YG_FLOWMAP['sun-flow']='catcow';
+})();
+
+// ── v470: STEPS LOGGING (today's count + bulk paste from Fitbit/phone) ──
+function dsSetStepsFor(key,n){ var d=getDay(key); d.wellness=d.wellness||{}; d.wellness.steps=n; appData[key]=d; }
+function dsSaveStepsToday(){
+  var el=document.getElementById('steps-in'); var n=parseInt(String(el&&el.value||'').replace(/[^0-9]/g,''),10); if(!(n>=0)) return;
+  dsSetStepsFor(activeDate,n); saveAll(); renderAll(); dsRenderStepsCard(); toast('\u2713 '+n.toLocaleString()+' steps saved');
+}
+function dsParseStepsPaste(txt){
+  var MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11}, out={};
+  var re=/(?:([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})|(\d{4})-(\d{2})-(\d{2})|(\d{1,2})\/(\d{1,2})\/(\d{2,4}))\s*[:\-\u2013\u2014,]?\s*([\d,]+)\s*steps?(\s*\(as of[^)]*\))?/gi, m;
+  while((m=re.exec(txt))){
+    var y,mo,da;
+    if(m[1]){ var k=m[1].toLowerCase().slice(0,3); if(!(k in MON)) continue; y=+m[3]; mo=MON[k]; da=+m[2]; }
+    else if(m[4]){ y=+m[4]; mo=+m[5]-1; da=+m[6]; }
+    else { y=+m[9]; if(y<100) y+=2000; mo=+m[7]-1; da=+m[8]; }
+    var key=localDateKey(new Date(y,mo,da)), n=parseInt(m[10].replace(/,/g,''),10);
+    if(n>=0) out[key]={n:n,partial:!!m[11]};
+  }
+  return out;
+}
+function dsImportSteps(){
+  var ta=document.getElementById('steps-paste'); if(!ta) return;
+  var p=dsParseStepsPaste(ta.value), keys=Object.keys(p);
+  if(!keys.length){ toast('No "date: N steps" lines found'); return; }
+  keys.forEach(function(k){ dsSetStepsFor(k,p[k].n); });
+  saveAll(); renderAll(); dsRenderStepsCard(); ta.value='';
+  toast('\u2713 Imported steps for '+keys.length+' days');
+}
+function dsSaveBodyBasics(){
+  var h=parseFloat(document.getElementById('ft-height-ft').value)*12+(parseFloat(document.getElementById('ft-height-inch').value)||0);
+  var a=parseInt(document.getElementById('ft-age2').value,10);
+  if(h>0) store.set('ft_height_in',h); if(a>0){ store.set('ft_age',a); USER_AGE=a; }
+  try{ dsQueueConfigPush(); }catch(e){}
+  renderAll(); dsRenderStepsCard(); toast('\u2713 Saved');
+}
+function dsRenderStepsCard(){
+  var el=document.getElementById('steps-card-body'); if(!el) return;
+  var hIn=parseFloat(store.get('ft_height_in'))||0, d=appData[activeDate], cur=(d&&d.wellness&&d.wellness.steps)||'';
+  var st=dsAvgSteps(14), f=dsFormulaMaint();
+  el.innerHTML='<div class="rlbl" style="margin-top:0">Steps for '+(activeDate===todayKey()?'today':prettyDate(activeDate))+'</div>'
+    +'<div style="display:flex;gap:8px"><input type="number" inputmode="numeric" id="steps-in" value="'+cur+'" placeholder="e.g. 7200" style="flex:1;margin-bottom:0"/><button class="bp" onclick="dsSaveStepsToday()">Save</button></div>'
+    +'<div style="font-size:11px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:6px">14-day average: '+(st?st.avg.toLocaleString()+' ('+st.n+' days logged)':'log at least 5 days')+'</div>'
+    +'<div class="rlbl">Paste a step list</div>'
+    +'<textarea id="steps-paste" rows="3" placeholder="Nov 09, 2026: 4,679 steps \u2022 Nov 08, 2026: 4,037 steps \u2026" style="width:100%;box-sizing:border-box;font-family:\'DM Mono\',monospace;font-size:11px"></textarea>'
+    +'<button class="bw" style="width:100%;margin-top:6px" onclick="dsImportSteps()">Import steps</button>'
+    +'<div class="rlbl">Height &amp; age (for the maintenance sanity check)</div>'
+    +'<div style="display:flex;gap:8px"><input type="number" id="ft-height-ft" placeholder="ft" value="'+(hIn?Math.floor(hIn/12):'')+'" style="flex:1;margin-bottom:0"/><input type="number" id="ft-height-inch" placeholder="in" value="'+(hIn?Math.round(hIn%12):'')+'" style="flex:1;margin-bottom:0"/><input type="number" id="ft-age2" placeholder="age" value="'+(store.get('ft_age')||'')+'" style="flex:1;margin-bottom:0"/><button class="bp" onclick="dsSaveBodyBasics()">Save</button></div>'
+    +(f?'<div style="font-size:11px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:6px">Size/steps maintenance estimate: <b style="color:#ddd">'+f.tdee+' kcal</b> (BMR '+f.bmr+' \u00d7 '+f.pal+')</div>':'');
+}
+(function(){ // seed David's basics once (from chat, Nov 10 2026)
+  try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_height_in')){ store.set('ft_height_in',72); if(!store.get('ft_age')) store.set('ft_age',45); } }catch(e){}
+})();
+
+(function(){ // v470 one-time: steps David pasted in chat (Oct 12 – Nov 9, 2026)
+  try{
+    if(store.get('ft_steps_seed470')||(store.get('ft_name')||'')!=='David') return;
+    var S={"2026-11-09":4679,"2026-11-08":4037,"2026-11-07":5497,"2026-11-06":3600,"2026-11-05":8186,"2026-11-04":3987,"2026-11-03":5980,"2026-11-02":1043,"2026-11-01":3924,"2026-10-31":4489,"2026-10-30":6214,"2026-10-29":4546,"2026-10-28":6200,"2026-10-27":4918,"2026-10-26":7290,"2026-10-25":5892,"2026-10-24":6332,"2026-10-23":6272,"2026-10-22":4470,"2026-10-21":7987,"2026-10-20":3832,"2026-10-19":5693,"2026-10-18":8001,"2026-10-17":7317,"2026-10-16":6268,"2026-10-15":4727,"2026-10-14":2665,"2026-10-13":7037,"2026-10-12":7790};
+    setTimeout(function(){ try{
+      Object.keys(S).forEach(function(k){ var d=getDay(k); d.wellness=d.wellness||{}; if(!(+d.wellness.steps>0)) d.wellness.steps=S[k]; appData[k]=d; });
+      store.set('ft_steps_seed470','1'); saveAll(); try{pushToSheets();}catch(e){} renderAll();
+    }catch(e){} },4500);
+  }catch(e){}
 })();
