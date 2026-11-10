@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v466 — 2026-11-10";
+var APP_BUILD = "v467 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2243,7 +2243,9 @@ function _bpTraining(days){
   });
   return {sessions:sessions, multi:multi, same:same, samePct:multi?Math.round(same/multi*100):null, rir:rirN?rirSum/rirN:null, rirN:rirN};
 }
+var _bpSparkHv=null;
 function _bpSpark(){
+  _bpSparkHv=null;
   var pts=weightSeries().filter(function(p){ return p.key>=_bpKeyBack(55); });
   if(pts.length<4) return '';
   var W=320,H=64,P=4, x0=new Date(_bpKeyBack(55)+'T00:00:00').getTime(), x1=new Date(todayKey()+'T00:00:00').getTime();
@@ -2254,8 +2256,13 @@ function _bpSpark(){
   var Y=function(v){ return P+(hi-v)/(hi-lo||1)*(H-2*P); };
   var dots=pts.map(function(p){ return '<circle cx="'+X(p.key).toFixed(1)+'" cy="'+Y(p.w).toFixed(1)+'" r="1.8" fill="#a78bfa" opacity=".35"/>'; }).join('');
   var line=avg.map(function(a,i){ return (i?'L':'M')+X(a.key).toFixed(1)+' '+Y(a.v).toFixed(1); }).join(' ');
-  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" style="display:block;margin:8px 0 2px" role="img" aria-label="Daily weigh-ins with 7-day average, last 8 weeks">'
-    +dots+'<path d="'+line+'" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+  _bpSparkHv={W:W,H:H,series:pts.map(function(p){return {t:new Date(p.key+'T00:00:00').getTime(),v:p.w,k:p.key};})};
+  _bpSparkHv.pts=pts.map(function(p,i){return {x:X(p.key),y:Y(p.w),p:_bpSparkHv.series[i]};});
+  return '<div id="bp-spark"><svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" style="display:block;margin:8px 0 2px" role="img" aria-label="Daily weigh-ins with 7-day average, last 8 weeks">'
+    +dots+'<path d="'+line+'" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'
+    +'<line class="tt-guide" x1="0" y1="0" x2="0" y2="'+H+'" stroke="#aaa" stroke-width="0.6" stroke-dasharray="2 2" vector-effect="non-scaling-stroke" visibility="hidden"/>'
+    +'<circle class="tt-dot" r="4" fill="none" stroke="#fff" stroke-width="1.5" vector-effect="non-scaling-stroke" visibility="hidden"/>'
+    +'<rect class="tt-hit" x="0" y="0" width="'+W+'" height="'+H+'" fill="transparent" style="cursor:crosshair"/></svg></div>'
     +'<div style="display:flex;justify-content:space-between;font-size:10px;color:#8b8b9c;font-family:\'DM Mono\',monospace"><span>8 weeks ago</span><span>dots = daily · line = 7-day avg</span><span>today</span></div>';
 }
 function _bpTile(label, value, sub, col){
@@ -2346,6 +2353,8 @@ function renderBigPicture(){
     var tdr=null; try{ tdr=measuredTDEE(); }catch(e){}
     h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Calories:</b> maintenance '+((tdr&&tdr.ok)?'≈':'est. ')+base+' · goal '+(gm.off===0?'±0':(gm.off>0?'+':'−')+Math.abs(gm.off))+' · today’s target <b style="color:#f0f0f0">'+tgt+'</b></div>';
     el.innerHTML=h;
+    var sp=document.getElementById('bp-spark');
+    if(sp&&_bpSparkHv){ var wm=TREND_METRICS.filter(function(x){return x.key==='weight';})[0]; _wireTrendHover(sp,wm,_bpSparkHv.series,_bpSparkHv); }
   }catch(e){ el.innerHTML=''; }
 }
 // ── v453: WEEKLY LOWER-BODY CHECK-IN (hip / low back / knee stiffness, 0–10) ──
@@ -3726,11 +3735,12 @@ function _wireTrendHover(el,m,series,hv){
     var r=svg.getBoundingClientRect(); if(!r.width) return;
     var cx=(ev.touches?ev.touches[0].clientX:ev.clientX), x=(cx-r.left)*hv.W/r.width;
     var bi=0,bd=1e9; hv.pts.forEach(function(q,i){var dd=Math.abs(q.x-x); if(dd<bd){bd=dd;bi=i;}});
-    var q=hv.pts[bi], sc=r.width/hv.W;
+    var q=hv.pts[bi], sc=r.width/hv.W, scy=hv.H?r.height/hv.H:sc;
     guide.setAttribute("x1",q.x); guide.setAttribute("x2",q.x); guide.setAttribute("visibility","visible");
     dot.setAttribute("cx",q.x); dot.setAttribute("cy",q.y); dot.setAttribute("visibility","visible");
+    if(hv.H){ var rx=4/sc, ry=4/scy; if(dot.tagName.toLowerCase()==="circle"){ dot.setAttribute("r",Math.min(rx,ry)); dot.setAttribute("transform","translate("+q.x+" "+q.y+") scale("+(rx/Math.min(rx,ry))+" "+(ry/Math.min(rx,ry))+") translate("+(-q.x)+" "+(-q.y)+")"); } }
     tip.innerHTML=_trendTipHtml(m,series,bi); tip.style.display="block";
-    var er=el.getBoundingClientRect(), px=r.left-er.left+q.x*sc, py=r.top-er.top+q.y*sc;
+    var er=el.getBoundingClientRect(), px=r.left-er.left+q.x*sc, py=r.top-er.top+q.y*scy;
     var tw=tip.offsetWidth, th=tip.offsetHeight, left=px+12; if(left+tw>el.clientWidth) left=px-tw-12; if(left<0) left=0;
     var top=py-th-10; if(top<0) top=py+12;
     tip.style.left=left+"px"; tip.style.top=top+"px";
