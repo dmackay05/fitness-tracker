@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v463 — 2026-11-09";
+var APP_BUILD = "v464 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9123,8 +9123,46 @@ function dsRenderMuscleVolume(){
 }
 /* ── Stick-figure setup diagrams (side view). Keyed by exercise/variant NAME. ── */
 var DS_PIC_THUMB=false;  // v319: exercise-library thumbnails — no titles, tags or notes, cropped tight
+/* v464: auto-upgrade for the older figures — any two-panel figure drawn without the new-style fields gets the
+   moving limb coloured orange, a hand/elbow marker, a drawn door + anchor where the band leaves the body,
+   and the motion arrow between panels, so every exercise reads the same way. */
+var DS_PIC_NAME='';
+var DS_ARROW_VERBS=['Press','Row','Pull','Curl','Raise','Fly','Squat','Lunge','Extend','Thrust','Bridge','Hinge','Crunch','Rotate','Shrug','Squeeze','Lift','Push','Step','Sweep','Lower','Kick','Reach','Open'];
+function dsAutoNew(P,notes){
+  if(P.length!==2||P.some(function(p){ return p.work; })) return;
+  var a=P[0], b=P[1], off=b.cx-a.cx;
+  function same(x,y){ if(!x&&!y) return true; if(!x||!y||x.length!==y.length) return false;
+    for(var i=0;i<x.length;i++){ if(Math.abs(x[i][0]-(y[i][0]-off))>2||Math.abs(x[i][1]-y[i][1])>2) return false; } return true; }
+  var keys=['arm','arm2','legs','legs2'];
+  var mv=keys.filter(function(k){ return (a[k]||b[k])&&!same(a[k],b[k]); });
+  var am=mv.filter(function(k){ return /arm/.test(k); }); if(am.length) mv=am;
+  if(!mv.length) mv=keys.filter(function(k){ return a[k]&&b[k]; }).slice(0,1);
+  P.forEach(function(p){
+    var w=[]; mv.forEach(function(k){ if(p[k]){ w.push(p[k]); p[k]=null; } }); p.work=w;
+    var w0=w[0];
+    if(w0&&/arm/.test(mv[0])){ p.hand=w0[w0.length-1]; if(w0.length>=3) p.elbow=w0[1]; }
+    var dx=p.cx-95;
+    [p.band,p.band2].forEach(function(bd){
+      if(!bd||p.anchor) return;
+      [bd[0],bd[bd.length-1]].forEach(function(e){
+        if(p.anchor) return; var rx=e[0]-dx;
+        if(rx<=16||rx>=174){
+          var L=rx<=16; p.props=(p.props||[]).concat([{t:'rect',x:(L?2:180)+dx,y:30,w:8,h:222,rx:2}]);
+          p.anchor=[(L?14:176)+dx,Math.min(e[1],246)-2];
+        }
+      });
+    });
+  });
+  var txt=(notes||[]).join(' ')+' '+(a.title||'')+' '+(b.title||''), lab='Move', nm=String(DS_PIC_NAME||'');
+  var byName=[[/Push-?up/i,'Lower'],[/Curl/i,'Curl'],[/Triceps|Extension/i,'Extend'],[/Pallof|Press/i,'Press'],[/Row/i,'Row'],[/Calf|Lateral Raise/i,'Raise'],
+    [/Rear Delt|Fly/i,'Fly'],[/Thrust|Bridge/i,'Bridge'],[/Lunge|Split/i,'Step'],[/Squat/i,'Squat'],[/Crunch|Sit-Up/i,'Crunch'],[/Rotation|Pronation/i,'Rotate'],[/Shrug/i,'Shrug'],[/Pull-Apart/i,'Pull'],[/Adductor/i,'Lift']];
+  for(var j=0;j<byName.length;j++){ if(byName[j][0].test(nm)){ txt=byName[j][1]+' '+txt; break; } }
+  for(var i=0;i<DS_ARROW_VERBS.length;i++){ if(new RegExp('\\b'+DS_ARROW_VERBS[i],'i').test(txt)){ lab=DS_ARROW_VERBS[i]; break; } }
+  if(!a.arrow){ a.arrow=true; a.arrowLabel=a.arrowLabel||lab; }
+}
 function dsPic(panels,notes){
   var _th=DS_PIC_THUMB; if(_th) notes=[];
+  dsAutoNew(panels,notes);
   var H=286+notes.length*18;
   var s=_th?'<svg viewBox="0 26 380 232" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" style="display:block">'
     :'<svg viewBox="0 0 380 '+H+'" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" style="display:block;max-width:420px">';
@@ -10075,7 +10113,7 @@ function dsRenderItem(rawItem,idx,accent){
   if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); var _mates=dsPairMates(rawItem); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\',\''+_mates.join(',')+'\')">\u25b6 Guided '+(_mates.length?'superset':'sets')+'</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   var _hasPic=false;
-  if(typeof DS_SETUPPICS!=='undefined'&&DS_SETUPPICS[item.name]){ h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
+  if(typeof DS_SETUPPICS!=='undefined'&&DS_SETUPPICS[item.name]){ DS_PIC_NAME=item.name; h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
   else if(typeof YG_FLOWMAP!=='undefined'&&YG_FLOWMAP[item.id]){ var _yf=ygFigHtml(YG_FLOWMAP[item.id]); if(_yf){ h+='<div class="ds-setuppic">'+_yf+'</div>'; _hasPic=true; } }
   if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
@@ -15349,7 +15387,7 @@ var XL_CFG={
 var XL_ST={};   // per-kind state: {list, open, q}
 function xlPic(name,thumb){
   DS_PIC_THUMB=!!thumb;
-  try{ return DS_SETUPPICS[name](); }catch(e){ return ''; }
+  try{ DS_PIC_NAME=name; return DS_SETUPPICS[name](); }catch(e){ return ''; }
   finally{ DS_PIC_THUMB=false; }
 }
 function xlEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -15560,3 +15598,127 @@ function dsGPDone(){ var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='done'
   o.innerHTML='<button class="gp-x" onclick="dsTempoStop()">\u2715</button><div class="gp-phase" style="color:#7cd67c">ALL SETS DONE \u2713</div><div class="gp-sub">'+names+'</div><button class="gp-go" onclick="dsTempoStop()">Close</button>';
   o.style.display='flex'; dsTPBeep(880,150); setTimeout(function(){dsTPBeep(1320,250);},180);
 }
+
+/* ── v464: remaining exercises redrawn in the two-panel setup style (orange working limb, drawn props,
+   labels beside the part, arrow between panels). Aliases reuse a figure where the setup is the same. ── */
+(function(){
+  var P=DS_SETUPPICS;
+  function wallR(){ return [{t:'rect',x:172,y:30,w:8,h:222,rx:2}]; }
+  function wallL(x){ return [{t:'rect',x:x,y:30,w:8,h:222,rx:2}]; }
+  P['Chair Squat']=function(){
+    var ch={props:[{t:'rect',x:24,y:118,w:6,h:134,rx:2},{t:'rect',x:24,y:178,w:48,h:8,rx:2}],lines:[[68,186,68,252]]};
+    return dsPic2(
+      dsMk(ch,{title:'Top (standing)',arrow:true,arrowLabel:'Sit back',head:[106,60],torso:[[106,76],[106,138]],
+        work:[[[106,138],[108,192],[106,246],[123,246]]],arm:[[106,88],[130,102],[152,102]],labels:[[130,214,'Whole foot']]}),
+      dsMk(ch,{title:'Bottom (light touch)',head:[108,96],torso:[[72,172],[100,112]],
+        work:[[[72,172],[120,186],[106,246],[123,246]]],arm:[[100,122],[128,126],[152,122]],labels:[[120,150,'Light touch only']]}),
+      ['Chair behind you, feet hip-width, toes slightly out','Hips back · 2–3 sec down to a light touch · stand tall']); };
+  P['Wall Push-up']=function(){
+    var w={props:wallR()};
+    return dsPic2(
+      dsMk(w,{title:'Start (arms straight)',arrow:true,arrowLabel:'Lower',head:[128,96],torso:[[120,110],[86,178]],legs:[[86,178],[56,246],[44,246]],
+        work:[[[120,110],[146,113],[170,116]]],hand:[170,116],labels:[[8,120,'Body in one'],[8,134,'straight line']]}),
+      dsMk(w,{title:'In (chest to wall)',head:[148,94],torso:[[140,108],[100,176]],legs:[[100,176],[56,246],[44,246]],
+        work:[[[140,108],[152,138],[170,116]]],hand:[170,116],elbow:[152,138],labels:[[8,120,'Feet stay put']]}),
+      ['Hands on the wall at chest height, feet back','Lean in, chest to the wall · press away']); };
+  P['Knee Push-up']=function(){ return dsPic2(
+      {title:'Top (arms straight)',arrow:true,arrowLabel:'Lower',head:[146,166],torso:[[130,176],[70,214]],legs:[[70,214],[40,246],[12,240]],
+        work:[[[130,176],[131,211],[132,246]]],hand:[132,246],labels:[[8,140,'Knees to head,'],[8,154,'one straight line']]},
+      {title:'Bottom (chest low)',head:[150,224],torso:[[134,230],[84,238]],legs:[[84,238],[40,246],[12,240]],
+        work:[[[134,230],[112,238],[132,246]]],hand:[132,246],elbow:[112,238],labels:[[8,170,'Elbows about 45°']]},
+      ['Knees down, hands under the shoulders','Chest to the floor · full range beats more reps']); };
+  P['High-Anchor Band Fly']=function(){
+    var f=dsMk(DS_FRONT,{tags:[[8,268,'High anchor behind you']]});
+    return dsPic2(
+      dsMk(f,{title:'Open (arms wide)',arrow:true,arrowLabel:'Fly',anchor:[14,30],work:[[[95,88],[62,84],[32,76]],[[95,88],[128,84],[158,76]]],hand:[32,76],band:[[14,34],[32,76]],band2:[[176,34],[158,76]]}),
+      dsMk(f,{title:'Hands meet low',anchor:[14,30],work:[[[95,88],[82,116],[92,140]],[[95,88],[108,116],[98,140]]],hand:[95,140],band:[[14,34],[92,140]],band2:[[176,34],[98,140]],bw:4,labels:[[120,170,'Squeeze']]}),
+      ['Face away from a high anchor, arms open wide','Sweep down and together · 1–2 sec squeeze · slow return']); };
+  P['Seated Under-Seat Press']=function(){
+    var s={head:[90,94],torso:[[90,180],[90,110]],legs:[[90,180],[138,182],[140,246],[156,246]],
+      props:[{t:'rect',x:50,y:186,w:70,h:8,rx:2}],lines:[[56,194,56,252],[114,194,114,252]],tags:[[8,268,'Band under the seat']]};
+    return dsPic2(
+      dsMk(s,{title:'Start (at shoulders)',arrow:true,arrowLabel:'Press',work:[[[92,118],[112,138],[110,110]]],hand:[110,110],elbow:[112,138],band:[[88,190],[110,112]]}),
+      dsMk(s,{title:'Top (locked out)',work:[[[92,118],[100,84],[96,50]]],hand:[96,50],elbow:[100,84],band:[[88,190],[96,52]],bw:4,labels:[[120,90,'Ribs down']]}),
+      ['Sit on the band, handles at shoulder height','Press straight up · 3 sec back to the shoulders']); };
+  function wallCurl(notes){
+    var w={props:wallL(70),head:[92,60],torso:[[92,76],[92,146]],legs:[[92,146],[96,200],[100,246],[117,246]],elbow:[92,138],tags:[[8,268,'Band under both feet']]};
+    return dsPic2(
+      dsMk(w,{title:'Bottom (arms long)',arrow:true,arrowLabel:'Curl',work:[[[94,86],[92,138],[100,186]]],hand:[100,186],band:[[100,190],[106,248]],labels:[[4,126,'Back and'],[4,140,'elbows on'],[4,154,'the wall']]}),
+      dsMk(w,{title:'Top (squeeze)',work:[[[94,86],[92,138],[118,100]]],hand:[118,100],band:[[118,104],[106,248]],bw:4,labels:[[4,126,'Elbows'],[4,140,'stay put'],[126,96,'Squeeze']]}),
+      notes); }
+  P['Wall Curl (strict)']=function(){ return wallCurl(['Back and elbows pinned to the wall, band under your feet','Curl up · hold 2 sec at the top · lower under control']); };
+  P['Wall-Braced Curl (short head)']=function(){ return wallCurl(['Upper arm braced on the wall so the elbow cannot drift','Curl slowly, pinkies up at the top · stop at any elbow ache']); };
+  function clam(){
+    var c={head:[24,226],torso:[[40,236],[110,238]],legs:[[110,240],[150,246],[176,242]],arm:[[46,236],[40,216],[30,214]],tags:[[8,268,'Band above knees (optional)']]};
+    return dsPic2(
+      dsMk(c,{title:'Closed (knees together)',arrow:true,arrowLabel:'Open',work:[[[110,236],[148,238],[176,236]]],band:[[148,240],[150,246]],labels:[[30,180,'Hips stacked']]}),
+      dsMk(c,{title:'Open (top knee up)',work:[[[110,236],[150,204],[176,236]]],band:[[150,206],[150,246]],bw:4,labels:[[30,180,'Feet stay together'],[30,194,'pelvis doesn’t roll']]}),
+      ['Lie on your side, knees bent, hips stacked','Open the top knee · 1 sec pause · slow close']); }
+  P['Side-Lying Clamshell']=clam; P['Clamshells']=clam;
+  P['Seated Banded Calf Raise']=function(){
+    var s={head:[60,94],torso:[[60,180],[60,110]],arm:[[60,120],[90,150],[116,174]],props:[{t:'rect',x:20,y:186,w:74,h:8,rx:2}],lines:[[26,194,26,252],[88,194,88,252]],tags:[[8,268,'Band over knees, under feet']]};
+    return dsPic2(
+      dsMk(s,{title:'Bottom (heels down)',arrow:true,arrowLabel:'Raise',work:[[[60,180],[120,182],[126,246],[146,246]]],band:[[120,186],[144,248]]}),
+      dsMk(s,{title:'Top (heels up)',work:[[[60,180],[120,168],[128,232],[146,246]]],band:[[120,172],[144,248]],bw:4,labels:[[134,150,'Squeeze']]}),
+      ['Seated, band looped over the knees and under the feet','Press through the balls of the feet · full stretch, full squeeze']); };
+  P['Unloaded Hip Hinge']=function(){
+    var tl=[[95,76],[95,138]], th=[[129,109],[75,140]];
+    return dsPic2(
+      dsMk(DS_STD,{title:'Top (standing)',arrow:true,arrowLabel:'Hinge',work:[tl],arm:[[95,88],[112,112],[100,134]],labels:[[120,170,'Soft knees']]}),
+      {title:'Bottom (hips back)',head:[146,98],torso:th,legs:[[75,140],[88,194],[95,246],[112,246]],work:[th],arm:[[127,112],[98,128],[80,138]],labels:[[8,110,'Hips back'],[120,150,'Flat back']]},
+      ['Soft knees, hands on hips, push the hips straight back','Stop at the hamstring stretch · squeeze the glutes to stand']); };
+  function birdDog(){
+    var q={head:[146,178],torso:[[130,186],[70,186]],arm:[[130,186],[130,246]],legs:[[70,186],[70,246],[30,246]]};
+    return dsPic2(
+      dsMk(q,{title:'Start (hands and knees)',arrow:true,arrowLabel:'Reach',work:[[[130,188],[130,244]],[[70,188],[70,244],[32,244]]],labels:[[60,140,'Back flat']]}),
+      dsMk(q,{title:'Reach (opposite arm + leg)',work:[[[130,186],[156,184],[180,182]],[[70,186],[40,184],[8,184]]],hand:[180,182],labels:[[60,140,'Hips level']]}),
+      ['Hands under shoulders, knees under hips, back flat','Reach opposite arm and leg long · 2 sec hold · switch']); }
+  P['Bird Dog']=birdDog; P['Bird Dog — slow flow']=birdDog;
+  P['Modified Side Plank']=function(){
+    var b={head:[144,202],arm:[[130,214],[130,246],[152,246]],legs:[[40,246],[14,240]]};
+    return dsPic2(
+      dsMk(b,{title:'Down (hip on the floor)',arrow:true,arrowLabel:'Lift',torso:[[130,214],[84,244]],work:[[[40,246],[84,244],[130,214]]],labels:[[8,180,'Elbow under'],[8,194,'the shoulder']]}),
+      dsMk(b,{title:'Up (straight line)',torso:[[130,214],[85,230]],work:[[[40,246],[85,230],[130,214]]],labels:[[8,180,'Knees to shoulders'],[8,194,'in one line']]}),
+      ['On your forearm and bent knees, facing forward','Lift the hips · stop when they start to sag']); };
+  P['Wall Sit']=function(){
+    var w={props:wallL(30)};
+    return dsPic2(
+      dsMk(w,{title:'Start (back on wall)',arrow:true,arrowLabel:'Lower',head:[46,60],torso:[[46,76],[46,140]],arm:[[46,88],[56,120],[60,140]],work:[[[46,140],[74,194],[100,246],[117,246]]],labels:[[110,160,'Feet out']]}),
+      dsMk(w,{title:'Hold (thighs level)',head:[46,90],torso:[[46,106],[46,180]],arm:[[46,116],[66,150],[86,174]],work:[[[46,180],[100,180],[100,246],[117,246]]],labels:[[110,160,'Knees over ankles']]}),
+      ['Back flat on the wall, feet out in front','Slide down until the knees are comfortable · hold']); };
+  P['Standing Terminal Knee Extension']=function(){
+    var t={head:[95,60],torso:[[95,76],[95,138]],arm:[[95,88],[110,112],[100,134]],props:wallR(),anchor:[168,188],tags:[[8,268,'Band behind the knee']]};
+    return dsPic2(
+      dsMk(t,{title:'Start (knee soft)',arrow:true,arrowLabel:'Straighten',work:[[[95,138],[108,192],[95,246],[112,246]]],band:[[108,192],[168,192]],labels:[[118,170,'Door anchor']]}),
+      dsMk(t,{title:'Lockout (squeeze)',work:[[[95,138],[96,192],[95,246],[112,246]]],band:[[96,192],[168,192]],bw:4,labels:[[8,110,'Squeeze the quad']]}),
+      ['Band behind the knee, anchored in front at knee height','Straighten fully · 2 sec squeeze · slow back']); };
+  P['Single-Leg Glute Bridge']=function(){
+    var b={head:[24,234],arm:[[40,240],[74,246]]};
+    return dsPic2(
+      dsMk(b,{title:'Bottom',arrow:true,arrowLabel:'Bridge',torso:[[40,240],[100,240]],legs2:[[100,240],[140,214],[176,200]],work:[[[100,240],[134,204],[146,246],[160,246]]]}),
+      dsMk(b,{title:'Top (squeeze)',torso:[[40,240],[100,210]],legs2:[[100,210],[140,190],[176,172]],work:[[[100,210],[140,200],[146,246],[160,246]]],labels:[[8,180,'Hips level']]}),
+      ['On your back, one foot planted, other leg straight','Drive through the planted heel · 1 sec squeeze · switch']); };
+  P['Fire Hydrants']=function(){
+    var r={head:[95,132],torso:[[95,190],[95,148]],arm:[[80,246],[86,158],[104,158],[110,246]],arm2:[[75,190],[115,190]],legs:[[75,190],[75,246]],labels:[[8,268,'Seen from behind']]};
+    return dsPic2(
+      dsMk(r,{title:'Start (on all fours)',arrow:true,arrowLabel:'Lift',work:[[[115,190],[115,246]]]}),
+      dsMk(r,{title:'Knee out to the side',work:[[[115,190],[158,176],[166,198]]],labels:[[8,268,'Seen from behind'],[120,150,'Hips level']]}),
+      ['Hands and knees, back flat','Lift the bent knee out to the side · don’t lean away']); };
+  P['Leg Swings + 90/90s']=function(){
+    var s={props:wallL(30),head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[95,192],[95,246],[112,246]],arm:[[95,88],[60,100],[40,104]]};
+    return dsPic2(
+      dsMk(s,{title:'Back',arrow:true,arrowLabel:'Swing',work:[[[95,138],[74,190],[60,238]]],labels:[[120,170,'Hand on wall']]}),
+      dsMk(s,{title:'Forward',work:[[[95,138],[140,176],[168,206]]],labels:[[120,140,'Easy, relaxed']]}),
+      ['Hand on the wall, swing one leg front to back','10 each leg, then 90/90 switches on the floor']); };
+  /* same setup as an existing figure */
+  var al={'Super Band Push-up':'Banded Push-ups','Band Tempo Push-up':'Banded Push-ups','Banded Push-up':'Banded Push-ups',
+    'Wide Row (free)':'Bent-Over Row','Narrow Row':'Bent-Over Row','Single-Arm Band Fly':'Standing Band Fly (stretch-biased)',
+    'Bent-Over Cross-Body Lateral Raise':'Bent-Over Reach-Across Rear Delt Fly','Band-Assisted Crunch':'Band-Assisted Sit-Up',
+    'Lying Band-Resisted Crunch (behind head)':'Band-Resisted Sit-Up (behind head)','Heel-Elevated Banded Squat':'Banded Squat',
+    'Crossbody Hammer Curl':'Hammer Curl','Glute Bridge':'Floor Glute Bridge','Band Shrug':'Banded Shrug',
+    'Arm Circles + Shoulder Rolls':'Shoulder CARs','Low-Anchor Band Fly (rest-pause)':'Low-Anchor Stretch Fly',
+    'Long-Length Partial Squat':'Banded Squat','Myo-Rep Partial Squat Finisher':'Banded Squat','Banded Front Squat (light)':'Banded Squat',
+    'Super Band RDL':'Romanian Deadlift (Bilateral)','Bodyweight Good Morning (light band around upper back)':'Banded Good Morning',
+    'Bent-Knee Hollow Hold':'Hollow Body Hold','Forearm Finisher \u2014 Wrist Curl':'Elbow \u2014 Band Wrist Curl','Band Wrist Curl (myo-rep)':'Elbow \u2014 Band Wrist Curl'};
+  for(var k in al){ if(!P[k]&&P[al[k]]) P[k]=P[al[k]]; }
+})();
