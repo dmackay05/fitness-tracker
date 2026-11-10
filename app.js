@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v477 — 2026-11-10";
+var APP_BUILD = "v478 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4007,7 +4007,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj"];
+  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ft_labs","ft_habits","ds_swaps","ds_usermoves","ds_sat_heat_on","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_fullbody","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_bulk_start","ft_bulk_surplus","ft_protein_prebulk","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj","ft_lr_force"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -4019,7 +4019,7 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
-  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1,ft_proj:1};
+  var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ft_labs:1,ft_habits:1,ds_swaps:1,ds_usermoves:1,ds_sat_heat_on:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_fullbody:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_bulk_start:1,ft_bulk_surplus:1,ft_protein_prebulk:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1,ft_proj:1,ft_lr_force:1};
   // Settings saved on this device are timestamped (ft_cfg_ts). If the Sheet's copy is
   // older (e.g. a background pull lands before the Save push reaches Apps Script),
   // keep the local ft_* settings instead of reverting them, and re-push them.
@@ -10346,8 +10346,10 @@ function dsRenderItem(rawItem,idx,accent){
       h+='<div class="ds-logrow"><span class="ds-lbl">L</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',-1)">\u2212</button><input type="number" inputmode="numeric" min="0" max="999" class="ds-stepval ds-stepinput" id="ds-repsL-'+item.id+'" value="'+_dsSideVal(st._repsL)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'L\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'L\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'L\',1)">+</button></div>'
         +'<span class="ds-lbl" style="margin-left:8px">R</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',-1)">\u2212</button><input type="number" inputmode="numeric" min="0" max="999" class="ds-stepval ds-stepinput" id="ds-repsR-'+item.id+'" value="'+_dsSideVal(st._repsR)+'" oninput="dsRepsInputSide(\''+item.id+'\',\'R\')" onblur="dsRepsBlurSide(\''+item.id+'\',\'R\')"><button class="ds-stepbtn" onclick="dsBumpSide(\''+item.id+'\',\'R\',1)">+</button></div>'
         +loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+      h+='<div style="font-size:10.5px;margin:-2px 0 6px"><a href="#" onclick="dsToggleLR(\''+item.id+'\');return false;" style="color:#8b8b9c">\u21C4 log both sides together</a> <span style="color:#666">\u00b7 set a side to 0 to skip it</span></div>';
     } else {
       h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
+      h+='<div style="font-size:10.5px;margin:-2px 0 6px"><a href="#" onclick="dsToggleLR(\''+item.id+'\');return false;" style="color:#8b8b9c">\u21C4 log left / right separately</a></div>';
     }
     // v449: Effort chips removed from the card (unused, took space). Gym-mode RIR buttons still log RIR.
     // v453: optional one-tap effort tag, shown only once the last target set is logged.
@@ -11450,7 +11452,22 @@ var dsTP={on:false,t:null,ctx:null,lock:null};
 function dsTPBeep(f,ms,vol){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C)return; if(!dsTP.ctx)dsTP.ctx=new C(); if(dsTP.ctx.state==='suspended')dsTP.ctx.resume(); var c=dsTP.ctx,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(vol||0.18,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){} }
 function dsTPVib(p){ try{ if(navigator.vibrate)navigator.vibrate(p); }catch(e){} }
 function dsIsElasticBand(item){ var e=(item.equip||''); return /tube|band|loop/i.test(e) && !/dumbbell|kettlebell|\bkb\b/i.test(e); }
-function dsIsUnilateral(item){ return /\/side|\/leg/i.test(item.rx||''); }
+// v478: any sets/reps exercise can be switched to separate L/R logging (sticky per exercise),
+// and single-leg/single-arm variants that inherit a parent rx are detected by name.
+function dsLRMap(){ try{ return JSON.parse(store.get('ft_lr_force')||'{}')||{}; }catch(e){ return {}; } }
+function dsIsUnilateral(item){
+  if(!item) return false;
+  var f=dsLRMap(); if(item.id && f[item.id]!=null) return !!f[item.id];
+  return /\/side|\/leg/i.test(item.rx||'') || /single[- ](arm|leg)|one[- ](arm|leg|foot)\b(?! band lateral)|\bunilateral\b/i.test(item.name||'');
+}
+function dsToggleLR(id){
+  var item=dsViewOf(dsRawItem(id)); var on=!dsIsUnilateral(item), f=dsLRMap(); f[id]=on; store.set('ft_lr_force',JSON.stringify(f));
+  var st=dsItemState(id);
+  if(on){ var r=st._reps||10; if(st._repsL==null) st._repsL=r; if(st._repsR==null) st._repsR=r; }
+  else { st._reps=Math.max(_dsSideVal(st._repsL),_dsSideVal(st._repsR))||st._reps||10; }
+  try{ dsQueueConfigPush(); }catch(e){}
+  dsSaveUI(); dsRender();
+}
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;st._loadTouched=true;dsSaveUI();} }
 
 // ── Band library: powers the "Band" picker next to the load box on elastic-band exercises.
