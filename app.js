@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v475 — 2026-11-10";
+var APP_BUILD = "v476 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -209,8 +209,8 @@ function dsDaysOfType(t){
 // folded into this. Day nudges average to zero across the week, so the weekly
 // average equals maintenance + goal offset exactly.
 var GOAL_MODES = {
-  cut:    {label:'Lean cut', short:'Cut',    off:-300, col:'#5eead4',
-           blurb:'About 300 kcal under maintenance — roughly 0.5–0.6 lb/week, slow enough to keep building muscle while belly fat comes down.'},
+  cut:    {label:'Lean cut', short:'Cut',    off:-375, col:'#5eead4',
+           blurb:'About 375 kcal under maintenance — roughly 0.6–0.8 lb/week, slow enough to keep building muscle while belly fat comes down. Weigh food and keep protein high.'},
   recomp: {label:'Recomp',   short:'Recomp', off:0,    col:'#a78bfa',
            blurb:'At maintenance. Fat and muscle trade slowly; the scale stays flat while the waist shrinks.'},
   gain:   {label:'Lean gain',short:'Gain',   off:250,  col:'#fb923c',
@@ -16087,4 +16087,14 @@ function dsProjStatusHtml(p){
 }
 (function(){ // seed David's projection once (fat-loss plan agreed Nov 10, 2026)
   try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_proj')) store.set('ft_proj', JSON.stringify({start:'2026-11-10', w0:213, fast:0.7, slow:0.5})); }catch(e){}
+})();
+
+(function(){ // v476 one-time: David switched to the fat-loss plan (Nov 10, 2026): Lean cut + 185 g protein
+  try{
+    if(store.get('ft_cut476')||(store.get('ft_name')||'')!=='David') return;
+    store.set('ft_cut476','1');
+    GOAL_MODE='cut'; store.set('ft_goal_mode','cut');
+    GOALS.protein=185; store.set('ft_protein',185);
+    setTimeout(function(){ try{ dsQueueConfigPush(); }catch(e){} try{ renderAll(); }catch(e){} },3000);
+  }catch(e){}
 })();
