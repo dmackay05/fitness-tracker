@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v470 — 2026-11-10";
+var APP_BUILD = "v471 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -798,7 +798,9 @@ function tdeeWindowRaw(windowDays, endKeyOpt){
 //     TDEE_STABLE_SPREAD, the card says "settling" and shows the range instead
 //     of one confident number.
 var TDEE_LONG_WINDOW=42, TDEE_SEED_WINDOW=56, TDEE_SMOOTH_DAYS=42, TDEE_SMOOTH_ALPHA=0.05;
-var TDEE_STABLE_SPREAD=200, TDEE_CHECK_WINDOWS=[28,42,56];
+// v471: the 28-day window swung 300–600 kcal with ordinary water shifts (creatine, sodium),
+// which kept the card "settling" nearly every week since late Sept. Check only 42 vs 56.
+var TDEE_STABLE_SPREAD=250, TDEE_CHECK_WINDOWS=[42,56];
 var TDEE_ANCHOR_KEY='ft_tdee_anchor', TDEE_ANCHOR_BAND=100, TDEE_ANCHOR_MAX_AGE=60;
 var _tdeeCache=null;
 function measuredTDEE(){
