@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v464 — 2026-11-10";
+var APP_BUILD = "v465 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -15721,4 +15721,100 @@ function dsGPDone(){ var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='done'
     'Super Band RDL':'Romanian Deadlift (Bilateral)','Bodyweight Good Morning (light band around upper back)':'Banded Good Morning',
     'Bent-Knee Hollow Hold':'Hollow Body Hold','Forearm Finisher \u2014 Wrist Curl':'Elbow \u2014 Band Wrist Curl','Band Wrist Curl (myo-rep)':'Elbow \u2014 Band Wrist Curl'};
   for(var k in al){ if(!P[k]&&P[al[k]]) P[k]=P[al[k]]; }
+})();
+
+/* ── v465: the last exercises still on the old looped demos, now in the two-panel setup style ── */
+(function(){
+  var P=DS_SETUPPICS;
+  function wallL(x){ return [{t:'rect',x:x,y:30,w:8,h:222,rx:2}]; }
+  P['Band Adductor Squeeze']=function(){
+    var f={head:[95,60],torso:[[95,76],[95,138]],legs2:[[95,138],[110,192],[114,246]],arm:[[95,88],[78,112],[88,134]],arm2:[[95,88],[112,112],[102,134]],
+      props:[{t:'rect',x:2,y:150,w:8,h:102,rx:2}],anchor:[14,234],tags:[[8,268,'Low anchor to the side']]};
+    return dsPic2(
+      dsMk(f,{title:'Start (leg out)',arrow:true,arrowLabel:'Squeeze',work:[[[95,138],[72,192],[52,240]]],band:[[14,238],[52,240]]}),
+      dsMk(f,{title:'Squeeze (leg in)',work:[[[95,138],[90,192],[94,240]]],band:[[14,238],[94,240]],bw:4,labels:[[120,170,'Inner thigh']]}),
+      ['Band on the near ankle, anchored low to that side','Sweep the leg in against the band · slow release']); };
+  P['Seated Centering Breath']=function(){
+    var s={noGround:true,head:[95,140],torso:[[95,156],[95,218]],legs:[[95,218],[58,234],[110,244]],legs2:[[95,218],[132,234],[80,244]],
+      arm:[[95,166],[72,196],[62,232]],arm2:[[95,166],[118,196],[128,232]]};
+    return dsPic2(
+      dsMk(s,{title:'Inhale (4 sec)',arrow:true,arrowLabel:'Breathe',work:[[[95,180],[95,214]]],circles:[[95,200,14]],labels:[[120,180,'Belly fills']]}),
+      dsMk(s,{title:'Exhale (6 sec)',work:[[[95,180],[95,214]]],circles:[[95,200,8]],labels:[[120,180,'Ribs soften']]}),
+      ['Sit tall, hands on the knees, eyes closed or soft','Slow nose breathing · longer out than in']); };
+  P['Standing Hip Circles']=function(){
+    function f(dx,t,first){ var h=95+dx; return {title:t,arrow:first,arrowLabel:'Circle',head:[95,60],torso:[[95,76],[95+dx*0.4,110]],
+      work:[[[95+dx*0.4,110],[h,138]]],legs:[[h,138],[80,192],[76,246]],legs2:[[h,138],[110,192],[114,246]],arm:[[95,88],[h-18,112],[h-10,136]],arm2:[[95,88],[h+18,112],[h+10,136]],labels:first?[[130,100,'Hands on hips']]:[]}; }
+    return dsPic2(f(-14,'Hips left',true),f(14,'Hips right'),['Feet hip-width, hands on hips','Draw slow, big circles with the hips · 5 each way']); };
+  P['Seated Ankle & Knee Circles']=function(){
+    var s={head:[60,94],torso:[[60,180],[60,110]],arm:[[60,120],[78,150],[86,178]],props:[{t:'rect',x:20,y:186,w:74,h:8,rx:2}],lines:[[26,194,26,252],[88,194,88,252]],legs2:[[60,180],[118,182],[122,246],[140,246]]};
+    return dsPic2(
+      dsMk(s,{title:'Toes pointed',arrow:true,arrowLabel:'Circle',work:[[[60,180],[118,180],[166,196],[180,208]]],labels:[[120,150,'Leg out']]}),
+      dsMk(s,{title:'Toes pulled back',work:[[[60,180],[118,180],[166,196],[176,182]]],labels:[[120,150,'Slow circles']]}),
+      ['Sit tall, lift one leg, circle the ankle, then the lower leg','5 each way · then switch legs']); };
+  P['Standing Quad Pull']=function(){
+    var s={props:wallL(30),head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[95,192],[95,246],[112,246]],arm:[[95,88],[60,100],[40,104]]};
+    return dsPic2(
+      dsMk(s,{title:'Start',arrow:true,arrowLabel:'Pull',work:[[[95,138],[97,192],[100,246]]],labels:[[120,170,'Hand on wall']]}),
+      dsMk(s,{title:'Heel to glute',work:[[[95,138],[98,194],[78,150]]],arm2:[[95,88],[82,120],[78,148]],hand:[78,150],labels:[[120,170,'Knees together'],[120,184,'tuck the tail']]}),
+      ['Hand on the wall, stand tall','Pull the heel toward the glute · 30 sec each side']); };
+  P['Tree Pose']=function(){
+    var t={head:[95,60],torso:[[95,76],[95,138]],legs2:[[95,138],[100,192],[100,246],[116,246]]};
+    return dsPic2(
+      dsMk(t,{title:'Easier: foot on calf',arrow:true,arrowLabel:'Raise',work:[[[95,138],[60,180],[98,206]]],arm:[[95,88],[86,110],[95,104]],arm2:[[95,88],[104,110],[95,104]],labels:[[120,170,'Not on the knee']]}),
+      dsMk(t,{title:'Full: foot on thigh',work:[[[95,138],[56,164],[98,172]]],arm:[[95,88],[86,58],[92,34]],arm2:[[95,88],[104,58],[98,34]],labels:[[120,170,'Hips level']]}),
+      ['Stand on one leg, foot on the calf or inner thigh','Eyes on one spot · 30 sec each side']); };
+  P['Standing Figure-4 Balance']=function(){
+    return dsPic2(
+      {title:'Ankle over knee',arrow:true,arrowLabel:'Sit back',head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[97,192],[95,246],[112,246]],
+        work:[[[95,138],[126,166],[100,190]]],arm:[[95,88],[120,100],[140,100]],labels:[[8,120,'Stand tall first']]},
+      {title:'Sit back (stretch)',head:[112,74],torso:[[106,88],[80,148]],legs:[[80,148],[112,194],[98,246],[115,246]],
+        work:[[[80,148],[134,158],[110,192]]],arm:[[104,98],[132,108],[152,106]],labels:[[8,120,'Hips back'],[140,190,'Outer hip']]},
+      ['Cross one ankle over the opposite knee, hold a wall if needed','Sit the hips back until the outer hip stretches · switch']); };
+  P['Butterfly Fold']=function(){
+    var b={legs:[[70,236],[112,214],[134,244]]};
+    return dsPic2(
+      dsMk(b,{title:'Tall (soles together)',arrow:true,arrowLabel:'Fold',head:[70,154],torso:[[70,236],[70,170]],work:[[[70,236],[70,170]]],arm:[[70,180],[104,214],[128,240]],labels:[[90,180,'Knees fall out']]}),
+      dsMk(b,{title:'Fold forward',head:[124,186],torso:[[70,236],[112,196]],work:[[[70,236],[112,196]]],arm:[[108,200],[124,224],[130,242]],labels:[[8,180,'Long spine']]}),
+      ['Soles together, knees out, hold the feet','Hinge forward from the hips · relax the inner thighs']); };
+  P['Reclined Figure-4 Stretch']=function(){
+    var b={head:[24,234],torso:[[40,240],[100,240]]};
+    return dsPic2(
+      dsMk(b,{title:'Ankle on knee',arrow:true,arrowLabel:'Pull in',legs:[[100,240],[130,200],[146,246],[160,246]],work:[[[100,240],[154,214],[128,200]]],arm:[[40,240],[70,246]],labels:[[120,170,'Foot flexed']]}),
+      dsMk(b,{title:'Pull the leg in',legs:[[100,240],[100,196],[140,190]],work:[[[100,240],[150,214],[104,200]]],arm:[[44,238],[80,212],[110,202]],labels:[[120,170,'Outer hip stretch']]}),
+      ['On your back, cross one ankle over the other knee','Pull that thigh toward you · 30–60 sec each side']); };
+  function walk(ruck){
+    var o=ruck?{props:[{t:'rect',x:66,y:82,w:18,h:40,rx:4}],tags:[[8,268,'Pack high and snug']]}:{};
+    function p(t,first,f,b){ return dsMk(o,{title:t,arrow:first,arrowLabel:'Step',head:[95,60],torso:[[95,76],[95,138]],work:[f],legs2:b,arm:[[95,88],[80,112],[76,132]],arm2:[[95,88],[110,112],[118,130]]}); }
+    return dsPic2(
+      p('Left foot forward',true,[[95,138],[118,190],[132,244]],[[95,138],[80,192],[60,240]]),
+      p('Right foot forward',false,[[95,138],[80,192],[60,240]],[[95,138],[118,190],[132,244]]),
+      ruck?['Light pack, tall posture, normal stride','Conversation pace · build time before weight']:['Tall posture, relaxed arm swing','Easy conversation pace · recovery, not a workout']); }
+  P['Recovery Walk']=function(){ return walk(false); };
+  P['Rucked Walk']=function(){ return walk(true); };
+  P['Ball Wall Squat']=function(){
+    return dsPic2(
+      {props:wallL(20).concat([{t:'circ',x:44,y:126,r:15}]),title:'Top (ball at low back)',arrow:true,arrowLabel:'Squat',head:[66,60],torso:[[64,76],[64,140]],
+        work:[[[64,140],[80,194],[96,246],[113,246]]],arm:[[64,88],[90,100],[112,100]],labels:[[110,170,'Feet forward']]},
+      {props:wallL(20).concat([{t:'circ',x:44,y:164,r:15}]),title:'Bottom (ball rolls down)',head:[66,98],torso:[[64,114],[64,178]],
+        work:[[[64,178],[112,184],[100,246],[117,246]]],arm:[[64,124],[90,134],[112,134]],labels:[[110,150,'Chest tall']]},
+      ['Ball between your low back and the wall, feet forward','Roll down to a comfortable depth · drive up']); };
+  P['7. Band-Assisted Pull-ups']=function(){
+    var bar={lines:[[40,60,150,60]],tags:[[8,268,'Band loop under one knee']]};
+    return dsPic2(
+      dsMk(bar,{title:'Hang (arms long)',arrow:true,arrowLabel:'Pull',head:[95,98],torso:[[95,114],[95,176]],legs:[[95,176],[95,226],[110,246]],
+        work:[[[95,116],[66,96],[60,60]],[[95,116],[124,96],[130,60]]],band:[[95,60],[95,226]]}),
+      dsMk(bar,{title:'Top (chin over bar)',head:[95,44],torso:[[95,62],[95,124]],legs:[[95,124],[95,174],[110,194]],
+        work:[[[95,66],[70,84],[74,60]],[[95,66],[120,84],[116,60]]],band:[[95,60],[95,174]],bw:4,labels:[[130,120,'Elbows down']]}),
+      ['Band looped on the bar and under one knee','Pull chest to the bar · 3 sec down to a full hang']); };
+  P['Ball Push-Off (plank press-off)']=function(){
+    var b={props:[{t:'circ',x:140,y:228,r:22}],legs:[[70,214],[40,246],[12,240]]};
+    return dsPic2(
+      dsMk(b,{title:'Lean in (wrists loaded)',arrow:true,arrowLabel:'Push',head:[150,170],torso:[[134,180],[70,214]],work:[[[134,180],[138,196],[140,206]]],hand:[140,206],labels:[[8,150,'Hands on the ball']]}),
+      dsMk(b,{title:'Press away',head:[134,160],torso:[[118,172],[70,214]],work:[[[118,172],[130,190],[140,206]]],hand:[140,206],labels:[[8,150,'Rock back gently']]}),
+      ['Knees down, hands flat on the ball','Rock forward over the wrists, then press away · pain-free range']); };
+  var al={'Extended Flow — Hip + Shoulder CARs':'Shoulder CARs','Sleeping Swan':'Pigeon Pose (or Reclined Figure-4)',
+    'Upright Walking Lunge (short steps)':'Banded Reverse Lunge','Squat to Calf Raise':'Banded Squat','Standing Clamshell (banded)':'Banded Lateral Walk',
+    'Obliques / Rotation':'Standing Pallof Rotation'};
+  for(var k in al){ if(!P[k]&&P[al[k]]) P[k]=P[al[k]]; }
+  if(typeof YG_FLOWMAP!=='undefined'&&!YG_FLOWMAP['sun-flow']) YG_FLOWMAP['sun-flow']='catcow';
 })();
