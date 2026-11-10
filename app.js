@@ -133,7 +133,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v465 — 2026-11-10";
+var APP_BUILD = "v466 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3660,7 +3660,7 @@ function renderWeekSummary(){
 }
 function _series(getter){
   return Object.keys(appData).filter(function(k){return appData[k];}).sort().map(function(k){
-    var v=getter(appData[k]); if(v==null||v===""||isNaN(+v)) return null; return {t:keyToDate(k).getTime(),v:+v};
+    var v=getter(appData[k]); if(v==null||v===""||isNaN(+v)) return null; return {t:keyToDate(k).getTime(),v:+v,k:k};
   }).filter(Boolean);
 }
 function sparkSVG(series,opt){
@@ -3687,7 +3687,59 @@ function sparkSVG(series,opt){
   function md(t){ var d=new Date(t); return (d.getMonth()+1)+"/"+d.getDate(); }
   svg+='<text x="'+padL+'" y="'+(H-4)+'" font-size="9" fill="#666" font-family="monospace">'+md(tMin)+'</text>';
   svg+='<text x="'+(W-padR)+'" y="'+(H-4)+'" text-anchor="end" font-size="9" fill="#666" font-family="monospace">'+md(tMax)+'</text>';
+  if(opt.hover){
+    svg+='<line class="tt-guide" x1="0" y1="'+padT+'" x2="0" y2="'+(H-padB)+'" stroke="#aaa" stroke-width="0.6" stroke-dasharray="2 2" visibility="hidden"/>';
+    svg+='<circle class="tt-dot" r="4.5" fill="none" stroke="#fff" stroke-width="1.5" visibility="hidden"/>';
+    svg+='<rect class="tt-hit" x="'+padL+'" y="0" width="'+(W-padL-padR)+'" height="'+H+'" fill="transparent" style="cursor:crosshair"/>';
+    opt.hover.pts=series.map(function(p){return {x:sx(p.t),y:sy(p.v),p:p};}); opt.hover.W=W;
+  }
   return svg+'</svg>';
+}
+// ── Trend chart hover: nearest point → tooltip with that day's details ──
+function _trendTipHtml(m,series,i){
+  var p=series[i], d=appData[p.k]||{}, dt=keyToDate(p.k);
+  var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  function r1(x){return Math.round(x*10)/10;}
+  var h='<div style="color:#fff;font-weight:600;margin-bottom:3px">'+DOW[dt.getDay()]+' '+(dt.getMonth()+1)+'/'+dt.getDate()+'/'+String(dt.getFullYear()).slice(2)+'</div>';
+  h+='<div><span style="color:'+m.color+'">'+m.label+':</span> <b>'+r1(p.v)+' '+m.unit+'</b>';
+  if(i>0){ var c=p.v-series[i-1].v; h+=' <span style="color:#8b8b9c">('+(c>0?'+':'')+r1(c)+')</span>'; }
+  h+='</div>';
+  var win=series.filter(function(q){return q.t<=p.t && q.t>p.t-7*864e5;});
+  if(win.length>1) h+='<div style="color:#aaa">7-day avg: '+r1(win.reduce(function(a,q){return a+q.v;},0)/win.length)+' '+m.unit+' <span style="color:#666">(n='+win.length+')</span></div>';
+  var ctx=[];
+  if(m.key!=="weight" && d.weight) ctx.push("Weight "+d.weight);
+  if(d.foods&&d.foods.length){ var cal=0,pro=0; d.foods.forEach(function(f){cal+=+f.cal||0;pro+=+f.protein||0;}); if(m.key!=="cal") ctx.push(Math.round(cal)+" kcal"); if(m.key!=="protein") ctx.push(Math.round(pro)+"g protein"); }
+  if(d.exercises&&d.exercises.length){ var mins=0; try{ mins=Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60); }catch(e){} ctx.push(d.exercises.length+" exercise"+(d.exercises.length>1?"s":"")+(mins?" · "+mins+" min":"")); }
+  if(d.rides&&d.rides.length) ctx.push(d.rides.length+" ride"+(d.rides.length>1?"s":""));
+  if(m.key!=="water" && d.waterOz>0) ctx.push(d.waterOz+" oz water");
+  if(ctx.length) h+='<div style="color:#8b8b9c;margin-top:3px;border-top:1px solid #2a2a45;padding-top:3px">'+ctx.join(" · ")+'</div>';
+  return h;
+}
+function _wireTrendHover(el,m,series,hv){
+  var svg=el.querySelector("svg"); if(!svg||!hv.pts) return;
+  var hit=svg.querySelector(".tt-hit"), guide=svg.querySelector(".tt-guide"), dot=svg.querySelector(".tt-dot");
+  el.style.position="relative";
+  var tip=document.createElement("div");
+  tip.style.cssText="position:absolute;pointer-events:none;display:none;z-index:20;background:#1b1b2b;border:1px solid #3a3a5a;border-radius:8px;padding:6px 9px;font:11px/1.45 'DM Mono',monospace;color:#ddd;box-shadow:0 4px 14px rgba(0,0,0,.5);max-width:230px;white-space:normal";
+  el.appendChild(tip);
+  function show(ev){
+    var r=svg.getBoundingClientRect(); if(!r.width) return;
+    var cx=(ev.touches?ev.touches[0].clientX:ev.clientX), x=(cx-r.left)*hv.W/r.width;
+    var bi=0,bd=1e9; hv.pts.forEach(function(q,i){var dd=Math.abs(q.x-x); if(dd<bd){bd=dd;bi=i;}});
+    var q=hv.pts[bi], sc=r.width/hv.W;
+    guide.setAttribute("x1",q.x); guide.setAttribute("x2",q.x); guide.setAttribute("visibility","visible");
+    dot.setAttribute("cx",q.x); dot.setAttribute("cy",q.y); dot.setAttribute("visibility","visible");
+    tip.innerHTML=_trendTipHtml(m,series,bi); tip.style.display="block";
+    var er=el.getBoundingClientRect(), px=r.left-er.left+q.x*sc, py=r.top-er.top+q.y*sc;
+    var tw=tip.offsetWidth, th=tip.offsetHeight, left=px+12; if(left+tw>el.clientWidth) left=px-tw-12; if(left<0) left=0;
+    var top=py-th-10; if(top<0) top=py+12;
+    tip.style.left=left+"px"; tip.style.top=top+"px";
+  }
+  function hide(){ tip.style.display="none"; guide.setAttribute("visibility","hidden"); dot.setAttribute("visibility","hidden"); }
+  hit.addEventListener("mousemove",show); hit.addEventListener("mouseleave",hide);
+  hit.addEventListener("touchstart",function(e){show(e);},{passive:true});
+  hit.addEventListener("touchmove",function(e){show(e);},{passive:true});
+  hit.addEventListener("touchend",function(){setTimeout(hide,2500);});
 }
 function _trendHdr(label,series,unit,dir){
   var f=series[0].v,l=series[series.length-1].v,c=l-f;
@@ -3711,7 +3763,9 @@ function renderTrends(){
     avail.map(function(m){ return '<option value="'+m.key+'"'+(m.key===sel?' selected':'')+'>'+m.label+'</option>'; }).join("")+
     '</select>';
   var m=avail.filter(function(x){return x.key===sel;})[0];
-  chartEl.innerHTML=_trendHdr(m.label.toUpperCase(), m._s, m.unit, m.dir)+sparkSVG(m._s,{color:m.color, goal:(m.goal?m.goal():0)});
+  var hv={};
+  chartEl.innerHTML=_trendHdr(m.label.toUpperCase(), m._s, m.unit, m.dir)+sparkSVG(m._s,{color:m.color, goal:(m.goal?m.goal():0), hover:hv});
+  _wireTrendHover(chartEl,m,m._s,hv);
 }
 
 
