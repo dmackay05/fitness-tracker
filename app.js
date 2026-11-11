@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v485 — 2026-11-11";
+var APP_BUILD = "v486 — 2026-11-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -10595,13 +10595,22 @@ var MM_EXTRA={'fri-add':{'Adductors':1},
 // MM_INFO lives in data-exercises.js
 var MM_SEL=null;
 function mmWeights(m){ var a=(DS_MV[m.id])||null, b=MM_EXTRA[m.id]||null; if(!a&&!b) return null; var w={},k; for(k in a) w[k]=a[k]; for(k in b) w[k]=b[k]; return w; }
-function mmUses(group){
+function mmInfo(g){ return MM_SUB[g]||MM_INFO[g]||null; }
+function mmUsesGroup(group){
   var out=[], names={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
   Object.keys(names).forEach(function(d){
     var s=DS_SESSIONS[d]; if(!s||!s.moves) return;
     s.moves.forEach(function(m){ if(!m) return; var w=mmWeights(m); if(w&&w[group]) out.push({day:names[d],name:m.name,w:w[group],sets:m.sets||0}); });
   });
   return out;
+}
+// Sub-regions: the parent groups' exercises, filtered by keyword. Returns {list, fallback}.
+function mmUses(group){
+  var S=MM_SUB[group]; if(!S) return {list:mmUsesGroup(group),fallback:false};
+  var all=[], seen={};
+  S.p.forEach(function(pg){ mmUsesGroup(pg).forEach(function(x){ var k=x.day+'|'+x.name; if(!seen[k]){ seen[k]=1; all.push(x); } }); });
+  var f=all.filter(function(x){ return S.kw.test(x.name); });
+  return f.length?{list:f,fallback:false}:{list:all,fallback:all.length>0};
 }
 function mmBody(){
   var r=function(g,shape){ return shape.replace('/>',' class="mm-m'+(MM_SEL===g?' mm-on':'')+'" data-m="'+g+'" onclick="mmPick(\''+g+'\')"/>'); };
@@ -10618,52 +10627,68 @@ function mmBody(){
       e(cx-14,318,10,5)+e(cx+14,318,10,5)+'</g>';
   });
   var F=100;
-  s+=r('Traps',p('M'+(F-8)+',52 L'+(F+8)+',52 L'+(F+24)+',60 L'+(F-24)+',60 Z'));
-  s+=r('Shoulders',e(F-33,70,11,13))+r('Shoulders',e(F+33,70,11,13));
-  s+=r('Chest',p('M'+(F-1)+',62 L'+(F-22)+',63 Q'+(F-29)+',78 '+(F-22)+',94 Q'+(F-10)+',99 '+(F-1)+',94 Z'));
-  s+=r('Chest',p('M'+(F+1)+',62 L'+(F+22)+',63 Q'+(F+29)+',78 '+(F+22)+',94 Q'+(F+10)+',99 '+(F+1)+',94 Z'));
-  s+=r('Biceps',e(F-39,104,7,17,8))+r('Biceps',e(F+39,104,7,17,-8));
+  s+=r('Upper Traps',p('M'+(F-8)+',52 L'+(F+8)+',52 L'+(F+24)+',60 L'+(F-24)+',60 Z'));
+  s+=r('Front Delts',e(F-30,70,7,12,15))+r('Front Delts',e(F+30,70,7,12,-15));
+  s+=r('Side Delts',e(F-39,72,5,11,8))+r('Side Delts',e(F+39,72,5,11,-8));
+  s+=r('Upper Chest',p('M'+(F-1)+',62 L'+(F-22)+',63 Q'+(F-26)+',70 '+(F-25)+',76 L'+(F-1)+',76 Z'));
+  s+=r('Upper Chest',p('M'+(F+1)+',62 L'+(F+22)+',63 Q'+(F+26)+',70 '+(F+25)+',76 L'+(F+1)+',76 Z'));
+  s+=r('Lower Chest',p('M'+(F-1)+',78 L'+(F-25)+',78 Q'+(F-27)+',88 '+(F-22)+',94 Q'+(F-10)+',99 '+(F-1)+',94 Z'));
+  s+=r('Lower Chest',p('M'+(F+1)+',78 L'+(F+25)+',78 Q'+(F+27)+',88 '+(F+22)+',94 Q'+(F+10)+',99 '+(F+1)+',94 Z'));
+  s+=r('Biceps',e(F-38,102,6,15,8))+r('Biceps',e(F+38,102,6,15,-8));
+  s+=r('Brachialis',e(F-44,118,3,8,8))+r('Brachialis',e(F+44,118,3,8,-8));
   s+=r('Forearms',e(F-45,150,6,19,10))+r('Forearms',e(F+45,150,6,19,-10));
-  s+=r('Core','<rect x="'+(F-11)+'" y="100" width="22" height="58" rx="6"/>');
-  s+=r('Core',p('M'+(F-14)+',104 L'+(F-24)+',106 L'+(F-23)+',158 L'+(F-14)+',160 Z'))+r('Core',p('M'+(F+14)+',104 L'+(F+24)+',106 L'+(F+23)+',158 L'+(F+14)+',160 Z'));
+  s+=r('Serratus',p('M'+(F-25)+',96 L'+(F-19)+',100 L'+(F-20)+',112 L'+(F-26)+',108 Z'))+r('Serratus',p('M'+(F+25)+',96 L'+(F+19)+',100 L'+(F+20)+',112 L'+(F+26)+',108 Z'));
+  s+=r('Abs','<rect x="'+(F-11)+'" y="100" width="22" height="58" rx="6"/>');
+  s+=r('Obliques',p('M'+(F-14)+',114 L'+(F-24)+',114 L'+(F-23)+',158 L'+(F-14)+',160 Z'))+r('Obliques',p('M'+(F+14)+',114 L'+(F+24)+',114 L'+(F+23)+',158 L'+(F+14)+',160 Z'));
   s+=r('Quads',e(F-14,218,10,36))+r('Quads',e(F+14,218,10,36));
   s+=r('Hip Flexors',e(F-15,174,8,4,30))+r('Hip Flexors',e(F+15,174,8,4,-30));
   s+=r('Adductors',e(F-3,200,3,16))+r('Adductors',e(F+3,200,3,16));
   s+=r('Shins',e(F-13,284,5,24))+r('Shins',e(F+13,284,5,24));
   var B=300;
-  s+=r('Traps',p('M'+B+',46 L'+(B+24)+',60 L'+B+',100 L'+(B-24)+',60 Z'));
+  s+=r('Upper Traps',p('M'+B+',46 L'+(B+24)+',60 L'+(B+10)+',66 L'+(B-10)+',66 L'+(B-24)+',60 Z'));
+  s+=r('Mid Traps',p('M'+(B-10)+',68 L'+(B+10)+',68 L'+(B+6)+',84 L'+B+',104 L'+(B-6)+',84 Z'));
   s+=r('Rear Delts',e(B-33,70,11,13))+r('Rear Delts',e(B+33,70,11,13));
-  s+=r('Back',p('M'+(B-6)+',84 L'+(B-26)+',72 Q'+(B-28)+',110 '+(B-14)+',138 L'+(B-5)+',134 Z'));
-  s+=r('Back',p('M'+(B+6)+',84 L'+(B+26)+',72 Q'+(B+28)+',110 '+(B+14)+',138 L'+(B+5)+',134 Z'));
+  s+=r('Rhomboids',p('M'+(B-8)+',70 L'+(B-18)+',72 L'+(B-16)+',90 L'+(B-8)+',88 Z'))+r('Rhomboids',p('M'+(B+8)+',70 L'+(B+18)+',72 L'+(B+16)+',90 L'+(B+8)+',88 Z'));
+  s+=r('Rotator Cuff',e(B-23,84,6,5,-20))+r('Rotator Cuff',e(B+23,84,6,5,20));
+  s+=r('Lats',p('M'+(B-8)+',96 L'+(B-26)+',90 Q'+(B-28)+',112 '+(B-14)+',138 L'+(B-5)+',134 Z'));
+  s+=r('Lats',p('M'+(B+8)+',96 L'+(B+26)+',90 Q'+(B+28)+',112 '+(B+14)+',138 L'+(B+5)+',134 Z'));
   s+=r('Lower Back','<rect x="'+(B-9)+'" y="136" width="7" height="28" rx="3"/>')+r('Lower Back','<rect x="'+(B+2)+'" y="136" width="7" height="28" rx="3"/>');
-  s+=r('Rotator Cuff',e(B-17,82,7,5,-20))+r('Rotator Cuff',e(B+17,82,7,5,20));
   s+=r('Triceps',e(B-39,104,7,17,8))+r('Triceps',e(B+39,104,7,17,-8));
   s+=r('Forearms',e(B-45,150,6,19,10))+r('Forearms',e(B+45,150,6,19,-10));
-  s+=r('Glutes',e(B-12,178,12,14))+r('Glutes',e(B+12,178,12,14));
-  s+=r('Abductors',e(B-25,170,5,10,-15))+r('Abductors',e(B+25,170,5,10,15));
+  s+=r('Glute Med',e(B-18,166,9,6,-15))+r('Glute Med',e(B+18,166,9,6,15));
+  s+=r('Glute Max',e(B-12,182,12,12))+r('Glute Max',e(B+12,182,12,12));
   s+=r('Hamstrings',e(B-13,226,9,28))+r('Hamstrings',e(B+13,226,9,28));
-  s+=r('Calves',e(B-13,280,8,22))+r('Calves',e(B+13,280,8,22));
-  if(MM_SEL&&MM_INFO[MM_SEL]) s+='<text x="200" y="20" text-anchor="middle" class="mm-sel-lbl">'+MM_INFO[MM_SEL].name.split(' (')[0].toUpperCase()+'</text>';
+  s+=r('Gastrocnemius',e(B-13,272,8,15))+r('Gastrocnemius',e(B+13,272,8,15));
+  s+=r('Soleus',e(B-13,294,6,9))+r('Soleus',e(B+13,294,6,9));
+  if(MM_SEL&&mmInfo(MM_SEL)) s+='<text x="200" y="20" text-anchor="middle" class="mm-sel-lbl">'+mmInfo(MM_SEL).name.split(' (')[0].toUpperCase()+'</text>';
   s+='<text x="100" y="336" text-anchor="middle" class="mm-lbl">FRONT</text><text x="300" y="336" text-anchor="middle" class="mm-lbl">BACK</text>';
   return s+'</svg>';
 }
 function mmPick(g){ MM_SEL=(MM_SEL===g?null:g); mmRender(); }
+// Map regions shown as chips, grouped front/back. Parents that were split are not listed on their own.
+var MM_CHIPS=[['Front',['Upper Chest','Lower Chest','Front Delts','Side Delts','Biceps','Brachialis','Forearms','Serratus','Abs','Obliques','Hip Flexors','Quads','Adductors','Shins']],
+  ['Back',['Upper Traps','Mid Traps','Rear Delts','Rotator Cuff','Rhomboids','Lats','Triceps','Lower Back','Glute Med','Glute Max','Hamstrings','Gastrocnemius','Soleus']]];
 function mmRender(){
   var root=document.getElementById('mm-root'); if(!root) return;
   var h='<div class="mm-hint">Tap a muscle on the body (or a name below) to see what it does and which of your exercises train it.</div>'+mmBody();
-  h+='<div class="mm-chips">'+Object.keys(MM_INFO).map(function(g){ return '<button class="mm-chip'+(MM_SEL===g?' mm-chip-on':'')+'" onclick="mmPick(\''+g+'\')">'+MM_INFO[g].name.split(' (')[0]+'</button>'; }).join('')+'</div>';
-  if(MM_SEL&&MM_INFO[MM_SEL]){
-    var I=MM_INFO[MM_SEL], u=mmUses(MM_SEL), main=u.filter(function(x){return x.w>=1;}), help=u.filter(function(x){return x.w<1;});
+  MM_CHIPS.forEach(function(gp){
+    h+='<div class="mm-sub">'+gp[0]+'</div><div class="mm-chips">'+gp[1].filter(mmInfo).map(function(g){ return '<button class="mm-chip'+(MM_SEL===g?' mm-chip-on':'')+'" onclick="mmPick(\''+g+'\')">'+mmInfo(g).name.split(' (')[0]+'</button>'; }).join('')+'</div>';
+  });
+  var I=MM_SEL&&mmInfo(MM_SEL);
+  if(I){
+    var U=mmUses(MM_SEL), u=U.list, main=u.filter(function(x){return x.w>=1;}), help=u.filter(function(x){return x.w<1;});
     var sets=0; main.forEach(function(x){ sets+=x.sets; }); help.forEach(function(x){ sets+=x.sets*0.5; });
     var li=function(arr){ return arr.map(function(x){ return '<li><span class="mm-day">'+x.day+'</span>'+x.name+'</li>'; }).join(''); };
+    var sub=MM_SUB[MM_SEL];
     h+='<div class="mm-card"><div class="mm-title">'+I.name+'</div>'+
       '<div class="mm-k">What it does</div><div class="mm-t">'+I.does+'</div>'+
       '<div class="mm-k">How to feel it</div><div class="mm-t">'+I.feel+'</div>'+
       '<div class="mm-k">Training note</div><div class="mm-t">'+I.tip+'</div>'+
       '<div class="mm-k">In your current plan</div>'+
+      (U.fallback?'<div class="mm-t">None of your exercises bias this part specifically. These train the wider '+sub.p.join(' / ').toLowerCase()+' group it belongs to:</div>':'')+
       (main.length?'<div class="mm-sub">Main target</div><ul class="mm-ul">'+li(main)+'</ul>':'')+
       (help.length?'<div class="mm-sub">Also helps</div><ul class="mm-ul">'+li(help)+'</ul>':'')+
-      (u.length?'<div class="mm-sets">≈ '+Math.round(sets)+' effective sets / week (assisting sets count as half)</div>':'<div class="mm-t">Not directly trained in your current week.</div>')+
+      (u.length?'<div class="mm-sets">≈ '+Math.round(sets)+' effective sets / week'+(sub?' for the '+sub.p.join(' / ').toLowerCase()+' exercises listed':'')+' (assisting sets count as half)</div>':'<div class="mm-t">Not directly trained in your current week.</div>')+
       '</div>';
   }
   root.innerHTML=h;
