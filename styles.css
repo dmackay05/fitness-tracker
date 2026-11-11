@@ -1057,3 +1057,26 @@ body:not(.is-owner) .owner-only{display:none!important}
 .rv-sheet ul,.rv-sheet ol{margin:0 0 6px 20px;padding:0}
 .rv-steps li{margin-bottom:8px}
 .rv-note{margin-top:8px;font-size:13px;color:#b8b8c8}
+
+/* v481: one "change today" menu */
+#panel-today .ds-swapmenu{margin:0 0 14px;border:1px solid #ffffff1a;border-radius:12px;}
+#panel-today .ds-swapmenu>summary{list-style:none;cursor:pointer;padding:11px 14px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.04em;color:#888;}
+#panel-today .ds-swapmenu>summary::-webkit-details-marker{display:none;}
+#panel-today .ds-swapmenu[open]>summary{color:#cfcfda;border-bottom:1px solid #ffffff12;}
+#panel-today .ds-swapmenu>summary b{color:#a78bfa;}
+#panel-today .ds-swapmenu-body{padding:12px 12px 0;}
+/* v481: cut strip */
+.ds-cutstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0 12px;}
+.ds-cut-tile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;background:rgba(255,255,255,.03);border:1px solid #ffffff14;border-radius:10px;padding:7px 8px;color:#f0f0f0;cursor:pointer;text-align:left;font:inherit;}
+.ds-cut-tile.ok{border-color:#5eead455;}
+.ds-cut-k{font-size:9.5px;color:#8b8b9c;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+.ds-cut-v{font-size:16px;font-weight:700;white-space:nowrap;}
+.ds-cut-v small{font-size:10px;color:#8b8b9c;font-weight:400;}
+.ds-cut-tile.ok .ds-cut-v{color:#5eead4;}
+.ds-cut-s{font-size:9.5px;color:#8b8b9c;font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+/* v481: effort nudge */
+.ds-push-tag{display:inline-block;font-size:10px;font-weight:700;color:#1a0f05;background:#fb923c;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle;}
+.ds-push-note{font-size:11.5px;line-height:1.45;color:#fb923c;margin:2px 0 6px;}
+/* v481: portion visible on meal rows */
+.mp-myplate{font-size:12px;color:#9a9d8c;line-height:1.45;margin-top:3px;}
+.mp-myplate b{color:#d8d8d0;}

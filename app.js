@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v480 — 2026-11-10";
+var APP_BUILD = "v481 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5576,6 +5576,13 @@ function dsProgDecision(id){
   var topAtTarget=function(h){ var rp=dsParseLastReps(h), ri=dsParseLastRir(h); return rp!=null&&rp>=rng.hi&&(ri==null||ri>=0.5); };
   if(hist.length>=2&&hist.every(topAtTarget))
     return {reps:rng.lo,bandUp:true,note:'\u25B2 Top of the range ('+rng.hi+') two sessions running \u2014 '+up+'. Restart at '+rng.lo+' reps.'};
+  // v481: two sessions in a row logged Easy, or stopped exactly on the floor of the range
+  // with reps left -> the set is ending too early; the band isn't the problem.
+  var easyStop=function(h){ var rp=dsParseLastReps(h), ri=dsParseLastRir(h); if(rp==null||rp>=rng.hi) return false; return (ri!=null&&ri>=2.5)||(Math.round(rp)===rng.lo&&ri!=null&&ri>=2); };
+  if(hist.length>=2&&hist.every(easyStop)){
+    var tp=Math.min(rng.hi,r+2);
+    return {reps:tp,push:true,note:'\ud83d\udd25 Two sessions in a row with reps left in the tank. The target is a minimum: go until another clean rep is unlikely (aim '+tp+'+) and log the real number.'};
+  }
   if(r<rng.lo)
     return {reps:rng.lo,note:'\u2193 Came in under '+rng.lo+' last time \u2014 aim for '+rng.lo+'. Short again next time? '+(band?'Drop one band step.':'Use an easier variation.')};
   if(r>=rng.hi)
@@ -5587,6 +5594,8 @@ function dsProgDecision(id){
 }
 // v430: true when the last two sessions both hit the top of the rep range at 1+ RIR.
 function dsReadyToProgress(id){ try{ var d=dsProgDecision(id); return !!(d&&d.bandUp); }catch(e){ ftCaught(e,'dsReadyToProgress'); return false; } }
+// v481: true when the last two sessions ended with reps left (see dsProgDecision).
+function dsNeedsPush(id){ try{ var d=dsProgDecision(id); return !!(d&&d.push); }catch(e){ ftCaught(e,'dsNeedsPush'); return false; } }
 function dsProgTarget(id){
   var rec=DS_PROG[id];
   if(rec && rec.day===activeDate) return rec.reps; // already computed for today, don't recompute mid-session
@@ -6453,12 +6462,12 @@ function mpRenderToday(){
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
         '<div style="min-width:0"><div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+(x.swapped?' · swapped':'')+'</div>'+
         '<div style="font-size:14px;color:#e8e8e0;font-weight:600">'+m.name+'</div>'+
-        '<div style="font-size:11px;color:#888">'+m.cal+' kcal · '+m.protein+'g P · '+m.fiber+'g fiber</div></div>'+
+        '<div style="font-size:11px;color:#888">'+m.cal+' kcal · '+m.protein+'g P · '+m.fiber+'g fiber</div>'+
+        (m.mine?'<div class="mp-myplate"><b>Your plate:</b> '+m.mine+'</div>':'')+'</div>'+
         (done?'<span class="tag" style="background:#4ade8022;color:#4ade80;border:1px solid #4ade8055;flex-shrink:0">✓ Logged</span>'
              :'<button class="bs" style="flex-shrink:0" onclick="mpLog(\''+m.id+'\',\''+x.slot+'\')">Log</button>')+
       '</div>'+
-      '<details style="margin-top:4px"><summary style="font-size:11px;color:#8b8b9c;cursor:pointer">Details &amp; swap</summary>'+
-        '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
+      '<details style="margin-top:4px"><summary style="font-size:11px;color:#8b8b9c;cursor:pointer">Family plates, recipe &amp; swap</summary>'+
         (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
         (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
         mpRecipeBlock(m.id)+
@@ -7942,7 +7951,7 @@ function dsRenderItem(rawItem,idx,accent){
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
   var _isAnchor=dsIsAnchorSet(item.id); var _isComp=dsIsCompound(item);
   var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+(_isComp?' ds-compound':'')+'" id="ds-move-'+item.id+'"'+(accent?' style="border-left:4px solid '+accent+'"':'')+'><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
-  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+(dsReadyToProgress(item.id)?' <span class="ds-ready-tag" style="display:inline-block;font-size:10px;font-weight:700;color:#0b1220;background:#5eead4;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle">\u25B2 Ready to progress</span>':'')+'</div>'+dsPairNoteHtml(rawItem);
+  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+(dsReadyToProgress(item.id)?' <span class="ds-ready-tag" style="display:inline-block;font-size:10px;font-weight:700;color:#0b1220;background:#5eead4;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle">\u25B2 Ready to progress</span>':'')+(dsNeedsPush(item.id)?' <span class="ds-push-tag">\ud83d\udd25 Push closer to failure</span>':'')+'</div>'+dsPairNoteHtml(rawItem);
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
@@ -8029,6 +8038,7 @@ function dsRenderItem(rawItem,idx,accent){
       h+='<div class="ds-efftag"><span class="ds-efftag-lbl">Last set:</span>'+DS_EFFORT_TAGS.map(function(t){
         return '<button class="ds-effbtn'+(_lastR===t.rir?' on':'')+'" title="'+t.tip+'" onclick="dsTagEffort(\''+item.id+'\','+t.rir+')">'+t.label+'</button>';
       }).join('')+'<span class="ds-efftag-opt">optional</span></div>';
+      if(_lastR!=null&&_lastR>=2.5) h+='<div class="ds-push-note">\ud83d\udd25 Easy means the set ended early. Do one more set now and keep going until another clean rep is unlikely.</div>';
     }
     h+='<div class="ds-actionrow" style="display:flex;gap:6px;align-items:center;margin-top:8px">'
       +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
@@ -8793,6 +8803,27 @@ function dsMvBreakdownHtml(muscle){
   return h;
 }
 
+// v481: the four numbers that matter during the cut, on top of the Today tab. Tap a tile to jump to where it's logged.
+function dsRenderCutStrip(){
+  var el=document.getElementById('ds-cutstrip'); if(!el) return;
+  if(!ftIsOwner()){ el.innerHTML=''; return; }
+  var k=activeDate, d=appData[k]||{};
+  var prevK=(function(){var x=new Date(k+'T00:00:00');x.setDate(x.getDate()-7);return localDateKey(x);})();
+  var w=weightAvgWindow(7,k), wp=weightAvgWindow(7,prevK), wd=(w&&wp)?w.avg-wp.avg:null;
+  var pro=Math.round((d.foods||[]).reduce(function(a,f){return a+(+f.protein||0);},0)), pg=GOALS.protein||0;
+  var st=+(d.wellness&&d.wellness.steps)||0, sg=7000;
+  var dn=document.getElementById('ds-done'), dsDone=dn?(parseInt(dn.textContent,10)||0):0;
+  var trained=(d.exercises||[]).filter(_bpIsLiftEntry).length>0||dsDone>0;
+  var tile=function(lbl,val,sub,ok,tab){
+    return '<button type="button" class="ds-cut-tile'+(ok?' ok':'')+'" onclick="switchTab(\''+tab+'\')"><span class="ds-cut-k">'+lbl+'</span><span class="ds-cut-v">'+val+'</span><span class="ds-cut-s">'+sub+'</span></button>';
+  };
+  el.innerHTML='<div class="ds-cutstrip">'
+    +tile('Weight 7d', w?w.avg.toFixed(1):'\u2014', wd!=null?((wd<=0?'\u2212':'+')+Math.abs(wd).toFixed(1)+' vs last wk'):'log weigh-ins', wd!=null&&wd<0, 'dash')
+    +tile('Protein', pro+'<small>/'+pg+'</small>', pro>=pg?'hit':(pg-pro)+'g to go', pg>0&&pro>=pg, 'log')
+    +tile('Steps', st?(st/1000).toFixed(1)+'k':'\u2014', st>=sg?'hit':'goal 7k', st>=sg, 'dash')
+    +tile('Trained', trained?'\u2713':'\u2014', trained?'logged':'not yet', trained, 'today')
+    +'</div>';
+}
 function dsRender(){
   var host=document.getElementById('ds-session'); if(!host)return;
   DS_ITEM_CTX=null;
@@ -8845,7 +8876,20 @@ function dsRender(){
       }
     }
     var _editBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleEditMode()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_EDIT_MODE?'#5eead4':'#ffffff1a')+';background:'+(DS_EDIT_MODE?'#5eead418':'transparent')+';color:'+(DS_EDIT_MODE?'#5eead4':'#888')+';">'+(DS_EDIT_MODE?'\u2713 Done editing':'\u270E Edit exercises \u2014 remove or add')+'</button></div>';
-    html=_odBtn+_utBtn+_flowBar+_flowEdit+_satHeatBtn+_tcBtn+_editBtn;
+    // v481: every "change today" option lives in one collapsed menu so a normal day shows just the plan.
+    // The menu opens itself when one of them is switched on, so it's always one tap to undo.
+    var _swActive=[];
+    if(_od) _swActive.push('Custom session');
+    if(DS_UT_ON[activeDate]===true) _swActive.push('Upper Total');
+    if(DS_UT_ON[activeDate]==='short') _swActive.push('Upper Short');
+    if(DS_LT_ON[activeDate]) _swActive.push('Lower Total');
+    if(_tcOn) _swActive.push('Time Crunch');
+    if(DS_EDIT_MODE) _swActive.push('Editing');
+    var _swInner=_odBtn+_utBtn+_satHeatBtn+_tcBtn+_editBtn;
+    var _swMenu=_swInner?('<details class="ds-swapmenu"'+(_swActive.length?' open':'')+'><summary>'
+      +(_swActive.length?'\u21C4 Changed today: <b>'+_swActive.join(' + ')+'</b>':'\u21C4 Not feeling it? Swap or trim today')
+      +'</summary><div class="ds-swapmenu-body">'+_swInner+'</div></details>'):'';
+    html=_swMenu+_flowBar+_flowEdit;
     DS_ITEM_CTX={sk:sk};
     var _splitDays=dsSplitDaysMap();
     var _totOn=!!(SS&&(SS._ut||SS._lt));
@@ -8924,6 +8968,7 @@ function dsUpdateStats(){
   var dn=document.getElementById('ds-done'); if(dn)dn.textContent=done+' / '+total;
   var bu=document.getElementById('ds-burned'); if(bu)bu.textContent=burned;
   var bar=document.getElementById('ds-bar'); if(bar)bar.style.width=(total?Math.round(done/total*100):0)+'%';
+  try{ dsRenderCutStrip(); }catch(e){ftCaught(e,'dsRender');}
 }
 
 function dsToggleCard(id){ var st=dsItemState(id); st._open=!st._open; dsSaveUI(); dsRender(); }
