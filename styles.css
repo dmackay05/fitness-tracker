@@ -868,6 +868,7 @@ html body div.app{max-width:480px}
 .mm-m{fill:#5eead433;stroke:#5eead466;stroke-width:1;cursor:pointer;transition:fill .15s}
 .mm-m:active{fill:#5eead466}
 .mm-m.mm-on{fill:#5eead4;stroke:#a7f3e4}
+.mm-sel-lbl{fill:#5eead4;font:700 11px 'DM Mono',monospace;letter-spacing:1.5px}
 .mm-lbl{fill:#888;font:600 10px 'DM Mono',monospace;letter-spacing:2px}
 .mm-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
 .mm-chip{padding:4px 10px;border-radius:14px;border:1px solid #ffffff1f;background:#ffffff08;color:#bbb;font:500 11px 'DM Sans',sans-serif;cursor:pointer}

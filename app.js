@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v484 — 2026-11-10";
+var APP_BUILD = "v485 — 2026-11-11";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6381,7 +6381,6 @@ function renderMealsTab(){
   renderVegGuide("meals-veg-guide");
   renderNutGuide("meals-nut-guide");
   renderMythGuide("meals-myth-guide");
-  renderWowGuide("meals-wow-guide");
   renderGrocery("meals-grocery");
   try{ rlRender(); }catch(e){ftCaught(e,'renderMealsTab');}
   try{ mpRenderPlan(); }catch(e){ftCaught(e,'renderMealsTab');}
@@ -10608,7 +10607,7 @@ function mmBody(){
   var r=function(g,shape){ return shape.replace('/>',' class="mm-m'+(MM_SEL===g?' mm-on':'')+'" data-m="'+g+'" onclick="mmPick(\''+g+'\')"/>'); };
   var e=function(cx,cy,rx,ry,rot){ return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'"'+(rot?' transform="rotate('+rot+' '+cx+' '+cy+')"':'')+'/>'; };
   var p=function(d){ return '<path d="'+d+'"/>'; };
-  var s='<svg viewBox="0 0 400 340" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Muscle map, front and back" style="display:block;max-width:440px;margin:0 auto">';
+  var s='<svg viewBox="38 6 324 334" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Muscle map, front and back" style="display:block;width:100%;max-width:760px;margin:0 auto">';
   // silhouettes
   [100,300].forEach(function(cx){
     s+='<g class="mm-sil"><circle cx="'+cx+'" cy="28" r="16"/><rect x="'+(cx-7)+'" y="42" width="14" height="12" rx="4"/>'+
@@ -10644,6 +10643,7 @@ function mmBody(){
   s+=r('Abductors',e(B-25,170,5,10,-15))+r('Abductors',e(B+25,170,5,10,15));
   s+=r('Hamstrings',e(B-13,226,9,28))+r('Hamstrings',e(B+13,226,9,28));
   s+=r('Calves',e(B-13,280,8,22))+r('Calves',e(B+13,280,8,22));
+  if(MM_SEL&&MM_INFO[MM_SEL]) s+='<text x="200" y="20" text-anchor="middle" class="mm-sel-lbl">'+MM_INFO[MM_SEL].name.split(' (')[0].toUpperCase()+'</text>';
   s+='<text x="100" y="336" text-anchor="middle" class="mm-lbl">FRONT</text><text x="300" y="336" text-anchor="middle" class="mm-lbl">BACK</text>';
   return s+'</svg>';
 }
