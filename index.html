@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=479">
+<link rel="stylesheet" href="styles.css?v=480">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -1453,6 +1453,7 @@
         <div class="rlbl" style="margin-top:0">Apps Script URL</div>
         <input type="text" id="ft-sheets-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:11px;margin-bottom:8px" onchange="SHEETS_URL=this.value.trim();store.set('ft_sheets_url',SHEETS_URL);" />
         <div style="font-size:10px;color:#888;margin-bottom:8px">Install ID: <span id="ft-install-id" style="font-family:'DM Mono',monospace;user-select:all;-webkit-user-select:all">…</span></div>
+        <div id="ft-errlog" style="font-size:10px;color:#888;margin-bottom:8px"></div>
         <div class="rlbl">PIN (optional, 4 digits)</div>
         <input type="number" inputmode="decimal" id="ft-pin-input" placeholder="leave blank for none" style="margin-bottom:8px" />
         <div id="ft-settings-msg" style="font-size:11px;color:#5eead4;text-align:center;margin-top:6px;min-height:14px;font-family:'DM Mono',monospace"></div>
@@ -1460,7 +1461,7 @@
         </div>
       </details>
       <details class="set-group" id="set-profile">
-        <summary><span class="sg-ic">👤</span><span class="sg-t">Profile &amp; Targets<span class="sg-sub">Name, weights, age &amp; HR, weigh-in, labs</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">👤</span><span class="sg-t">Profile &amp; Targets<span class="sg-sub">Name, weights, age &amp; HR, weigh-in</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
       <div class="card">
         <div class="card-title">Profile</div>
@@ -1487,7 +1488,7 @@
         </div>
       </details>
       <details class="set-group" id="set-training">
-        <summary><span class="sg-ic">📈</span><span class="sg-t">Training Cycle<span class="sg-sub">Deload, split, rotation</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">📈</span><span class="sg-t">Training Cycle<span class="sg-sub">Deload, session &amp; variant rotation</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
       <div class="card">
         <div class="card-title">⏸️ Deload Week</div>
@@ -1519,7 +1520,7 @@
         </div>
       </details>
       <details class="set-group" id="set-program">
-        <summary><span class="sg-ic">🗓️</span><span class="sg-t">Exercise Program<span class="sg-sub" id="sg-program-sub">Weekly plan, custom set, plan source</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">🗓️</span><span class="sg-t">Exercise Program<span class="sg-sub" id="sg-program-sub">Weekly plan, custom set</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
       <div class="card">
         <div class="card-title">🗓️ Exercise Plan (Mon–Sun)</div>
@@ -1544,7 +1545,7 @@
         </div>
       </details>
       <details class="set-group" id="set-nutrition">
-        <summary><span class="sg-ic">🍽</span><span class="sg-t">Nutrition<span class="sg-sub">Calories, macros, phase, supplements</span></span><span class="sg-chev">›</span></summary>
+        <summary><span class="sg-ic">🍽</span><span class="sg-t">Nutrition<span class="sg-sub">Steps, calories, macros, supplements</span></span><span class="sg-chev">›</span></summary>
         <div class="sg-body">
       <div class="card" id="steps-card">
         <div class="card-title">👟 Steps &amp; Body</div>
@@ -1830,7 +1831,11 @@
   </div>
 </div>
 
-<script src="app.js?v=479"></script>
+<script src="data-figures.js?v=480"></script>
+<script src="data-exercises.js?v=480"></script>
+<script src="data-food.js?v=480"></script>
+<script src="data-yoga.js?v=480"></script>
+<script src="app.js?v=480"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>

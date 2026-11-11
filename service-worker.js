@@ -12,13 +12,18 @@
 // (Any byte change to this file triggers the update cycle on next launch.)
 // ═══════════════════════════════════════════════════════════════════════
 
-var CACHE_VERSION = "v479";
+var CACHE_VERSION = "v480";
 
 self.addEventListener("install", function (e) {
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_VERSION).then(function (cache) {
-      return cache.addAll(["./", "./index.html"]).catch(function () {});
+      // Precache the page plus every versioned script/stylesheet, so a first visit that
+      // goes offline halfway still has the whole app (app.js needs all four data files).
+      var v = "?v=" + CACHE_VERSION.slice(1);
+      return cache.addAll(["./", "./index.html", "./styles.css" + v,
+        "./data-figures.js" + v, "./data-exercises.js" + v, "./data-food.js" + v, "./data-yoga.js" + v,
+        "./app.js" + v]).catch(function () {});
     })
   );
 });

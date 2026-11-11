@@ -1,3 +1,49 @@
+// ── CAUGHT-ERROR LOG (v480) ─────────────────────────────────────────────
+// A catch that used to swallow an error silently now calls ftCaught(e,'where'). Entries
+// are de-duplicated (same place + same message bumps a counter), capped at the last 40,
+// kept on this device only (never synced), and listed in Settings → Sync & Backup → "Caught errors".
+// Leave a catch truly empty only for best-effort device calls (vibrate, audio, wake lock, focus).
+var FT_ERRLOG=null;
+function ftErrLogLoad(){
+  if(FT_ERRLOG) return FT_ERRLOG;
+  FT_ERRLOG=[];
+  try{
+    var a=JSON.parse(localStorage.getItem('ft_errlog')||'[]'), cut=Date.now()-14*86400000;
+    if(Array.isArray(a)) FT_ERRLOG=a.filter(function(x){ return x&&x.t>cut&&typeof x.m==='string'; });
+  }catch(_){}
+  return FT_ERRLOG;
+}
+function ftErrLogSave(){ try{ localStorage.setItem('ft_errlog',JSON.stringify(FT_ERRLOG||[])); }catch(_){} }
+function ftCaught(err,where){
+  try{
+    var log=ftErrLogLoad(), msg=String((err&&err.message)||err).slice(0,200), now=Date.now();
+    for(var i=0;i<log.length;i++){ var x=log[i]; if(x.w===where&&x.m===msg){ x.n++; x.t=now; if(x.n===10||x.n%100===0) ftErrLogSave(); return; } }
+    log.push({w:where,m:msg,n:1,t:now,b:String(typeof APP_BUILD==='string'?APP_BUILD:'').split(' ')[0]});
+    if(log.length>40) log.splice(0,log.length-40);
+    ftErrLogSave();
+    if(window.console&&console.warn) console.warn('[caught] '+where+': '+msg, err);
+  }catch(_){}
+}
+function ftErrLogText(){
+  return ftErrLogLoad().slice().sort(function(a,b){return b.t-a.t;}).map(function(x){
+    return new Date(x.t).toLocaleString()+'  '+(x.b||'')+'  '+x.w+': '+x.m+(x.n>1?'  (×'+x.n+')':''); }).join('\n');
+}
+function ftRenderErrLog(){
+  var el=document.getElementById('ft-errlog'); if(!el) return;
+  var log=ftErrLogLoad();
+  if(!log.length){ el.innerHTML='Caught errors: none'; return; }
+  var esc=function(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  el.innerHTML='<details><summary style="cursor:pointer;color:#fbbf24">Caught errors: '+log.length+'</summary>'
+    +'<pre style="white-space:pre-wrap;word-break:break-word;font:10px/1.5 \'DM Mono\',monospace;color:#a8a8c0;margin:6px 0;max-height:220px;overflow:auto">'+esc(ftErrLogText())+'</pre>'
+    +'<button class="bs" style="font-size:11px;padding:6px 10px;margin-right:6px" onclick="ftErrLogCopy()">Copy</button>'
+    +'<button class="bs" style="font-size:11px;padding:6px 10px" onclick="ftErrLogClear()">Clear</button></details>';
+}
+function ftErrLogCopy(){
+  var txt=ftErrLogText();
+  try{ navigator.clipboard.writeText(txt).then(function(){ toast('Copied'); },function(){ toast('Could not copy'); }); }catch(_){ toast('Could not copy'); }
+}
+function ftErrLogClear(){ FT_ERRLOG=[]; ftErrLogSave(); ftRenderErrLog(); }
+
 // ── THEMES (v294) ───────────────────────────────────────────────────────
 // Dark is the native palette. Gray and Light are produced by remapping every
 // color in the app at runtime — stylesheet rules, inline styles (including the
@@ -10,8 +56,8 @@
 //          tint; mid-grays lift slightly to keep text contrast.
 // Switching themes reloads the page so the remap always starts from the
 // original dark values.
-var FT_THEME=(function(){ try{ var t=localStorage.getItem('ft_theme'); return (t==='light'||t==='gray')?t:'dark'; }catch(e){ return 'dark'; } })();
-function ftSetTheme(t){ try{ if(t==='dark') localStorage.removeItem('ft_theme'); else localStorage.setItem('ft_theme',t); }catch(e){} location.reload(); }
+var FT_THEME=(function(){ try{ var t=localStorage.getItem('ft_theme'); return (t==='light'||t==='gray')?t:'dark'; }catch(e){ ftCaught(e,'startup'); return 'dark'; } })();
+function ftSetTheme(t){ try{ if(t==='dark') localStorage.removeItem('ft_theme'); else localStorage.setItem('ft_theme',t); }catch(e){ftCaught(e,'ftSetTheme');} location.reload(); }
 (function(){
   if(FT_THEME==='dark') return;
   var root=document.documentElement;
@@ -119,11 +165,11 @@ var store = (function() {
     localStorage.setItem('__test__', '1');
     localStorage.removeItem('__test__');
     return {
-      get: function(k) { try { return localStorage.getItem(k); } catch(e) { return _memStore[k]||null; } },
-      set: function(k,v) { try { localStorage.setItem(k,v); } catch(e) { _memStore[k]=v; } },
-      remove: function(k) { try { localStorage.removeItem(k); } catch(e) { delete _memStore[k]; } }
+      get: function(k) { try { return localStorage.getItem(k); } catch(e) { ftCaught(e,'get'); return _memStore[k]||null; } },
+      set: function(k,v) { try { localStorage.setItem(k,v); } catch(e) { ftCaught(e,'set'); _memStore[k]=v; } },
+      remove: function(k) { try { localStorage.removeItem(k); } catch(e) { ftCaught(e,'remove'); delete _memStore[k]; } }
     };
-  } catch(e) {
+  } catch(e) { ftCaught(e,'startup');
     return {
       get: function(k) { return _memStore[k]||null; },
       set: function(k,v) { _memStore[k]=v; },
@@ -133,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v479 — 2026-11-10";
+var APP_BUILD = "v480 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -174,17 +220,17 @@ var DS_WEEKMAP_CAL=['sun','mon','tue','wed','thu','fri','sat'];
 // v411: David-only content (Word of Wisdom, family grocery list, 2-week family meal
 // plan) carries class "owner-only" and shows only when body has .is-owner. Owner =
 // not an imported plan and profile name starts with "David"; ft_owner '1'/'0' forces it.
-function ftIsOwner(){ try{ var o=store.get('ft_owner'); if(o==='1') return true; if(o==='0') return false; return !dsGuestMode() && /^\s*david\b/i.test(store.get('ft_name')||''); }catch(e){ return false; } }
-function ftApplyOwner(){ try{ document.body.classList.toggle('is-owner', ftIsOwner()); }catch(e){} }
-function dsGuestMode(){ try{ return !!(store.get('ds_custom_plan')||""); }catch(e){ return false; } }
+function ftIsOwner(){ try{ var o=store.get('ft_owner'); if(o==='1') return true; if(o==='0') return false; return !dsGuestMode() && /^\s*david\b/i.test(store.get('ft_name')||''); }catch(e){ ftCaught(e,'ftIsOwner'); return false; } }
+function ftApplyOwner(){ try{ document.body.classList.toggle('is-owner', ftIsOwner()); }catch(e){ftCaught(e,'ftApplyOwner');} }
+function dsGuestMode(){ try{ return !!(store.get('ds_custom_plan')||""); }catch(e){ ftCaught(e,'dsGuestMode'); return false; } }
 var DS_GUEST_TYPES_CACHE=null, DS_GUEST_TYPES_RAW=null;
 // Per day: the plan's own "dayType" (rest|active|recovery|ride) if given;
 // otherwise a day with no plan session or only a log:"done" rest move = rest,
 // anything else = active.
 function dsGuestDayTypes(){
-  var raw=""; try{ raw=store.get('ds_custom_plan')||""; }catch(e){}
+  var raw=""; try{ raw=store.get('ds_custom_plan')||""; }catch(e){ftCaught(e,'dsGuestDayTypes');}
   if(raw===DS_GUEST_TYPES_RAW && DS_GUEST_TYPES_CACHE) return DS_GUEST_TYPES_CACHE;
-  var out={}, o={}; try{ o=JSON.parse(raw)||{}; }catch(e){}
+  var out={}, o={}; try{ o=JSON.parse(raw)||{}; }catch(e){ftCaught(e,'dsGuestDayTypes');}
   ['mon','tue','wed','thu','fri','sat','sun'].forEach(function(d){
     var s=o[d], valid={rest:1,active:1,recovery:1,ride:1};
     if(s && valid[s.dayType]) { out[d]=s.dayType; return; }
@@ -222,14 +268,14 @@ var GOAL_MODE = store.get('ft_goal_mode') || null;
   // First run on v404: carry forward whatever the old toggles implied.
   var bulkOn=!!store.get('ft_bulk_start');
   GOAL_MODE = bulkOn ? 'gain' : 'recomp';
-  try{ store.set('ft_goal_mode', GOAL_MODE); store.remove('ft_bulk_start'); store.remove('ft_maint_start'); }catch(e){}
+  try{ store.set('ft_goal_mode', GOAL_MODE); store.remove('ft_bulk_start'); store.remove('ft_maint_start'); }catch(e){ftCaught(e,'migrateGoalMode');}
 })();
 function dsGoalMode(){ return GOAL_MODES[GOAL_MODE] ? GOAL_MODE : 'recomp'; }
 function dsSetGoalMode(m){
   if(!GOAL_MODES[m]) return;
   GOAL_MODE=m; store.set('ft_goal_mode', m);
-  try{ dsQueueConfigPush(); }catch(e){}
-  try{ renderAll(); }catch(e){}
+  try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsSetGoalMode');}
+  try{ renderAll(); }catch(e){ftCaught(e,'dsSetGoalMode');}
   dsRenderGoalUI();
   toast(GOAL_MODES[m].label+' — targets updated');
 }
@@ -256,7 +302,7 @@ function dsAvgTrainingKcal(days, kg){
   for(var i=1;i<=days;i++){ var d=new Date(); d.setDate(d.getDate()-i); var dd=appData[localDateKey(d)];
     (dd&&dd.exercises||[]).forEach(function(ex){
       var nm=String(ex.name||''); if(ex.type==='cardio'||/^walk|run|ride|bike/i.test(nm)) return;
-      var m=0; try{ m=dsEstimateSeconds(ex)/60; }catch(e){} if(!(m>0)) return;
+      var m=0; try{ m=dsEstimateSeconds(ex)/60; }catch(e){ftCaught(e,'dsAvgTrainingKcal');} if(!(m>0)) return;
       var net=(ex.type==='yoga'||/yoga|stretch|mobility|flow/i.test(nm))?1.5:2.5;
       kcal+=net*kg*m/60; min+=m;
     });
@@ -271,7 +317,7 @@ function dsAvgTrainingKcal(days, kg){
 function dsFormulaMaint(){
   var hIn=parseFloat(store.get('ft_height_in'))||0, age=parseInt(store.get('ft_age'))||0;
   if(!(hIn>0&&age>0)) return null;
-  var w=null; try{ var a=weightAvgWindow(7); w=a&&a.avg; }catch(e){}
+  var w=null; try{ var a=weightAvgWindow(7); w=a&&a.avg; }catch(e){ftCaught(e,'dsFormulaMaint');}
   if(!w) w=parseFloat(getLatestWeight()); if(!(w>0)) return null;
   var sex=store.get('ft_sex')==='f'?'f':'m';
   var bmr=10*(w/2.2046)+6.25*(hIn*2.54)-5*age+(sex==='f'?-161:5);
@@ -297,11 +343,11 @@ function dsBaseMaint(){
     var r=measuredTDEE();
     if(r && r.ok && r.tdee){
       var u=dsUsedMaint(r);
-      if(GOALS.calMaint!==u.tdee){ GOALS.calMaint=u.tdee; try{ store.set('ft_cal_maint', u.tdee); }catch(e){} }
+      if(GOALS.calMaint!==u.tdee){ GOALS.calMaint=u.tdee; try{ store.set('ft_cal_maint', u.tdee); }catch(e){ftCaught(e,'dsBaseMaint');} }
       return u.tdee;
     }
     var f0=dsFormulaMaint(); if(f0) return f0.tdee;
-  }catch(e){}
+  }catch(e){ftCaught(e,'dsBaseMaint');}
   finally{ _dsBaseMaintGuard=false; }
   return dsMaintFallback();
 }
@@ -328,7 +374,7 @@ function dsRenderGoalUI(){
     }).join('');
   }
   if(pv){
-    var r=null; try{ r=measuredTDEE(); }catch(e){}
+    var r=null; try{ r=measuredTDEE(); }catch(e){ftCaught(e,'dsRenderGoalUI');}
     var src=(r&&r.ok)?('measured maintenance \u2248'+base+' kcal'):('estimated maintenance '+base+' kcal (not enough data for a measured number yet)')
     var row=function(lbl,t){ return '<div style="display:flex;justify-content:space-between"><span>'+lbl+'</span><b style="color:#f0f0f0">'+Math.round((base+m.off+(DAY_CAL_NUDGE[t]||0))/10)*10+'</b></div>'; };
     pv.innerHTML='<div style="color:'+m.col+';margin-bottom:6px">'+m.blurb+'</div>'
@@ -366,7 +412,7 @@ function dsDeloadActive(){ return !!DELOAD_START && dsDeloadDaysElapsed() < 7; }
 function dsSetDeload(on){
   if(on){ DELOAD_START = todayKey(); store.set('ft_deload_start', DELOAD_START); store.set('ft_last_deload', DELOAD_START); }
   else { DELOAD_START = null; store.remove('ft_deload_start'); }
-  try{ renderAll(); }catch(e){}
+  try{ renderAll(); }catch(e){ftCaught(e,'dsSetDeload');}
   dsRenderDeloadUI();
 }
 function dsRenderDeloadUI(){
@@ -385,7 +431,7 @@ function dsRenderDeloadUI(){
 }
 
 
-try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){}
+try { var _sv = JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(_sv)) SUPPS = _sv; } catch(e){ftCaught(e,'startup');}
 var TREND_METRICS=[
   {key:"weight",  label:"Weight",   unit:"lbs", dir:"lower",   color:"#a78bfa", goal:function(){return GOAL_WEIGHT||0;}, get:function(d){return (d.weight!=null&&d.weight!=="")?d.weight:null;}},
   {key:"waist",   label:"Waist",    unit:"in",  dir:"lower",   color:"#38bdf8", get:function(d){return _meas(d,"waist");}},
@@ -449,7 +495,7 @@ function prettyDate(k){ return keyToDate(k).toLocaleDateString("en-US",{weekday:
 
 // ── STATE ───────────────────────────────────────────────────────────────
 var appData = {};
-try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; }
+try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ ftCaught(e,'startup'); appData={}; }
 // ── One-time repair: purge corrupted/duplicated exercise entries created by the
 // old comma-split sheet parser (junk names like "20)" or unterminated "(… cal|…"),
 // and collapse duplicate session snapshots down to the max-sets version.
@@ -483,7 +529,7 @@ try { appData = JSON.parse(store.get("ft_data")||"{}"); } catch(e){ appData={}; 
       if(kept.length!==d.exercises.length) d.exercises=kept;
     });
     if(changed){ store.set("ft_data",JSON.stringify(appData)); }
-  }catch(e){}
+  }catch(e){ftCaught(e,'dsRepairLog');}
 })();
 var activeDate = todayKey();
 var wellnessRatings = {sleepQ:0, energy:0, mood:0, medClarity:0};
@@ -687,7 +733,7 @@ function _measuredTDEEUncached(){
         }
       }
     }
-  }catch(e){}
+  }catch(e){ftCaught(e,'_measuredTDEEUncached');}
   return r;
 }
 // Theil-Sen estimator with a distribution-free ~90% confidence interval for the
@@ -711,7 +757,7 @@ function isToday(){ return activeDate===todayKey(); }
 // ── SAVE + AUTO-SYNC ────────────────────────────────────────────────────
 var _syncTimer=null, _lastHash=null;
 function saveAll(){
-  try { store.set("ft_data", JSON.stringify(appData)); } catch(e){}
+  try { store.set("ft_data", JSON.stringify(appData)); } catch(e){ftCaught(e,'saveAll');}
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(function(){
     var hash = JSON.stringify(appData).length+"_"+(appData[todayKey()]?JSON.stringify(appData[todayKey()]).length:0);
@@ -737,7 +783,7 @@ function flushPendingSync(){
       var blob=new Blob(["data="+encodeURIComponent(JSON.stringify(buildFtPayload()))],{type:"application/x-www-form-urlencoded"});
       var ok=navigator.sendBeacon(SHEETS_URL, blob);
       if(ok) return;
-    }catch(e){}
+    }catch(e){ftCaught(e,'flushPendingSync');}
   }
   pushToSheets(); // fallback if sendBeacon is unavailable or queuing failed
 }
@@ -750,7 +796,7 @@ window.addEventListener("pagehide",function(){ flushPendingSync(); });
 // checked supplement ids to real names instead. _suppNames isn't a date key,
 // so Code.gs's date-pattern filter skips right over it when processing days.
 function buildFtPayload(){
-  var out={}; for(var k in appData){ if(appData.hasOwnProperty(k)){ var _d=appData[k]; if(_d&&_d.supplements){ try{ _d.supplements=_normSupps(_d.supplements); }catch(e){} } out[k]=_d; } }
+  var out={}; for(var k in appData){ if(appData.hasOwnProperty(k)){ var _d=appData[k]; if(_d&&_d.supplements){ try{ _d.supplements=_normSupps(_d.supplements); }catch(e){ftCaught(e,'buildFtPayload');} } out[k]=_d; } }
   var suppNames={}; (SUPPS||[]).forEach(function(s){ if(s&&s.id) suppNames[s.id]=s.name||s.id; });
   out._suppNames=suppNames;
   return out;
@@ -853,7 +899,7 @@ function fetchOverloadCache(){
         DS_CLOUD_HIST[exId].push({date:date, reps:dsCleanField(r["Reps"]||""), load:dsCleanField(r["Band / Weight"]||""), sets:dsCleanField(r["Sets"]||""), rir:dsCleanField(r["RIR"]||"")});
       }
     });
-    if(volChanged){ try{ renderAll(); }catch(e){} }
+    if(volChanged){ try{ renderAll(); }catch(e){ftCaught(e,'ingest');} }
   }
   fetch(SHEETS_URL+"?overload=1&nocache="+Date.now())
     .then(function(r){return r.json();}).then(ingest).catch(function(){
@@ -1185,11 +1231,11 @@ function dsMergeExercises(localEx,remoteEx,tombs){
 function mergeRows(rows){
   if(!Array.isArray(rows)) return;
   rows.forEach(function(r){ var k=(r["Date"]||"").trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(k)) mergeDay(k,rowToDay(r)); });
-  try { store.set("ft_data",JSON.stringify(appData)); } catch(e){}
+  try { store.set("ft_data",JSON.stringify(appData)); } catch(e){ftCaught(e,'mergeRows');}
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────────────
-function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderWeightTargets(); if(typeof renderToday==="function"){try{renderToday();}catch(e){}} try{dsRenderDeloadUI();}catch(e){} try{dsRenderGoalUI();}catch(e){} try{mpRenderToday();}catch(e){} try{dsRenderStepsCard();}catch(e){} }
+function renderAll(){ ftApplyOwner(); renderHeader(); renderDash(); renderLog(); renderWeightTargets(); try{renderToday();}catch(e){ftCaught(e,'renderAll');} try{dsRenderDeloadUI();}catch(e){ftCaught(e,'renderAll');} try{dsRenderGoalUI();}catch(e){ftCaught(e,'renderAll');} try{mpRenderToday();}catch(e){ftCaught(e,'renderAll');} try{dsRenderStepsCard();}catch(e){ftCaught(e,'renderAll');} }
 
 function renderHeader(){
   document.getElementById("date-str").textContent = isToday() ? "Today" : prettyDate(activeDate);
@@ -1247,7 +1293,7 @@ function intakeAverages(days){
     return {key:k,
       cal:f.reduce(function(a,x){return a+(+x.cal||0);},0),
       protein:f.reduce(function(a,x){return a+(+x.protein||0);},0),
-      floor:(typeof tdeeDayFloor==='function')?tdeeDayFloor(k):1000};
+      floor:tdeeDayFloor(k)};
   });
   var full=rows.filter(function(r){return r.cal>=r.floor;});
   if(!full.length) return {days:days,n:0,nPartial:rows.length,logged:rows.length};
@@ -1300,10 +1346,10 @@ function jumpToWeighIn(){
     var inp=document.getElementById('wt-input'); if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth',block:'center'}); }
   }, 60);
 }
-function dismissNudges(){ try{ store.set('ft_nudge_dismissed', todayKey()); }catch(e){} renderWeighinBanner(); }
+function dismissNudges(){ try{ store.set('ft_nudge_dismissed', todayKey()); }catch(e){ftCaught(e,'dismissNudges');} renderWeighinBanner(); }
 function renderWeighinBanner(){
   var el=document.getElementById('weighin-banner'); if(!el) return;
-  try{ if(store.get('ft_nudge_dismissed')===todayKey()){ el.innerHTML=''; return; } }catch(e){}
+  try{ if(store.get('ft_nudge_dismissed')===todayKey()){ el.innerHTML=''; return; } }catch(e){ftCaught(e,'renderWeighinBanner');}
   var todayDow = keyToDate(todayKey()).getDay();
   var isWeighInToday = (todayDow === WEIGHIN_DAY);
   var loggedToday = !!(getDay(todayKey()).weight);
@@ -1346,7 +1392,7 @@ function measureNudgeHtml(){
     if(waistDue||fullDue) btns+='<button class="weighin-nudge-btn" onclick="jumpToMeasure()">Log</button>';
     if(photosDue) btns+='<button class="weighin-nudge-btn" style="margin-left:6px" onclick="markPhotosDone()">Photos \u2713</button>';
     return '<div class="weighin-nudge" style="margin-top:8px"><div class="weighin-nudge-text">\ud83d\udccf <b>Measurements due</b> \u2014 '+items.join(' + ')+'. Morning, before eating or training.</div><div style="display:flex;flex-shrink:0">'+btns+'</div></div>';
-  }catch(e){ return ''; }
+  }catch(e){ ftCaught(e,'measureNudgeHtml'); return ''; }
 }
 function jumpToMeasure(){
   switchTab('log');
@@ -1355,7 +1401,7 @@ function jumpToMeasure(){
     var inp=document.getElementById('m-waist'); if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth',block:'center'}); }
   }, 60);
 }
-function markPhotosDone(){ try{ store.set('ft_photos_done', todayKey().slice(0,7)); }catch(e){} toast('Photos logged for this month'); renderWeighinBanner(); }
+function markPhotosDone(){ try{ store.set('ft_photos_done', todayKey().slice(0,7)); }catch(e){ftCaught(e,'markPhotosDone');} toast('Photos logged for this month'); renderWeighinBanner(); }
 
 // Trailing 7-day scale average, shown beside the raw number it should outrank.
 function renderWeightTrend(){
@@ -1508,7 +1554,7 @@ function overloadCsv(){
       if(!e||!e.id||String(e.id).indexOf('sess_')!==0) return;
       if(!e.sets&&!e.reps&&!e.load) return;
       var id=String(e.id).slice(5);
-      var mv=(typeof DS_MV!=='undefined'&&DS_MV[id])?Object.keys(DS_MV[id]).map(function(m){return m+':'+DS_MV[id][m];}).join(';'):'';
+      var mv=(DS_MV[id])?Object.keys(DS_MV[id]).map(function(m){return m+':'+DS_MV[id][m];}).join(';'):'';
       rows.push([k,id,e.name||id.replace(/-/g,' '),e.load||'',e.reps!=null?e.reps:'',e.sets!=null?e.sets:'',e.rir!=null?e.rir:'',mv]);
     });
   });
@@ -1687,7 +1733,7 @@ function strengthCompare(hist){
   return {kind:d>0?'up':(d<0?'down':(dt>0?'upvol':(dt<0?'downvol':'flat'))), cur:cur, same:same, d:d, dt:dt};
 }
 var STRENGTH_TREND_SHOW=5;
-function _stDate(k){ try{ return keyToDate(k).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return k; } }
+function _stDate(k){ try{ return keyToDate(k).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ ftCaught(e,'_stDate'); return k; } }
 function renderStrengthTrend(){
   var el=document.getElementById("dash-strength-trend"); if(!el) return;
   var list=strengthTrendData();
@@ -1881,14 +1927,14 @@ function renderRecoveryFlag(){
   if(consec>=6) flags.push({col:'#ff6b6b',txt:consec+' training days in a row with no rest/active-recovery day \u2014 the split has one built in for a reason.',showList:true});
   if(consec>=6) flags[flags.length-1].w=2;
   if(rirDelta!=null && rirDelta<=-1) flags.push({w:1,col:'#fbbf24',txt:'Average RIR has dropped '+Math.abs(rirDelta).toFixed(1)+' over your last few sessions \u2014 working sets are getting harder for the same target, a common lead-in to burnout.'});
-  try{ flags=flags.concat(dsReadinessSignals()); }catch(e){}
+  try{ flags=flags.concat(dsReadinessSignals()); }catch(e){ftCaught(e,'renderRecoveryFlag');}
   var score=flags.reduce(function(s,f){return s+(f.w||1);},0);
   var verdict=score>=3?'deload':(score>=1?'hold':'push');
   var vTxt={push:'Push',hold:'Hold',deload:'Deload'}[verdict];
   var vSub={push:'Recovery looks good \u2014 train as programmed and chase reps.',
             hold:'A warning sign or two \u2014 hit your sets, but don\u2019t chase PRs or go below target RIR.',
             deload:'Several signals stacking up \u2014 a deload week now is cheaper than a forced one later.'}[verdict];
-  var deloadOn=(typeof dsDeloadActive==='function')&&dsDeloadActive();
+  var deloadOn=dsDeloadActive();
   var head='<div class="rd-verdict"><span class="rd-pill '+verdict+'">'+vTxt+'</span>'
     +((verdict==='deload'&&!deloadOn)?'<button class="rd-btn" onclick="dsSetDeload(true);renderRecoveryFlag()">Start deload week</button>':'')
     +(deloadOn?'<span style="font-size:11px;color:#cfe84f">Deload active</span>':'')+'</div>'
@@ -1951,7 +1997,7 @@ function renderIntakeAverages(){
 var DASH_FOCUS = store.get('ft_dash_focus') || 'muscle';
 function dashFocusSet(v){
   DASH_FOCUS=(v==='weight')?'weight':'muscle';
-  try{ store.set('ft_dash_focus',DASH_FOCUS); }catch(e){}
+  try{ store.set('ft_dash_focus',DASH_FOCUS); }catch(e){ftCaught(e,'dashFocusSet');}
   renderDashFocus(); renderWeightTargets();
 }
 function dashDateShift(key,days){
@@ -2011,7 +2057,7 @@ function renderDashFocus(){
 // Display only. Every card keeps its element ids, so every renderer still works
 // whichever view is showing.
 var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['streaks','Streaks','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep'],['volume','Volume','deep'],['intake','Intake avg','deep'],['distance','Distance','deep']];
-function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ return {}; } }
+function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ ftCaught(e,'dashSecState'); return {}; } }
 function dashJump(id,sec){
   var d=document.querySelector('#panel-dash details[data-dsec="'+sec+'"]'); if(d&&!d.open){ d.open=true; }
   var el=(id==='strength'&&document.getElementById('dash-strength-card'))||document.getElementById('dj-'+id); if(!el) return;
@@ -2020,18 +2066,18 @@ function dashJump(id,sec){
 }
 function applyDashView(){
   var bar=document.getElementById('dash-view-bar'); if(!bar) return;
-  try{ var tb=document.querySelector('.tab-bar'); var th=(tb&&getComputedStyle(tb).position!=='fixed')?tb.getBoundingClientRect().height:0; bar.style.top=Math.round(th)+'px'; document.getElementById('panel-dash').style.setProperty('--djump',Math.round(th+64)+'px'); }catch(e){}
+  try{ var tb=document.querySelector('.tab-bar'); var th=(tb&&getComputedStyle(tb).position!=='fixed')?tb.getBoundingClientRect().height:0; bar.style.top=Math.round(th)+'px'; document.getElementById('panel-dash').style.setProperty('--djump',Math.round(th+64)+'px'); }catch(e){ftCaught(e,'applyDashView');}
   if(!bar._built){
     bar._built=true; bar.className='dash-jump';
     bar.innerHTML=DASH_JUMPS.map(function(j){ return '<button type="button" class="dash-chip" onclick="dashJump(\''+j[0]+'\',\''+j[2]+'\')">'+j[1]+'</button>'; }).join('');
     var st=dashSecState();
     document.querySelectorAll('#panel-dash details.dash-sec').forEach(function(d){
       var k=d.getAttribute('data-dsec'); if(k in st) d.open=!!st[k];
-      d.addEventListener('toggle',function(){ var s2=dashSecState(); s2[k]=d.open; try{ store.set('ft_dash_secs',JSON.stringify(s2)); }catch(e){} if(d.open){ try{ renderDash(); }catch(e){} } });
+      d.addEventListener('toggle',function(){ var s2=dashSecState(); s2[k]=d.open; try{ store.set('ft_dash_secs',JSON.stringify(s2)); }catch(e){ftCaught(e,'applyDashView');} if(d.open){ try{ renderDash(); }catch(e){ftCaught(e,'applyDashView');} } });
     });
   }
 }
-function dashCollapseState(){ try{ return JSON.parse(store.get('ft_dash_collapse')||'{}')||{}; }catch(e){ return {}; } }
+function dashCollapseState(){ try{ return JSON.parse(store.get('ft_dash_collapse')||'{}')||{}; }catch(e){ ftCaught(e,'dashCollapseState'); return {}; } }
 function dashCollapseInit(){
   var st=dashCollapseState();
   document.querySelectorAll('#panel-dash .card[data-cid]').forEach(function(c){
@@ -2049,9 +2095,9 @@ function dashCollapseInit(){
     function paint(){ body.style.display=closed?'none':''; chev.textContent=closed?'▸':'▾'; t.style.marginBottom=closed?'0':''; }
     t.addEventListener('click',function(){
       closed=!closed;
-      var s2=dashCollapseState(); s2[id]=closed; try{ store.set('ft_dash_collapse',JSON.stringify(s2)); }catch(e){}
+      var s2=dashCollapseState(); s2[id]=closed; try{ store.set('ft_dash_collapse',JSON.stringify(s2)); }catch(e){ftCaught(e,'dashCollapseInit');}
       paint();
-      if(!closed){ try{ renderDash(); }catch(e){} }
+      if(!closed){ try{ renderDash(); }catch(e){ftCaught(e,'dashCollapseInit');} }
     });
     paint();
   });
@@ -2164,8 +2210,8 @@ function dsDeloadDue(){
   if(stalled.length>=3) return {why:stalled.length+' exercises have stalled for 3 sessions ('+stalled.slice(0,3).join(', ')+(stalled.length>3?'…':'')+')', stalled:stalled};
   return null;
 }
-function dsDeloadAlreadyDone(){ store.set('ft_last_deload', todayKey()); toast('Got it \u2014 next check in 6 weeks'); try{ renderAll(); }catch(e){} }
-function dsStartDeloadFromNudge(){ dsSetDeload(true); toast('Deload week started — 7 days'); try{ renderAll(); }catch(e){} }
+function dsDeloadAlreadyDone(){ store.set('ft_last_deload', todayKey()); toast('Got it \u2014 next check in 6 weeks'); try{ renderAll(); }catch(e){ftCaught(e,'dsDeloadAlreadyDone');} }
+function dsStartDeloadFromNudge(){ dsSetDeload(true); toast('Deload week started — 7 days'); try{ renderAll(); }catch(e){ftCaught(e,'dsStartDeloadFromNudge');} }
 function renderBigPicture(){
   var el=document.getElementById('dash-bigpic'); if(!el) return;
   try{
@@ -2203,27 +2249,27 @@ function renderBigPicture(){
         : '<span style="color:#5eead4">Rep counts vary set to set</span> — a good sign you’re pushing close to failure.';
       h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Effort:</b> '+eff+(tr14.rir!=null&&tr14.rirN>=10?' Average logged RIR '+tr14.rir.toFixed(1)+'.':'')+'</div>';
     }
-    var dl=null; try{ dl=dsDeloadDue(); }catch(e){}
+    var dl=null; try{ dl=dsDeloadDue(); }catch(e){ftCaught(e,'renderBigPicture');}
     if(dsDeloadActive()) h+='<div style="margin-top:6px;font-size:12px;line-height:1.55;color:#5eead4"><b>Deload week</b> \u2014 day '+(dsDeloadDaysElapsed()+1)+' of 7. Same exercises, about half the sets, stop 3\u20134 reps short of failure.</div>';
     else if(dl) h+='<div style="margin-top:8px;padding:8px 10px;border:1px solid #5eead455;border-radius:10px;font-size:12px;line-height:1.5;color:#cfcfda"><b style="color:#5eead4">Deload due</b> \u2014 '+dl.why+'. One easy week now lets you come back stronger.<div style="margin-top:6px"><button type="button" onclick="dsStartDeloadFromNudge()" style="border:1px solid #5eead4;color:#5eead4;background:transparent;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer">Start deload week</button> <button type="button" onclick="dsDeloadAlreadyDone()" style="border:1px solid #444;color:#8b8b9c;background:transparent;border-radius:8px;padding:5px 10px;font-size:11px;font-family:\'DM Mono\',monospace;cursor:pointer;margin-left:4px">I deloaded recently</button></div></div>';
     // Calories
-    var tdr=null; try{ tdr=measuredTDEE(); }catch(e){}
+    var tdr=null; try{ tdr=measuredTDEE(); }catch(e){ftCaught(e,'renderBigPicture');}
     h+='<div style="margin-top:4px;font-size:12px;line-height:1.55;color:#cfcfda"><b>Calories:</b> maintenance '+((tdr&&tdr.ok)?'≈':'est. ')+base+' · goal '+(gm.off===0?'±0':(gm.off>0?'+':'−')+Math.abs(gm.off))+' · today’s target <b style="color:#f0f0f0">'+tgt+'</b></div>';
     el.innerHTML=h;
     var sp=document.getElementById('bp-spark');
     if(sp&&_bpSparkHv){ var wm=TREND_METRICS.filter(function(x){return x.key==='weight';})[0]; _wireTrendHover(sp,wm,_bpSparkHv.series,_bpSparkHv); }
-  }catch(e){ el.innerHTML=''; }
+  }catch(e){ ftCaught(e,'renderBigPicture'); el.innerHTML=''; }
 }
 // ── v453: WEEKLY LOWER-BODY CHECK-IN (hip / low back / knee stiffness, 0–10) ──
 // One entry per Sun–Sat week. Stored in ft_stiff and synced through the Config sheet.
 var STIFF_AREAS=[['hip','Hips'],['back','Low back'],['knee','Knees']];
 var STIFF_SORE=[['0','None'],['1','< 1 day'],['2','1–2 days'],['3','3+ days']];
 function stiffWeekKey(k){ var d=keyToDate(k||todayKey()); d.setDate(d.getDate()-d.getDay()); return localDateKey(d); }
-function stiffLoad(){ try{ return JSON.parse(store.get('ft_stiff')||'{}')||{}; }catch(e){ return {}; } }
+function stiffLoad(){ try{ return JSON.parse(store.get('ft_stiff')||'{}')||{}; }catch(e){ ftCaught(e,'stiffLoad'); return {}; } }
 function stiffSet(area,val){
   var all=stiffLoad(), wk=stiffWeekKey(), rec=all[wk]||{};
   rec[area]=(rec[area]===val?null:val); rec.ts=Date.now(); all[wk]=rec;
-  store.set('ft_stiff',JSON.stringify(all)); try{ pushConfig(); }catch(e){}
+  store.set('ft_stiff',JSON.stringify(all)); try{ pushConfig(); }catch(e){ftCaught(e,'stiffSet');}
   renderStiffCard();
 }
 function renderStiffCard(){
@@ -2243,8 +2289,8 @@ function renderStiffCard(){
   el.innerHTML=h;
 }
 function renderDash(){
-  try{ renderStiffCard(); }catch(e){}
-  try{ renderBigPicture(); }catch(e){}
+  try{ renderStiffCard(); }catch(e){ftCaught(e,'renderDash');}
+  try{ renderBigPicture(); }catch(e){ftCaught(e,'renderDash');}
   renderWeighinBanner();
   GOALS.cal = calGoalForKey(activeDate);
   var t=getTotals(), burned=getBurned(), netRem=GOALS.cal-t.cal;
@@ -2329,7 +2375,7 @@ function renderDash(){
   try{ renderDashFocus(); }catch(e){ console.warn("focus render",e); }
   try{ dashCollapseInit(); }catch(e){ console.warn("collapse init",e); }
   try{ applyDashView(); }catch(e){ console.warn("view apply",e); }
-  try{ if(typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume(); }catch(e){}
+  try{ dsRenderMuscleVolume(); }catch(e){ftCaught(e,'renderDash');}
 }
 function renderRadials(items){
   var SIZE=72;
@@ -2362,12 +2408,12 @@ function switchTab(id){
   // rather than at the top of the dashboard panel, so it needs to hide
   // itself on every other tab instead of relying on the panel's own display.
   var hrd=document.getElementById("header-refresh-dash"); if(hrd) hrd.style.display=(id==="dash")?"flex":"none";
-  if(id==="yoga" && typeof yogaSwitchTab==="function") yogaSwitchTab("presets"); // always land on Presets, rendered
-  if(id==="today" && typeof renderToday==="function") renderToday();
-  if(id==="log" && typeof ldInit==="function") ldInit();
-  if(id==="dash" && typeof dsRenderMuscleVolume==="function") dsRenderMuscleVolume();
-  if(id==="meals" && typeof renderMealsTab==="function") renderMealsTab();
-  if(id==="food" && typeof renderFoodTab==="function") renderFoodTab();
+  if(id==="yoga") yogaSwitchTab("presets"); // always land on Presets, rendered
+  if(id==="today") renderToday();
+  if(id==="log") ldInit();
+  if(id==="dash") dsRenderMuscleVolume();
+  if(id==="meals") renderMealsTab();
+  if(id==="food") renderFoodTab();
   document.querySelector(".content").scrollTop=0;
 }
 var _lastSheetPull = 0;
@@ -2391,7 +2437,7 @@ function doRefresh(which){
   var icon=document.getElementById("refresh-icon-"+which);
   if(icon){ icon.style.transition="transform .6s ease"; icon.style.transform="rotate(360deg)";
     setTimeout(function(){icon.style.transition="none";icon.style.transform="rotate(0)";},650); }
-  fetchSheet(function(rows,ok,why){ if(ok&&rows){ mergeRows(rows); toast("✓ Synced"); } else if(typeof toast==="function"){ toast("Sync failed: "+(why||"unknown")); } renderAll(); });
+  fetchSheet(function(rows,ok,why){ if(ok&&rows){ mergeRows(rows); toast("✓ Synced"); } else { toast("Sync failed: "+(why||"unknown")); } renderAll(); });
 }
 
 // ── LOG: FOOD ───────────────────────────────────────────────────────────
@@ -2565,7 +2611,7 @@ function removeEx(id){ var day=getDay();
   // If this was a session exercise, clear the workout card's local set state too,
   // so Weekly Volume and the card's done-dots don't resurrect it.
   if(String(id).indexOf("sess_")===0){
-    try{ var xid=String(id).slice(5), d=dsDayState(); if(d[xid]){ delete d[xid]; dsSaveUI(); } }catch(e){}
+    try{ var xid=String(id).slice(5), d=dsDayState(); if(d[xid]){ delete d[xid]; dsSaveUI(); } }catch(e){ftCaught(e,'removeEx');}
   }
   saveDay(day); renderAll(); }
 var editingExId=null;
@@ -2821,7 +2867,7 @@ function logMeasurements(){
   saveDay(d);
   var m=document.getElementById("measure-msg"); m.textContent="✓ Measurements saved"; setTimeout(function(){m.textContent="";},2500);
   renderMeasurements();
-  try{ renderWeighinBanner(); }catch(e){}
+  try{ renderWeighinBanner(); }catch(e){ftCaught(e,'logMeasurements');}
 }
 function renderMeasurements(){
   var ms=getDay().measurements||{};
@@ -2862,7 +2908,7 @@ function trkPersist(){
       active:trk.active, paused:trk.paused, activity:trk.activity,
       startTs:trk.startTs, elapsedMs:trk.elapsedMs, lastPt:trk.lastPt, distM:trk.distM, ruckLb:trk.ruckLb
     }));
-  }catch(e){}
+  }catch(e){ftCaught(e,'trkPersist');}
 }
 function trkTryRestore(){
   try{
@@ -2882,7 +2928,7 @@ function trkTryRestore(){
     if(finishBtn) finishBtn.style.display="block";
     trkUpdate();
     trkStatus("Recovered a session from before reload — tap Resume to keep tracking, or Finish to save what you have","#fbbf24");
-  }catch(e){}
+  }catch(e){ftCaught(e,'trkTryRestore');}
 }
 
 function setTrackActivity(a){
@@ -2939,7 +2985,7 @@ function ivlBeep(freq,durMs){
     g.gain.setValueAtTime(0.15,ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+durMs/1000);
     o.start(); o.stop(ctx.currentTime+durMs/1000);
-  }catch(e){}
+  }catch(e){ftCaught(e,'ivlBeep');}
 }
 function ivlCue(phase){
   try{ if(navigator.vibrate) navigator.vibrate(phase==='work'?[220]:[110,90,110,90,110]); }catch(e){}
@@ -3070,7 +3116,7 @@ function trkStop(){
   document.getElementById("trk-start").style.display="block";
   document.getElementById("trk-pause").style.display="none";
   document.getElementById("trk-finish").style.display="none";
-  try{ localStorage.removeItem("trk_session"); }catch(e){}
+  try{ localStorage.removeItem("trk_session"); }catch(e){ftCaught(e,'trkStop');}
   ivl.phase=null;
 }
 function trkFinish(){
@@ -3168,7 +3214,7 @@ function renderTrackSummary(){
 document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible" && trk.active && !trk.paused) trkReqWake(); });
 document.addEventListener("visibilitychange",function(){
   if(document.visibilityState==="visible" && qtInterval && !qtPaused && qtEndTs!=null){
-    try{ qtTick(); }catch(e){}
+    try{ qtTick(); }catch(e){ftCaught(e,'startup');}
     qtReqWake();
   }
 });
@@ -3320,7 +3366,7 @@ document.querySelectorAll(".tab-btn").forEach(function(btn){ btn.addEventListene
 // v286: the app now opens on Today (index.html marks it active; renderAll renders it).
 
 setTimeout(renderAll, 0);
-if(typeof ldInit==="function"){ try{ldInit();}catch(e){} }
+try{ldInit();}catch(e){ftCaught(e,'startup');}
 
 // ── CUSTOMIZATION RENDERS (config-driven) ───────────────────────────────
 function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
@@ -3368,7 +3414,7 @@ function dsRenderVarRotatePreview(){
         }
       });
     });
-  }catch(e){}
+  }catch(e){ftCaught(e,'dsRenderVarRotatePreview');}
   var out='On — '+count+' exercise'+(count===1?'':'s')+' with variants cycle automatically, one slot per week, overriding manual swaps.';
   if(sample.length) out+='<br>This week, e.g.: '+sample.join(' · ');
   host.innerHTML=out;
@@ -3392,7 +3438,7 @@ function dsGuestSettingsText(){
   set('ds-cal-lbl-ride', g?'Long cardio day calories':'Ride day calories');
   var gx=document.getElementById('ds-guest-extras-toggle'); if(gx){ gx.checked=dsGuestShowExtras(); gx.parentNode.parentNode.style.display=g?'':'none'; }
 }
-function openSettings(){ try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); try{dsRenderGoalUI();}catch(e){} var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
+function openSettings(){ ftRenderErrLog(); try{document.querySelectorAll("#th-pick button").forEach(function(b){b.classList.toggle("on",b.dataset.th===FT_THEME);});}catch(e){ftCaught(e,'openSettings');} initHealthSettings(); try{dsApplySimpleSettings();}catch(e){ftCaught(e,'openSettings');} dsGuestSettingsText(); dsRenderRotatePreview(); dsRenderVarRotatePreview(); dsRenderDeloadUI(); try{dsRenderGoalUI();}catch(e){ftCaught(e,'openSettings');} var ps=document.getElementById("ds-plan-status"); if(ps) ps.textContent=dsCustomPlanStatus(); document.getElementById("settings-overlay").style.display="flex"; document.getElementById("settings-overlay").scrollTop=0; _SET_DIRTY=false; _markTab("settings"); _setTop(); }
 function dsSetJump(id){ var g=document.getElementById("set-"+id); if(!g) return; g.open=true; g.scrollIntoView({behavior:"smooth",block:"start"}); }
 // v291: Simple Settings — hides [data-mu] multi-user / plan-import controls.
 // Off by default. The Revert button is never hidden while a custom plan is active,
@@ -3406,18 +3452,18 @@ function dsApplySimpleSettings(){
     var keep=guest && /dsResetCustomPlan/.test(el.getAttribute('onclick')||'');
     el.classList.toggle('mu-hide',on&&!keep);
   });
-  var sub=document.getElementById('sg-program-sub'); if(sub) sub.textContent=on?'Weekly plan editor':'Weekly plan, custom set, plan source';
+  var sub=document.getElementById('sg-program-sub'); if(sub) sub.textContent=on?'Weekly plan editor':'Weekly plan, custom set';
 }
 function closeSettings(){ document.getElementById("settings-overlay").style.display="none"; _markTab(typeof DS_ACTIVE_TAB!=="undefined"&&DS_ACTIVE_TAB?DS_ACTIVE_TAB:"today"); }
 var _SET_DIRTY=false;
 // Desktop: the tab bar sits at the top, so pin Settings' top edge to the bar's bottom edge.
-function _setTop(){ try{ var tb=document.getElementById("main-tabs"); if(!tb) return; var fixed=getComputedStyle(tb).position==="fixed"; document.documentElement.style.setProperty("--setop", fixed?"0px":Math.max(0,Math.round(tb.getBoundingClientRect().bottom))+"px"); }catch(e){} }
+function _setTop(){ try{ var tb=document.getElementById("main-tabs"); if(!tb) return; var fixed=getComputedStyle(tb).position==="fixed"; document.documentElement.style.setProperty("--setop", fixed?"0px":Math.max(0,Math.round(tb.getBoundingClientRect().bottom))+"px"); }catch(e){ftCaught(e,'_setTop');} }
 function _settingsOpen(){ var o=document.getElementById("settings-overlay"); return !!(o&&o.style.display==="flex"); }
 // Leaving Settings by tapping another tab keeps edits (saves only if something changed).
-function _leaveSettings(){ if(_SET_DIRTY){ try{ saveHealthSettings(); }catch(e){} } _SET_DIRTY=false; document.getElementById("settings-overlay").style.display="none"; }
+function _leaveSettings(){ if(_SET_DIRTY){ try{ saveHealthSettings(); }catch(e){ftCaught(e,'_leaveSettings');} } _SET_DIRTY=false; document.getElementById("settings-overlay").style.display="none"; }
 function _markTab(id){ document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.toggle("active", b.dataset.tab===id); }); }
 (function(){
-  function setTabH(){ try{ var tb=document.getElementById("main-tabs"); if(tb) document.documentElement.style.setProperty("--tabh", Math.round(tb.getBoundingClientRect().height)+"px"); }catch(e){} }
+  function setTabH(){ try{ var tb=document.getElementById("main-tabs"); if(tb) document.documentElement.style.setProperty("--tabh", Math.round(tb.getBoundingClientRect().height)+"px"); }catch(e){ftCaught(e,'setTabH');} }
   function init(){
     setTabH(); window.addEventListener("resize", function(){ setTabH(); if(_settingsOpen()) _setTop(); });
     var o=document.getElementById("settings-overlay"); if(o){ o.addEventListener("input",function(){ _SET_DIRTY=true; }); o.addEventListener("change",function(){ _SET_DIRTY=true; }); }
@@ -3522,7 +3568,7 @@ function _trendTipHtml(m,series,i){
   var ctx=[];
   if(m.key!=="weight" && d.weight) ctx.push("Weight "+d.weight);
   if(d.foods&&d.foods.length){ var cal=0,pro=0; d.foods.forEach(function(f){cal+=+f.cal||0;pro+=+f.protein||0;}); if(m.key!=="cal") ctx.push(Math.round(cal)+" kcal"); if(m.key!=="protein") ctx.push(Math.round(pro)+"g protein"); }
-  if(d.exercises&&d.exercises.length){ var mins=0; try{ mins=Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60); }catch(e){} ctx.push(d.exercises.length+" exercise"+(d.exercises.length>1?"s":"")+(mins?" · "+mins+" min":"")); }
+  if(d.exercises&&d.exercises.length){ var mins=0; try{ mins=Math.round(d.exercises.reduce(function(a,ex){return a+dsEstimateSeconds(ex);},0)/60); }catch(e){ftCaught(e,'_trendTipHtml');} ctx.push(d.exercises.length+" exercise"+(d.exercises.length>1?"s":"")+(mins?" · "+mins+" min":"")); }
   if(d.rides&&d.rides.length) ctx.push(d.rides.length+" ride"+(d.rides.length>1?"s":""));
   if(m.key!=="water" && d.waterOz>0) ctx.push(d.waterOz+" oz water");
   if(ctx.length) h+='<div style="color:#8b8b9c;margin-top:3px;border-top:1px solid #2a2a45;padding-top:3px">'+ctx.join(" · ")+'</div>';
@@ -3585,7 +3631,7 @@ function renderTrends(){
 
 
 // ── BATCH B: FAST FOOD LOGGING (favorites/history search) ──────
-function loadFav(){ try{ var a=JSON.parse(store.get("ft_fav_foods")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function loadFav(){ try{ var a=JSON.parse(store.get("ft_fav_foods")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ ftCaught(e,'loadFav'); return []; } }
 function saveFav(a){ store.set("ft_fav_foods", JSON.stringify(a)); }
 // ── Explicit meal tag (Breakfast/Lunch/Dinner/Snack), independent of when you
 // happen to log — this is what the protein-by-meal graph trusts first, falling
@@ -3595,11 +3641,11 @@ function dsMealTagGet(){
   try{
     var raw=store.get("ft_meal_tag");
     if(raw){ var o=JSON.parse(raw); if(o.date===activeDate && o.tag) return o.tag; }
-  }catch(e){}
+  }catch(e){ftCaught(e,'dsMealTagGet');}
   return dsMealWindowFor(dsCurrentHourFloat()); // sensible default: guess from the clock, user can override
 }
 function dsMealTagSet(tag){
-  try{ store.set("ft_meal_tag", JSON.stringify({date:activeDate, tag:tag})); }catch(e){}
+  try{ store.set("ft_meal_tag", JSON.stringify({date:activeDate, tag:tag})); }catch(e){ftCaught(e,'dsMealTagSet');}
   var el=document.getElementById("meal-tag-picker");
   if(el){ Array.prototype.forEach.call(el.children, function(btn){ btn.classList.toggle("on", btn.getAttribute("data-tag")===tag); }); }
 }
@@ -3615,7 +3661,7 @@ function importFoodFile(input){
   var reader = new FileReader();
   reader.onload = function(e){
     try{ importFoodJSON(JSON.parse(e.target.result)); }
-    catch(err){ toast("Couldn't parse that file — check it's valid JSON"); }
+    catch(err){ ftCaught(err,'reader.onload'); toast("Couldn't parse that file — check it's valid JSON"); }
     input.value = ""; // allow re-selecting the same file next time
   };
   reader.readAsText(file);
@@ -3744,7 +3790,7 @@ function applyConfig(cfg){
   // keep the local ft_* settings instead of reverting them, and re-push them.
   var _myTs=parseInt(store.get('ft_cfg_ts'),10)||0, _inTs=parseInt(cfg.ft_cfg_ts,10)||0;
   var _staleSettings=_myTs>_inTs;
-  if(_staleSettings){ try{ dsQueueConfigPush(); }catch(e){} }
+  if(_staleSettings){ try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'applyConfig');} }
   var any=false;
   var _planChanged=dsApplySyncedPlan(cfg);
   Object.keys(cfg).forEach(function(k){ if(_staleSettings&&k.indexOf('ft_')===0) return; if(allow[k]&&cfg[k]!=null){ store.set(k, typeof cfg[k]==="string"?cfg[k]:JSON.stringify(cfg[k])); any=true; } });
@@ -3767,23 +3813,23 @@ function applyConfig(cfg){
   GOALS.protein=parseInt(store.get('ft_protein'))||GOALS.protein;
   GOALS.carbs=parseInt(store.get('ft_carbs'))||GOALS.carbs; GOALS.fat=parseInt(store.get('ft_fat'))||GOALS.fat; GOALS.burned=parseInt(store.get('ft_burned'))||GOALS.burned;
   WATER_GOAL=parseInt(store.get('ft_water'))||WATER_GOAL;
-  try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){}
-  if(typeof initHealthSettings==="function") initHealthSettings();
-  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(typeof dsMigrateSwaps==='function'&&dsMigrateSwaps()) dsSaveSwaps(); if(typeof dsSwapShiftV302==='function'&&dsSwapShiftV302()) dsSaveSwaps(); } }catch(e){}
+  try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){ftCaught(e,'applyConfig');}
+  initHealthSettings();
+  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(dsMigrateSwaps()) dsSaveSwaps(); if(dsSwapShiftV302()) dsSaveSwaps(); } }catch(e){ftCaught(e,'applyConfig');}
   // Merge (not overwrite) the four per-day/per-exercise maps below: each device may have
   // logged its own entries locally since the last sync, and a straight overwrite would
   // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
   // (last pushed wins per-key), everything else from both sides is kept.
-  try{ var umv=JSON.parse(cfg.ds_usermoves||'null'); if(umv&&typeof umv==='object'){ for(var k1 in umv) DS_USERMOVES[k1]=umv[k1]; store.set('ds_usermoves',JSON.stringify(DS_USERMOVES)); } }catch(e){}
-  try{ var brv=JSON.parse(cfg.ds_backreset||'null'); if(brv&&typeof brv==='object'){ for(var k5 in brv) DS_BR_DONE[k5]=brv[k5]; store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); } }catch(e){}
-  try{ var ltv=JSON.parse(cfg.ds_lt_on||'null'); if(ltv&&typeof ltv==='object'){ for(var k4 in ltv) DS_LT_ON[k4]=ltv[k4]; store.set('ds_lt_on',JSON.stringify(DS_LT_ON)); } }catch(e){}
-  try{ var utv=JSON.parse(cfg.ds_ut_on||'null'); if(utv&&typeof utv==='object'){ for(var k3 in utv) DS_UT_ON[k3]=utv[k3]; store.set('ds_ut_on',JSON.stringify(DS_UT_ON)); } }catch(e){}
+  try{ var umv=JSON.parse(cfg.ds_usermoves||'null'); if(umv&&typeof umv==='object'){ for(var k1 in umv) DS_USERMOVES[k1]=umv[k1]; store.set('ds_usermoves',JSON.stringify(DS_USERMOVES)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var brv=JSON.parse(cfg.ds_backreset||'null'); if(brv&&typeof brv==='object'){ for(var k5 in brv) DS_BR_DONE[k5]=brv[k5]; store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var ltv=JSON.parse(cfg.ds_lt_on||'null'); if(ltv&&typeof ltv==='object'){ for(var k4 in ltv) DS_LT_ON[k4]=ltv[k4]; store.set('ds_lt_on',JSON.stringify(DS_LT_ON)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var utv=JSON.parse(cfg.ds_ut_on||'null'); if(utv&&typeof utv==='object'){ for(var k3 in utv) DS_UT_ON[k3]=utv[k3]; store.set('ds_ut_on',JSON.stringify(DS_UT_ON)); } }catch(e){ftCaught(e,'applyConfig');}
 
-  try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){}
-  try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){}
-  try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){}
-  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } }catch(e){}
-  try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){}
+  try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){ftCaught(e,'applyConfig');}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
   renderAll();
@@ -3875,8 +3921,8 @@ function medQuickLog(mins){
   d.meditation.push({mins:mins,type:medTimer.quick||"Silent",clarity:0});
   saveDay(d); medTimer.quick=null;
   var mm=document.getElementById("med-mins"); if(mm) mm.value="";
-  if(typeof toast==="function") toast("\u2713 Meditation logged \u2014 "+mins+" min");
-  try{ renderAll(); }catch(e){} try{ if(typeof dsRender==="function") dsRender(); }catch(e){}
+  toast("\u2713 Meditation logged \u2014 "+mins+" min");
+  try{ renderAll(); }catch(e){ftCaught(e,'medQuickLog');} try{ dsRender(); }catch(e){ftCaught(e,'medQuickLog');}
 }
 function medStreak(){
   var n=0, d=new Date(); if(!medMinsForKey(todayKey())) d.setDate(d.getDate()-1);
@@ -3898,9 +3944,9 @@ var DS_BACKRESET=[
   {n:'Reclined Figure-4 — right',s:30,c:'Right ankle over left knee, pull the left thigh in.'},
   {n:'Child’s Pose (finish)',s:30,c:'Back to child’s pose. Slow exhales.'}
 ];
-var DS_BR_DONE={}; try{ DS_BR_DONE=JSON.parse(store.get('ds_backreset')||'{}')||{}; }catch(e){ DS_BR_DONE={}; }
+var DS_BR_DONE={}; try{ DS_BR_DONE=JSON.parse(store.get('ds_backreset')||'{}')||{}; }catch(e){ ftCaught(e,'startup'); DS_BR_DONE={}; }
 var DS_BR_OPEN=false, DS_BR_RUN=null;
-function dsBrSave(){ try{ dsTrimDateKeys(DS_BR_DONE,120); }catch(e){} try{ store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
+function dsBrSave(){ try{ dsTrimDateKeys(DS_BR_DONE,120); }catch(e){ftCaught(e,'dsBrSave');} try{ store.set('ds_backreset',JSON.stringify(DS_BR_DONE)); }catch(e){ftCaught(e,'dsBrSave');} try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsBrSave');} }
 // v421: a finished/marked Back Reset is also written to the day's exercise log as a
 // yoga entry, so it flows into Google Health / weekly exports, training time and Sheets.
 function dsBrLogId(dk){ return 'backreset_'+dk; }
@@ -3913,7 +3959,7 @@ function dsBrWriteLog(dk,on,secs){
     if(on && !has){
       secs=secs||DS_BACKRESET.reduce(function(a,p){return a+p.s+DS_BR_GAP;},0);
       var mins=Math.round(secs/60), now=Date.now();
-      var e={name:'Yoga — Daily Back Reset ('+mins+' min)',calories:(typeof calAdj==='function'?calAdj(mins*3):mins*3),type:'yoga',id:id,actualSecs:secs,startTs:now-secs*1000,endTs:now};
+      var e={name:'Yoga — Daily Back Reset ('+mins+' min)',calories:(calAdj(mins*3)),type:'yoga',id:id,actualSecs:secs,startTs:now-secs*1000,endTs:now};
       if(ftData[dk].exTombs) delete ftData[dk].exTombs['n_'+e.name.toLowerCase()];
       ex.push(e);
     } else if(!on && has){
@@ -3923,21 +3969,21 @@ function dsBrWriteLog(dk,on,secs){
     } else return;
     store.set("ft_data",JSON.stringify(ftData));
     if(typeof appData!=="undefined") appData=ftData;
-    try{ renderAll(); }catch(e){}
-    try{ if(typeof pushToSheets==="function") pushToSheets(); }catch(e){}
-  }catch(e){}
+    try{ renderAll(); }catch(e){ftCaught(e,'dsBrWriteLog');}
+    try{ pushToSheets(); }catch(e){ftCaught(e,'dsBrWriteLog');}
+  }catch(e){ftCaught(e,'dsBrWriteLog');}
 }
 // v422: days marked done before v421 (or synced from another device) had no log
 // entry, so they never reached the exports. Backfill any done day that's missing one.
-function dsBrBackfill(){ try{ for(var dk in DS_BR_DONE){ if(!DS_BR_DONE[dk]) continue; var d=appData[dk]; var has=d&&d.exercises&&d.exercises.some(function(x){return x.id===dsBrLogId(dk);}); if(!has) dsBrWriteLog(dk,true); } }catch(e){} }
+function dsBrBackfill(){ try{ for(var dk in DS_BR_DONE){ if(!DS_BR_DONE[dk]) continue; var d=appData[dk]; var has=d&&d.exercises&&d.exercises.some(function(x){return x.id===dsBrLogId(dk);}); if(!has) dsBrWriteLog(dk,true); } }catch(e){ftCaught(e,'dsBrBackfill');} }
 setTimeout(dsBrBackfill,1500);
 function dsBrToggleDone(){ DS_BR_DONE[activeDate]=!DS_BR_DONE[activeDate]; dsBrSave(); dsBrWriteLog(activeDate,!!DS_BR_DONE[activeDate]); dsRender(); }
 function dsBrToggleOpen(){ DS_BR_OPEN=!DS_BR_OPEN; dsRender(); }
 function dsBrMins(){ return Math.round(DS_BACKRESET.reduce(function(a,p){return a+p.s;},0)/60); }
 var DS_BR_CTX=null, DS_BR_GAP=5;
-function dsBrBeep(f,ms){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C) return; if(!DS_BR_CTX) DS_BR_CTX=new C(); if(DS_BR_CTX.state==='suspended') DS_BR_CTX.resume(); var c=DS_BR_CTX,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.25,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){} }
-function dsBrStart(){ dsBrStop(true); dsBrBeep(660,150); DS_BR_RUN={i:0,left:DS_BR_GAP,gap:true,t0:Date.now()}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){} dsRender(); }
-function dsBrStop(silent){ if(DS_BR_RUN&&DS_BR_RUN.t) clearInterval(DS_BR_RUN.t); DS_BR_RUN=null; try{ medWakeOff(); }catch(e){} if(!silent) dsRender(); }
+function dsBrBeep(f,ms){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C) return; if(!DS_BR_CTX) DS_BR_CTX=new C(); if(DS_BR_CTX.state==='suspended') DS_BR_CTX.resume(); var c=DS_BR_CTX,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.25,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){ftCaught(e,'dsBrBeep');} }
+function dsBrStart(){ dsBrStop(true); dsBrBeep(660,150); DS_BR_RUN={i:0,left:DS_BR_GAP,gap:true,t0:Date.now()}; DS_BR_OPEN=true; DS_BR_RUN.t=setInterval(dsBrTick,1000); try{ medWakeOn(); }catch(e){ftCaught(e,'dsBrStart');} dsRender(); }
+function dsBrStop(silent){ if(DS_BR_RUN&&DS_BR_RUN.t) clearInterval(DS_BR_RUN.t); DS_BR_RUN=null; try{ medWakeOff(); }catch(e){ftCaught(e,'dsBrStop');} if(!silent) dsRender(); }
 function dsBrSkip(){ if(!DS_BR_RUN) return; DS_BR_RUN.left=1; dsBrTick(); }
 function dsBrTick(){
   if(!DS_BR_RUN) return;
@@ -3949,7 +3995,7 @@ function dsBrTick(){
     } else {
       DS_BR_RUN.i++;
       try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){}
-      if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrBeep(784,250); setTimeout(function(){dsBrBeep(1047,500);},280); var _brSecs=DS_BR_RUN?Math.round((Date.now()-DS_BR_RUN.t0)/1000):0; dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); dsBrWriteLog(activeDate,true,_brSecs>60?_brSecs:0); try{ toast('Back Reset done \u2713'); }catch(e){} dsRender(); return; }
+      if(DS_BR_RUN.i>=DS_BACKRESET.length){ dsBrBeep(784,250); setTimeout(function(){dsBrBeep(1047,500);},280); var _brSecs=DS_BR_RUN?Math.round((Date.now()-DS_BR_RUN.t0)/1000):0; dsBrStop(true); DS_BR_DONE[activeDate]=true; dsBrSave(); dsBrWriteLog(activeDate,true,_brSecs>60?_brSecs:0); try{ toast('Back Reset done \u2713'); }catch(e){ftCaught(e,'dsBrTick');} dsRender(); return; }
       dsBrBeep(440,300); DS_BR_RUN.gap=true; DS_BR_RUN.left=DS_BR_GAP;
     }
   }
@@ -4000,7 +4046,7 @@ function medFinishLog(){
   if(medTimer.quick){ closeMedTimer(); medQuickLog(elapsed); return; }
   var mm=document.getElementById("med-mins"); if(mm) mm.value=elapsed;
   closeMedTimer();
-  if(typeof toast==="function") toast("Meditation: "+elapsed+" min \u2014 pick type/clarity, then Log Session");
+  toast("Meditation: "+elapsed+" min \u2014 pick type/clarity, then Log Session");
   if(mm&&mm.scrollIntoView) mm.scrollIntoView({behavior:"smooth",block:"center"});
 }
 function medWakeOn(){ try{ if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){medTimer.wl=w;}).catch(function(){}); } }catch(e){} }
@@ -4009,7 +4055,7 @@ function medBell(){
   try{ var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return; var ctx=new Ctx(); var notes=[528,660,792];
     [0,0.5,1.0].forEach(function(t,i){ var o=ctx.createOscillator(),g=ctx.createGain(); o.type="sine"; o.frequency.value=notes[i]; o.connect(g); g.connect(ctx.destination);
       var stt=ctx.currentTime+t; g.gain.setValueAtTime(0,stt); g.gain.linearRampToValueAtTime(0.25,stt+0.04); g.gain.exponentialRampToValueAtTime(0.0001,stt+1.6); o.start(stt); o.stop(stt+1.7); });
-  }catch(e){}
+  }catch(e){ftCaught(e,'medBell');}
 }
 
 initHealthSettings();
@@ -4062,7 +4108,7 @@ setInterval(function(){
 
 // Recover an in-progress GPS tracking session if the page reloaded mid-walk/ride
 // (backgrounded tab getting killed, screen lock causing a refresh, etc.)
-try{ trkTryRestore(); }catch(e){}
+try{ trkTryRestore(); }catch(e){ftCaught(e,'startup');}
 
 
 
@@ -4126,7 +4172,7 @@ var DS_FLOW_POOL=['wed-flow-center','wed-flow-catcow','wed-flow-birddog','wed-fl
 // as the active Wednesday flow (current weak-point priority). Anyone who already saved
 // their own custom flow keeps it — this only sets the default for a fresh install.
 var DS_FLOW_CUSTOM={active:true,ids:DS_FLOW_IDS_FOCUS.slice()};
-try{ var _fcv0=JSON.parse(store.get('ds_flowcustom')||'null'); if(_fcv0&&typeof _fcv0==='object'&&Array.isArray(_fcv0.ids)){ DS_FLOW_CUSTOM.active=!!_fcv0.active; DS_FLOW_CUSTOM.ids=_fcv0.ids; } }catch(e){}
+try{ var _fcv0=JSON.parse(store.get('ds_flowcustom')||'null'); if(_fcv0&&typeof _fcv0==='object'&&Array.isArray(_fcv0.ids)){ DS_FLOW_CUSTOM.active=!!_fcv0.active; DS_FLOW_CUSTOM.ids=_fcv0.ids; } }catch(e){ftCaught(e,'startup');}
 // v292 one-time migration: move existing installs off the old default onto the Focus Flow.
 // The Flow editor's "save as default" still works afterward if you want to change it.
 function dsFlowIsOldDefault(ids){ return Array.isArray(ids) && ids.join(',')===DS_FLOW_IDS_HK.join(','); }
@@ -4135,8 +4181,8 @@ function dsMigrateFlow292(){
   DS_FLOW_CUSTOM.active=true; DS_FLOW_CUSTOM.ids=DS_FLOW_IDS_FOCUS.slice();
   store.set('ds_flow_mig292','1'); dsSaveFlowCustom();
 }
-function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){} try{dsQueueConfigPush();}catch(e){} }
-try{ setTimeout(function(){ try{dsMigrateFlow292();}catch(e){} },0); }catch(e){}
+function dsSaveFlowCustom(){ try{store.set('ds_flowcustom',JSON.stringify(DS_FLOW_CUSTOM));}catch(e){ftCaught(e,'dsSaveFlowCustom');} try{dsQueueConfigPush();}catch(e){ftCaught(e,'dsSaveFlowCustom');} }
+try{ setTimeout(function(){ try{dsMigrateFlow292();}catch(e){ftCaught(e,'startup');} },0); }catch(e){ftCaught(e,'startup');}
 // v468 one-time fix: replace five confirmed bad scale readings (one-day spikes
 // that reversed the next weigh-in) with the average of the weigh-ins either
 // side. Only touches a day if it still holds the exact bad value, so a later
@@ -4148,9 +4194,9 @@ function dsFixWeightSpikes468(){
   var n=0;
   Object.keys(fixes).forEach(function(k){ var d=appData[k]; if(d && d.weight!=null && Math.abs(+d.weight-fixes[k][0])<0.05){ d.weight=fixes[k][1]; n++; } });
   store.set("ft_fix_wt468", String(n));
-  if(n){ try{ store.set("ft_data", JSON.stringify(appData)); }catch(e){} try{ pushToSheets(); }catch(e){} try{ renderAll(); }catch(e){} if(typeof toast==="function") toast("Smoothed "+n+" bad weigh-ins"); }
+  if(n){ try{ store.set("ft_data", JSON.stringify(appData)); }catch(e){ftCaught(e,'dsFixWeightSpikes468');} try{ pushToSheets(); }catch(e){ftCaught(e,'dsFixWeightSpikes468');} try{ renderAll(); }catch(e){ftCaught(e,'dsFixWeightSpikes468');} toast("Smoothed "+n+" bad weigh-ins"); }
 }
-try{ setTimeout(function(){ try{dsFixWeightSpikes468();}catch(e){} },4000); }catch(e){}
+try{ setTimeout(function(){ try{dsFixWeightSpikes468();}catch(e){ftCaught(e,'startup');} },4000); }catch(e){ftCaught(e,'startup');}
 
 function dsFlowActiveIds(){
   if(DS_FLOW_CUSTOM.active && DS_FLOW_CUSTOM.ids && DS_FLOW_CUSTOM.ids.length) return DS_FLOW_CUSTOM.ids;
@@ -4172,14 +4218,14 @@ function dsFlowEditSave(){
   if(!DS_FLOWEDIT_IDS||!DS_FLOWEDIT_IDS.length)return;
   DS_FLOW_CUSTOM.active=true; DS_FLOW_CUSTOM.ids=DS_FLOWEDIT_IDS.slice();
   dsSaveFlowCustom();
-  try{dsToast('\u2713 Flow saved as your new default');}catch(e){}
+  try{dsToast('\u2713 Flow saved as your new default');}catch(e){ftCaught(e,'dsFlowEditSave');}
   dsFlowEditClose();
 }
 function dsFlowEditResetRotation(){
   DS_FLOW_CUSTOM.active=false; DS_FLOW_CUSTOM.ids=null;
   dsSaveFlowCustom();
   DS_FLOWEDIT_IDS=dsFlowActiveIds().slice();
-  try{dsToast('Back to the weekly rotation');}catch(e){}
+  try{dsToast('Back to the weekly rotation');}catch(e){ftCaught(e,'dsFlowEditResetRotation');}
   dsRender();
 }
 // Pointer-based drag reorder (mouse + touch, no library). Visual drag is pure DOM
@@ -4194,7 +4240,7 @@ function dsFlowDragStart(e,idx){
   _fdrag.startY=e.clientY;
   rows[idx].classList.add('ds-flow-dragging');
   rows[idx].style.position='relative'; rows[idx].style.zIndex='5';
-  try{ e.target.setPointerCapture(e.pointerId); }catch(err){}
+  try{ e.target.setPointerCapture(e.pointerId); }catch(err){ftCaught(err,'dsFlowDragStart');}
   window.addEventListener('pointermove',dsFlowDragMove);
   window.addEventListener('pointerup',dsFlowDragEnd);
 }
@@ -4284,7 +4330,7 @@ function dsFlowNext(){
   DS_FLOW.side=raw.perSide?'L':null;
   var dur=raw.perSide?Math.round(item.secs/2):dsFlowDurFor(item);
   DS_FLOW.total=dur; DS_FLOW.left=dur; DS_FLOW.paused=false;
-  if(typeof yogaBeepStart==='function'){ try{ yogaBeepStart(); }catch(e){} }
+  try{ yogaBeepStart(); }catch(e){}
   var st=dsItemState(raw.id); st._open=true; dsSaveUI();
   dsRender();
   setTimeout(function(){
@@ -4296,10 +4342,10 @@ function dsFlowNext(){
 function dsFlowTick(raw){
   if(DS_FLOW.paused) return;
   DS_FLOW.left--;
-  if(DS_FLOW.left===5 && typeof yogaBeepWarning==='function'){ try{ yogaBeepWarning(); }catch(e){} }
+  if(DS_FLOW.left===5){ try{ yogaBeepWarning(); }catch(e){} }
   dsFlowPaintBar();
   if(DS_FLOW.left<=0){
-    if(typeof yogaBeepEnd==='function'){ try{ yogaBeepEnd(); }catch(e){} }
+    try{ yogaBeepEnd(); }catch(e){}
     if(raw.perSide && DS_FLOW.side==='L'){
       // switch to the right side, same pose, fresh half-timer, own ding
       DS_FLOW.side='R'; DS_FLOW.left=DS_FLOW.total;
@@ -4331,7 +4377,7 @@ function dsFlowFinishAll(){
   // individually with its own real calories/actualSecs, so adding the summary
   // here double-counted calories and, since that summary entry never carries
   // actualSecs, dragged total logged time down to a bogus flat 90s estimate.
-  try{ if(typeof egSetDone==='function' && !((typeof egIsDone==='function')&&egIsDone(TG_YOGA_ID))) egSetDone(TG_YOGA_ID,true); }catch(e){}
+  try{ if(typeof egSetDone==='function' && !((typeof egIsDone==='function')&&egIsDone(TG_YOGA_ID))) egSetDone(TG_YOGA_ID,true); }catch(e){ftCaught(e,'dsFlowFinishAll');}
   dsRender(); renderAll();
 }
 function dsFlowPaintBar(){
@@ -4380,1340 +4426,9 @@ function dsFlowBarHtml(sk){
 
 /* ===== DAILY SESSION MODULE (injected) ===== */
 function dsS(dur,attr,vals){return '<animate attributeName="'+attr+'" values="'+vals+'" keyTimes="0;0.5;1" dur="'+dur+'s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>';}
-var DS_DEMOS={
-  backwalk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="126" x2="170" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;-10,0;0,0" keyTimes="0;0.5;1" dur="2.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="62" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="70" x2="84" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.2,'x2','84;116;84')+'</line>'+
-    '<line x1="100" y1="96" x2="80" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','80;120;80')+'</line>'+
-    '<line x1="100" y1="96" x2="120" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','120;80;120')+'</line>'+
-    '</g></svg>';},
-  tibraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<rect x="60" y="118" width="80" height="10" rx="2" fill="#5F5E5A"/>'+
-    '<line x1="70" y1="118" x2="70" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="130" y1="118" x2="130" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="49" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="70,90 70,72 90,66" fill="none" stroke="#4ec98a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','70,90 70,72 90,66; 70,90 70,72 60,80; 70,90 70,72 90,66')+'</polyline>'+
-    '<polyline points="130,90 130,72 110,66" fill="none" stroke="#4ec98a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','130,90 130,72 110,66; 130,90 130,72 140,80; 130,90 130,72 110,66')+'</polyline>'+
-    '</svg>';},
-  kneeraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="112" x2="170" y2="112" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="60" cy="102" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="68" y1="106" x2="110" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="106" x2="150" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="110" y1="106" x2="120" y2="70" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','120;96;120')+dsS(2.4,'y2','70;80;70')+'</line>'+
-    '<line x1="120" y1="70" x2="120" y2="100" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.4,'x1','120;96;120')+dsS(2.4,'y1','70;80;70')+dsS(2.4,'x2','120;100;120')+dsS(2.4,'y2','100;106;100')+'</line>'+
-    '</svg>';},
-  dip:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="70" y1="40" x2="70" y2="120" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="130" y1="40" x2="130" y2="120" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="60" y1="50" x2="80" y2="50" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="120" y1="50" x2="140" y2="50" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="55" x2="100" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="70" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="130" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="86" x2="90" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="86" x2="110" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g></svg>';},
-  extrot:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="122" x2="160" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="70" y1="70" x2="70" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="110" x2="60" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="110" x2="82" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="80" x2="98" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="98" y1="90" x2="110" y2="72" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.2,'x2','110;96;110')+dsS(2.2,'y2','72;104;72')+'</line>'+
-    '</svg>';},
-  trap3:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="126" x2="160" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="18 90 55;18 90 55" dur="0.1s"/></g>'+
-    '<line x1="90" y1="55" x2="105" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="104" x2="94" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="104" x2="118" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="98" y1="70" x2="130" y2="98" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','130;100;130')+dsS(2.4,'y2','98;80;98')+'</line>'+
-    '</svg>';},
-  nordic:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="126" x2="90" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="55" cy="118" r="8" fill="none" stroke="#5F5E5A" stroke-width="4"/>'+
-    '<line x1="90" y1="126" x2="90" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 96;-46 90 96;0 90 96" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="96" x2="90" y2="56" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="66" x2="120" y2="70" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  pulldown:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="172" y1="16" x2="172" y2="122" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="156" y1="30" x2="172" y2="30" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="156" cy="30" r="3" fill="#5F5E5A"/>'+
-    '<line x1="30" y1="122" x2="172" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="90" y1="96" x2="92" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="112" x2="72" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="96" x2="86" y2="56" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="84" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<polyline points="86,58 108,50 132,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.6,'points','86,58 108,50 132,40; 86,58 104,84 94,64; 86,58 108,50 132,40')+'</polyline>'+
-    '<line x1="156" y1="30" x2="132" y2="40" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.6,'x2','132;94;132')+dsS(2.6,'y2','40;64;40')+'</line>'+
-    '</svg>';},
-  row:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="126" x2="150" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="96" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="122" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="128" cy="54" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<polyline points="122,62 124,86 128,104" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','122,62 124,86 128,104; 122,62 140,72 120,80; 122,62 124,86 128,104')+'</polyline>'+
-    '<line x1="128" y1="124" x2="128" y2="104" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'y2','104;80;104')+'</line>'+
-    '</svg>';},
-  pendlayrow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="126" x2="150" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="96" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="122" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="128" cy="54" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<polyline points="122,62 124,86 128,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+
-    '<animate attributeName="points" values="122,62 124,86 128,124;122,62 124,86 128,124;122,62 140,72 122,60;122,62 124,86 128,124" keyTimes="0;0.35;0.65;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '</polyline>'+
-    '<line x1="128" y1="124" x2="128" y2="124" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+
-    '<animate attributeName="y2" values="124;124;60;124" keyTimes="0;0.35;0.65;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '</line>'+
-    '</svg>';},
-  singlearmrow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="10" y1="126" x2="190" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<rect x="20" y="88" width="70" height="10" rx="2" fill="#5F5E5A"/>'+
-    '<line x1="70" y1="88" x2="70" y2="58" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="76" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="70" y1="66" x2="40" y2="88" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="70" y1="74" x2="118" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="118,106 120,90 96,70" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','118,106 120,90 96,70; 118,106 138,116 150,126; 118,106 120,90 96,70')+'</polyline>'+
-    '<line x1="150" y1="126" x2="96" y2="70" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','96;150;96')+dsS(2.4,'y2','70;126;70')+'</line>'+
-    '</svg>';},
-  preachercurl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="20" y1="126" x2="180" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<rect x="80" y="70" width="14" height="56" rx="4" fill="#5F5E5A" transform="rotate(20 87 98)"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="55" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="90" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="70" x2="88" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="88,98 82,116 70,132" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','88,98 82,116 70,132; 88,98 78,90 66,72; 88,98 82,116 70,132')+'</polyline>'+
-    '<line x1="88" y1="98" x2="70" y2="132" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','70;66;70')+dsS(2.4,'y2','132;72;132')+'</line>'+
-    '</svg>';},
-  crossbodyhammercurl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="47" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="94" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="94" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="56" x2="86" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="56" x2="114" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="86,86 82,108 78,122" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','86,86 82,108 78,122; 86,86 100,66 122,50; 86,86 82,108 78,122')+'</polyline>'+
-    '<line x1="114" y1="86" x2="120" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="78" y1="124" x2="78" y2="122" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','78;122;78')+dsS(2.4,'y2','122;50;122')+'</line>'+
-    '</svg>';},
-  press:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="100" y1="74" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="64" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="108" x2="88" y2="130" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="108" x2="112" y2="130" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="86,76 80,58 84,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','86,76 80,90 90,80; 86,76 80,58 84,30; 86,76 80,90 90,80')+'</polyline>'+
-    '<polyline points="114,76 120,58 116,40" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','114,76 120,90 110,80; 114,76 120,58 116,30; 114,76 120,90 110,80')+'</polyline>'+
-    '<rect x="78" y="34" width="12" height="8" rx="2" fill="#4ec98a"><animateTransform attributeName="transform" type="translate" values="0,46;0,0;0,46" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></rect>'+
-    '<rect x="110" y="34" width="12" height="8" rx="2" fill="#4ec98a"><animateTransform attributeName="transform" type="translate" values="0,46;0,0;0,46" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></rect>'+
-    '</svg>';},
-  pushup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="126" x2="170" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<polyline points="156,118 110,110 74,102" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','156,118 110,110 74,102; 156,120 110,116 74,114; 156,118 110,110 74,102')+'</polyline>'+
-    '<circle cx="62" cy="100" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"><animate attributeName="cy" values="100;112;100" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '<line x1="74" y1="102" x2="70" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'y1','102;114;102')+'</line>'+
-    '<line x1="120" y1="124" x2="126" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</svg>';},
-  squat:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,26;0,0" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="52" x2="100" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="78" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="122" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '<polyline points="100,86 84,104 86,130" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,86 84,104 86,130; 100,112 74,116 86,130; 100,86 84,104 86,130')+'</polyline>'+
-    '<polyline points="100,86 116,104 114,130" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,86 116,104 114,130; 100,112 126,116 114,130; 100,86 116,104 114,130')+'</polyline>'+
-    '<line x1="60" y1="132" x2="140" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  goblet:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+'<g><animateTransform attributeName="transform" type="translate" values="0,0;0,26;0,0" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+'<circle cx="100" cy="36" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+'<line x1="100" y1="46" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+'<rect x="82" y="52" width="36" height="18" rx="4" fill="#5eead433" stroke="#5eead4" stroke-width="3"/>'+'<line x1="82" y1="61" x2="70" y2="61" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="118" y1="61" x2="130" y2="61" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'</g>'+'<polyline points="100,80 84,100 86,128" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,80 84,100 86,128; 100,108 72,114 86,128; 100,80 84,100 86,128')+'</polyline>'+'<polyline points="100,80 116,100 114,128" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','100,80 116,100 114,128; 100,108 128,114 114,128; 100,80 116,100 114,128')+'</polyline>'+'<line x1="58" y1="130" x2="142" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+'</svg>';},
-  hinge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="100" y1="92" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g transform="rotate(0 100 92)"><animateTransform attributeName="transform" type="rotate" values="0 100 92; -62 100 92; 0 100 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="92" x2="100" y2="40" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="30" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="54" x2="100" y2="86" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/></g>'+
-    '<line x1="64" y1="130" x2="136" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  ballcurl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="122" x2="160" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="50" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="58" y1="113" x2="92" y2="113" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="113" x2="100" y2="84" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="100,84 134,98 162,110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.6,'points','100,84 134,98 162,110; 100,84 120,92 116,106; 100,84 134,98 162,110')+'</polyline>'+
-    '<circle cx="162" cy="110" r="10" fill="none" stroke="#c9a44a" stroke-width="3">'+dsS(2.6,'cx','162;116;162')+dsS(2.6,'cy','110;106;110')+'</circle>'+
-    '</svg>';},
-  bridge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="120" x2="160" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="56" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<polyline points="64,108 96,108 128,108" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','64,108 100,108 128,108; 64,108 100,70 128,108; 64,108 100,108 128,108')+'</polyline>'+
-    '<line x1="128" y1="108" x2="128" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'y1','108;72;108')+'</line>'+
-    '</svg>';},
-  fly:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="100" y1="66" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="56" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="104" x2="88" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="112" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="88,72 64,76 44,72" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','88,72 64,76 44,72; 88,72 80,74 72,72; 88,72 64,76 44,72')+'</polyline>'+
-    '<polyline points="112,72 136,76 156,72" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','112,72 136,76 156,72; 112,72 120,74 128,72; 112,72 136,76 156,72')+'</polyline>'+
-    '</svg>';},
-  catcow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<path d="M55 70 Q100 60 145 70" fill="none" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round">'+
-    '<animate attributeName="d" values="M55 70 Q100 60 145 70; M55 64 Q100 96 145 64; M55 70 Q100 60 145 70" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="48" cy="64" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="58" y1="72" x2="58" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="142" y1="72" x2="142" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="40" y1="118" x2="160" y2="118" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  kneehug:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="34" y1="122" x2="170" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="52" cy="114" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="60" y1="116" x2="98" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="-3 98 116;3 98 116;-3 98 116" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
-    '<line x1="98" y1="116" x2="82" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="82" y1="82" x2="98" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="66" y1="116" x2="86" y2="88" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  nine90:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="126" x2="162" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;5,0;0,0" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="124" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="124" x2="88" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="120" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="88" y2="54" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="88" y1="64" x2="116" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  ninetytransition:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<g><animateTransform attributeName="transform" type="translate" values="-12,0;12,0;-12,0" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<path d="M60 118 Q86 124 112 110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M112 110 Q128 108 140 122" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M60 118 Q48 112 38 124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="108" x2="100" y2="66" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="56" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="76" x2="78" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="76" x2="122" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  child:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="120" x2="162" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
-    '<line x1="124" y1="104" x2="120" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="116" x2="148" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M124 104 Q104 100 80 113" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="98" y1="110" x2="58" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="72" cy="112" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
-    '</svg>';},
-  dragon:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="126" x2="162" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,4;0,0" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="94" y1="104" x2="70" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="124" x2="52" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="94" y1="104" x2="122" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="122" y1="108" x2="122" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="94" y1="104" x2="90" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="89" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="91" y1="74" x2="118" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  caterpillar:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="120" x2="162" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
-    '<line x1="72" y1="114" x2="142" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M72 112 Q92 102 112 110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="104" y1="108" x2="134" y2="114" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="112" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
-    '</svg>';},
-  twist:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="34" y1="122" x2="170" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
-    '<circle cx="60" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="68" y1="112" x2="112" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="112" x2="150" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="110" x2="100" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="120" x2="118" y2="121" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="76" y1="110" x2="50" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  legsup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="150" y1="28" x2="150" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="34" y1="120" x2="150" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite"/>'+
-    '<circle cx="56" cy="112" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="64" y1="114" x2="120" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="114" x2="144" y2="40" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="80" y1="114" x2="66" y2="120" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  swan:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="120" x2="162" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite"/>'+
-    '<line x1="102" y1="104" x2="52" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="102" y1="104" x2="124" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="124" y1="112" x2="98" y2="117" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M102 104 Q120 104 134 106" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="140" cy="106" r="7" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="126" y1="106" x2="150" y2="113" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  hollow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="34" y1="124" x2="170" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
-    '<path d="M58 100 Q100 120 146 96" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="54" cy="98" r="7" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
-    '</svg>';},
-  pullover:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="124" x2="175" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="96" y1="124" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="124" x2="168" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="120" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="-55 96 118;35 96 118;-55 96 118" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
-    '<line x1="96" y1="118" x2="96" y2="66" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="96" cy="58" r="9" fill="none" stroke="#4ec98a" stroke-width="4"/></g>'+
-    '</svg>';},
-  plank:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="124" x2="170" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.6;1;0.6" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite"/>'+
-    '<line x1="78" y1="124" x2="100" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="80" y1="124" x2="82" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="82" y1="100" x2="152" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="72" cy="96" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/></g>'+
-    '</svg>';},
-  curl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="47" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="94" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="94" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="56" x2="86" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="56" x2="114" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="86" y1="86" x2="80" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','80;90;80')+dsS(2.2,'y2','110;64;110')+'</line>'+
-    '<line x1="114" y1="86" x2="120" y2="110" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','120;110;120')+dsS(2.2,'y2','110;64;110')+'</line>'+
-    '</svg>';},
-  triceps:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="84" y1="14" x2="116" y2="14" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="51" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="60" x2="90" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="108" y1="60" x2="110" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="88" x2="94" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','94;88;94')+dsS(2.2,'y2','72;114;72')+'</line>'+
-    '<line x1="110" y1="88" x2="106" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','106;112;106')+dsS(2.2,'y2','72;114;72')+'</line>'+
-    '<line x1="100" y1="18" x2="94" y2="72" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.2,'x2','94;88;94')+dsS(2.2,'y2','72;114;72')+'</line>'+
-    '</svg>';},
-  lateralraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="126" x2="140" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="51" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="58" x2="78" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','78;52;78')+dsS(2.4,'y2','92;58;92')+'</line>'+
-    '<line x1="110" y1="58" x2="122" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','122;148;122')+dsS(2.4,'y2','92;58;92')+'</line>'+
-    '</svg>';},
-  calf:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="126" x2="130" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="130" y1="126" x2="130" y2="138" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="130" y1="138" x2="170" y2="138" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-12;0,0" keyTimes="0;0.5;1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="53" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="64" x2="86" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="108" y1="64" x2="114" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="118" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="118" y1="120" x2="130" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="92" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  legraise:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="34" y1="120" x2="170" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="52" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="60" y1="112" x2="104" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="104" y1="112" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'x2','150;108;150')+dsS(2.6,'y2','112;62;112')+'</line>'+
-    '</svg>';},
-  pallof:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="22" y1="34" x2="22" y2="122" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="22" y1="72" x2="36" y2="72" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="60" y1="124" x2="150" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="53" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="90" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="110" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="68" x2="120" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'x2','120;142;120')+'</line>'+
-    '<line x1="36" y1="72" x2="120" y2="72" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.4,'x2','120;142;120')+'</line>'+
-    '</svg>';},
-  slam:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="124" x2="140" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="57" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="60" x2="96" y2="30" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'x2','96;94;96')+dsS(1.8,'y2','30;108;30')+'</line>'+
-    '<line x1="108" y1="60" x2="104" y2="30" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'x2','104;106;104')+dsS(1.8,'y2','30;108;30')+'</line>'+
-    '<circle cx="100" cy="22" r="7" fill="#4ec98a">'+dsS(1.8,'cy','22;112;22')+'</circle>'+
-    '</svg>';},
-  latwalk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="124" x2="160" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="57" x2="100" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="62" x2="80" y2="84" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="108" y1="62" x2="120" y2="84" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="88" x2="84" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="84" y1="104" x2="84" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="88" x2="118" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x2','118;134;118')+'</line>'+
-    '<line x1="118" y1="104" x2="118" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.2,'x1','118;134;118')+dsS(2.2,'x2','118;134;118')+'</line>'+
-    '<line x1="84" y1="100" x2="118" y2="100" stroke="#4ec98a" stroke-width="3" stroke-linecap="round">'+dsS(2.2,'x2','118;134;118')+'</line>'+
-    '</svg>';},
-  stepup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="20" y1="124" x2="180" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<rect x="122" y="100" width="48" height="24" rx="2" fill="none" stroke="#5F5E5A" stroke-width="3"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;-6,-22;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="96" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="96" y1="53" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="94" x2="134" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="94" x2="90" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  russiantwist:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="124" x2="160" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="80" cy="74" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="84" y1="82" x2="100" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="114" x2="132" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="132" y1="100" x2="124" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="98" x2="108" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1.8,'x1','92;104;92')+dsS(1.8,'x2','108;120;108')+'</line>'+
-    '<circle cx="100" cy="98" r="5" fill="#4ec98a">'+dsS(1.8,'cx','100;112;100')+'</circle>'+
-    '</svg>';},
-  woodchop:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="124" x2="140" y2="124" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="55" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="112" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="100,64 84,52 70,44" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','100,64 84,52 70,44; 100,64 116,84 130,98; 100,64 84,52 70,44')+'</polyline>'+
-    '<circle cx="70" cy="42" r="5" fill="#4ec98a">'+dsS(2.2,'cx','70;130;70')+dsS(2.2,'cy','42;100;42')+'</circle>'+
-    '</svg>';},
-  deadbug:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="120" x2="172" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="56" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="64" y1="112" x2="110" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="98" y1="112" x2="98" y2="82" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="78" y1="112" x2="60" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.6,'x2','60;42;60')+dsS(2.6,'y2','98;110;98')+'</line>'+
-    '<polyline points="110,112 118,86 110,82" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'+
-    '<line x1="110" y1="112" x2="138" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'x2','138;158;138')+dsS(2.6,'y2','98;112;98')+'</line>'+
-    '</svg>';},
-  bicycle:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="122" x2="172" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="56" cy="110" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="64" y1="112" x2="104" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="110" x2="58" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<polyline points="104,112 112,92 96,86" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2,'points','104,112 112,92 96,86; 104,112 130,98 152,96; 104,112 112,92 96,86')+'</polyline>'+
-    '<polyline points="104,112 130,98 152,96" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2,'points','104,112 130,98 152,96; 104,112 112,92 96,86; 104,112 130,98 152,96')+'</polyline>'+
-    '</svg>';},
-  splitsquat:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="118" y1="118" x2="160" y2="100" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="82" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="82" y1="50" x2="82" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="82" y1="58" x2="64" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="82" y1="58" x2="100" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<polyline points="82,80 66,98 64,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','82,80 66,98 64,124; 82,104 56,108 64,124; 82,80 66,98 64,124')+'</polyline>'+
-    '<polyline points="82,80 100,94 118,100" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.4,'points','82,80 100,94 118,100; 82,80 110,88 118,100; 82,80 100,94 118,100')+'</polyline>'+
-    '</g>'+
-    '<line x1="44" y1="126" x2="100" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  facepull:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="52" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<polyline points="100,60 130,70 138,46" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','100,60 130,70 138,46; 100,60 124,52 112,40; 100,60 130,70 138,46')+'</polyline>'+
-    '<polyline points="100,60 70,70 62,46" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'+dsS(2.2,'points','100,60 70,70 62,46; 100,60 76,52 88,40; 100,60 70,70 62,46')+'</polyline>'+
-    '<line x1="86" y1="100" x2="80" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="114" y1="100" x2="120" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="64" y1="130" x2="136" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  wallpushup:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="155" y1="14" x2="155" y2="140" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="25" y1="138" x2="100" y2="138" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g>'+dsS(2.4,'transform','translate(0,0); translate(12,0); translate(0,0)')+
-    '<line x1="45" y1="130" x2="132" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="141" cy="64" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="132" y1="72" x2="153" y2="57" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  standcatcow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="140" y1="70" x2="172" y2="70" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="140" y1="70" x2="140" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<path d="M60 100 Q100 90 140 70" fill="none" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round">'+
-    '<animate attributeName="d" values="M60 100 Q100 90 140 70; M60 96 Q100 118 140 70; M60 100 Q100 90 140 70" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="52" cy="98" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="62" y1="104" x2="62" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="62" y1="104" x2="58" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="40" y1="130" x2="80" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  slrdl:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<g transform="rotate(0 70 92)"><animateTransform attributeName="transform" type="rotate" values="0 70 92; -55 70 92; 0 70 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="70" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="70" y1="50" x2="70" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="60" x2="40" y2="56" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="60" x2="100" y2="56" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="70" y1="92" x2="66" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g transform="rotate(0 70 92)"><animateTransform attributeName="transform" type="rotate" values="0 70 92; 32 70 92; 0 70 92" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="92" x2="116" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="44" y1="130" x2="92" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  stand:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4">'+dsS(2.4,'cy','40;36;40')+'</circle>'+
-    '<line x1="100" y1="50" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(2.4,'y1','50;46;50')+'</line>'+
-    '<line x1="100" y1="62" x2="76" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.4,'y1','62;58;62')+'</line>'+
-    '<line x1="100" y1="62" x2="124" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.4,'y1','62;58;62')+'</line>'+
-    '<line x1="100" y1="104" x2="86" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="114" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="62" y1="134" x2="138" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  standsqueeze:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="48" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="58" x2="80" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="58" x2="120" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<ellipse cx="100" cy="98" rx="20" ry="9" fill="none" stroke="#4ec98a" stroke-width="3">'+dsS(1.2,'rx','20;14;20')+'</ellipse>'+
-    '<line x1="92" y1="106" x2="88" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="108" y1="106" x2="112" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="64" y1="134" x2="136" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  figure4:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="128" y1="68" x2="160" y2="68" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="160" y1="68" x2="160" y2="100" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 90; -8 100 90; 0 100 90" keyTimes="0;0.5;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="48" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="58" x2="128" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="86" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="110" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="112" x2="98" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="132" y2="98" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="132" y1="98" x2="110" y2="112" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="64" y1="134" x2="120" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  hipcircle:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<circle cx="100" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="48" x2="96" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="96" y1="92" x2="92" y2="130" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 96 92; 360 96 92" dur="2.6s" repeatCount="indefinite"/>'+
-    '<line x1="96" y1="92" x2="96" y2="124" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="64" y1="132" x2="128" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  chestopen:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="60" y1="20" x2="60" y2="132" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 80; -28 100 80; 0 100 80" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="54" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="62" x2="64" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="62" x2="124" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="90" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="112" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="70" y1="134" x2="140" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  lowlunge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="118" y1="100" x2="150" y2="100" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,8;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="90" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="52" x2="92" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="68" x2="118" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="92" y1="86" x2="74" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="74" y1="100" x2="68" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="86" x2="122" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="122" y1="92" x2="148" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="50" y1="130" x2="160" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  shouldercar:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="50" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="86" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="114" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="58" x2="86" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 58; 360 100 58" dur="2.8s" repeatCount="indefinite"/>'+
-    '<line x1="100" y1="58" x2="100" y2="20" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="70" y1="134" x2="130" y2="134" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '</svg>';},
-  deadhang:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="86" y1="14" x2="100" y2="32" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="114" y1="14" x2="100" y2="32" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g>'+dsS(2.4,'transform','translate(0,0); translate(0,6); translate(0,0)')+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="56" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="92" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="108" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  scappull:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="86" y1="14" x2="100" y2="36" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="114" y1="14" x2="100" y2="36" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g>'+dsS(1.6,'transform','translate(0,0); translate(0,10); translate(0,0)')+
-    '<circle cx="100" cy="48" r="9" fill="none" stroke="#4ec98a" stroke-width="4"/>'+
-    '<line x1="100" y1="58" x2="100" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="92" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="108" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  pullneg:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="86" y1="14" x2="100" y2="22" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="114" y1="14" x2="100" y2="22" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g>'+dsS(3,'transform','translate(0,0); translate(0,68); translate(0,0)')+
-    '<circle cx="100" cy="22" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="32" x2="100" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="70" x2="92" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="70" x2="108" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  pullband:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="14" x2="150" y2="14" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="86" y1="14" x2="100" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="114" y1="14" x2="100" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g>'+dsS(2,'transform','translate(0,0); translate(0,40); translate(0,0)')+
-    '<circle cx="100" cy="30" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="40" x2="100" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="78" x2="92" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="78" x2="108" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M92 106 Q88 124 100 134 Q112 124 108 106" fill="none" stroke="#4ec98a" stroke-width="3.5"/>'+
-    '</g>'+
-    '</svg>';},
-  tgu:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="130" x2="170" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 70 120; -40 70 120; -70 70 120; -40 70 120; 0 70 120" keyTimes="0;0.3;0.5;0.7;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="120" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="112" y1="116" x2="70" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="104" y1="116" x2="112" y2="76" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/>'+
-    '<rect x="104" y="64" width="16" height="12" rx="2" fill="#4ec98a33" stroke="#4ec98a" stroke-width="2.5"/>'+
-    '</g>'+
-    '<line x1="70" y1="120" x2="46" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</svg>';},
-  birddog:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="126" x2="170" y2="126" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="66" cy="70" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="74" y1="74" x2="128" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="86" y1="76" x2="84" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="122" y1="78" x2="126" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="74" y1="74" x2="36" y2="66" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'y2','66;60;66')+'</line>'+
-    '<line x1="128" y1="78" x2="166" y2="70" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'y2','70;64;70')+'</line>'+
-    '</svg>';},
-  sideplank:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="60" cy="72" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="68" y1="78" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="74" y1="82" x2="72" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="112" x2="166" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="76" y1="82" x2="82" y2="40" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.6,'x2','82;62;82')+dsS(2.6,'y2','40;96;40')+'</line>'+
-    '</svg>';},
-  wristecc:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="96" x2="130" y2="96" stroke="#5F5E5A" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="96" x2="140" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 140 70; -45 140 70; 0 140 70" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="140" y1="70" x2="156" y2="58" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
-    '<rect x="150" y="42" width="12" height="20" rx="2" fill="#4ec98a33" stroke="#4ec98a" stroke-width="2.5"/>'+
-    '</g>'+
-    '</svg>';},
-  hipthrust:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<rect x="30" y="76" width="34" height="50" rx="4" fill="none" stroke="#5F5E5A" stroke-width="3"/>'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="52" cy="62" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="14 64 78; 0 64 78; 14 64 78" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="64" y1="78" x2="116" y2="88" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="106" y1="86" x2="94" y2="66" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
-    '</g>'+
-    '<line x1="116" y1="88" x2="122" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="122" y1="106" x2="124" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '</svg>';},
-  ballrow:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="86" cy="104" r="22" fill="none" stroke="#5F5E5A" stroke-width="3"/>'+
-    '<circle cx="60" cy="66" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="68" y1="72" x2="118" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="118" y1="90" x2="148" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="80" y1="78" x2="76" y2="104" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2,'y2','104;84;104')+'</line>'+
-    '</svg>';},
-  seated:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="122" x2="160" y2="122" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4">'+dsS(4,'cy','52;49;52')+'</circle>'+
-    '<line x1="100" y1="62" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(4,'y1','62;59;62')+'</line>'+
-    '<path d="M100 100 Q74 104 66 116 Q82 122 100 114 Q118 122 134 116 Q126 104 100 100" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linejoin="round"/>'+
-    '<line x1="100" y1="72" x2="80" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="72" x2="120" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</svg>';},
-  downdog:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="24" y1="128" x2="176" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="66" cy="92" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="60" y1="100" x2="46" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="72" y1="86" x2="112" y2="52" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="52" x2="150" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(3,'x2','150;146;150')+'</line>'+
-    '</svg>';},
-  fold:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="50" y1="128" x2="150" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="104" y1="126" x2="104" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M104 72 Q100 46 76 52" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+
-    '<animate attributeName="d" values="M104 72 Q100 46 76 52; M104 72 Q94 42 70 62; M104 72 Q100 46 76 52" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="72" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4">'+dsS(3.4,'cy','60;70;60')+'</circle>'+
-    '<line x1="82" y1="58" x2="80" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(3.4,'y2','112;120;112')+'</line>'+
-    '</svg>';},
-  cobra:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="24" y1="120" x2="176" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="90" y1="112" x2="170" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M90 112 Q70 100 62 76" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+
-    '<animate attributeName="d" values="M90 112 Q70 100 62 76; M90 112 Q66 94 56 66; M90 112 Q70 100 62 76" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="58" cy="66" r="9" fill="none" stroke="#9a9d8c" stroke-width="4">'+dsS(3.4,'cy','66;58;66')+'</circle>'+
-    '<line x1="70" y1="94" x2="66" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</svg>';},
-  savasana:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="24" y1="112" x2="176" y2="112" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="52" cy="100" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="62" y1="102" x2="150" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="80" y1="103" x2="92" y2="110" stroke="#9a9d8c" stroke-width="3.5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="86" r="5" fill="none" stroke="#4ec98a" stroke-width="2" opacity="0.7">'+dsS(5,'r','5;12;5')+dsS(5,'opacity','0.7;0.1;0.7')+'</circle>'+
-    '</svg>';},
-  "warrior1":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="96" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="120" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="44" x2="70" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="88" y1="44" x2="106" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "warrior2":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="100" y2="46" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="68" y1="66" x2="132" y2="66" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "reverse-warrior":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="100" y2="46" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="128" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="46" x2="80" y2="40" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "warrior3":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="124" x2="95" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="98" x2="55" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="98" x2="135" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="55" y1="90" x2="38" y2="86" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="55" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "triangle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="124" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="132" y2="58" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="95" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="132" y1="58" x2="140" y2="46" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="132" cy="58" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-    "figure8":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="80" x2="80" y2="95" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="80" x2="120" y2="95" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="112" r="4" fill="none" stroke="#4ec98a" stroke-width="2" opacity="0.8"><animateMotion dur="3.2s" repeatCount="indefinite" path="M0,0 C-8,-3 -8,3 0,0 C8,-3 8,3 0,0"/></circle>'+
-    '</g>'+
-    '</svg>';},
-  "spinalrot":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="130" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 100;-18 100 100;0 100 100;18 100 100;0 100 100" keyTimes="0;0.25;0.5;0.75;1" dur="4.4s" repeatCount="indefinite"/><line x1="100" y1="100" x2="100" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+'<line x1="100" y1="72" x2="75" y2="85" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="72" x2="125" y2="85" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</g>'+
-    '</svg>';},
-  "cobraroll":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<path d="M50,124 Q90,124 130,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M50,124 Q90,124 130,124;M50,124 Q90,90 140,70;M50,124 Q90,124 130,124" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="140" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animate attributeName="cy" values="120;70;120" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="cx" values="130;140;130" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '<line x1="60" y1="120" x2="50" y2="105" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "barrelroll":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="50" y1="100" x2="150" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="100" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 118;22 100 118;0 100 118;-22 100 118;0 100 118" keyTimes="0;0.25;0.5;0.75;1" dur="4.2s" repeatCount="indefinite"/><line x1="100" y1="118" x2="80" y2="132" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="118" x2="120" y2="132" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</g>'+
-    '</svg>';},
-  "downdogpedal":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="124" x2="105" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="124" x2="105" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="80" x2="60" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="105" y1="80" x2="60" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="56" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<circle cx="140" cy="124" r="6" fill="none" stroke="#4ec98a" stroke-width="2"><animate attributeName="cy" values="124;114;124" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '</g>'+
-    '</svg>';},
-  "lizardlunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="110" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="110" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="110" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="110" y1="60" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="110" y1="60" x2="150" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "lizardtwist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="110" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="110" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="110" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="110" y1="60" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="110" y1="60" x2="150" y2="20" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="20;14;20" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "sidelunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="90" x2="60" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="x1" values="100;130;100" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '<line x1="100" y1="90" x2="140" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="100" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="60" x2="80" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="120" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "revtable":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="124" x2="60" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="100" x2="120" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="100" x2="140" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="100" x2="80" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="130" cy="92" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "headcircle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animateMotion dur="4s" repeatCount="indefinite" path="M0,0 C6,4 6,10 0,12 C-6,10 -6,4 0,0"/></circle>'+
-    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "rev-high-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="75" y1="128" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="110" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="95" x2="105" y2="55" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="105" cy="47" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="105" y1="65" x2="80" y2="110" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="105" y1="65" x2="130" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="30;24;30" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "low-lunge-side":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="95" x2="145" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M105,95 Q95,70 115,45" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="d" values="M105,95 Q95,70 115,45;M105,95 Q90,68 108,40;M105,95 Q95,70 115,45" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="115" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="115" y1="50" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "rev-half-moon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="100" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="50" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="68" x2="60" y2="55" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="68" x2="120" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="30;22;30" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '<line x1="90" y1="100" x2="90" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="100" x2="140" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="90;96;90" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "standing-fold-bound":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="124" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M100,90 Q100,60 100,55" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="50" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="70" x2="110" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="124" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="124" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "highplank":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="110" x2="150" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="110" x2="60" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="148" y1="105" x2="148" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="48" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "side-plank-mod":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="95" x2="150" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="95" x2="60" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="150" y1="105" x2="150" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y1" values="105;98;105" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '<circle cx="48" cy="90" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "chaturanga":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="118" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="118" x2="72" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="148" y1="112" x2="140" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="48" cy="120" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "prone-pec":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="120" x2="140" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="150" cy="116" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="120" x2="90" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="transform" values="rotate(0 90 120);rotate(25 90 120);rotate(0 90 120)" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "kneeling-sugarcane":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="128" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="80" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<path d="M90,95 Q110,80 100,50" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="105" x2="130" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="80;70;80" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "banana":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<path d="M50,120 Q100,90 150,110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M50,120 Q100,90 150,110;M50,116 Q100,80 150,116;M50,120 Q100,90 150,110" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="155" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "windshield-wipers":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="105" x2="140" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 105;28 100 105;0 100 105;-28 100 105;0 100 105" keyTimes="0;0.25;0.5;0.75;1" dur="4.4s" repeatCount="indefinite"/><line x1="100" y1="105" x2="90" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="105" x2="110" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</g>'+
-    '</svg>';},
-  "side-leg-ext":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="118" x2="130" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="45" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="130" y1="118" x2="165" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="118;90;118" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "knees-chest":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="110" x2="60" y2="105" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="50" cy="102" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<path d="M90,110 Q100,90 90,70" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M90,110 Q100,90 90,70;M90,110 Q95,85 80,68;M90,110 Q100,90 90,70" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '</g>'+
-    '</svg>';},
-  "wrist-rolls":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="80" cy="100" r="6" fill="none" stroke="#4ec98a" stroke-width="2"><animateMotion dur="2.4s" repeatCount="indefinite" path="M0,0 C4,-4 4,4 0,0 C-4,-4 -4,4 0,0"/></circle>'+
-    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "neck-shoulder-release":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="72" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animateTransform attributeName="transform" type="rotate" values="0 100 72;18 100 72;0 100 72" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "wrist-figure8":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="60" y1="128" x2="100" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="128" x2="100" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="95" x2="100" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<circle cx="60" cy="128" r="5" fill="none" stroke="#4ec98a" stroke-width="2">'+
-    '<animateMotion dur="2.8s" repeatCount="indefinite" path="M0,0 C6,-5 6,5 0,0 C-6,-5 -6,5 0,0"/></circle>'+
-    '</svg>';},
-  quadpull:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="58" y1="26" x2="58" y2="128" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="104" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="104" y1="52" x2="104" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="104" y1="60" x2="66" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="104" y1="98" x2="94" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 104 98;140 104 98;0 104 98" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="104" y1="98" x2="104" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '<line x1="104" y1="60" x2="80" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(2.6,'x2','80;96;80')+dsS(2.6,'y2','118;122;118')+'</line>'+
-    '</svg>';},
-  anklecircle:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="34" y1="128" x2="166" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="70" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="70" y1="80" x2="70" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="112" x2="60" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="112" x2="120" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="118" x2="140" y2="120" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="146" cy="120" r="5" fill="none" stroke="#4ec98a" stroke-width="2">'+
-    '<animateMotion dur="2.2s" repeatCount="indefinite" path="M0,0 C6,-8 -6,-8 0,0 C6,8 -6,8 0,0"/></circle>'+
-    '</svg>';},
-  frogpose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="60" y1="128" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="128" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,10;0,0" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="82" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="92" x2="100" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="86" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="86" x2="130" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  butterflyfold:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="130" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 118;22 100 118;0 100 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="118" x2="100" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="66" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="90" x2="80" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="120" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  wallsit:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="132" x2="160" y2="132" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="20" x2="70" y2="132" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animate attributeName="opacity" values="0.65;1;0.65" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite"/>'+
-    '<circle cx="70" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="70" y1="62" x2="70" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="94" x2="112" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="94" x2="112" y2="132" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  tke:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="52" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="60" x2="66" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="60" x2="114" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 90;18 90 90;0 90 90" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="90" x2="106" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '<path d="M106 128 Q100 108 90 90" fill="none" stroke="#4ec98a" stroke-width="3">'+dsS(2.4,'d','M106 128 Q100 108 90 90; M96 128 Q94 108 90 90; M106 128 Q100 108 90 90')+'</path>'+
-    '</svg>';},
-  slbridge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="120" x2="160" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="56" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="64" y1="108" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-12;0,0" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="108" x2="128" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="128" y1="108" x2="128" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '<line x1="100" y1="108" x2="118" y2="66" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.6,'y1','108;96;108')+dsS(2.6,'x2','118;108;118')+dsS(2.6,'y2','66;60;66')+'</line>'+
-    '</svg>';},
-  clamshell:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="60" cy="72" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="68" y1="78" x2="118" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="118" y1="100" x2="112" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 118 100;-34 118 100;0 118 100" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="118" y1="100" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="112" x2="142" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  treepose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 128;2 100 128;-2 100 128;0 100 128" keyTimes="0;0.33;0.66;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="36" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="46" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="94" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="122" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="122" y1="86" x2="108" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="54" x2="80" y2="24" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="54" x2="120" y2="24" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  standfigure4:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="94" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 90;-10 100 90;0 100 90" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="34" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="44" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="76" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="124" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="132" y2="88" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="132" y1="88" x2="110" y2="102" stroke="#4ec98a" stroke-width="5" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  pigeonpose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="118" x2="110" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="122" x2="150" y2="126" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 108;16 90 108;0 90 108" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="108" x2="88" y2="70" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="86" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="82" x2="64" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  happybaby:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="34" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="120" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="78" y1="118" x2="112" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="-3 112 118;3 112 118;-3 112 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="112" y1="118" x2="100" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="76" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="112" y1="118" x2="136" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="136" y1="80" x2="150" y2="62" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="88" y1="66" x2="90" y2="60" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="148" y1="68" x2="150" y2="62" stroke="#4ec98a" stroke-width="3" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  firehydrant:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="150" cy="76" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="142" y1="84" x2="90" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="100" x2="90" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="142" y1="90" x2="130" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 100;-30 90 100;0 90 100" keyTimes="0;0.5;1" dur="2.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="100" x2="64" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="64" y1="90" x2="58" y2="102" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  restsquat:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,6;0,0" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="66" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="76" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="78" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="78" y1="116" x2="76" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="122" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="122" y1="116" x2="124" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="84" x2="80" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="84" x2="120" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  dancerbridge:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="120" x2="160" y2="120" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="52" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="60" y1="108" x2="96" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="44" y1="112" x2="60" y2="108" stroke="#4ec98a" stroke-width="4" stroke-linecap="round">'+dsS(2.8,'y1','112;104;112')+'</line>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-10;0,0" keyTimes="0;0.5;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="96" y1="108" x2="124" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="124" y1="108" x2="124" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '<line x1="96" y1="108" x2="118" y2="60" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(2.8,'y1','108;98;108')+dsS(2.8,'x2','118;104;118')+dsS(2.8,'y2','60;54;60')+'</line>'+
-    '</svg>';},
-  tspinetwist:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="118" x2="110" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="120" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="112" x2="90" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="88" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 90 100;-42 90 100;0 90 100" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="100" x2="118" y2="70" stroke="#4ec98a" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  tailorpose:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="128" x2="100" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="64" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="90" x2="82" y2="110" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="118" y2="110" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 70 118;-8 70 118;0 70 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 130 118;8 130 118;0 130 118" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="130" y1="118" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/></g>'+
-    '</svg>';},
-  legswing:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="40" y1="128" x2="160" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="58" y1="26" x2="58" y2="128" stroke="#5F5E5A" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="104" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="104" y1="50" x2="104" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="104" y1="58" x2="66" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="104" y1="98" x2="98" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="104" y1="98" x2="128" y2="112" stroke="#4ec98a" stroke-width="5" stroke-linecap="round">'+dsS(1.8,'x2','128;76;128')+dsS(1.8,'y2','112;118;112')+'</line>'+
-    '</svg>';},
-  ride:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="130" x2="170" y2="130" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="120" cy="112" r="18" fill="none" stroke="#4ec98a" stroke-width="3" stroke-dasharray="2 4"/>'+
-    '<circle cx="70" cy="112" r="10" fill="none" stroke="#4ec98a" stroke-width="3" stroke-dasharray="2 4"/>'+
-    '<line x1="70" y1="112" x2="100" y2="80" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="80" x2="120" y2="112" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="102" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="102" y1="68" x2="96" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="102" y1="70" x2="122" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="96" y1="90" x2="120" y2="112" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="120" cy="112" r="6" fill="none" stroke="#9a9d8c" stroke-width="4">'+
-    '<animateMotion dur="1.6s" repeatCount="indefinite" path="M0,0 C10,-10 10,10 0,0 C-10,-10 -10,10 0,0"/></circle>'+
-    '</svg>';},
-  ruck:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;18,0;0,0" keyTimes="0;0.5;1" dur="2.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<rect x="88" y="52" width="20" height="26" rx="4" fill="#4ec98a22" stroke="#4ec98a" stroke-width="3"/>'+
-    '<line x1="100" y1="78" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="84" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','84;114;84')+'</line>'+
-    '<line x1="100" y1="96" x2="118" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','118;88;118')+'</line></g>'+
-    '</svg>';},
-  walk:function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="30" y1="128" x2="170" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;18,0;0,0" keyTimes="0;0.5;1" dur="2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="52" x2="100" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="64" x2="80" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1,'x2','80;120;80')+'</line>'+
-    '<line x1="100" y1="64" x2="120" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round">'+dsS(1,'x2','120;80;120')+'</line>'+
-    '<line x1="100" y1="96" x2="84" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','84;114;84')+'</line>'+
-    '<line x1="100" y1="96" x2="118" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round">'+dsS(1.1,'x2','118;88;118')+'</line></g>'+
-    '</svg>';}
-};
-
-var DS_DEMOMAP={"thu-ballpullover": "pullover", "pu-warm-thread": "tspinetwist", "pu-warm-scappush": "highplank", "pu-warm-pullapart": "fly", "pu-scaprow": "row", "bwl-legadd": "side-leg-ext", "mon-curl": "curl", "mon-tri": "triceps", "mon-bike": "bicycle", "mon-legraise": "legraise", "tue-lat": "latwalk", "tue-pallof": "pallof", "tue-step": "stepup", "wed-bike": "bicycle", "wed-legraise": "legraise", "wed-slam": "slam", "wed-rotslam": "woodchop", "thu-lateral": "lateralraise", "thu-hammer": "Anchor the tube at the bottom of a door (close and lock it). Face AWAY from the door in a staggered stance and step forward until the band is taut with your arms hanging straight — mark the spot. Elbows pinned to your sides, slightly behind your body. Palms facing each other, thumbs up; curl up with the upper arms still, squeeze, then lower slowly into the full stretch behind you. Stepping forward adds load, stepping back reduces it.", "thu-tri": "triceps", "thu-bike": "bicycle", "thu-legraise": "legraise", "fri-calf": "calf", "fri-obliques": "woodchop", "fri-deadbug": "deadbug"};
-var DS_DEMOCAP={"backwalk": "short steps backward, land on the ball of the foot", "tibraise": "heels elevated, weight back, lift the toes", "kneeraise": "lying flat, drive one knee to the chest, slow return", "dip": "comfortable depth only — nowhere near shoulder-below-elbow", "extrot": "elbow pinned to the side — only the forearm rotates", "trap3": "arm at a 30° angle from the body — raise along that line", "nordic": "ankles locked, lower slowly, catch yourself early", "pulldown": "band anchored high — kneel facing it, pull down", "row": "no anchor — hinge forward, pull the elbow back", "press": "press straight overhead", "fly": "arms wide, then squeeze together in front", "pallof": "band from your side — press straight out, resist the twist", "latwalk": "band above the knees — step out, stay in the half-squat", "triceps": "elbows pinned — only the forearms extend down", "curl": "upper arms still — only the forearms move", "nine90": "half-kneeling, both knees at 90 — shift the hips forward", "ninetytransition": "seated, both knees at 90 — rotate hip to hip, stay tall", "kneehug": "on your back — knees hugged to the chest", "dragon": "deep low lunge, back knee down", "goblet": "weight at chest as counterbalance — sink deep, elbows brush the knees", "squat": "sit back and down, drive through the whole foot", "splitsquat": "rear foot elevated behind you — front leg does the work", "facepull": "pull to your face, elbows high and wide — not a row", "wallpushup": "hands on the wall or desk edge — lean in, press away", "standcatcow": "hands on the desk, hinge forward — round and arch through the spine", "slrdl": "one leg plants, the other extends back as you hinge — hips stay square", "stand": "feet rooted, tailbone tucked, crown of the head lifts", "standsqueeze": "squeeze both glutes hard, hold, release", "figure4": "ankle crossed over the knee, hinge forward until the hip opens", "hipcircle": "biggest slow circle the hip can make, ribs stay down", "chestopen": "forearm on the frame, rotate away — open across the chest", "lowlunge": "long stance, hands forward, sink the hips gently", "shouldercar": "biggest slow circle the shoulder can make, ribs down", "deadhang": "full grip, arms straight, shoulder blades pulled down and back", "scappull": "arms stay straight — only the shoulder blades pull down", "pullneg": "chin over the bar, then lower as slowly as you can", "pullband": "band looped under the foot, pull the chest to the bar", "tgu": "weight locked overhead the whole way — roll to elbow, to hand, to standing", "birddog": "opposite arm and leg extend — flat back, no rocking", "sideplank": "hips stacked and lifted — reach the top arm under, then back to vertical", "pullover": "arms stay straight \u2014 sweep the ball from overhead to over the chest, ribs down", "wristecc": "forearm supported — lower the weight slowly, use the other hand to lift it back", "hipthrust": "shoulders on the couch — hips sink low, then drive up to a flat tabletop", "ballrow": "chest on the ball — row the handle up, lower back stays out of it", "seated": "sit tall, eyes soft — breathe low into the belly", "downdog": "hips to the sky, long spine — pedal the heels", "fold": "hinge and hang heavy — soft knees, let the head go", "cobra": "press the chest forward and up — hips stay grounded", "savasana": "flat on your back, everything releases — just breathe"};
-var DS_VARIANT_SETUPS={
-  "sat-ballpullover::1": "Anchor the tube high on a door. Face it and step back until the band is tight with your arms straight out overhead. Keeping elbows soft but fixed, sweep both hands down to your thighs, squeeze the lats, then let the arms float back up into a full overhead stretch.",
-  "tue-bridge::1": "Sit on the floor with your upper back against the edge of a couch, tube looped over your hips. Feet flat, knees bent. Push through your heels so your hips sink below the couch edge, then drive up to a flat tabletop position and squeeze 2 seconds at the top.",
-  "tue-bridge::2": "Lie on your back with your heels resting on top of the stability ball, knees slightly bent. Bridge your hips up into a straight line from shoulders to knees, then hold the ball completely still throughout — don't let it roll.",
-  "tue-ballcurl::1": "Lie on your back, one heel on the stability ball, the other leg lifted or resting. Bridge your hips up and keep them level — no rolling side to side — then curl the ball toward your glutes and roll back out slowly.",
-  "wed-bike::1": "Lie on your back, knees bent, feet lifted so shins are parallel to the floor, low back pressed flat. Tap one heel down to the floor at a time, alternating sides — no rotation, no crunching up, just the heel tap.",
-  "wed-legraise::1": "Lie on your back with knees bent to 90 degrees, low back flat on the floor. Lower your bent knees together over a slow 3-count, stopping wherever your low back starts to lift, then raise back up.",
-  "wed-slam::1": "Reach the slam ball fully overhead with both hands, then bend your knees and squat down, setting the ball on the floor under control instead of slamming it. Stand back up and repeat — same full-body pattern, no impact.",
-  "thu-chest::1": "Get into a push-up position, hands slightly wider than your shoulders. If using the band, drape it across your upper back with the ends under your palms. Lower your chest to the floor, then push explosively back up.",
-  "thu-chest::2": "Lie on a bench or the floor, a 10 lb DB in each hand held straight above your chest with a slight bend in the elbows. Lower the DBs out to your sides until you feel a stretch across your chest, then squeeze them back together at the top.",
-  "thu-chest::3": "Attach the tube to a low door anchor instead of chest height. Face away from the door and step forward so there's tension even with your arms low — this gives a deeper starting stretch. Fly the handles from low-and-wide up and together in front of your chest.",
-  "thu-inclinecurl::1": "Lie back over the stability ball at an incline so your arms hang behind your torso line, a 10 lb DB in each hand. Curl up from that deep stretch position, then lower slowly and under control.",
-  "thu-inclinecurl::2": "Kneel behind the ball and drape the back of your upper arm over the front of it at a downward angle — not flat on top. Let your arm hang almost straight at the bottom, curl up and squeeze 1 second, then lower over a slow 3-count. Keep your wrist neutral, in a straight line with your forearm.",
-  "thu-tri::1": "Hold a 10 lb DB in each hand and hinge forward at the hips, upper arms locked parallel to the floor at your sides. Extend your forearms straight back until fully locked out, squeeze 1 second at the top.",
-  "thu-tri::2": "Attach the tube to a low door anchor. Face away from the door, elbows pinned by your ears, forearms bent behind your head. Extend your arms straight up by straightening the elbows only — the deep stretch at the bottom is the point of this variant.",
-  "thu-tri::3": "Lie with your upper back and shoulders on the stability ball, hips bridged up like a supported bench. Hold a 10 lb DB in each hand (or 2 lb pair) straight up over your face. Bend only at the elbow to lower the weight toward your forehead, then extend back up — upper arms stay vertical and still, hips stay level throughout.",
-  "thu-tri::4": "Hold one 10 lb dumbbell overhead with both hands (or a 2 lb DB in each hand), upper arms vertical and close to your ears. Lower it behind your head by bending only the elbows until you feel a deep stretch, then extend back to lockout. Brace your core so your lower back doesn't arch — start light and stop if you feel any pull on the inside of the elbow.",
-  "fri-sumo::1": "Hold a 10 lb dumbbell vertically at your chest with both hands cupping the top end. Stand with feet wider than shoulder-width, toes turned out; sit straight down between your heels, knees pushing outward.",
-  "fri-deadbug::1": "Get on your hands and knees on a mat, flat back. Extend one arm straight forward and the opposite leg straight back at the same time, keeping your back flat with zero rocking, then return and switch sides.",
-  "fri-sqpress::1": "Hold the 8 lb kettlebell at your chest in a goblet grip. Squat down, then as you stand punch the bell straight overhead in one fluid motion.",
-  "sat-walk::1": "Load a backpack with 15–25 lbs and wear it high and tight against your back, chest proud. Walk at your normal recovery pace — the load adds training stimulus without needing to walk faster.",
-  "mon-pushup::1": "Stand facing a wall, arms straight out at chest height, feet a couple feet back. Lean your weight into your hands, then press back to standing.",
-  "mon-pushup::2": "Hands slightly wider than your shoulders, feet back until your body forms one straight line.",
-  "mon-pushup::3": "Knees down on a mat, straight line from knees to head, hands slightly wider than shoulders. Lower chest to the floor, press back up.",
-  "mon-pushup::4": "Anchor the tube high on a door, face away, handles at chest height; press both handles forward until arms are straight, squeeze, return slow.",
-  "mon-pushup::6": "Set two yoga blocks shoulder-width apart, flat side up. Hands on the blocks, body in a straight line. Lower until your chest drops below the level of your hands, pause 1 second, press up. Once 15 reps is easy, drape the Clench band across your upper back with the ends under your palms.",
-  "mon-row::1": "Stand on the tube without the handles, hinge forward about 45 degrees, flat back; pull both ends wide to your ribs, squeezing the mid-back at the top.",
-  "mon-row::2": "Lie chest-down on the stability ball, feet braced on the floor behind you for balance. Stand on the tube first if you need the resistance anchored, or hold the handles with arms hanging straight down toward the floor. Row both handles up toward your waist, driving the elbows back — the ball keeps your torso still so the lower back can't take over.",
-  "mon-row::3": "Stand on the tube, hinge forward about 45 degrees with a flat back, hands close together. Row the handles to your belt line with elbows brushing your ribs — narrower hand position shifts the emphasis toward the lats.",
-  "thu-facepull::1": "Anchor the tube at chest height to one side. Stand facing across your body from the anchor and reach the working arm all the way across your torso toward the anchor point for a deep pre-stretch, then sweep it back out and behind you — rear delt only, keep your shoulder from shrugging.",
-  "mon-pressaround::1": "Anchor the tube behind you at chest height. Split stance facing away, one handle in each hand, arms open wide with a slight elbow bend. Step forward until the band is tight in that wide position, then sweep the handles together in front of your chest and control them back.",
-  "mon-curl::1": "Anchor the tube at the bottom of a door, handles free. Face away and step forward until the band has tension with your arms hanging slightly behind your torso. Keep the elbows back and still, curl both handles to your shoulders, then lower all the way into the stretch.",
-  "mon-curl::2": "Brace the back of your upper arm against a wall or chair back so the elbow cannot drift. Curl slowly with a light band, turning the pinky up at the top.",
-  "tue-jump::1": "Stand on the tube band with both feet, handles at your sides or shoulders. Squat down, then drive up explosively and finish tall on your toes with a 1-second calf squeeze at the top — same power pattern as a jump squat, zero impact.",
-  "tue-squat::1": "Loop the mini band above your knees, or use bodyweight. Drop all the way to the bottom of a squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in that deep stretch position the whole set.",
-  "tue-squat::2": "Place a stability ball between your low back and a wall. Feet out in front of you, roll down the ball until your thighs reach parallel, then drive back up through your heels. The ball supports your spine, making this a very SI-joint-friendly squat.",
-  "fri-bulg::1": "Step one foot back into a reverse lunge stance instead of elevating it on a surface. Stand on the tube with your front foot, handles at shoulder height. Step back, drop your back knee toward the floor, then drive up through your front heel — easier to balance than a Bulgarian split squat with the same quad demand.",
-  "sat-hipthrust::2": "Loop the 75 lb 41″ band around the bottom door anchor. Step into the loop and settle the band across your hip crease. Kneel on a cushion or folded mat facing away from the door, then walk forward on your knees until the band pulls your hips firmly back. Keep the knees hip-width. More load: kneel farther from the door. Less: shuffle closer. To get out, shuffle back toward the door until the band goes slack and step out of it.",
-  "mon-inclinepress::1": "Anchor the tube low on a door behind you. Face away in a split stance, handles at your chest with hands about shoulder-width or slightly wider. Press up and out at an incline angle, squeeze the upper chest, then return under control.",
-  "thu-lat::1": "Stand on the tube without the handles, hinge forward about 45 degrees, flat back; pull both ends wide to your ribs, squeezing the mid-back at the top.",
-  "thu-lat::2": "Anchor the tube high on a door and kneel farther back than you normally would, arms extended fully overhead for a longer starting stretch. Pull the handles down to your shoulders, driving your elbows down and back.",
-  "mon-standbandpress::2": "Feet on the padded piano bench, hands on the floor (or on yoga blocks for more depth) slightly wider than your shoulders. Body straight from heels to head. Lower until your chest passes your hands, pause, press back up.",
-  "thu-lateral::1": "Stand on the tube band so it's anchored low and pulls slightly from in front of you rather than straight down. Raise both handles out to your sides to shoulder height, leading with your elbows — the front-angled pull loads the side delt earlier, right at the bottom of the rep.",
-  "mon-slamskull::1": "Anchor the tube at the bottom of a door. Face away in a split stance, handles behind your head, elbows pointing up near your ears. Extend the arms overhead to lockout, then lower behind the head into a deep stretch. Upper arms stay still.",
-  "fri-slrdl::1": "Stand on the tube with your working foot, handle in the opposite hand, soft bend in the knee. Hinge at the hips, letting the free leg extend straight back for counterbalance, and lower the handle along the standing leg. Keep your back flat and hips square throughout.",
-  "fri-slrdl::2": "Stand on the Ultra Heavy band with both feet. Hinge back at the hips, handles tracing down the front of your legs — tension peaks at lockout, so squeeze your glutes hard at the very top of the rep.",
-  "fri-nordic::1": "Lie on your back with one heel resting on the stability ball, the other leg lifted or resting flat. Bridge your hips up and keep them level, then curl the ball in toward your glutes and roll back out over a slow 3-count.",
-  "fri-nordic::3": "Loop the 75 lb 41″ band around the bottom door anchor. Put the 13″ purple Clench mini band around both feet (over shoes or socks at the heel) and hook the 75 lb band over it. Lie face down on the piano bench with your knees just past the end and your feet toward the door. Slide the bench away from the door until the band has tension with your legs straight. Hold the bench, squeeze the glutes so the hips stay down, and curl both heels toward your glutes. Hamstrings are weaker than quads — if 75 lb is too heavy, move the bench closer to the door.",
-  "fri-nordic::4": "Loop the 75 lb 41″ band around the middle door anchor (about seated-foot height). Put the 13″ purple Clench mini band around both feet and hook the 75 lb band over it. Sit on the piano bench facing the door, legs straight out, and scoot back until the band is taut. Grip the bench edge, sit tall, keep the knees together, and pull both heels down and under the bench. Let the legs extend slowly back out. Too heavy? Scoot the bench closer to the door.",
-  "fri-plank::1": "Rest your forearms on top of the stability ball instead of the floor, body in a straight line from head to heels. Brace your core against the ball's instability — the wobble is the added work, so shorter holds still count.",
-  "wed-rotslam::1": "Stand perpendicular to a door anchor with the tube attached at chest height, about 3 feet away. Hold the handle at your chest and slowly rotate your torso toward the anchor point and back, resisting the band the whole way — same oblique rotation as the slam, without any ballistic force.",
-  "sat-chest::2": "Anchor the tube low on a door behind you. Face away in a split stance, handles low by your hips with the arms open wide and slightly behind you. Step forward until the band is tight there, then sweep both hands up and together to eye level in front of you. Control the return into the stretch.",
-  "sun-walk::1": "Load a backpack with a lighter 10–15 lbs and wear it high and tight against your back. Keep the pace easy and nose-breathing — this stays a recovery walk, just with a lighter load than Saturday's version."
-};
-var DS_SETUPS={"warmup-armcircle": "Stand with feet shoulder-width. Small arm circles forward 20s, backward 20s, then big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction.", "warmup-hipflow-9": "Hold a wall or chair for balance. Front-to-back leg swings 10/leg, side-to-side swings 10/leg. Finish with 90/90 hip switches or slow hip circles, 30s each direction.", "warmup-hipflow-7": "Hold a wall or chair for balance. Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches 8/side and slow hip circles 30s each direction.", "mon-pushup": "Hands a bit wider than the shoulders. With a band, loop it across your upper back, ends under your palms.", "mon-pullapart": "Hold the tube straight out at chest height, hands shoulder-width, arms straight; pull apart to your chest.", "mon-row": "Stand on the tube, hinge forward about 45 degrees with a flat back; row the handles to your waist, elbows back.", "mon-curl": "Stand on the tube, palms forward, elbows pinned to your sides; curl the handles up.", "mon-tri": "Anchor the tube high on a door, face it, elbows pinned; press the handles straight down.", "mon-hollow": "On your back, arms overhead, legs straight and a few inches up; press the low back flat into the floor.", "mon-bike": "On your back, hands behind your head; opposite elbow toward opposite knee, extending the other leg.", "mon-legraise": "On your back, hands under your glutes, legs straight; raise to vertical, lower slowly without arching.", "post-walk": "After the session: a brisk 30-min walk. Easy, unhurried pace.", "post-ride": "An easy 20-min spin, conversational pace. Compression sleeve on.", "tue-squat": "Loop the Clench mini loop band just above your knees. Feet shoulder-width, bodyweight squat. Sit back and down, actively pushing your knees out against the band throughout. Hands can hold a doorframe or be out in front for balance.", "tue-lat": "Loop the mini band above the knees; drop into a quarter-squat and step sideways without standing up.", "tue-bridge": "On your back, knees bent, tube across the hips held down; drive through the heels, squeeze at the top.", "tue-pallof": "Anchor the tube at chest height to one side; hold at your chest and press straight out, resisting the pull.", "tue-jump": "Quarter-squat and explode up; land soft on the toes, knees bending to absorb.", "tue-step": "Step one foot fully onto a sturdy chair or box; drive through that heel to stand tall, lower under control.", "wed-hollow": "On your back, arms overhead, legs lifted; exhale hard, ribs down, low back pressed flat.", "wed-bike": "On your back, hands behind your head; slow opposite elbow to knee, 2 seconds each side.", "wed-legraise": "On your back, legs straight; raise to vertical, then lower over a slow 3-count, low back flat.", "wed-slam": "Reach the ball fully overhead, then drive it down through the floor with the whole body; catch the bounce.", "wed-rotslam": "Lift the ball to one shoulder, then slam diagonally to the opposite side; the hips lead the rotation.", "thu-chest": "Hold the tube at chest height (or anchor it and face away); open the arms wide, then squeeze together in front.", "thu-facepull": "Anchor the tube high (or hold it up at eye level); pull toward your temples, elbows high, thumbs back.", "thu-lat": "Anchor the tube high on a door, kneel 2–3 ft away facing it, arms overhead; pull the handles down to the shoulders, elbows back. No anchor? Do the wide row instead.", "thu-lateral": "Stand on the tube, arms at your sides; raise out to the sides to shoulder height, leading with the elbows.", "thu-hammer": "Anchor the tube at the bottom of a door (close and lock it). Face the door and step back until the band has tension with your arms fully straight — mark the spot. Palms facing each other, thumbs up; curl up with the upper arms still, then lower all the way to a full stretch. Stepping back adds load, stepping in reduces it.", "thu-tri": "Anchor the tube high, face it, elbows pinned; press the handles straight down to lockout.", "thu-hollow": "On your back, arms overhead, legs a few inches up; press the low back flat and hold the dish shape.", "thu-bike": "On your back, hands behind your head; opposite elbow to opposite knee, slow and deliberate.", "thu-legraise": "On your back, hands under the glutes; raise straight legs to vertical, lower slowly without the back lifting.", "fri-bulg": "Back foot up on a chair, tube under the front foot; drop straight down, front heel driving, torso tall.", "fri-sumo": "Wide stance, toes out, standing on the tube; sit straight down between the heels, knees pushing out.", "fri-nordic": "Lie on your back, heels on the ball, hips bridged up to a straight line; dig the heels in and curl the ball toward your glutes, then roll out slowly over 3 seconds. Keep the hips high the whole set.", "tue-tib": "Stand with your back against a wall, heels a few inches out from it or up on a low block, and let your weight settle back into the wall. Keeping the heels planted, pull your toes up toward your shins as far as they will go, pause one second at the top, then lower slowly over 2\u20133 seconds.", "fri-tib": "Same as Tuesday, two sets instead of three: back to the wall, weight settled back, toes up, pause, slow lower.", "fri-add": "Lie on your side with hips stacked square. Cross the top leg over and plant that foot in front of the bottom knee, or rest the top shin on a yoga block. Keeping the bottom leg straight with toes pointing forward, lift it toward the ceiling from the inner thigh, pause, and lower slowly. Do not let the pelvis roll backward \u2014 that is what turns this into SI joint irritation instead of adductor work. Switch legs between sets.", "fri-calf": "Stand on one foot on a step edge, heel hanging off; drop the heel for a full stretch, rise as high onto the toes as you can, 2-sec squeeze, slow descent. Switch legs between sets.", "fri-obliques": "Anchor or hold the tube to one side; chop diagonally across the body, power from the hips.", "fri-deadbug": "On your back, arms up, knees stacked over the hips; lower opposite arm and leg, low back glued to the floor.", "fri-sqpress": "Hold dumbbells or the ball at the shoulders; squat, then drive up and press overhead in one motion.", "fri-plank": "Forearms down, body in a straight line head to heels; squeeze the glutes, brace, breathe.", "sat-ride": "Neighborhood hills naturally push this into vigorous heart rate zones most of the ride — that's the real effort level, not a sign of overdoing it. Wear the compression sleeve.", "sat-walk": "Optional easy walk afterward — loose and unhurried, just keeping the joints moving.", "sun-walk": "Easy 30–45 min walk, nose breathing; this is circulation and recovery, not training.", "sun-flow": "Move slowly through whatever feels stiff — cat-cow, gentle twists, hip openers — breath-led, no intensity."};
-
-/* ============================ ROUTINES (every day) ============================ */
-var DS_MORNING={key:'morning',title:'Morning Activation',accent:'var(--amber)',meta:'8 min · every day',
-  blurb:'Before anything else. Resets the spine, wakes the hips, clears the hip flexors that compressed your low back overnight.',
-  moves:[
-    {id:'m-catcow',name:'Cat-Cow (breath-led)',rx:'10 slow reps',cal:10,demo:'catcow',log:'done',target:'Full Spine',
-      setup:'Hands and knees. Inhale to arch (belly drops, chest lifts), exhale to round (back up, chin tucks). 4–6 sec per rep. Let it ripple through the whole spine.'},
-    {id:'m-9090',name:'Half-Kneeling Hip Flexor Stretch',rx:'60s/side',cal:10,demo:'nine90',log:'time',secs:120,perSide:true,target:'Hip Flexors · Psoas',
-      setup:'Half-kneel, back knee is the side stretched, front shin vertical, hips square. Shift hips forward; lightly squeeze the back glute to deepen it. 60 sec per side.'},
-    {id:'m-child',name:"Child's Pose",rx:'90s',cal:10,demo:'child',log:'time',secs:90,target:'Lower Back · Hips · Lats',
-      setup:'From kneeling, sit back toward heels, arms forward, forehead down. Wide knees for more hip space. Breathe into the back body. Do this before checking your phone.'}
-  ]};
-var DS_PRE={key:'pre',title:'Pre-Workout Activation',accent:'var(--accent)',meta:'2 min · before band days',
-  blurb:'Right before every band session. If the glutes are asleep, your low back does their job — this fires them up. Non-negotiable while the SI joint is touchy. (Hip flexor stretch already covered in Morning Activation.)',
-  moves:[
-    {id:'p-bridge',name:'Glute Bridge Activation',rx:'2×10',cal:13,demo:'bridge',log:'done',target:'Glutes · SI Stabilizers',
-      setup:'On your back, knees bent, feet flat. Drive through heels, squeeze glutes hard 2 sec at the top, lower slow. 2×10, no weight — activation, not a workout. Ball version (upper back on the stability ball) is recommended for the SI joint.'}
-  ]};
-var DS_MOBILITY={"key": "mobility", "title": "Mobility", "accent": "#a78bfa", "meta": "CARs + PAILs/RAILs · daily · yin holds before bed", "blurb": "Controlled circles to own each joint, then PAILs/RAILs to build strength at end range. Keep contractions to ~60–70%, symmetric and braced — back off anything sharp, especially around the SI joint. The yin holds below run 3–5 min each (fascia takes that long to release) and are best done in the evening — exhale twice as long as you inhale.", "moves": [{"id": "mob-hip", "name": "Hips — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 20, "demo": "hipcircle", "log": "done", "target": "Hip joint", "equip": "Floor / wall", "setup": "CARs first: on all fours or standing tall, lift one knee and trace the biggest slow circle the hip can make — 2–3 each direction, ribs down, nothing else moving. Then run the PAILs/RAILs below in a deep hip end range (90/90 fold or pigeon)."}, {"id": "mob-9090", "name": "Seated 90/90 Hip Transitions", "rx": "8 transitions/side", "cal": 15, "demo": "ninetytransition", "log": "setsreps", "sets": 1, "target": "Hip Rotation", "equip": "Floor", "setup": "Sit with the front leg bent 90 at the hip and knee, shin angled away (external rotation), back leg bent 90 behind you, shin angled back (internal rotation). Stay tall through the spine — don’t lean back to cheat range. Lift the hips slightly and rotate the whole base to switch sides, swapping which hip is in and which is out. 8 slow transitions per side. Keep it controlled and pain-free — this is rotational range, not a deep static hold, so back off anything sharp near the SI joint."}, {"id": "mob-shoulder", "name": "Shoulders — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "shouldercar", "log": "done", "target": "Shoulder joint", "equip": "Wall / doorway", "setup": "CARs first: stand tall, one arm draws the largest slow circle it can — reach overhead, rotate, sweep behind — ribs down, 2–3 each way. Then run PAILs/RAILs at an end-range reach (overhead, or a doorway chest opener)."}, {"id": "mob-spine", "name": "Spine — CARs + PAILs/RAILs", "rx": "~4 min", "cal": 18, "demo": "catcow", "log": "done", "target": "Full spine", "equip": "Floor", "setup": "CARs first: slow segmental cat-cow moving one vertebra at a time, then gentle rotations and side-bends through the whole spine. Then run PAILs/RAILs gently — low intensity here, this is near your SI joint."},
-    {id:'y-kneehug',name:'Supine Knee Hugs',rx:'2 min',cal:7,demo:'kneehug',log:'time',secs:120,target:'Arrive',
-      setup:'On your back, knees to chest, rock gently. Transition in from the day. No agenda yet.'},
-    {id:'y-swan',name:'Sleeping Swan (Yin Pigeon)',rx:'5 min/side',cal:10,demo:'swan',log:'time',secs:300,perSide:true,target:'SI Joint · Outer Hip · Glute',
-      setup:'From all fours, one knee forward behind the wrist, back leg straight. Fold forward passively, forehead down. Pillow under the front hip if needed. Gravity does it over 3–5 min. Deep dull ache in the outer glute is right; sharp knee pain means add support. Switch sides.'},
-    {id:'y-dragon',name:'Dragon (Low Lunge)',rx:'5 min/side',cal:8,demo:'dragon',log:'time',secs:300,perSide:true,target:'Hip Flexors · Psoas',
-      setup:'Front foot forward, back knee down on a blanket. Sink the hips low and hold passively, hands on the front knee or blocks. Let gravity pull the hips down with each exhale. First 90 sec can feel intense; the release comes after.'},
-    {id:'y-cat',name:'Caterpillar',rx:'5 min',cal:8,demo:'caterpillar',log:'time',secs:300,target:'Back Body · Hamstrings',
-      setup:'Seated, legs straight. Let the spine round forward — don\'t straighten it. Reach toward the feet, completely passive. The rounding is the release. Blanket under the knees if hamstrings are tight.'},
-    {id:'y-twist',name:'Supine Twist',rx:'3 min/side',cal:7,demo:'twist',log:'time',secs:180,perSide:true,target:'SI Joint · Lower Back',
-      setup:'On your back, bring one knee across the body toward the floor. Arms wide, palms up. Don\'t push the knee — let it rest. Gaze away from the bent knee. Switch sides.'},
-    {id:'y-legsup',name:'Legs Up the Wall',rx:'5–10 min',cal:10,demo:'legsup',log:'time',secs:600,target:'Full Decompression',
-      setup:'Hips near the wall, legs straight up, arms out, palms up. Total surrender. Decompresses the spine, drains the legs, flips on the parasympathetic system. There is nothing else to do tonight.'},
-    {id:'y-restsquat',name:'Deep Resting Squat',rx:'2–3 min',cal:10,demo:'restsquat',log:'time',secs:150,target:'Hips · Ankle/Knee Mobility',
-      setup:'Feet just past shoulder width, sink into the bottom of a squat, elbows brace the inside of the knees to help them track out. Heels down if you can — a rolled towel or block under them is fine if not. Let the hips sink lower with each exhale. SI-friendly since it\'s passive, not loaded — ease off if it pinches.'},
-    {id:'y-sidelunge',name:'Side Lunge',rx:'90s/side',cal:8,demo:'sidelunge',log:'time',secs:180,perSide:true,target:'Adductors · Groin',
-      setup:'Wide stance, sink into one bent knee while the other leg stays straight out to the side, foot flat, toes forward. Hands can rest on the ground or the bent thigh for balance. Feel the stretch up the inner thigh of the straight leg. Switch sides.'},
-    {id:'y-dancerbridge',name:"Dancer's Bridge",rx:'60–90s/side',cal:10,demo:'dancerbridge',log:'time',secs:150,perSide:true,target:'Glutes · Scapular Stability',
-      setup:'From a floor bridge, hips lifted and level, extend one leg straight up toward the ceiling while the other foot stays planted. Press the shoulder blades down and back into the floor to keep the chest open. Keep the hips square — don\'t let the lifted-leg side drop. Switch sides.'},
-    {id:'y-tspinetwist',name:'T-Spine Twist',rx:'60s/side',cal:8,demo:'tspinetwist',log:'time',secs:120,perSide:true,target:'Thoracic Spine',
-      setup:'From tabletop, thread one arm under the body, resting the shoulder and ear on the floor, then find your end range and hold — you can also rotate the top arm open toward the ceiling for a deeper hold, eyes following the hand. Keep the hips square and still; all the rotation comes from the mid-back, not the low back or SI joint. Switch sides.'},
-    {id:'y-tailor',name:"Tailor's Pose",rx:'2–3 min',cal:8,demo:'tailorpose',log:'time',secs:150,target:'Adductors · Hips',
-      setup:'Seated, soles of the feet together, knees drop open to the sides. Sit tall on your sit bones rather than rounding forward — let gravity and the breath open the knees, don\'t press down on them. Hands can rest on the feet or ankles. Deep, passive inner-thigh stretch.'}
-]};;
-
-
-
-/* ============================ DS_SESSIONS (Mon–Sun) ============================ */
-var DS_WARMUP_ARMCIRCLE={id:'warmup-armcircle',name:'Arm Circles + Shoulder Rolls',demo:'shouldercar',slot:'Warm-up',target:'Shoulders · Upper Body Mobility',equip:'Bodyweight',rx:'2 min',cal:10,cue:'Small circles forward 20s, then backward 20s. Follow with big circles forward 20s, backward 20s. Finish with 10 slow shoulder rolls each direction — loosen everything before you load it.',log:'time',secs:120};
-var DS_WARMUP_HIPFLOW7={id:'warmup-hipflow-7',name:'Leg Swings + 90/90s',demo:'legswing',slot:'Warm-up',target:'Hips · SI Joint Mobility',equip:'Bodyweight',rx:'5 min',cal:25,cue:'Front-to-back leg swings 12/leg, side-to-side swings 12/leg, then 90/90 hip switches for 8 reps/side and slow hip circles 30s each direction — get the hips moving before squats and deadlifts load them.',log:'time',secs:300};
-// Replaces the KB Halo as the shoulder-specific warm-up on upper days — same
-// intent (prep the overhead/behind-the-head path before pressing, given the
-// right shoulder history), but a band gives real, graduated resistance
-// through the range instead of one fixed light weight the whole way.
-var DS_WARMUP_BANDSHOULDER={id:'warmup-bandshoulder',name:'Banded Shoulder Pass-Through',demo:'shouldercar',slot:'Warm-up',target:'Shoulders · Overhead Mobility',equip:'Tube 10–20 lb (wide grip)',rx:'10–12 reps',cal:12,cue:'Wide overhand grip on the band, arms straight — raise it overhead and back behind you, then return to the front. Keep the circle tight on the right side, same overhead path where your right shoulder history shows up.',log:'setsreps',sets:1,
-  setup:'Hold the band with a wide, overhand grip — wider than shoulder-width, the tighter the grip the harder this gets, so start wide. Arms straight the whole time, raise the band up and overhead, continuing back behind you as far as comfortable, then reverse back to the front. 10-12 slow reps. Widen your grip if the shoulders round or the lower back arches to compensate.',
-  variants:[{name:'PVC/Broomstick Pass-Through',equip:'Broomstick or dowel',rx:'10–12 reps',cue:'No band needed — same wide-grip pass-through pattern with a stick instead. Useful on a day even light band tension feels like too much before you\'re warm.',demo:'shouldercar'}]};
-
+// DS_DEMOS, DS_DEMOMAP live in data-figures.js
+// DS_MORNING, DS_PRE live in data-exercises.js
+// DS_MOBILITY, DS_WARMUP_ARMCIRCLE, DS_WARMUP_HIPFLOW7, DS_WARMUP_BANDSHOULDER live in data-exercises.js
 /* ── v410: Upper Total — one-session swap day hitting every upper muscle once.
    Picks reuse plan ids (history/volume stay linked), ordered by door-anchor
    position (mid → high → low → floor) with set counts trimmed to ~2 each. ── */
@@ -5752,7 +4467,7 @@ function dsUpperShortSession(){
   if(_DS_US_CACHE) return _DS_US_CACHE;
   var moves=[DS_WARMUP_BANDSHOULDER];
   DS_US_SPEC.forEach(function(r){
-    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){} if(!m) return;
+    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){ftCaught(e,'dsUpperShortSession');} if(!m) return;
     var c={}; for(var k in m) c[k]=m[k];
     delete c.variants; delete c.lockVar; delete c.pair;
     c.sets=r[1]; c.rx=r[2]; c.slot=(c.slot||'')+' · '+r[3];
@@ -5761,14 +4476,14 @@ function dsUpperShortSession(){
   _DS_US_CACHE={title:'Upper Short',sub:'Abbreviated upper session · ~14 sets · ~30–35 min · push every set to 1–3 RIR · short on time? do press, row, curl, triceps only',accent:'#a78bfa',moves:moves,_ut:true,_us:true};
   return _DS_US_CACHE;
 }
-function dsToggleUpperShort(){ DS_UT_ON[activeDate]=(DS_UT_ON[activeDate]==='short')?false:'short'; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
-var DS_UT_ON={}; try{ DS_UT_ON=JSON.parse(store.get("ds_ut_on")||"{}")||{}; }catch(e){ DS_UT_ON={}; }
+function dsToggleUpperShort(){ DS_UT_ON[activeDate]=(DS_UT_ON[activeDate]==='short')?false:'short'; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){ftCaught(e,'dsToggleUpperShort');} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){ftCaught(e,'dsToggleUpperShort');} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsToggleUpperShort');} }
+var DS_UT_ON={}; try{ DS_UT_ON=JSON.parse(store.get("ds_ut_on")||"{}")||{}; }catch(e){ ftCaught(e,'startup'); DS_UT_ON={}; }
 var _DS_UT_CACHE=null;
 function dsUpperTotalSession(){
   if(_DS_UT_CACHE) return _DS_UT_CACHE;
   var moves=[DS_WARMUP_BANDSHOULDER];
   DS_UT_SPEC.forEach(function(r){
-    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){} if(!m) return;
+    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){ftCaught(e,'dsUpperTotalSession');} if(!m) return;
     var c={}; for(var k in m) c[k]=m[k];
     delete c.variants; delete c.lockVar; delete c.pair;
     c.sets=r[1]; c.rx=r[2]; c.slot=(c.slot||'')+' · '+r[3];
@@ -5777,7 +4492,7 @@ function dsUpperTotalSession(){
   _DS_UT_CACHE={title:'Upper Total',sub:'Every upper muscle in one session · ~35 sets · ~60–70 min · swap for an upper day, max 1×/week',accent:'#a78bfa',moves:moves,_ut:true};
   return _DS_UT_CACHE;
 }
-function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=(DS_UT_ON[activeDate]===true)?false:true; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
+function dsToggleUpperTotal(){ DS_UT_ON[activeDate]=(DS_UT_ON[activeDate]===true)?false:true; if(DS_UT_ON[activeDate]&&typeof DS_LT_ON!=='undefined'){ DS_LT_ON[activeDate]=false; try{ store.set('ds_lt_on', JSON.stringify(DS_LT_ON)); }catch(e){ftCaught(e,'dsToggleUpperTotal');} } dsTrimDateKeys(DS_UT_ON,120); try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){ftCaught(e,'dsToggleUpperTotal');} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsToggleUpperTotal');} }
 /* ── v416: Lower Total — lighter one-session swap hitting every lower muscle once
    (~16 sets, ~35–40 min). Same mechanics as Upper Total; the two are exclusive. ── */
 var DS_LT_SPEC=[
@@ -5790,13 +4505,13 @@ var DS_LT_SPEC=[
   ['mon-calf',2,'2×12–20','Step edge · 0–1 RIR · rest 60 s'],
   ['tue-pallof',2,'2×10–12/side','Side anchor · core · rest 45 s']
 ];
-var DS_LT_ON={}; try{ DS_LT_ON=JSON.parse(store.get("ds_lt_on")||"{}")||{}; }catch(e){ DS_LT_ON={}; }
+var DS_LT_ON={}; try{ DS_LT_ON=JSON.parse(store.get("ds_lt_on")||"{}")||{}; }catch(e){ ftCaught(e,'startup'); DS_LT_ON={}; }
 var _DS_LT_CACHE=null;
 function dsLowerTotalSession(){
   if(_DS_LT_CACHE) return _DS_LT_CACHE;
   var moves=[DS_WARMUP_HIPFLOW7];
   DS_LT_SPEC.forEach(function(r){
-    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){} if(!m) return;
+    var m=null; try{ m=dsPickResolve(dsPickNorm(r[0])); }catch(e){ftCaught(e,'dsLowerTotalSession');} if(!m) return;
     var c={}; for(var k in m) c[k]=m[k];
     delete c.variants; delete c.lockVar; delete c.pair;
     c.sets=r[1]; c.rx=r[2]; c.slot=(c.slot||'')+' · '+r[3];
@@ -5805,13 +4520,13 @@ function dsLowerTotalSession(){
   _DS_LT_CACHE={title:'Lower Total',sub:'Every lower muscle in one lighter session · ~16 sets · ~35–40 min · swap for a lower day',accent:'#34d399',moves:moves,_lt:true};
   return _DS_LT_CACHE;
 }
-function dsToggleLowerTotal(){ DS_LT_ON[activeDate]=!DS_LT_ON[activeDate]; if(DS_LT_ON[activeDate]){ DS_UT_ON[activeDate]=false; try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){} } dsTrimDateKeys(DS_LT_ON,120); try{ store.set("ds_lt_on", JSON.stringify(DS_LT_ON)); }catch(e){} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){} }
+function dsToggleLowerTotal(){ DS_LT_ON[activeDate]=!DS_LT_ON[activeDate]; if(DS_LT_ON[activeDate]){ DS_UT_ON[activeDate]=false; try{ store.set("ds_ut_on", JSON.stringify(DS_UT_ON)); }catch(e){ftCaught(e,'dsToggleLowerTotal');} } dsTrimDateKeys(DS_LT_ON,120); try{ store.set("ds_lt_on", JSON.stringify(DS_LT_ON)); }catch(e){ftCaught(e,'dsToggleLowerTotal');} dsQueueConfigPush(); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsToggleLowerTotal');} }
 function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_LT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ var _lt=dsLowerTotalSession(); if(_lt&&_lt.moves.length>3) return _lt; } if(DS_UT_ON[activeDate]&&ftIsOwner()&&!dsDayIsCustom(sk)){ if(sk==='wed'&&DS_UT_ON[activeDate]==='short'){ var _wy=dsWedFocusSession()||DS_SESSIONS.wed; var _us=dsUpperShortSession(); if(_wy&&_us&&_us.moves.length>3){ return {title:'Upper Short + Yoga',sub:'Lift first (~30 min, keep 2–3 RIR so Thursday stays strong), then the yoga flow as your cooldown',accent:'#a78bfa',moves:_us.moves.concat(_wy.moves||[]),_us:true}; } } var _ut=(DS_UT_ON[activeDate]==='short')?dsUpperShortSession():dsUpperTotalSession(); if(_ut&&_ut.moves.length>3) return _ut; } if(sk==='wed'){ var _w=dsWedFocusSession(); if(_w) return _w; } return DS_SESSIONS[sk]; }
 // v348: exercises the user removed from a weekday on the Today tab (per-day id list, synced).
 // Filtering happens here so the card list, done/total bar and Volume all agree.
-var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ DS_HIDDEN={}; }
+var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ ftCaught(e,'startup'); DS_HIDDEN={}; }
 var _dsHidCache=null;
-function dsHiddenSave(){ _dsHidCache=null; try{ store.set("ds_hidden", JSON.stringify(DS_HIDDEN)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
+function dsHiddenSave(){ _dsHidCache=null; try{ store.set("ds_hidden", JSON.stringify(DS_HIDDEN)); }catch(e){ftCaught(e,'dsHiddenSave');} try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsHiddenSave');} }
 function dsSessOf(sk){
   var S=dsSessOfRaw(sk), hid=DS_HIDDEN[sk];
   if(!S || S._oneday || !hid || !hid.length || !Array.isArray(S.moves)) return S;
@@ -5828,15 +4543,15 @@ function dsHideMove(sk,id){
 }
 function dsRestoreMove(sk,id){
   DS_HIDDEN[sk]=(DS_HIDDEN[sk]||[]).filter(function(x){ return x!==id; }); // keep [] so the restore syncs
-  dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){}
+  dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsRestoreMove');}
 }
-function dsRestoreAllMoves(sk){ DS_HIDDEN[sk]=[]; dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){} }
+function dsRestoreAllMoves(sk){ DS_HIDDEN[sk]=[]; dsHiddenSave(); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsRestoreAllMoves');} }
 var DS_EDIT_MODE=false; // Today-tab edit mode: remove/add controls only show while on (not saved; resets on reload)
 function dsToggleEditMode(){ DS_EDIT_MODE=!DS_EDIT_MODE; dsRender(); }
 var DS_ITEM_CTX=null; // set only while the main Today list renders, so cards show a remove button there
 function dsRemoveFromDay(id){
   var sk=dsSessionKey(activeDate);
-  var m=null; try{ m=dsRawItem(id); }catch(e){}
+  var m=null; try{ m=dsRawItem(id); }catch(e){ftCaught(e,'dsRemoveFromDay');}
   var nm=(m&&m.name)||'this exercise';
   if(!confirm('Remove "'+nm+'" from '+DS_DAYLABEL[sk]+'?\n\nIt stays in the library and you can restore it any time from the list at the bottom of this day.')) return;
   var base=String(id).split('#')[0];
@@ -5854,7 +4569,7 @@ function dsRemoveFromDay(id){
     dsHideMove(sk,id);
   }
   toast('Removed '+nm);
-  dsRender(); try{ renderAll(); }catch(e){}
+  dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsRemoveFromDay');}
 }
 function dsHiddenPanelHtml(sk){
   var hid=DS_HIDDEN[sk]||[]; if(!hid.length) return '';
@@ -5871,9 +4586,9 @@ function dsHiddenPanelHtml(sk){
 // order; anything non-flow on Wednesday (user-added moves) stays at the end.
 var _DS_WED_CACHE=null;
 function dsWedFocusSession(){
-  var S=DS_SESSIONS.wed; if(!S||!S.moves||(typeof dsDayIsCustom==='function'&&dsDayIsCustom('wed'))) return null;
+  var S=DS_SESSIONS.wed; if(!S||!S.moves||(dsDayIsCustom('wed'))) return null;
   if(!S.moves.some(function(m){return m&&m.id&&m.id.indexOf('wed-flow-')===0;})) return null;
-  var ids; try{ ids=dsFlowActiveIds(); }catch(e){ return null; } if(!ids||!ids.length) return null;
+  var ids; try{ ids=dsFlowActiveIds(); }catch(e){ ftCaught(e,'dsWedFocusSession'); return null; } if(!ids||!ids.length) return null;
   var key=ids.join(',')+'|'+S.moves.length;
   if(_DS_WED_CACHE&&_DS_WED_CACHE.key===key&&_DS_WED_CACHE.src===S) return _DS_WED_CACHE.sess;
   var byId={}; S.moves.forEach(function(m){ if(m&&m.id) byId[m.id]=m; });
@@ -5888,8 +4603,8 @@ function dsWedFocusSession(){
 // disappears on its own: it is keyed to the date it was built, so any other day
 // ignores it and it is purged on the next load. Device-local on purpose (never
 // pushed to the sheet/config sync) so it can't leak onto another day or device.
-var DS_ONEDAY=null; try{ DS_ONEDAY=JSON.parse(store.get('ds_oneday')||'null'); }catch(e){ DS_ONEDAY=null; }
-if(DS_ONEDAY && (!DS_ONEDAY.ids || DS_ONEDAY.date!==todayKey())){ DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
+var DS_ONEDAY=null; try{ DS_ONEDAY=JSON.parse(store.get('ds_oneday')||'null'); }catch(e){ ftCaught(e,'startup'); DS_ONEDAY=null; }
+if(DS_ONEDAY && (!DS_ONEDAY.ids || DS_ONEDAY.date!==todayKey())){ DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){ftCaught(e,'startup');} }
 var DS_ONEDAY_CACHE=null;
 var DS_ONEDAY_PRESET=['mon-pushup#High-to-Low','mon-curl#Bayesian','sat-chest','sat-ohtriceps','mon-inclinepress','thu-hammer','mon-tri','tue-pallof','sat-bandcrunch','mon-hollow'];
 function dsOneDayOn(){ return !!(DS_ONEDAY && DS_ONEDAY.date===activeDate && DS_ONEDAY.ids && DS_ONEDAY.ids.length && !DS_DAY_OVERRIDE); }
@@ -5904,10 +4619,10 @@ function dsOneDaySession(){
 }
 function dsOneDaySave(ids){
   DS_ONEDAY_CACHE=null;
-  if(ids&&ids.length){ DS_ONEDAY={date:todayKey(),ids:ids.slice()}; try{ store.set('ds_oneday',JSON.stringify(DS_ONEDAY)); }catch(e){} }
-  else { DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){} }
+  if(ids&&ids.length){ DS_ONEDAY={date:todayKey(),ids:ids.slice()}; try{ store.set('ds_oneday',JSON.stringify(DS_ONEDAY)); }catch(e){ftCaught(e,'dsOneDaySave');} }
+  else { DS_ONEDAY=null; try{ store.remove('ds_oneday'); }catch(e){ftCaught(e,'dsOneDaySave');} }
 }
-function dsOneDayClear(){ dsOneDaySave(null); toast('Back to the regular plan'); dsRender(); try{ renderAll(); }catch(e){} }
+function dsOneDayClear(){ dsOneDaySave(null); toast('Back to the regular plan'); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsOneDayClear');} }
 // A pick is 'id' (the exercise as-is) or 'id#N' (its Nth variant, 1-based), so a
 // variant like Bayesian Curl can be used today without changing the saved
 // variant choice for your regular plan.
@@ -5933,153 +4648,7 @@ function dsOneDayLoadPreset(){
 }
 function dsOneDayClearPick(){ DS_CUSTOM_PICK=[]; dsCustomRenderSelected(); dsCustomRenderLibrary(); }
 
-// ══ THE PLAN ═══════════════════════════════════════════════════════════
-// One definition. What you see here is exactly what the app runs — nothing
-// rewrites it at load (the old streamline + v274…v370 tuning passes were folded in).
-// Ids are permanent keys for logs and swaps, so a few carry the
-// prefix of the day they were first built on (e.g. thu-facepull is Monday's rear-delt
-// slot, mon-inclinepress is Thursday's chest press) — renaming them would orphan history.
-// Moves cut from the plan live in DS_RESERVE_MOVES (below) so one-day picks and old
-// logs still resolve.
-//
-//   Order = door-anchor height (high → chest → low) so the band moves as little as possible.
-//   Same "pair" letter = superset: alternate sets, ~60 s between. Core always renders last.
-//   (The per-day exercise list that used to be copied here went stale; DS_SESSIONS below is the list.)
-//   v434 LOCKED (Nov 2 2026, 8 weeks): skull crusher removed (Thu = overhead extension), Mon kickback 4,
-//   Sat overhead ext 3, Sat press ⇄ row superset (new sat-row), Sat forearm curls 4→2,
-//   loaded band crunch on all three upper days (Mon 3 new, Sat 3), Thu leg raise 3 (thu2-legraise).
-//   (v392 rebalance: Mon 39→32, Thu 44→24 sets; thu-elbow + mon-elbowrot moved to DS_RESERVE_MOVES.)
-//
-var DS_SESSIONS={
-  mon:{title:"Upper Body A",sub:"Push · Pull alternating — Chest · Back · Shoulders",accent:"var(--accent)",
-    moves:[
-      DS_WARMUP_BANDSHOULDER,
-      {"id":"mon-pushup","pair":"A","lockVar":9,"name":"Banded Push-ups","pat":"pushup","slot":"Push · Horizontal Push","target":"Chest · Triceps","equip":"Tube band or bodyweight","rx":"3–4×10–15","cal":35,"cue":"Chest to floor, elbows 45° back — push the floor away explosively. Wrists stay stacked directly under the shoulders — if the left wrist complains from full extension, try push-up handles/blocks or a slight fist grip to keep it neutral.","demo":"pushup","log":"setsreps","sets":4,"variants":[{"name":"Wall Push-up","equip":"Bodyweight only","rx":"3×12–15","cue":"Hands on the wall, feet back — lean in and press away. Easiest regression, start here if floor push-ups aren't happening yet","demo":"wallpushup"},{"name":"Incline Push-up (counter/desk)","equip":"Counter, desk or piano bench","rx":"3×10–15","cue":"Higher surface is easier — lower it as you get stronger.","demo":"pushup"},{"name":"Knee Push-up","equip":"Bodyweight only","rx":"3×8–12","cue":"Knees down, straight line from knees to head — chest to floor, full range of motion counts more than reps","demo":"pushup"},{"name":"Banded Chest Press (anchor)","equip":"Tube 20–30 lb","rx":"3×12–15","cue":"Drive the handles together in front of your chest","demo":"press"},{"name":"Super Band Push-up","equip":"Clench 35–75 lb band across upper back","rx":"3×8–12","cue":"Band under both palms, draped across the upper back — explode off the floor against the tension","demo":"pushup"},{"name":"Deficit Push-up","tempo":"2-1-1-0","equip":"Yoga blocks under hands · add the Clench band across your upper back once you hit 15 clean reps","rx":"3–4×8–15","cue":"Hands on blocks so your chest sinks BELOW hand level — pause 1 sec in that bottom stretch, then press. Bodyweight loads the stretch (where chest growth happens); the band adds load at the top. Blocks also keep the left wrist more neutral.","demo":"pushup"},{"name":"Band Tempo Push-up","pat":"pushup","tempo":"5-2-1-0","equip":"Clench band across the upper back, ends under the palms · drop the band if the tempo breaks","rx":"3×6–10","cue":"Band high on the shoulder blades (not the neck). Tight plank, lower over a strict 5 seconds, pause 1–2 sec in the bottom stretch, then explode to lockout. Progress by adding reps, then a thicker band — never by shortening the 5-second lowering.","demo":"pushup"},{"name":"Band Floor Press","equip":"Tube 10–30 lb · under your upper back","rx":"3×12–15","cue":"Elbows touch the floor at the bottom, then press to full lockout.","setup":"Lie on your back, knees bent, handles in your fists, tube across your upper back.","demo":"press"},{"name":"High-to-Low Band Press","tempo":"3-1-1-0","equip":"Tube 20–30 → stacked · door anchor at the TOP · Clench handles","rx":"4×10–15","cue":"Face away from the high anchor, split stance, step forward until there's tension at the start. Press down and forward toward your belly button, hands finishing low and together — squeeze the lower chest 1 sec. Elbows ~45° from the torso, stop just short of hard lockout to keep the elbows happy. Lower over 3 sec into the stretch.","setup":"Anchor the tube at the top of the door. Face away, handles at upper-chest height, elbows bent and back.","demo":"press"}]},
-      {"id":"mon-row","pair":"A","name":"Bent-Over Row","slot":"Pull · Horizontal Pull","target":"Back · Biceps","equip":"Tube 30–40 → stacked 90 → Clench 75 on Clench handles → green 75–150","rx":"4×10–12","cal":35,"cue":"Drive elbows into your back pockets — not hands to your chest","demo":"row","log":"setsreps","sets":4,"ramp":"1 set light band × 10, 1 set one step below working band × 6–8, then your working sets.","variants":[{"name":"Wide Row (free)","equip":"Tube 20–30 → stacked 70–90","rx":"3×12","cue":"Pull wide to the ribs, squeeze the mid-back","demo":"row"},{"name":"Chest-Supported Row (ball)","equip":"Chest on stability ball + tube band","rx":"3×12","cue":"Chest stays glued to the ball — zero lower back, all upper back","demo":"ballrow"},{"name":"Narrow Row","equip":"Tube 30–40 → stacked 90 (50+40)","rx":"3×12","cue":"Hands close, pull to the belt line — elbows brush the ribs, hits lats more than mid-back","demo":"row"},{"name":"Single Arm Row","equip":"Tube 20–30 → stacked 90 · bench or sturdy chair to brace on","rx":"3×10/side","cue":"brace your free hand and same-side knee on a bench, pull the band straight to your hip with the working arm, elbow trailing back. Do each side; great for catching left/right back imbalances.","demo":"singlearmrow"},{"name":"Kneeling Door-Anchored Row","equip":"Tube 30–40 → stacked 90 → Clench 75 on Clench handles · door anchor at chest height","rx":"3×10–12","cue":"Kneel or sit tall facing the door and step back until the band is already taut at full arm extension. Retract the shoulder blades first, then drive the elbows back to your ribs; 1-sec squeeze, slow return into the stretch.","setup":"Anchor the tube at mid-door height and close and lock the door. Sit on the floor or kneel upright facing it, far enough back that there is tension with your arms straight. Pull the handles to your torso with the shoulder blades squeezing together, then control the return all the way out — no slack at the bottom. Sitting or kneeling takes the low back out of the movement.","demo":"row"}]},
-      {"id":"mon-fly","lockVar":0,"name":"Standing Band Fly (stretch-biased)","pat":"fly","slot":"Push · Chest Isolation","target":"Chest","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · door anchor behind you at chest height","rx":"3×12–15","cal":25,"cue":"Split stance, step forward until the band is already tight with arms open wide. Slight fixed elbow bend, 1-sec pause in the stretch, hug the handles together, control back. Last set: go to failure, then add 3–5 lengthened partials.","demo":"fly","log":"setsreps","sets":3,"variants":[{"name":"High-Anchor Band Fly","tempo":"2-0-1-2","equip":"Tube or loop band · door anchor at the top","rx":"3×12–15","cue":"Face away from a high anchor, arms open wide. Sweep hands down and together in front of the hips, squeeze 1–2 sec, return slowly.","demo":"fly"},{"name":"Low-Anchor Stretch Fly","pat":"fly","equip":"Tube 10–20 lb · low anchor","rx":"3×12–15","cue":"Anchor low, face away, step forward for a deep stretch, then fly bottom-to-top across your body","demo":"fly"},{"name":"Single-Arm Band Press-Around","equip":"Tube 10–20 lb · chest-height anchor","rx":"3×10–12/side","cue":"Anchor behind you at chest height. Press across your body in a wide arc, squeeze at full extension, control the return.","demo":"fly"},{"name": "Single-Arm Band Fly", "pat": "fly", "tempo": "2-1-1-1", "equip": "Tube 10–20 or yellow loop (7–25) on Clench handles · door anchor at chest height, OUT TO YOUR SIDE", "rx": "3×12–15/side", "cue": "Side-on to the door, arm open wide with a slight fixed elbow bend. Sweep across until your hand passes the middle of your chest, squeeze 1 sec, return slowly into the stretch. Band tension stays on the whole way, including the squeeze. Last set: failure, then 3–5 lengthened partials.", "setup": "Anchor at chest height. Stand SIDEWAYS to the door with the working arm nearest it, then step away until the band already pulls your arm open into a stretch. Split stance, free hand on your hip or a wall. The anchor must be out to your side, never behind your back. Do all reps on one side, then switch.", "demo": "fly"}]},
-      {"id":"mon-pulldown","pair":"B","name":"Overhand Pulldown","slot":"Pull · Vertical Pull","target":"Lats · Biceps · Forearms","equip":"Tube 20–30 → stacked 50+40 (90, up to all five tubes ≈150) → Clench 75 on Clench handles → green 75–150","rx":"3×10–12","cal":35,"cue":"Monday’s vertical pull — palms-away grip shifts the work toward the lats (Thursday’s underhand version leans on biceps). Drive the elbows down toward your back pockets, chest up, slight lean back.","demo":"pulldown","log":"setsreps","sets":3,"ramp":"1 set light band × 10, 1 set one step below working band × 6–8, then working sets.","variants":[{"name":"Deep-Stretch Pulldown","equip":"Tube 20–30 → stacked 90 · high anchor","rx":"3×10–12","cue":"Kneel farther back from the anchor than usual for a longer overhead starting stretch before pulling down","demo":"pulldown"},{"name":"Kneeling Wide-Grip Pulldown","equip":"Tube 20–30 → stacked 50+40 (90) · door anchor at the top","rx":"3×10–12","cue":"Kneel facing the door with your arms overhead and a wide grip. Drive the elbows down and back toward your back pockets, chest up; 1-sec squeeze at the bottom, slow return to the full overhead stretch.","setup":"Anchor the tube at the top of a door and close and lock it. Kneel 2–3 ft back, arms fully overhead and hands wider than your shoulders so there is tension at the top. Pull the handles down toward your shoulders, elbows going down and back rather than forward, then let the band pull your arms back up into the stretch under control.","demo":"pulldown"},{"name":"Straight-Arm Band Pullover","equip":"Tube 10–30 lb · door anchor at the top (or a looped band held without handles)","rx":"3×12–15","cue":"Hinge forward about 45° with the elbows in a slight fixed bend and the band taut overhead. Sweep your hands in an arc down to your thighs by squeezing the lats; the elbows never bend more or less, so it stays a lat move and never turns into a triceps pushdown.","setup":"Anchor the tube at the top of a door and close and lock it. Face the door, hinge forward about 45° at the hips, and hold the handles (or a looped band) overhead with a slight fixed bend in the elbows and tension already on. Sweep the hands down in an arc to your thighs, pause 1 second, then let the band take your arms back overhead slowly into a full lat stretch."}]},
-      {"id":"mon-ohp","pair":"B","name":"Overhead Press","slot":"Push · Vertical Push","target":"Shoulders","equip":"Tube 20–30 → 40–50 lb","rx":"3×10–12","cal":35,"cue":"Press straight to the ceiling — don't let your low back arch","demo":"press","log":"setsreps","sets":3,"ramp":"1 set light band × 10, 1 set mid band × 6–8, then working sets. Priming the shoulder here matters more than chasing failure given the shoulder history — ramp fully before loading up.","variants":[{"name":"Door-Anchored Overhead Press","equip":"Tube 20–30 → 40–50 lb · low door anchor behind you","rx":"3×10–12","cue":"Face away from a low anchor in a staggered stance, handles at shoulder height, and step forward until the band is taut at the bottom. Press straight overhead without arching your back, then lower slowly.","setup":"Anchor the tube at the bottom of a door and close and lock it. Face away, staggered stance, handles at shoulder height with elbows slightly in front of your body. Step forward until there is tension at the bottom, brace your core, and press straight up to lockout. Ribs stay down; stop the set if the lower back starts to arch.","demo":"press"},{"name":"Standing Underfoot Press","equip":"Tube 20–30 → 40–50 lb · stand on the band, no anchor","rx":"3×10–12","cue":"Stand on the middle of the band with one or both feet and press from shoulder height to overhead without arching your back. Tension builds toward lockout, so expect it to feel easy off the shoulder and hard at the top.","setup":"Stand on the center of the tube with both feet (one foot for less tension), handles at shoulder height, palms forward. Press straight overhead to lockout, keeping the ribs down and the low back neutral, then lower under control. Use a heavier tube than you think you need; the resistance is lightest at the bottom.","demo":"press"},{"name":"Seated Under-Seat Press","equip":"Tube 20–30 → 40–50 lb (or loop on Clench handles) · band under your seat","rx":"3×10–12","cue":"Sit on the band (bench, chair or ball) with it running under you, handles at shoulder height. Press straight up to lockout, then lower slowly to the shoulders. Sitting takes the legs and lower back out of it, so the shoulders do the work.","setup":"Sit on the middle of the band so both sides come up evenly at your hips; feet flat, sit tall. Bring the handles to shoulder height, elbows slightly in front of the body. Brace, ribs down, and press straight overhead without leaning back. Shorten your grip on the band if there is no tension at the bottom.","demo":"press"}]},
-      {"id":"thu-facepull","pair":"C","name":"Rear Delts / Face Pull","slot":"Pull · Rear Delts","target":"Rear Delts · Traps","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 50 lb","rx":"3×15–20","cal":30,"cue":"Pull to your temples, elbows high — thumbs point behind you at the finish","demo":"facepull","log":"setsreps","sets":3,"variants":[{"name":"Cross-Body Rear Delt Fly","equip":"Tube 10–20 lb · chest-height anchor","rx":"3×12–15/side","cue":"Anchor at chest height, reach the working arm all the way across your body toward the anchor for a deep pre-stretch, then sweep it out and back — rear delt only, no shrugging","demo":"fly"},{"name": "Bent-Over Reach-Across Rear Delt Fly", "equip": "Orange (5–15) or yellow loop (7–25) on a Clench handle · LOW door anchor", "rx": "3×12–15/side", "tempo": "2-1-1-1", "cue": "Hinged forward, let the band pull your working arm across your body into a stretch, then fly it out and back, elbow leading, slight fixed bend. Rear delt only — no shrugging, torso stays still. Need more stretch? Step farther away or choke up.", "setup": "Low anchor on your NON-working side. Hinge forward with a flat back, free hand on your knee. Step away until the band already pulls the working hand across under your chest. Sweep the arm out and back to shoulder height, pause 1 sec, return slowly into the reach. All reps one side, then switch.", "demo": "fly"}],"lockVar":1},
-      {"id":"mon-lateral","pair":"C","name":"Lateral Raise","demo":"lateralraise","slot":"Push · Side Delts","target":"Side Delts","equip":"Tube 10 or yellow loop (7–25) on Clench handles → 30 lb · stand on it","rx":"3×12–15","cal":25,"cue":"Lead with the elbows, not the hands — raise to shoulder height like pouring from a pitcher, 1-sec pause, slow lower. Trained Mon + Thu.","log":"setsreps","sets":3,"variants":[{"name":"Front-Angled Lateral Raise","equip":"Tube 10 lb · anchored low in front of you","cue":"Stand so the band pulls slightly from in front rather than straight down — loads the side delt earlier, right at the stretched bottom.","demo":"lateralraise"},{"name":"One-Foot Band Lateral Raise","equip":"Tube 10 or yellow loop (7–25) on Clench handles → 30 lb · one foot on the band","rx":"3×12–15","cue":"Stand on the band with one foot so the starting tension is lower, then raise the handles out to shoulder height leading with the elbows. Slow lower, no swinging.","setup":"Step on the middle of the tube with one foot and keep the other foot beside it. Handles at your sides, a slight bend in the elbows. Lead with the elbows to raise the handles out to shoulder height, pause 1 second, and lower slowly. Using one foot instead of two lowers the tension at the start of the rep, where the side delt is weakest.","demo":"lateralraise"},{"name": "Behind-Back Lateral Raise", "equip": "Orange (5–15) or yellow loop (7–25) on a Clench handle · LOW door anchor, band behind your back", "rx": "3×12–15/side", "tempo": "2-1-1-1", "cue": "Band runs behind your back from the low anchor to the working hand, so your arm starts pulled slightly behind your hip — the side delt is stretched before you lift. Raise out to shoulder height leading with the elbow, slightly forward of straight out to the side. Lower slowly; never let the band snap you back. Start light — back off if you feel a pinch at the front of the shoulder.", "setup": "Low anchor. Stand side-on with the anchor on your NON-working side, band running behind your back to the working hand. Step away at an angle until the band is taut with your hand just behind your hip and the band is not dragging across your back. Raise to shoulder height, elbow leading, slightly in front of your body. All reps one side, then switch.", "demo": "lateralraise"}, {"name": "Bent-Over Cross-Body Lateral Raise", "equip": "Orange (5–15) or yellow loop (7–25) on a Clench handle · LOW door anchor", "rx": "3×12–15/side", "tempo": "2-1-1-1", "cue": "Hinged over, pull the handle up and out across your body with the arm on the far side from the anchor, leading with the elbow. Stop around shoulder height, pause, and lower slowly so the band pulls your hand back across and under you for a full side-delt stretch. Keep the torso still and don't row it back.", "setup": "Low anchor. Stand side-on to the door, a step or two away, and hinge forward about 45° with a flat back, knees soft. Hold the handle in the hand farther from the door, so the band runs across in front of your shins, and rest the near hand on your thigh. Raise the arm out to the side, elbow leading, slight bend in the elbow. All reps one side, then turn around and switch.", "demo": "lateralraise"}]},
-      {"id":"mon-curl","pair":"D","name":"Bicep Curl","lockVar":1,"slot":"Pull · Biceps","target":"Biceps","equip":"Tube — stack toward your tested failure load","rx":"4×12–15","cal":25,"cue":"Upper arms glued to your sides — only forearms move","log":"setsreps","sets":4,"variants":[{"name":"Bayesian Curl (low anchor)","equip":"Tube 10–20 lb → stack up · low door anchor behind you","rx":"5×12–15","cue":"Face away from a low door anchor, both handles, elbows trailing slightly behind your torso — curl without letting the elbows drift forward. Peak tension lands at the bottom stretch, where a standing curl goes slack. ⚠️ Elbow: start one band lighter than your standing curl; if the inside of the elbow aches past 24h, swap back to Bicep Curl. Left wrist pops → rotate the hands slightly toward neutral.","demo":"curl"},{"name":"Wall-Braced Curl (short head)","equip":"Tube 10–20 lb","rx":"3×10–12","cue":"⚠️ Elbow flag — start light. Brace your upper arm against a wall or chair back to lock the elbow in place. Curl slowly, turn pinkies up at the top. Stop if you feel medial elbow ache.","demo":"curl"},{"name":"Preacher Curl","equip":"Tube 10–20 lb · angled surface (arm of a couch, tilted bench, or ball)","rx":"3×12","cue":"rest the back of your upper arm on an angled support so it can't swing, lower all the way down under control since the bottom half does the most work.","demo":"preachercurl"}]},
-      {"id":"mon-tri","pair":"D","name":"Triceps Pushdown","lockVar":0,"slot":"Push · Triceps","target":"Triceps","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 50 lb","rx":"4×12–15","cal":20,"cue":"Covers the shortened position (lateral + medial heads) to balance the overhead extensions on Thu/Sat. Elbows pinned to ribs, only the forearms move, full 2–3 sec return.","log":"setsreps","sets":4,"variants":[{"name":"Banded Overhead Triceps Extension","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · low-to-mid door anchor behind you","rx":"4×12–15","cue":"Second overhead session of the week. Face away from the anchor in a split stance, elbows up by your ears — lower the handles behind your head into a deep stretch, then extend to lockout. ⚠️ Elbow: start light, stop the set at any pull on the inside of the elbow.","demo":"triceps"},{"name":"Band Triceps Kickback","equip":"Yellow loop (7–25) on Clench handles or tube 10–20 lb · anchored low in front of you","rx":"4×15–25/side","cue":"Anchor low in front, hinge forward, upper arm pinned to your side. Extend back to a straight arm, squeeze 1 sec, return slowly. Upper arm stays still.","demo":"pushdown","sets":4}]},
-      {"id":"mon-preacher","name":"Ball Preacher Curl","lockVar":0,"slot":"Pull · Biceps","target":"Biceps — Short Head · Brachialis","equip":"Tube 20–30 lb · stability ball pressed against a door · low door anchor","rx":"2×10–15/side","cal":20,"tempo":"3-0-1-1","demo":"preachercurl","log":"setsreps","sets":2,"cue":"Kneel facing the ball and lean your chest onto it, upper arms resting on top and angled slightly down the front. The ball keeps the elbows from drifting, so the curl is strict. Curl up, squeeze 1 sec, then lower over 3 sec until the arm is nearly straight — the bottom half does the most work. ⚠️ Elbow: start one band lighter than your standing curl; if the inside of the elbow aches past 24h, swap back to Bicep Curl.","setup":"Close a door with the tube anchored at the very bottom and push the stability ball firmly against the door so it cannot roll. Kneel on the near side, lean your chest onto the ball and rest the backs of your upper arms on top of it. The band runs from your hands down the far side of the ball to the low anchor. If the band rubs the ball or drags it sideways, move the anchor a little higher.","variants":[{"name":"Preacher Curl","equip":"Tube 10–20 lb · angled surface (arm of a couch, tilted bench)","rx":"2×12–15","cue":"No ball or door handy? Rest the back of your upper arm on any angled support so it cannot swing, and lower all the way down under control.","demo":"preachercurl"}]},
-      {"id":"mon-wallcurl","name":"Wall Curl (strict)","slot":"Pull · Biceps","target":"Biceps — Peak Contraction","equip":"Tube 20–30 lb (or yellow loop 7–25 on Clench handles) · under your feet, no anchor","rx":"2×12–15","cal":15,"tempo":"2-0-1-2","demo":"curl","log":"setsreps","sets":2,"cue":"Back and elbows pinned to the wall — only the forearms move. The band is hardest at the top, so squeeze 2 sec there every rep. This is the top-loaded curl that complements the Bayesian and preacher stretch work. ⚠️ Elbow: if the inside of the elbow aches past 24h, drop this before the stretch curls.","setup":"Stand with your back flat against a wall, feet a few inches out, band under both feet with a handle in each hand. Press your elbows into the wall at your sides so they cannot drift forward. Curl up, hold the squeeze 2 sec, lower under control to straight arms. Step a wider stance or choke up on the band for more tension."},
-      {"id":"mon-bandcrunch","name":"Kneeling Band Crunch","slot":"Core · Loaded","target":"Abs","equip":"Tube 20–30 → 50 lb · anchored high on a door","rx":"3×12–15","cal":20,"cue":"Hips stay still — curl the ribs down toward the pelvis. Exhale hard at the bottom, 1 sec squeeze.","demo":null,"log":"setsreps","sets":3,"setup":"Anchor the tube high on a door. Kneel a step or two back, facing the door, handles held beside your head or at your temples. Keeping your hips stacked over your knees, crunch your ribcage down toward your hips until your elbows reach your thighs, then uncurl back up until the band stretches the abs. Progress by moving up a band once you hit 15 reps twice.","variants":[{"name":"Band-Assisted Crunch","equip":"Tube 10–20 lb · low anchor in front (or looped around feet)","rx":"3×15–20","log":"setsreps","cue":"Easier version — the band helps pull you up. Use it for higher reps, on tired days, or to finish a set after the loaded version. Still curl the ribs toward the pelvis, don't yank with the arms.","setup":"Anchor the tube low on a door in front of you (or loop it around your feet). Lie on your back, knees bent, holding the handles with arms reaching toward the anchor. Exhale and curl your ribcage up off the floor, letting the band assist, squeeze 1 sec, then lower slowly with control. Lighter band = less help = harder."},{"name":"Lying Band-Resisted Crunch (behind head)","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · low anchor behind you","rx":"3×12–15","log":"setsreps","cue":"Harder version — the band pulls you back down, so the abs stay loaded at the bottom stretch. Hands just hold the handles at your temples; never pull on your neck. ⚠️ SI joint: start light.","setup":"Anchor the tube low on a door behind you. Lie on your back with your head toward the door, knees bent, holding the handles beside your temples so the band runs back over your shoulders. Exhale and curl your ribcage toward your pelvis, squeeze 1 sec, then lower slowly to a full stretch. Scoot away from the door for more tension."},{"name":"Band-Assisted Sit-Up","equip":"Tube 10–20 lb · low door anchor at your feet · feet tucked under a sturdy couch","rx":"3×8–12","log":"setsreps","cue":"Full range — the band helps you up, you control the way down. Roll up one vertebra at a time rather than yanking from the hips, then lower over a slow 3-count. ⚠️ SI joint: stop at any pinch low in the back, and drop to the Band-Assisted Crunch if it complains.","setup":"Anchor the tube low on a door a few feet past your feet. Lie on your back, knees bent, feet tucked under the edge of a sturdy couch, holding the handles at your chest with the band taut. Curl your head, shoulders and then your back off the floor, letting the band pull you up to sitting, then lower slowly with the abs braking the band. A lighter band = less help = harder. Progress by moving down a band, or by holding the handles closer to your chest."},{"name":"Band-Resisted Sit-Up (behind head)","equip":"Tube 10–30 lb · low door anchor behind your head · feet tucked under a sturdy couch","rx":"3×8–12","log":"setsreps","cue":"The band pulls you back down, so the abs work hardest on the way up and stay loaded in the stretched bottom. Handles stay at your temples — never pull on your neck. Roll up one vertebra at a time, then lower over a slow 3-count. ⚠️ SI joint: start light, stop at any pinch low in the back.","setup":"Anchor the tube low on a door behind you. Lie on your back with your head toward the door, knees bent, feet tucked under the edge of a sturdy couch, holding the handles beside your temples so the band runs back over your shoulders. Curl your head, shoulders and then your back off the floor all the way up to sitting against the band’s pull, then lower slowly to the floor. Scoot away from the door for more tension, or use a lighter band to start."}]},
-    ]},
-  tue:{title:"Lower Body Push",sub:"Quads · Glutes · Core",accent:"var(--accent)",
-    moves:[
-      DS_WARMUP_HIPFLOW7,
-      {"id":"tue-chairsquat","name":"Chair Squat","slot":"Squat","target":"Quads · Glutes","equip":"Chair or piano bench · bodyweight (hold a light tube at the shoulders once 12 is easy)","rx":"2×8–12","cal":20,"cue":"Sit back to a light touch on the chair, don't flop down — stand up through the whole foot. Stop well before the knees or low back feel cranky. Recovery block: comfortable reps, nothing grinding.","demo":"squat","log":"setsreps","sets":2,"rehab":true,"setup":"Chair or bench behind you, feet hip-width, toes slightly out. Reach the hips back and lower over 2–3 sec until you lightly touch the seat, then stand tall. Weeks 5–6, if knees feel good, add a light tube held at the shoulders."},
-      {"id":"tue-spanish","name":"Banded Spanish Squat","slot":"Squat · Quads","target":"Quads","equip":"Clench 75 loop (black 41″) · door anchor just below knee height","rx":"2×10–12","cal":35,"cue":"Band on the upper calves, just below the knees, equal tension on both legs. Sit straight down like into a chair, torso upright, shins vertical. Drive up to full lockout and squeeze the quads hard at the top — that's where the band stretches most.","demo":"squat","log":"setsreps","sets":2,"setup":"Put the door anchor JUST BELOW KNEE HEIGHT on the hinge side of a sturdy, closed door (it holds a lot of your weight). Fold the Clench 75 in half through the anchor so it forms two loops. Stand FACING the door, step one leg into each loop, and settle the band on the backs of your upper calves just below the knees. Even out both sides so each leg has the same tension. Baby-step backward, away from the door, until the band is clearly pulling your knees toward it. Wear shoes with good grip — the band wants to pull your feet out. Feet hip-width, toes forward. Sit straight down like into a chair (about thighs parallel), torso upright, then drive up to full lockout and squeeze. Need more tension? Take a step back. You should feel it almost entirely in the front of the thighs — nothing in the low back or kneecap.","variants":[{"name":"Heel-Elevated Banded Squat","equip":"Tube under feet · heels on a plate or wedge","rx":"3×12–15","cue":"Heels up, torso upright, sink deep — knees travel forward over the toes","demo":"squat"},{"name":"Banded Reverse Lunge","equip":"Tube 20–30 lb","rx":"3×10/leg","cue":"Step back, drop the knee, drive through the front heel","demo":"splitsquat"}]},
-      {"id":"sat-hipthrust","name":"Banded Hip Thrust","lockVar":2,"slot":"Hinge · Glutes","target":"Glutes","equip":"Tube band across hips · bench or stable surface for shoulders","rx":"3×12–15","cal":30,"cue":"Your only direct glute isolation of the week — on Tuesday so the glutes are fully recovered from Friday's hinges. Upper back braced on a bench or the piano bench, band looped across your hips and anchored under your feet, feet planted hip-width. Drive hips up until torso is in line with thighs, squeeze glutes hard at the top for a 1-count, lower under control without letting the hips touch down between reps.","demo":"bridge","log":"setsreps","sets":3,"setup":"Sit with upper back against a bench edge, band looped over your hips, feet flat on the floor hip-width apart, knees bent ~90°. Drive through the heels, extending the hips up until your body forms a straight line from shoulders to knees — squeeze glutes at the top, then lower with control, keeping tension on through the whole set rather than resting at the bottom. Getting out with a heavy band: lower your hips all the way to the floor, slide your butt forward away from the bench so the knees bend more and the band slackens, push the band down your thighs past the knees one side at a time, then pull your feet out. Get in the same way in reverse.","variants":[{"name":"Floor Glute Bridge","equip":"Tube band across hips","rx":"3×15–20","cue":"Shoulders on the floor instead of a bench — shorter range of motion, gentler entry point while the movement feels new. Same drive-and-squeeze cue.","demo":"bridge"},{"name":"Kneeling Banded Hip Thrust","equip":"75 lb 41″ loop band, bottom door anchor · cushion or folded mat under the knees","rx":"3×12–15","cue":"Band from the low door anchor across your hip crease, kneeling upright facing away from the door. Sit the hips back toward the heels with the chest up, then drive the hips forward to stand tall on your knees and squeeze the glutes for 1 sec. Finish with the glutes, not by leaning back or arching the low back. Easy exit: shuffle back toward the door until the band goes slack."}]},
-      {"id":"tue-clamshell","name":"Side-Lying Clamshell","slot":"Hip Stability","target":"Glute Med · Hip Stability","equip":"Mat · mini band above knees optional (start without)","rx":"2×12–15/side","cal":10,"cue":"Feet stay together, hips stacked — open the top knee without the pelvis rolling back. Slow, 1-sec pause at the top.","demo":"clamshell","log":"setsreps","sets":2,"rehab":true},
-      {"id":"mon-calf","pair":"A","name":"Standing Calf Raise","slot":"Calves","target":"Calves","equip":"Step edge · bodyweight (stand on a tube once 20 reps is easy)","rx":"3×15–20","cal":15,"cue":"Tuesday leg day. Heel off the step — full stretch at the bottom, 2-sec squeeze at the top, slow lower.","demo":"calf","log":"setsreps","sets":3,"variants":[{"name":"Single-Leg Calf Raise","equip":"Step edge · bodyweight","cue":"One heel hangs off the step — full stretch, 2-sec squeeze. Reps are per leg.","demo":"calf"},{"name":"Seated Banded Calf Raise","equip":"Tube 20–30 lb · looped over the knees","cue":"Seated, band over the knees and under the feet — press through the balls of the feet, full stretch and squeeze. Biases the soleus.","demo":"calf"}]},
-      {"id":"mon-elbow","pair":"A","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
-      {"id":"thu-legraise","name":"Leg Raise","slot":"Core","target":"Core","equip":"Bodyweight","rx":"3×10–12","cal":20,"cue":"Low back stays flat — lower only as far as it stays down","demo":null,"log":"setsreps","sets":3}
-    ]},
-  wed:{title:'Wednesday Yoga Flow',sub:'Focus flow · 11 poses · ~30 min · hips, hamstrings, T-spine',accent:'var(--purple)',
-    moves:[
-      {id:'wed-flow-center',name:'Seated Centering Breath',slot:'Flow · 1',target:'Breath · Nervous System',equip:'Mat',rx:'2 min',cal:5,cue:'Sit tall, eyes closed — inhale 4 counts, exhale 6. Let the exhale set the pace for the whole flow',demo:'seated',log:'time',secs:120},
-      {id:'wed-flow-catcow',name:'Cat-Cow — breath-led',slot:'Flow · 2',target:'Spine',equip:'Mat',rx:'2 min',cal:8,cue:'Inhale arch, exhale round — the breath moves you, not the other way around',demo:'catcow',log:'time',secs:120},
-      {id:'wed-flow-birddog',name:'Bird Dog — slow flow',slot:'Flow · 3',target:'Core · SI Stability',equip:'Mat',rx:'6/side',cal:10,cue:'Exhale extend, inhale return — flat back, zero rocking. Stay right where Cat-Cow left you, on hands and knees',demo:'birddog',log:'setsreps',sets:1},
-      {id:'wed-flow-child',name:'Child\'s Pose — side reaches',slot:'Flow · 4',target:'Lats · Low Back',equip:'Mat',rx:'90s',cal:5,cue:'Hips to heels, walk the hands right and hold 3 breaths, then left',demo:'child',log:'time',secs:90},
-      {id:'wed-flow-downdog',name:'Downward Dog — pedal out',slot:'Flow · 5',target:'Posterior Chain · Shoulders',equip:'Mat',rx:'2 min',cal:10,cue:'Hips high, spine long — bend one knee then the other, pedaling the heels',demo:'downdog',log:'time',secs:120},
-      {id:'wed-flow-dragon',name:'Dragon — Low Lunge',slot:'Flow · 6',target:'Hip Flexors',equip:'Mat · yoga blocks',rx:'90s/side',cal:10,cue:'Back knee down, sink the hips forward — blocks under hands if the floor is far',demo:'dragon',log:'time',secs:180,perSide:true},
-      {id:'wed-flow-warrior1',name:'Warrior I',slot:'Flow · 6 (Warrior)',target:'Quads · Hip Flexors · Core',equip:'Mat',rx:'45s/side',cal:12,cue:'Back heel down at 45°, square the hips forward, arms reach overhead. Front knee tracks over the ankle — stop short of 90° if the right SI joint complains',demo:'warrior1',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-warrior2',name:'Warrior II',slot:'Flow · 7 (Warrior)',target:'Inner Thigh · Shoulders · Focus',equip:'Mat',rx:'45s/side',cal:12,cue:'Open the hips wide, arms extend parallel to the floor, gaze over the front hand. Sink only as deep as feels stable on the right side',demo:'warrior2',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-revwarrior',name:'Reverse Warrior',slot:'Flow · 8 (Warrior)',target:'Side Body · Obliques',equip:'Mat',rx:'30s/side',cal:8,cue:'Flip the front palm up and reach back — long arc through the side body, back hand slides down the back leg. Keep it easy on the SI — don\'t force the lean',demo:'reverse-warrior',log:'time',secs:60,perSide:true},
-      {id:'wed-flow-warrior3',name:'Warrior III',slot:'Flow · 6 (Balance)',target:'Balance · Glutes · Core',equip:'Mat',rx:'20s/side',cal:10,cue:'Shift weight onto one leg, hinge forward as the other leg lifts behind for a T-shape. Use a wall or chair nearby if balance is off — no shame in a light touch-down',demo:'warrior3',log:'time',secs:40,perSide:true},
-      {id:'wed-flow-trianglepose',name:'Triangle Pose',slot:'Flow · 7 (Balance)',target:'Hamstrings · IT Band · Side Body',equip:'Mat',rx:'45s/side',cal:10,cue:'Feet wide, hinge at the hip and reach the front hand toward the shin or floor, back arm reaches up. Great for the left IT band history — keep both legs long, not locked hard',demo:'triangle',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-cobra',name:'Cobra — gentle backbend',slot:'Flow · 7',target:'Spine · Chest',equip:'Mat',rx:'90s',cal:6,cue:'Press the chest forward and up, hips glued to the mat — low back stays comfortable',demo:'cobra',log:'time',secs:90},
-      {id:'wed-flow-fold',name:'Standing Forward Fold',slot:'Flow · 8',target:'Hamstrings · Spine',equip:'Mat',rx:'90s',cal:5,cue:'Soft knees, hang heavy — grab opposite elbows and sway gently. Push back through Downward Dog, then walk your feet up to standing',demo:'fold',log:'time',secs:90},
-      {id:'wed-flow-swan',name:'Sleeping Swan',slot:'Flow · 9',target:'Glutes · Deep Hip',equip:'Mat · block under hip',rx:'2 min/side',cal:10,cue:'Front shin angled, fold over it — block under the hip keeps the pelvis square',demo:'swan',log:'time',secs:240,perSide:true},
-      {id:'wed-flow-cat',name:'Caterpillar — seated fold',slot:'Flow · 10',target:'Hamstrings · Spine',equip:'Mat',rx:'2 min',cal:6,cue:'Round forward and hang — this is yin, let gravity do the work',demo:'caterpillar',log:'time',secs:120},
-      {id:'wed-flow-twist',name:'Supine Twist',slot:'Flow · 11',target:'Spine · Obliques',equip:'Mat',rx:'90s/side',cal:6,cue:'Knees drop gently to one side, both shoulders stay down — easy does it with the SI',demo:'twist',log:'time',secs:180,perSide:true},
-      {id:'wed-flow-bridge',name:'Slow Bridge Rolls',slot:'Flow · 12',target:'Spine · Glutes',equip:'Mat',rx:'90s',cal:8,cue:'Roll up one vertebra at a time on the inhale, melt down on the exhale',demo:'bridge',log:'time',secs:90},
-      {id:'wed-flow-legsup',name:'Legs Up the Wall',slot:'Flow · 13',target:'Recovery · Circulation',equip:'Wall',rx:'3 min',cal:5,cue:'Hips close to the wall, arms wide — total surrender. Scoot to the wall and swing your legs up from lying down',demo:'legsup',log:'time',secs:180},
-      {id:'wed-flow-sav',name:'Savasana',slot:'Flow · 14',target:'Integration',equip:'Mat',rx:'3 min',cal:3,cue:'Flat on your back, let everything go — the pose where the practice lands',demo:'savasana',log:'time',secs:180},
-      {id:'wed-flow-extcars',name:'Extended Flow — Hip + Shoulder CARs',slot:'Flow · 15 (add-on)',target:'Joint Health · Mobility',equip:'Mat',rx:'5–8 min',cal:15,cue:'Slow, controlled circles — quality over range. This is the stretch of the practice, not a new one',demo:'catcow',log:'time',secs:360,setup:'Extra add-on beyond the core 14-pose flow: a few slow hip CARs (controlled articular rotations) and shoulder CARs, standing or on hands and knees. Move to the edge of range without forcing it — this is what bumps the daily practice from ~20 min to ~25–30 min.'},
-      // ── HIP & KNEE FOCUS FLOW — built to replace the default Wednesday rotation. Targets
-      // the hips/legs as the current weak point: mobility opening → light knee-supportive
-      // strength/stability → single-leg balance → release. Runs ~45-50 min at the listed
-      // holds; stretch any hold longer or repeat a phase to fill a full hour if needed. ──
-      {id:'wed-flow-hk-hipcircles',name:'Standing Hip Circles',slot:'HK Flow · 3',target:'Hip Capsule · Warm-Up',equip:'None',rx:'8 each direction',cal:6,cue:'Hands on hips, trace slow full circles — both directions. Keep the motion coming from the hip, not the low back',demo:'hipcircle',log:'time',secs:90},
-      {id:'wed-flow-hk-anklecircles',name:'Seated Ankle & Knee Circles',slot:'HK Flow · 4',target:'Ankles · Knees',equip:'Mat',rx:'8 each direction, each side',cal:4,cue:'Seated, lift one leg and slowly circle the ankle, then the knee — both directions before switching sides',demo:'anklecircle',log:'time',secs:60},
-      {id:'wed-flow-hk-quadpull',name:'Standing Quad Pull',slot:'HK Flow · 5',target:'Quads · Hip Flexors',equip:'Wall or chair for balance',rx:'30s/side',cal:5,cue:'Hold a wall or chair, pull the heel gently toward the glute — knees stay close together, don\'t yank',demo:'quadpull',log:'time',secs:60,perSide:true},
-      {id:'wed-flow-hk-9090',name:'90/90 Hip Switches',slot:'HK Flow · 7',target:'Hip Rotation · Groin',equip:'Mat',rx:'6 slow reps',cal:12,cue:'Seated, both knees bent to 90° — front shin and back shin. Rotate slowly through center, switching which leg is front. Use hands on the floor for control',demo:'windshield-wipers',log:'time',secs:150},
-      {id:'wed-flow-hk-firehydrant',name:'Fire Hydrants',slot:'HK Flow · 8',target:'Glute Medius · Hip Stability',equip:'Mat',rx:'8/side',cal:8,cue:'On hands and knees, lift one knee out to the side, knee soft — not locked. Core stays quiet, no rocking',demo:'firehydrant',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-hk-frog',name:'Frog Pose',slot:'HK Flow · 9',target:'Groin · Deep Hip',equip:'Mat',rx:'60-90s hold',cal:8,cue:'Knees wide, shins parallel, hips sink back toward heels. Go only as wide as feels open, not sharp — a block under the chest helps',demo:'frogpose',log:'time',secs:90},
-      {id:'wed-flow-hk-butterflyfold',name:'Butterfly Fold',slot:'HK Flow · 10',target:'Groin · Inner Thigh',equip:'Mat',rx:'60-90s hold',cal:6,cue:'Soles of the feet together, knees fall open, fold gently forward from the hips — let gravity do the work, no forcing the knees down',demo:'butterflyfold',log:'time',secs:90},
-      {id:'wed-flow-hk-reclfigure4',name:'Reclined Figure-4 Stretch',slot:'HK Flow · 11',target:'Glutes · Piriformis',equip:'Mat',rx:'45s/side',cal:6,cue:'Lying on your back, cross one ankle over the opposite knee, pull the standing leg toward your chest. Knee-friendly stand-in for seated pigeon on cranky-hip days',demo:'knees-chest',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-hk-wallsit',name:'Wall Sit',slot:'HK Flow · 12',target:'Quads · Knee Stability',equip:'Wall',rx:'20-30s × 2',cal:10,cue:'Back flat against the wall, knees at roughly 90° — this is light activation, not a burnout set. Stop well short of shaking',demo:'wallsit',log:'time',secs:100},
-      {id:'wed-flow-hk-tke',name:'Standing Terminal Knee Extension',slot:'HK Flow · 13',target:'Quads (VMO) · Knee Health',equip:'Light tube band, anchored',rx:'10/side',cal:8,cue:'Band looped behind the knee, step back to light tension, slowly straighten the knee against the band. Small movement, controlled tempo',demo:'tke',log:'setsreps',sets:1,perSide:true},
-      {id:'wed-flow-hk-slbridge',name:'Single-Leg Glute Bridge',slot:'HK Flow · 15',target:'Glutes · Hip Stability',equip:'Mat',rx:'6/side',cal:8,cue:'From a double-leg bridge, extend one leg straight and lift through the standing-side glute. Skip this one on days the hip is cranky',demo:'slbridge',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-hk-clamshell',name:'Clamshells',slot:'HK Flow · 16',target:'Glute Medius · Hip Stability',equip:'Mat · mini band optional',rx:'10/side',cal:6,cue:'Lying on your side, knees bent, feet stacked — open the top knee like a clamshell, hips stay stacked, no rolling back',demo:'clamshell',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-hk-tree',name:'Tree Pose',slot:'HK Flow · 17',target:'Balance · Hip Stability',equip:'Mat',rx:'30-45s/side',cal:8,cue:'Root through the standing foot, other foot to ankle, calf, or inner thigh — never the knee. Wall or chair nearby if wobbly',demo:'treepose',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-hk-standfigure4',name:'Standing Figure-4 Balance',slot:'HK Flow · 18',target:'Hip Stability · Balance',equip:'Mat · wall for support',rx:'20-30s/side',cal:8,cue:'Shin of the lifted leg rests across the opposite thigh, hinge slightly forward, hands out for balance. Light touch on a wall if needed',demo:'standfigure4',log:'time',secs:90,perSide:true},
-      {id:'wed-flow-hk-pigeon',name:'Pigeon Pose (or Reclined Figure-4)',slot:'HK Flow · 20',target:'Glutes · Deep Hip Release',equip:'Mat',rx:'60-90s/side',cal:8,cue:'Front shin angled in front, back leg long behind — square the hips as best you can. If this doesn\'t feel good today, lie back and cross an ankle over the opposite knee (reclined figure-4) instead',demo:'pigeonpose',log:'time',secs:180,perSide:true},
-      {id:'wed-flow-hk-happybaby',name:'Happy Baby',slot:'HK Flow · 21',target:'Hip Release · Low Back',equip:'Mat',rx:'60s',cal:5,cue:'On your back, grab the outer edges of the feet, knees toward armpits — gentle rock side to side if it feels good',demo:'happybaby',log:'time',secs:90},
-      {id:'wed-flow-hk-sav',name:'Savasana',slot:'HK Flow · 23',target:'Integration',equip:'Mat',rx:'3-5 min',cal:4,cue:'Flat on your back, let everything go — the pose where the practice lands. Stretch this out if you want to fill the full hour',demo:'savasana',log:'time',secs:270},
-      ]},
-
-  thu:{title:"Upper Body B",sub:"Push · Pull alternating — Chest · Back · Arms",accent:"var(--accent)",
-    moves:[
-      DS_WARMUP_BANDSHOULDER,
-      {"id":"thu-wallwalk","name":"Banded Wall Walks (wall slides)","rx":"1×8 trips","cal":10,"demo":"wallwalk","log":"setsreps","sets":1,"target":"Serratus · Rotator Cuff · Lower Traps","equip":"Mini loop band around wrists","cue":"Press outward into the band the whole way up — reach tall at the top","setup":"Mini band around your wrists (light to start), palms on the wall at shoulder height, hands shoulder-width so the band is taut. Walk the hands up the wall step by step while pressing outward against the band, reaching as high as you can without the ribs flaring, then walk back down with control. 3×8 slow trips. Elbow-friendly (no grip load) and it feeds directly into your pull-up progression — stop shy of any shoulder pinch.","slot":"Warm-up · Serratus"},
-      {"id":"mon-inclinepress","pair":"A","name":"Incline Close-Grip Press","tempo":"3-1-1-0","lockVar":3,"slot":"Push · Chest","target":"Chest · Triceps · Front Delts","equip":"Tube 20–30 → stacked 50+40 (90, up to all five tubes ≈150) → Clench 75 on Clench handles → green 75–150, anchored to a door below chest height","rx":"4×10–12","cal":30,"cue":"Anchor low on a door behind you, hands closer together than shoulder-width, elbows tucked in (not flared) — press up and out at an incline angle, squeeze the upper chest at the top. The narrow grip pulls real triceps work into a chest day on top of the upper chest/front delts — more muscle recruited per set than a wide-grip incline press. Lower over 3 sec with a 1-sec pause in the stretch. Take the last set to within 1–2 reps of failure, then finish with a short rest-pause (15–20 sec rest, 3–5 more reps).","demo":"press","log":"setsreps","sets":4,"variants":[{"name":"Standard-Grip Incline Press","equip":"Tube 20–30 → stacked 50+40 (90, up to all five tubes ≈150) → Clench 75 on Clench handles → green 75–150, anchored to a door below chest height","rx":"3×10–12","cue":"Shoulder-width or slightly wider grip — same incline angle, shifts emphasis back toward pure chest with less triceps involvement","demo":"press"},{"name":"Behind-Back Anchor Incline Press","equip":"Tube 20–30 → stacked 50+40 (90) → Clench 75 on Clench handles → green 75–150, anchored low behind you","rx":"3×10–12","cue":"Same close-grip incline press, band anchored around your back instead of a door — keeps even tension through the whole range since the anchor moves with you","demo":"press"},{"name":"Standing Band Chest Press (pyramid)","tempo":"3-0-1-1","equip":"Door anchor at chest height · light tube → stacked tubes (up to all five ≈150) → Clench 75 on Clench handles → green 75–150 lb","rx":"15 / 12 / 8–10","cue":"Face away, staggered stance, step forward until there is tension at the bottom stretch. Elbows tucked about 45°, press forward and drive the inner biceps toward the pecs at lockout. Ascending pyramid: 15 light, 10–12 heavier, then 8–10 at 1 RIR on your heaviest band or stacked bands.","demo":"press"}]},
-      {"id":"thu-lateral","pair":"A","name":"Lateral Raise","demo":"lateralraise","slot":"Push · Side Delts","target":"Side Delts","equip":"Tube 10 or yellow loop (7–25) on Clench handles → 30 lb · stand on it","rx":"3×12–15","cal":25,"cue":"Lead with the elbows, not the hands — raise to shoulder height like pouring from a pitcher, 1-sec pause, slow lower. Trained Mon + Thu.","log":"setsreps","sets":3,"variants":[{"name":"Front-Angled Lateral Raise","equip":"Tube 10 lb · anchored low in front of you","cue":"Stand so the band pulls slightly from in front rather than straight down — loads the side delt earlier, right at the stretched bottom.","demo":"lateralraise"},{"name":"One-Foot Band Lateral Raise","equip":"Tube 10 or yellow loop (7–25) on Clench handles → 30 lb · one foot on the band","rx":"3×12–15","cue":"Stand on the band with one foot so the starting tension is lower, then raise the handles out to shoulder height leading with the elbows. Slow lower, no swinging.","setup":"Step on the middle of the tube with one foot and keep the other foot beside it. Handles at your sides, a slight bend in the elbows. Lead with the elbows to raise the handles out to shoulder height, pause 1 second, and lower slowly. Using one foot instead of two lowers the tension at the start of the rep, where the side delt is weakest.","demo":"lateralraise"},{"name": "Behind-Back Lateral Raise", "equip": "Orange (5–15) or yellow loop (7–25) on a Clench handle · LOW door anchor, band behind your back", "rx": "3×12–15/side", "tempo": "2-1-1-1", "cue": "Band runs behind your back from the low anchor to the working hand, so your arm starts pulled slightly behind your hip — the side delt is stretched before you lift. Raise out to shoulder height leading with the elbow, slightly forward of straight out to the side. Lower slowly; never let the band snap you back. Start light — back off if you feel a pinch at the front of the shoulder.", "setup": "Low anchor. Stand side-on with the anchor on your NON-working side, band running behind your back to the working hand. Step away at an angle until the band is taut with your hand just behind your hip and the band is not dragging across your back. Raise to shoulder height, elbow leading, slightly in front of your body. All reps one side, then switch.", "demo": "lateralraise"}, {"name": "Bent-Over Cross-Body Lateral Raise", "equip": "Orange (5–15) or yellow loop (7–25) on a Clench handle · LOW door anchor", "rx": "3×12–15/side", "tempo": "2-1-1-1", "cue": "Hinged over, pull the handle up and out across your body with the arm on the far side from the anchor, leading with the elbow. Stop around shoulder height, pause, and lower slowly so the band pulls your hand back across and under you for a full side-delt stretch. Keep the torso still and don't row it back.", "setup": "Low anchor. Stand side-on to the door, a step or two away, and hinge forward about 45° with a flat back, knees soft. Hold the handle in the hand farther from the door, so the band runs across in front of your shins, and rest the near hand on your thigh. Raise the arm out to the side, elbow leading, slight bend in the elbow. All reps one side, then turn around and switch.", "demo": "lateralraise"}]},
-      {"id":"thu-lat","pair":"B","name":"Underhand Pulldown","slot":"Pull · Vertical Pull","target":"Lats · Biceps · Forearms","equip":"Tube 20–30 → stacked 50+40 (90, up to all five tubes ≈150) → Clench 75 on Clench handles → green 75–150","rx":"4×10–12","cal":35,"cue":"Underhand (palms-up) grip — drive elbows down and into your back pockets, chest up, slight lean back. The underhand grip pulls real biceps/forearm work into a back day, on top of the lats — more muscle recruited per set than the standard overhand pulldown.","demo":"pulldown","log":"setsreps","sets":4,"ramp":"1 set light band × 10, 1 set one step below working band × 6–8, then working sets.","variants":[{"name":"Overhand Pulldown","equip":"Tube 20–30 → stacked 50+40 (90, up to all five tubes ≈150) → Clench 75 on Clench handles → green 75–150","rx":"3–4×10–12","cue":"Standard palms-away grip — same pull pattern, shifts emphasis back toward pure lats with less biceps involvement","demo":"pulldown"},{"name":"Wide Row (free)","equip":"Tube 20–30 → stacked 70–90","rx":"3×12","cue":"Pull wide to the ribs, squeeze the mid-back","demo":"row"},{"name":"Deep-Stretch Pulldown","equip":"Tube 20–30 → stacked 90 · high anchor · loops on Clench handles (Clench 75 → green 75–150) once stacks feel easy","rx":"3×10–12","cue":"Kneel farther back from the anchor than usual for a longer overhead starting stretch before pulling down","demo":"pulldown"},{"name":"Kneeling Wide-Grip Pulldown","equip":"Tube 20–30 → stacked 50+40 (90) · door anchor at the top","rx":"3×10–12","cue":"Kneel facing the door with your arms overhead and a wide grip. Drive the elbows down and back toward your back pockets, chest up; 1-sec squeeze at the bottom, slow return to the full overhead stretch.","setup":"Anchor the tube at the top of a door and close and lock it. Kneel 2–3 ft back, arms fully overhead and hands wider than your shoulders so there is tension at the top. Pull the handles down toward your shoulders, elbows going down and back rather than forward, then let the band pull your arms back up into the stretch under control.","demo":"pulldown"},{"name":"Straight-Arm Band Pullover","equip":"Tube 10–30 lb · door anchor at the top (or a looped band held without handles)","rx":"3×12–15","cue":"Hinge forward about 45° with the elbows in a slight fixed bend and the band taut overhead. Sweep your hands in an arc down to your thighs by squeezing the lats; the elbows never bend more or less, so it stays a lat move and never turns into a triceps pushdown.","setup":"Anchor the tube at the top of a door and close and lock it. Face the door, hinge forward about 45° at the hips, and hold the handles (or a looped band) overhead with a slight fixed bend in the elbows and tension already on. Sweep the hands down in an arc to your thighs, pause 1 second, then let the band take your arms back overhead slowly into a full lat stretch."}]},
-      {"id":"thu-pullover","name":"Straight-Arm Band Pullover","slot":"Pull · Lat Isolation","target":"Lats","equip":"Tube 10–30 lb or yellow loop (7–25) on Clench handles · door anchor at the top","rx":"2×15–20","cal":20,"tempo":"2-1-1-2","cue":"Finisher after the pulldown. Hinge about 45°, elbows in a slight fixed bend, band taut overhead. Sweep the hands in an arc down to your thighs by squeezing the lats, pause 1 sec, return slowly to a full stretch. If you feel it in the back of the arm, lighten the band and keep the arms long.","setup":"Anchor the band at the top of a door and close and lock it. Face the door, step back until the band is taut with arms reaching up toward the anchor, then hinge forward about 45° with a flat back. Keep the same slight elbow bend the whole set.","demo":"pulldown","log":"setsreps","sets":2},
-      {"id":"mon-standbandpress","pair":"B","name":"Standing Band Chest Press","tempo":"3-1-1-0","lockVar":4,"slot":"Push · Horizontal Push","target":"Chest","equip":"Tube 20–30 → stacked 90 → Clench 75 on Clench handles → green 75–150 · anchored to a door at chest height","rx":"4×10–12","cal":30,"cue":"Anchor the band to a door at chest height, face away and step forward so there's already tension at the start (not slack) — press straight out in front of you and squeeze the chest hard at full extension, then control the return. Split stance (one foot forward) helps stability against the door anchor. Lower over 3 sec with a 1-sec pause in the stretch. Take the last set to within 1–2 reps of failure, then finish with a short rest-pause (15–20 sec rest, 3–5 more reps).","demo":"press","log":"setsreps","sets":4,"variants":[{"name":"Behind-Back Anchor Press","equip":"Tube 20–30 → stacked 90 → Clench 75 on Clench handles → green 75–150 · anchored behind back","rx":"3×12–15","cue":"Band anchored around your back instead of a door, thumbs looped through the handles — same press-and-squeeze pattern, keeps even tension through the whole range since the anchor moves with you","demo":"press"},{"name":"Feet-Elevated Push-up","pat":"pushup","tempo":"2-1-1-0","equip":"Feet on the piano bench · hands on yoga blocks for extra depth · Clench band across the back once 15 reps is easy","rx":"3×8–15","cue":"Feet up shifts more bodyweight onto your hands and biases the upper chest. Straight line heels to head, elbows ~45°, lower until the chest passes your hands, 1-sec pause, press. Harder than Monday’s deficit push-up — fewer reps is expected.","demo":"pushup"},{"name":"Band Tempo Push-up","pat":"pushup","tempo":"5-2-1-0","equip":"Clench band across the upper back, ends under the palms · drop the band if the tempo breaks","rx":"3×6–10","cue":"Band high on the shoulder blades (not the neck). Tight plank, lower over a strict 5 seconds, pause 1–2 sec in the bottom stretch, then explode to lockout. Progress by adding reps, then a thicker band — never by shortening the 5-second lowering.","demo":"pushup"},{"name":"Low-to-High Band Fly","pat":"fly","tempo":"2-0-1-2","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles · door anchor at the BOTTOM","rx":"4×12–20","cue":"Face away from the low anchor, split stance, arms low and wide with a slight fixed elbow bend. Sweep the hands up and together to about eye level, squeeze the upper chest 1–2 sec, lower slowly back into the stretch. Elbows stay locked in place — no pressing.","setup":"Anchor the tube at the bottom of the door. Face away, step forward until it's tight with your hands by your hips.","demo":"fly"}]},
-      {"id":"thu-row","name":"Kneeling Door-Anchored Row","slot":"Pull · Horizontal Pull","target":"Mid-Back · Lats · Rear Delts","equip":"Tube 30–40 → stacked 90 → Clench 75 on Clench handles · door anchor at chest height","rx":"3×10–12","cal":30,"cue":"Kneel tall facing the door, band taut at full reach. Shoulder blades back first, then elbows to ribs — 1-sec squeeze, slow return all the way into the stretch.","demo":"row","log":"setsreps","sets":3,"variants":[{"name":"Chest-Supported Row (ball)","equip":"Chest on stability ball + tube band","rx":"3×12","cue":"Chest glued to the ball — all upper back, zero low back","demo":"ballrow"},{"name":"Single Arm Row","equip":"Tube 20–30 → stacked 90 · bench to brace on","rx":"3×10/side","cue":"Brace on the bench, pull straight to the hip, elbow trailing back","demo":"singlearmrow"},{"name":"Wide Row (free)","equip":"Tube 20–30 → stacked 70–90","rx":"3×12","cue":"Pull wide to the ribs, squeeze the mid-back","demo":"row"}]},
-      {"id":"thu-hammer","pair":"C","name":"Hammer Curl","lockVar":0,"slot":"Pull · Biceps","target":"Biceps · Forearms","equip":"Tube — stack toward your tested failure load · low door anchor","rx":"5×12–15","cal":25,"cue":"Bayesian-style: low door anchor BEHIND you — face away, staggered stance, step forward until the band is taut with arms hanging straight, and tape-mark that spot so load stays comparable week to week. Elbows pinned to your sides, slightly behind the torso, and they stay put the whole rep. Thumbs up, curl, 1-sec squeeze, then lower over 3 sec into the full stretch behind you — that stretch is where the growth is. Neutral grip is easier on the medial elbow than supinated curls, so this is the one to progress heaviest — go up one band step at a time.","log":"setsreps","sets":5,"variants":[{"name":"Crossbody Hammer Curl","equip":"Tube 10–20 lb","rx":"3×10/side","cue":"neutral grip, curl the band diagonally across your body toward the opposite shoulder instead of straight up. Shifts emphasis onto the brachialis/forearm and adds a light anti-rotation core demand.","demo":"crossbodyhammercurl"}]},
-      {"id":"mon-slamskull","pair":"C","name":"Banded Overhead Triceps Extension","slot":"Push · Triceps","target":"Triceps — Long Head","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · low door anchor behind you (or under your back foot)","rx":"4×12–15","cal":20,"cue":"Face away from a low anchor, split stance, elbows up by your ears — lower the handles behind your head into a deep stretch, then extend to lockout. Overhead is the best long-head triceps builder. ⚠️ Elbow: start light, stop the set at any pull on the inside of the elbow. LAST SET — length drop set: take it to near failure, then with no rest turn to face the anchor and keep going with pushdowns on the same band until you can't.","log":"setsreps","sets":4,"demo":"triceps"},
-      {"id":"thu2-legraise","name":"Leg Raise","slot":"Core","target":"Core","equip":"Bodyweight","rx":"3×10–12","cal":20,"cue":"Low back stays flat — lower only as far as it stays down","demo":null,"log":"setsreps","sets":3},
-    ]},
-  fri:{title:"Lower Body Pull",sub:"Hamstrings · Glutes · Lower Back",accent:"var(--accent)",
-    moves:[
-      DS_WARMUP_HIPFLOW7,
-      {"id":"fri-hinge","name":"Unloaded Hip Hinge","slot":"Hinge","target":"Hamstrings · Glutes · Hip Control","equip":"Bodyweight · dowel or broomstick along the spine optional","rx":"2×10–12","cal":12,"cue":"Practice, not a lift. Soft knees, push the hips straight back until you feel the hamstrings, flat back, then squeeze the glutes to stand. Stop the range before the low back takes over.","demo":"hinge","log":"setsreps","sets":2,"rehab":true,"setup":"Feet hip-width, hands on hips (or a dowel touching head, upper back and tailbone). Slide the hips back as the chest tips forward, keeping the dowel in contact. Come up by driving the hips forward. Weeks 7–8, if it feels easy and comfortable, this slot can move back toward a light band RDL."},
-      {"id":"fri-bridge","name":"Glute Bridge","slot":"Hip Extension","target":"Glutes","equip":"Mat · bodyweight (tube across hips once 15 is easy)","rx":"2×12–15","cal":12,"cue":"Ribs down, drive through the heels, squeeze the glutes 1 sec at the top — finish with the glutes, not by arching the low back.","demo":"bridge","log":"setsreps","sets":2,"rehab":true},
-      {"id":"fri-birddog","name":"Bird Dog","slot":"Low-Back Endurance","target":"Core · Low Back · Hip Stability","equip":"Mat","rx":"2×6–8/side","cal":8,"cue":"Reach long, not high — opposite arm and leg out, 2-sec hold, hips level, zero rocking.","demo":"birddog","log":"setsreps","sets":2,"rehab":true},
-      {"id":"fri-add","name":"Side-Lying Adductor Raise","demo":"side-leg-ext","slot":"Adductors","target":"Adductors · Inner Thigh","equip":"Bodyweight","rx":"3×12–15/leg","cal":14,"cue":"Bottom leg lifts, top leg parked out of the way. Hips stay stacked square — if the pelvis rolls back, shorten the range. Gentler on the SI joint than a Copenhagen plank.","log":"setsreps","sets":3,"variants":[{"name":"Band Adductor Squeeze","equip":"Mini loop band","rx":"3×15–20","cue":"Seated or standing, band looped around the ankles/knees — squeeze the legs together against the band, slow release. Same target, no floor position needed","demo":"side-leg-ext"}]},
-      {"id":"fri-sideplank","name":"Modified Side Plank","slot":"Low-Back Endurance","target":"Obliques · QL · Hip Stability","equip":"Mat","rx":"2×15–25 s/side","cal":8,"cue":"Knees bent, hips lifted into a straight line from knees to shoulders. Stop the set when the hips start to sag.","demo":"sideplank","log":"setsreps","sets":2,"rehab":true},
-      {"id":"fri-calf","name":"Standing Calf Raise","slot":"Calves","target":"Calves","equip":"Step edge · bodyweight (stand on a tube once 20 reps is easy)","rx":"2×15–20","cal":10,"cue":"Second calf day of the week. Heel off the step — full stretch with a 1-sec pause at the bottom, 2-sec squeeze at the top, slow lower.","demo":"calf","log":"setsreps","sets":2},
-      {"id":"tue-pallof","name":"Banded Pallof Press","demo":"pallof","slot":"Anti-Rotation","target":"Core","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb","rx":"3×10/side","cal":25,"cue":"Press out and resist the rotation — hips and shoulders square","log":"setsreps","sets":3,"variants":[{"name":"Kneeling Pallof Press","equip":"Tube 10–20 lb, mid anchor","rx":"3×10/side","cue":"Same anchor and press, but from tall-kneeling — takes the legs out of the equation so it is pure anti-rotation core, and it is gentler on the SI joint than the standing version","demo":"pallof"}]},
-      {"id":"thu-bandcrunch","name":"Kneeling Band Crunch","lockVar":null,"slot":"Core · Loaded","target":"Abs","equip":"Tube 20–30 → 50 lb · anchored high on a door","rx":"4×12–15","cal":20,"cue":"Thursday’s ab-flexion work (Saturday has the other session). Hips stay still — curl the ribs down toward the pelvis, rounding the spine, not hinging at the hips. Exhale hard at the bottom, 1-sec squeeze, slow return to a full stretch. ⚠️ SI joint: start light and stop at any pinch low in the back.","demo":null,"log":"setsreps","sets":4,"setup":"Anchor the tube high on a door. Kneel a step or two back, facing the door, handles held beside your head or at your temples. Keeping your hips stacked over your knees, crunch your ribcage down toward your hips until your elbows reach your thighs, then uncurl back up until the band stretches the abs. Progress by moving up a band once you hit 15 reps twice.","variants":[{"name":"Band-Assisted Crunch","equip":"Tube 10–20 lb · low anchor in front (or looped around feet)","rx":"3×15–20","log":"setsreps","cue":"Easier version — the band helps pull you up. Use it for higher reps, on tired days, or to finish a set after the loaded version. Still curl the ribs toward the pelvis, don't yank with the arms.","setup":"Anchor the tube low on a door in front of you (or loop it around your feet). Lie on your back, knees bent, holding the handles with arms reaching toward the anchor. Exhale and curl your ribcage up off the floor, letting the band assist, squeeze 1 sec, then lower slowly with control. Lighter band = less help = harder."},{"name":"Lying Band-Resisted Crunch (behind head)","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · low anchor behind you","rx":"3×12–15","log":"setsreps","cue":"Harder version — the band pulls you back down, so the abs stay loaded at the bottom stretch. Hands just hold the handles at your temples; never pull on your neck. ⚠️ SI joint: start light.","setup":"Anchor the tube low on a door behind you. Lie on your back with your head toward the door, knees bent, holding the handles beside your temples so the band runs back over your shoulders. Exhale and curl your ribcage toward your pelvis, squeeze 1 sec, then lower slowly to a full stretch. Scoot away from the door for more tension."},{"name":"Band-Assisted Sit-Up","equip":"Tube 10–20 lb · low door anchor at your feet · feet tucked under a sturdy couch","rx":"3×8–12","log":"setsreps","cue":"Full range — the band helps you up, you control the way down. Roll up one vertebra at a time rather than yanking from the hips, then lower over a slow 3-count. ⚠️ SI joint: stop at any pinch low in the back, and drop to the Band-Assisted Crunch if it complains.","setup":"Anchor the tube low on a door a few feet past your feet. Lie on your back, knees bent, feet tucked under the edge of a sturdy couch, holding the handles at your chest with the band taut. Curl your head, shoulders and then your back off the floor, letting the band pull you up to sitting, then lower slowly with the abs braking the band. A lighter band = less help = harder. Progress by moving down a band, or by holding the handles closer to your chest."},{"name":"Band-Resisted Sit-Up (behind head)","equip":"Tube 10–30 lb · low door anchor behind your head · feet tucked under a sturdy couch","rx":"3×8–12","log":"setsreps","cue":"The band pulls you back down, so the abs work hardest on the way up and stay loaded in the stretched bottom. Handles stay at your temples — never pull on your neck. Roll up one vertebra at a time, then lower over a slow 3-count. ⚠️ SI joint: start light, stop at any pinch low in the back.","setup":"Anchor the tube low on a door behind you. Lie on your back with your head toward the door, knees bent, feet tucked under the edge of a sturdy couch, holding the handles beside your temples so the band runs back over your shoulders. Curl your head, shoulders and then your back off the floor all the way up to sitting against the band’s pull, then lower slowly to the floor. Scoot away from the door for more tension, or use a lighter band to start."}]},
-    ]},
-  sat:{title:"Upper Body C",sub:"Third upper day — Chest · Shoulders · Arms · Forearms · Core · ~55–60 min",accent:"var(--accent)",
-    moves:[
-      DS_WARMUP_ARMCIRCLE,
-      DS_WARMUP_BANDSHOULDER,
-      {"id":"sat-facepull","pair":"A","name":"Rear Delts / Face Pull","slot":"Pull · Back · Rear Delts","target":"Rear Delts · Mid-Back · Traps","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 50 lb · door anchor at face height","rx":"3×12–15","cal":25,"cue":"Pull to your temples, elbows high — thumbs point behind you at the finish. Balances the pressing on Mon/Thu/Sat.","demo":"facepull","log":"setsreps","sets":3},
-      {"id":"sat-shrug","name":"Band Shrug","slot":"Traps","target":"Upper Traps","equip":"Tube 30–50 lb or loop on Clench handles · stand on the band","rx":"2×15–20","cal":10,"tempo":"1-2-1-1","cue":"Stand on the band, arms straight at your sides. Shrug straight up toward your ears — no rolling — hold 2 sec at the top, lower slowly to a full stretch.","demo":"shrug","log":"setsreps","sets":2},
-      {"id":"sat-lateral","pair":"A","name":"Lateral Raise","demo":"lateralraise","slot":"Push · Side Delts","target":"Side Delts","equip":"Tube 10 or yellow loop (7–25) on Clench handles → 30 lb","rx":"2×15–20","cal":20,"cue":"Lead with elbows, not hands — pour water from a pitcher","log":"setsreps","sets":2,"variants":[{"name":"One-Foot Band Lateral Raise","equip":"Tube 10 or yellow loop (7–25) on Clench handles → 30 lb · one foot on the band","rx":"3×12–15","cue":"Stand on the band with one foot so the starting tension is lower, then raise the handles out to shoulder height leading with the elbows. Slow lower, no swinging.","setup":"Step on the middle of the tube with one foot and keep the other foot beside it. Handles at your sides, a slight bend in the elbows. Lead with the elbows to raise the handles out to shoulder height, pause 1 second, and lower slowly. Using one foot instead of two lowers the tension at the start of the rep, where the side delt is weakest.","demo":"lateralraise"},{"name": "Behind-Back Lateral Raise", "equip": "Orange (5–15) or yellow loop (7–25) on a Clench handle · LOW door anchor, band behind your back", "rx": "2×15–20/side", "tempo": "2-1-1-1", "cue": "Band runs behind your back from the low anchor to the working hand, so your arm starts pulled slightly behind your hip — the side delt is stretched before you lift. Raise out to shoulder height leading with the elbow, slightly forward of straight out to the side. Lower slowly; never let the band snap you back. Start light — back off if you feel a pinch at the front of the shoulder.", "setup": "Low anchor. Stand side-on with the anchor on your NON-working side, band running behind your back to the working hand. Step away at an angle until the band is taut with your hand just behind your hip and the band is not dragging across your back. Raise to shoulder height, elbow leading, slightly in front of your body. All reps one side, then switch.", "demo": "lateralraise"}]},
-      {"id":"sat-standpress","name":"Standing Band Chest Press","tempo":"3-1-1-0","slot":"Push · Horizontal Push","target":"Chest","equip":"Tube 20–30 → 50 lb · door anchor at chest height","rx":"3×10–12","cal":25,"cue":"Saturday’s third chest press. Anchor at chest height, face away, split stance, step forward until there’s tension at the start. Press straight out, squeeze hard at full extension, lower over 3 sec with a 1-sec pause in the stretch. Last set within 1–2 reps of failure.","demo":"press","log":"setsreps","sets":3,"pair":"B"},
-      {"id":"sat-row","name":"Kneeling Door-Anchored Row","slot":"Pull · Horizontal Pull","target":"Mid-Back · Lats · Rear Delts","equip":"Tube 30–40 → stacked 90 → Clench 75 on Clench handles · door anchor at chest height","rx":"3×10–12","cal":30,"cue":"Saturday's third back exposure — Kneel tall facing the door, band taut at full reach. Shoulder blades back first, then elbows to ribs — 1-sec squeeze, slow return all the way into the stretch.","demo":"row","log":"setsreps","sets":3,"variants":[{"name":"Chest-Supported Row (ball)","equip":"Chest on stability ball + tube band","rx":"3×12","cue":"Chest glued to the ball — all upper back, zero low back","demo":"ballrow"},{"name":"Single Arm Row","equip":"Tube 20–30 → stacked 90 · bench to brace on","rx":"3×10/side","cue":"Brace on the bench, pull straight to the hip, elbow trailing back","demo":"singlearmrow"},{"name":"Wide Row (free)","equip":"Tube 20–30 → stacked 70–90","rx":"3×12","cue":"Pull wide to the ribs, squeeze the mid-back","demo":"row"}],"pair":"B"},
-
-      {"id":"mon-extrot","name":"Band External Rotation","slot":"Pull · Rotator Cuff","target":"Rotator cuff · Rear delts","equip":"Light tube 5–10 lb · door anchor at elbow height","rx":"2×15/side","cal":8,"demo":"extrot","log":"setsreps","sets":2,"cue":"Elbow pinned to your side (small towel roll between elbow and ribs) — only the forearm rotates outward. 2 seconds out, 3 seconds back. Light enough to feel it in the back of the shoulder, not the front.","setup":"Stand sideways to a door anchor set at elbow height, band in the hand farthest from the door. Pin the elbow at 90° against your side with a small towel roll. Rotate the forearm away from the door, pause 1 second, then return slowly. 2×15 each side. Keep the band light — rotator cuff work is about control, not load."},      {"id":"sat-chest","pair":"C","name":"Chest — Pull-Apart / Fly","lockVar":2,"pat":"fly","slot":"Push · Horizontal Push","target":"Chest · Rear Delts","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 40 lb","rx":"3×12–15","cal":35,"cue":"Hug a big tree — slight elbow bend, feel the stretch open across your chest. Third weekly chest touch, spread out from Mon/Thu so no single day carries all the volume.","demo":"fly","log":"setsreps","sets":3,"variants":[{"name":"Banded Push-up","pat":"pushup","equip":"Bodyweight / tube","rx":"3×12","cue":"Chest to floor, push the floor away","demo":"pushup"},{"name":"Low-Anchor Stretch Fly","pat":"fly","equip":"Tube 10–20 lb · low anchor","rx":"3×12–15","cue":"Anchor low instead of mid-chest. Face away, step forward for a deep starting stretch, then fly bottom-to-top across your body","demo":"fly"},{"name":"Standing Band Fly (stretch-biased)","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · anchored behind you at chest height","rx":"3×12–15","cue":"Split stance, step forward until the band is already tight with your arms open wide — that pre-tension loads the stretch. Slight fixed elbow bend, 1-sec pause wide, hug the handles together, control back. Open only as far as the shoulder is comfortable.","demo":"fly"},{"name":"High-Anchor Band Fly","tempo":"2-0-1-2","equip":"Tube or loop band · door anchor at the top, arm's-width apart","rx":"3×12–15","cue":"Face away from a high anchor, split stance, arms open wide in a stretch. Sweep the hands down and together in front of the hips, squeeze the lower chest 1–2 sec, return slowly.","demo":"fly"},{"name":"Single-Arm Band Press-Around","equip":"Tube 10–20 lb · chest-height anchor","rx":"3×10–12/side","cue":"Anchor behind you at chest height. Press the handle across your body in a wide arc, squeezing hard at full extension, then control the return. All reps one side, then switch.","demo":"fly"},{"name": "Single-Arm Band Fly", "pat": "fly", "tempo": "2-1-1-1", "equip": "Tube 10–20 or yellow loop (7–25) on Clench handles · door anchor at chest height, OUT TO YOUR SIDE", "rx": "3×12–15/side", "cue": "Side-on to the door, arm open wide with a slight fixed elbow bend. Sweep across until your hand passes the middle of your chest, squeeze 1 sec, return slowly into the stretch. Band tension stays on the whole way, including the squeeze. Last set: failure, then 3–5 lengthened partials.", "setup": "Anchor at chest height. Stand SIDEWAYS to the door with the working arm nearest it, then step away until the band already pulls your arm open into a stretch. Split stance, free hand on your hip or a wall. The anchor must be out to your side, never behind your back. Do all reps on one side, then switch.", "demo": "fly"}]},
-      {"id":"sat-curl","pair":"C","name":"Bayesian Curl","slot":"Pull · Biceps","target":"Biceps — Long Head","equip":"Tube 20–40 lb · low door anchor, face away","rx":"2×10–15","cal":20,"cue":"Anchor low on a door, face away in a staggered stance and step forward until the band is taut with arms hanging straight behind you. Elbows pinned to your sides — curl up, squeeze, then lower into the full stretch.","demo":"curl","log":"setsreps","sets":2},
-      {"id":"sat-ohtriceps","pair":"D","name":"Banded Overhead Triceps Extension","lockVar":0,"slot":"Push · Triceps","target":"Triceps — Long Head","equip":"Tube 10–20 lb · low-to-mid door anchor behind you","rx":"3×10–12","cal":20,"cue":"Stretched-overhead triceps angle — pushdowns and skull crushers miss this position. Anchor low-to-mid on a door, face away in a staggered stance with a slight forward lean, handles behind your head — extend forward and up to lockout, then let the band pull you back into the deep stretch by bending only the elbows. Tape-mark your stance so load stays comparable. Elbows stay close to your ears, no flaring out. LAST SET — length drop set: take it to near failure, then with no rest turn to face the anchor and keep going with pushdowns on the same band until you can't.","demo":"triceps","log":"setsreps","sets":3},
-      {"id":"sat-preacher","pair":"D","name":"Ball Preacher Curl","lockVar":0,"slot":"Pull · Biceps","target":"Biceps — Short Head · Brachialis","equip":"Tube 20–30 lb · stability ball pressed against a door · low door anchor","rx":"2×10–15/side","cal":20,"tempo":"3-0-1-1","demo":"preachercurl","log":"setsreps","sets":2,"cue":"Kneel facing the ball and lean your chest onto it, upper arms resting on top and angled slightly down the front. The ball keeps the elbows from drifting, so the curl is strict. Curl up, squeeze 1 sec, then lower over 3 sec until the arm is nearly straight — the bottom half does the most work. ⚠️ Elbow: start one band lighter than your standing curl; if the inside of the elbow aches past 24h, swap back to Bicep Curl.","setup":"Close a door with the tube anchored at the very bottom and push the stability ball firmly against the door so it cannot roll. Kneel on the near side, lean your chest onto the ball and rest the backs of your upper arms on top of it. The band runs from your hands down the far side of the ball to the low anchor. If the band rubs the ball or drags it sideways, move the anchor a little higher.","variants":[{"name":"Preacher Curl","equip":"Tube 10–20 lb · angled surface (arm of a couch, tilted bench)","rx":"2×12–15","cue":"No ball or door handy? Rest the back of your upper arm on any angled support so it cannot swing, and lower all the way down under control.","demo":"preachercurl"}]},
-      {"id":"thu-wristext","pair":"E","name":"Forearm — Band Wrist Extension","slot":"Pull · Forearm Extensors","target":"Wrist extensors · Lateral forearm","equip":"Light band · under your foot","rx":"2×15–20/side","cal":8,"demo":"wristecc","log":"setsreps","sets":2,"cue":"Same rig as the wrist curl, palm down. Light and smooth — this balances the flexor work, it is not a max-effort set.","setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm DOWN, handle in hand. Lift the back of the hand up, then lower it over about 3 seconds. 2×15–20. Keep the band light; stop short of any ache on the outer elbow."},
-      {"id":"thu-elbowrot","pair":"E","name":"Elbow — Band Pronation/Supination","slot":"Rehab","target":"Medial epicondyle · Forearm rotators","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb) · under your foot","rx":"2×12–15/direction","cal":8,"demo":"extrot","log":"setsreps","sets":2,"cue":"Elbow pinned to your side — only the forearm rotates. Slow 3–4 sec return. Mild muscle burn is fine; sharp inner-elbow pain means a lighter stretch.","setup":"Sit with your forearm on your knee, elbow bent 90° and tucked near your side, wrist just past the edge. Loop one end of the orange band under your foot and hold the other end in your fist. Rotate the forearm against the band (palm turning down = pronation), then return slowly over 3–4 seconds. Switch which side of the hand the band pulls from to train supination (palm turning up) the same way. 2×12–15 each direction.","variants":[{"name":"Isometric Pronation Hold","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb)","rx":"3×30–45s","cue":"Rotate to mid-range and hold still against the band — steady tension, no movement. Gentlest way to load an irritated tendon; use it on days the reps feel aggravating.","demo":"extrot"}]},
-      {"id":"sat-bandcrunch","name":"Kneeling Band Crunch","lockVar":0,"slot":"Core · Loaded","target":"Abs","equip":"Tube 20–30 → 50 lb · anchored high on a door","rx":"3×12–15","cal":20,"cue":"Hips stay still — curl the ribs down toward the pelvis, rounding the spine, not hinging at the hips. Exhale hard at the bottom, 1-sec squeeze, slow return to a full stretch. ⚠️ SI joint: start light and stop at any pinch low in the back.","demo":null,"log":"setsreps","sets":3,"setup":"Anchor the tube high on a door. Kneel a step or two back, facing the door, handles held beside your head or at your temples. Keeping your hips stacked over your knees, crunch your ribcage down toward your hips until your elbows reach your thighs, then uncurl back up until the band stretches the abs. Progress by moving up a band once you hit 15 reps twice.","variants":[{"name":"Band-Assisted Crunch","equip":"Tube 10–20 lb · low anchor in front (or looped around feet)","rx":"3×15–20","log":"setsreps","cue":"Easier version — the band helps pull you up. Use it for higher reps, on tired days, or to finish a set after the loaded version. Still curl the ribs toward the pelvis, don't yank with the arms.","setup":"Anchor the tube low on a door in front of you (or loop it around your feet). Lie on your back, knees bent, holding the handles with arms reaching toward the anchor. Exhale and curl your ribcage up off the floor, letting the band assist, squeeze 1 sec, then lower slowly with control. Lighter band = less help = harder."},{"name":"Lying Band-Resisted Crunch (behind head)","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · low anchor behind you","rx":"3×12–15","log":"setsreps","cue":"Harder version — the band pulls you back down, so the abs stay loaded at the bottom stretch. Hands just hold the handles at your temples; never pull on your neck. ⚠️ SI joint: start light.","setup":"Anchor the tube low on a door behind you. Lie on your back with your head toward the door, knees bent, holding the handles beside your temples so the band runs back over your shoulders. Exhale and curl your ribcage toward your pelvis, squeeze 1 sec, then lower slowly to a full stretch. Scoot away from the door for more tension."},{"name":"Band-Assisted Sit-Up","equip":"Tube 10–20 lb · low door anchor at your feet · feet tucked under a sturdy couch","rx":"3×8–12","log":"setsreps","cue":"Full range — the band helps you up, you control the way down. Roll up one vertebra at a time rather than yanking from the hips, then lower over a slow 3-count. ⚠️ SI joint: stop at any pinch low in the back, and drop to the Band-Assisted Crunch if it complains.","setup":"Anchor the tube low on a door a few feet past your feet. Lie on your back, knees bent, feet tucked under the edge of a sturdy couch, holding the handles at your chest with the band taut. Curl your head, shoulders and then your back off the floor, letting the band pull you up to sitting, then lower slowly with the abs braking the band. A lighter band = less help = harder. Progress by moving down a band, or by holding the handles closer to your chest."},{"name":"Band-Resisted Sit-Up (behind head)","equip":"Tube 10–30 lb · low door anchor behind your head · feet tucked under a sturdy couch","rx":"3×8–12","log":"setsreps","cue":"The band pulls you back down, so the abs work hardest on the way up and stay loaded in the stretched bottom. Handles stay at your temples — never pull on your neck. Roll up one vertebra at a time, then lower over a slow 3-count. ⚠️ SI joint: start light, stop at any pinch low in the back.","setup":"Anchor the tube low on a door behind you. Lie on your back with your head toward the door, knees bent, feet tucked under the edge of a sturdy couch, holding the handles beside your temples so the band runs back over your shoulders. Curl your head, shoulders and then your back off the floor all the way up to sitting against the band’s pull, then lower slowly to the floor. Scoot away from the door for more tension, or use a lighter band to start."}]}
-    ]},
-
-  sun:{title:'Sunday Recovery',sub:'Active recovery · Walk + Gentle Flow',accent:'var(--green)',
-    moves:[
-      {id:'sun-walk',name:'Recovery Walk',demo:'walk',slot:'Cardio',target:'NEAT · circulation',equip:'Outdoors',rx:'30–45 min',cal:0,cue:'Easy pace, nose breathing — let the body recover, not work',log:'cardio',perMin:4.3,defMin:35,variants:[{name:'Rucked Walk',equip:'Loaded backpack · 10–15 lb',rx:'30–45 min',perMin:5.8,defMin:35,cue:'Sunday version stays easy — lighter load, nose breathing, tall posture',demo:'ruck'}]},
-      {id:'sun-flow',name:'Gentle Mobility Flow',slot:'Mobility',target:'Whole body',equip:'Mat',rx:'15–20 min',cal:50,cue:'Move where you feel stuck — slow, breath-led, no intensity',demo:'catcow',log:'done'}]}
-};
-
-// Legacy: exercise names (base + alternates) as they stood BEFORE the v242 streamline,
-// keyed by id. Only dsMigrateSwaps reads it, to remap an old saved swap pick by name if a
-// stale copy arrives from the Sheet. Frozen data — nothing computes it anymore.
-var DS_STREAMLINE_NAMES={"mon-pushup":["Banded Push-ups","Wall Push-up","Incline Push-up (counter/desk)","Knee Push-up","Floor DB Press","Banded Chest Press (anchor)","Super Band Push-up","Deficit Push-up","Band Tempo Push-up","Band Floor Press"],"mon-row":["Bent-Over Row","Wide Row (free)","Chest-Supported Row (ball)","Narrow Row","Pendlay Row","Single Arm Row"],"mon-ohp":["Overhead Press","DB Overhead Press","Seated OHP on Stability Ball"],"mon-lateral":["Lateral Raise","Front-Angled Lateral Raise","Incline Ball Lateral Raise"],"thu-facepull":["Rear Delts / Face Pull","Cross-Body Rear Delt Fly"],"mon-pressaround":["Single-Arm Band Press-Around","Standing Cross-Body Cable Fly (light band)","Standing Band Fly (stretch-biased)","Low-Anchor Band Fly (rest-pause)"],"mon-curl":["Bicep Curl","DB Curl (neutral grip)","Iso-Hold Curl","Forward Fold Curl","Bayesian Curl (low anchor)","Wall-Braced Curl (short head)","Reverse Curl (brachialis/forearms)","Preacher Curl"],"mon-tri":["Triceps Pushdown","DB Kickbacks","DB Overhead Triceps Extension"],"mon-calf":["Standing Calf Raise","Single-Leg Calf Raise"],"mon-hollow":["Hollow Body Hold","Bent-Knee Hollow Hold"],"mon-elbow":["Elbow — Band Wrist Curl","Isometric Wrist Flexion Hold"],"mon-forearm":["Forearm Finisher — Wrist Curl","One-Arm Bench Wrist Curl (alternating)","Band Wrist Curl (myo-rep)"],"tue-squat":["Banded Squat","Goblet Squat","Long-Length Partial Squat","Ball Wall Squat","Heavy Band Front Squat","Myo-Rep Partial Squat Finisher"],"mon-inclinepress":["Incline Close-Grip Press","Standard-Grip Incline Press","Behind-Back Anchor Incline Press","Ball DB Chest Press","Standing Band Chest Press (pyramid)"],"mon-standbandpress":["Standing Band Chest Press","Behind-Back Anchor Press","Ball DB Chest Press","Feet-Elevated Push-up","Band Tempo Push-up"],"mon-pullapart":["Band Pull-Apart","Cross-Body Rear Delt Fly"],"thu-lateral":["Lateral Raise","Front-Angled Lateral Raise","Incline Ball Lateral Raise"],"thu-hammer":["Hammer Curl","DB Hammer Curl","Crossbody Hammer Curl"],"thu-hollow":["Hollow Body Hold","Bent-Knee Hollow Hold"],"thu-elbow":["Elbow — Band Wrist Curl","Isometric Wrist Flexion Hold"],"thu-forearm":["Forearm Finisher — Wrist Curl","Banded Wrist Curl","Bar Push-Off (plank press-off)","One-Arm Bench Wrist Curl (alternating)"],"fri-slrdl":["Romanian Deadlift (Bilateral)","Single-Leg RDL","Super Band RDL"],"fri-goblet":["Goblet Squat","Banded Squat"],"sat-chest":["Chest — Pull-Apart / Fly","Banded Push-up","Floor DB Press","Low-Anchor Stretch Fly"],"sat-ohtriceps":["Banded Overhead Triceps Extension","DB Overhead Triceps Extension"]};
-
-
+// DS_SESSIONS, DS_STREAMLINE_NAMES live in data-exercises.js
 // ── CUSTOM PLAN IMPORT ──────────────────────────────────────────────────
 // Lets a different person load their own Mon–Sun exercise structure instead
 // of the built-in one above, without touching any code. Settings > Import
@@ -6113,7 +4682,7 @@ var DS_STREAMLINE_NAMES={"mon-pushup":["Banded Push-ups","Wall Push-up","Incline
 // variant rotation are David's own content and are not required for a custom
 // plan to work; moves simply render without them if omitted.
 var DS_PLAN_DAYS=['mon','tue','wed','thu','fri','sat','sun'];
-function dsCustomPlanRaw(){ try{ return store.get('ds_custom_plan')||""; }catch(e){ return ""; } }
+function dsCustomPlanRaw(){ try{ return store.get('ds_custom_plan')||""; }catch(e){ ftCaught(e,'dsCustomPlanRaw'); return ""; } }
 function dsValidateCustomPlan(obj){
   if(!obj || typeof obj!=='object') return "File isn't a JSON object.";
   var touched=false;
@@ -6182,7 +4751,7 @@ function dsRestDaySession(d){
 }
 function dsPlanIsReplaceMode(){
   var raw=dsCustomPlanRaw(); if(!raw) return false;
-  try{ return JSON.parse(raw).replace===true; }catch(e){ return false; }
+  try{ return JSON.parse(raw).replace===true; }catch(e){ ftCaught(e,'dsPlanIsReplaceMode'); return false; }
 }
 // True when an imported plan owns this weekday — either it supplies its own
 // moves for that day, or replace mode blanked the day out. Built-in extras
@@ -6195,7 +4764,7 @@ function dsDayIsCustom(sk){
     var o=JSON.parse(raw);
     if(o[sk] && Array.isArray(o[sk].moves)) return true;
     return o.replace===true;
-  }catch(e){ return false; }
+  }catch(e){ ftCaught(e,'dsDayIsCustom'); return false; }
 }
 function dsApplyCustomPlan(obj){
   var replace = obj.replace===true;
@@ -6205,9 +4774,9 @@ function dsApplyCustomPlan(obj){
   });
   // Muscle attribution: without this the Volume tab shows zero for every
   // imported exercise, since it reads DS_MV rather than the target text.
-  if(obj.mv && typeof DS_MV!=='undefined') for(var id in obj.mv) DS_MV[id]=obj.mv[id];
-  if(obj.setups && typeof DS_SETUPS!=='undefined') for(var sid in obj.setups) DS_SETUPS[sid]=obj.setups[sid];
-  if(obj.demos && typeof DS_DEMOMAP!=='undefined' && typeof DS_DEMOS!=='undefined') for(var did in obj.demos){
+  if(obj.mv) for(var id in obj.mv) DS_MV[id]=obj.mv[id];
+  if(obj.setups) for(var sid in obj.setups) DS_SETUPS[sid]=obj.setups[sid];
+  if(obj.demos) for(var did in obj.demos){
     // Only accept demo keys that actually exist, so a typo renders no figure
     // rather than breaking the card.
     if(DS_DEMOS[obj.demos[did]]) DS_DEMOMAP[did]=obj.demos[did];
@@ -6260,10 +4829,10 @@ function dsImportPlanFile(input){
     var text=String(reader.result||"");
     var obj;
     try{ obj=JSON.parse(text); }
-    catch(e){ toast("Not valid JSON — check the file and try again"); input.value=""; return; }
+    catch(e){ ftCaught(e,'reader.onload'); toast("Not valid JSON — check the file and try again"); input.value=""; return; }
     var err=dsValidateCustomPlan(obj);
     if(err){ toast("Plan not imported: "+err); input.value=""; return; }
-    try{ store.set('ds_custom_plan', text); }catch(e){}
+    try{ store.set('ds_custom_plan', text); }catch(e){ftCaught(e,'reader.onload');}
     dsApplyCustomPlan(obj);
     dsPlanStampAndPush(SHEETS_URL ? "Plan imported \u2014 saving to Sheet\u2026" : "Plan imported (no Sheet connected \u2014 this device only) \u2014 reloading\u2026");
   };
@@ -6275,23 +4844,23 @@ function dsImportPlanFile(input){
 function dsTogglePlanReplace(){
   var raw=dsCustomPlanRaw();
   if(!raw){ toast('Import a plan first'); return; }
-  var obj; try{ obj=JSON.parse(raw); }catch(e){ toast('Stored plan is not valid JSON'); return; }
+  var obj; try{ obj=JSON.parse(raw); }catch(e){ ftCaught(e,'dsTogglePlanReplace'); toast('Stored plan is not valid JSON'); return; }
   obj.replace = !(obj.replace===true);
-  try{ store.set('ds_custom_plan', JSON.stringify(obj)); }catch(e){}
+  try{ store.set('ds_custom_plan', JSON.stringify(obj)); }catch(e){ftCaught(e,'dsTogglePlanReplace');}
   dsPlanStampAndPush(obj.replace ? 'Missing days will be rest days \u2014 reloading\u2026'
                                  : 'Missing days will use the built-in plan \u2014 reloading\u2026');
 }
 function dsResetCustomPlan(){
-  try{ store.set('ds_custom_plan',''); }catch(e){}
+  try{ store.set('ds_custom_plan',''); }catch(e){ftCaught(e,'dsResetCustomPlan');}
   dsPlanStampAndPush("Reverted to the default plan \u2014 reloading\u2026");
 }
 // Stamps the local plan as newest, pushes it to the Sheet (waiting for the push
 // so the reload can't cut it off), then reloads so DS_SESSIONS is rebuilt.
 function dsPlanStampAndPush(msg){
-  try{ store.set('ds_custom_plan_ts', String(Date.now())); }catch(e){}
+  try{ store.set('ds_custom_plan_ts', String(Date.now())); }catch(e){ftCaught(e,'dsPlanStampAndPush');}
   toast(msg);
   var reloaded=false; function go(){ if(reloaded)return; reloaded=true; location.reload(); }
-  var p; try{ p=pushConfig(); }catch(e){ p=null; }
+  var p; try{ p=pushConfig(); }catch(e){ ftCaught(e,'dsPlanStampAndPush'); p=null; }
   if(p && p.then) p.then(function(){ setTimeout(go,300); }, function(){ setTimeout(go,300); });
   setTimeout(go, p ? 6000 : 700);
 }
@@ -6308,7 +4877,7 @@ function dsPullPlanManual(){
     var inTs=parseInt(cfg.ds_custom_plan_ts,10)||0, myTs=parseInt(store.get('ds_custom_plan_ts'),10)||0;
     if(inTs<=myTs){ dsPlanMsg("This device already has the newest plan ("+new Date(myTs).toLocaleString()+")"); return; }
     if(cfg.ds_custom_plan){
-      var obj; try{ obj=JSON.parse(cfg.ds_custom_plan); }catch(e){ dsPlanMsg("Sheet plan is not valid JSON ("+String(cfg.ds_custom_plan).length+" chars) \u2014 it may be truncated"); return; }
+      var obj; try{ obj=JSON.parse(cfg.ds_custom_plan); }catch(e){ ftCaught(e,'dsPullPlanManual'); dsPlanMsg("Sheet plan is not valid JSON ("+String(cfg.ds_custom_plan).length+" chars) \u2014 it may be truncated"); return; }
       var err=dsValidateCustomPlan(obj); if(err){ dsPlanMsg("Sheet plan rejected: "+err); return; }
     }
     if(dsApplySyncedPlan(cfg)){ dsPlanMsg("\u2713 Plan loaded from Sheet \u2014 reloading\u2026"); setTimeout(function(){ location.reload(); },1200); }
@@ -6327,12 +4896,12 @@ function dsApplySyncedPlan(cfg){
   if(inTs<=myTs) return false;
   var incoming=typeof cfg.ds_custom_plan==='string'?cfg.ds_custom_plan:JSON.stringify(cfg.ds_custom_plan);
   if(incoming){
-    var obj; try{ obj=JSON.parse(incoming); }catch(e){ console.warn('Synced plan is not valid JSON, ignoring.'); return false; }
+    var obj; try{ obj=JSON.parse(incoming); }catch(e){ ftCaught(e,'dsApplySyncedPlan'); console.warn('Synced plan is not valid JSON, ignoring.'); return false; }
     var err=dsValidateCustomPlan(obj);
     if(err){ console.warn('Synced plan failed validation: '+err); return false; }
   }
   var changed = incoming !== (store.get('ds_custom_plan')||"");
-  try{ store.set('ds_custom_plan', incoming); store.set('ds_custom_plan_ts', String(inTs)); }catch(e){}
+  try{ store.set('ds_custom_plan', incoming); store.set('ds_custom_plan_ts', String(inTs)); }catch(e){ftCaught(e,'dsApplySyncedPlan');}
   return changed;
 }
 function dsCustomPlanStatus(){
@@ -6348,7 +4917,7 @@ function dsCustomPlanStatus(){
           : " \u00b7 "+missing.length+" missing day"+(missing.length===1?"":"s")+" using the built-in plan")
       : " \u00b7 all 7 days defined";
     return "Custom plan active \u2014 "+days.length+" day"+(days.length===1?"":"s")+", "+n+" exercises"+(o.mv?", muscle map included":", NO muscle map (Volume tab will be empty)")+modeTxt;
-  }catch(e){ return "Custom plan active"; }
+  }catch(e){ ftCaught(e,'dsCustomPlanStatus'); return "Custom plan active"; }
 }
 
 var DS_WEEKMAP=['sun','mon','tue','wed','thu','fri','sat'];
@@ -6360,7 +4929,7 @@ var DS_DAYLABEL={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun
 // and Sun (rest) stay anchored.
 var DS_ROTATE_POOL=['mon','tue','thu','fri'];
 var DS_ROTATE_EPOCH='2026-03-30'; // Monday of week 1; week index counts from here
-var DS_ROTATE=false; try{ DS_ROTATE=store.get('ds_rotate')==='1'; }catch(e){ DS_ROTATE=false; }
+var DS_ROTATE=false; try{ DS_ROTATE=store.get('ds_rotate')==='1'; }catch(e){ ftCaught(e,'startup'); DS_ROTATE=false; }
 function dsWeekIndex(dk){
   var d=new Date(dk+'T12:00:00'), e=new Date(DS_ROTATE_EPOCH+'T12:00:00');
   return Math.floor((d-e)/604800000);
@@ -6371,12 +4940,12 @@ function dsRotateOffset(dk){
 }
 function dsToggleRotate(on){
   DS_ROTATE=!!on;
-  try{ store.set('ds_rotate', DS_ROTATE?'1':'0'); }catch(e){}
+  try{ store.set('ds_rotate', DS_ROTATE?'1':'0'); }catch(e){ftCaught(e,'dsToggleRotate');}
   dsQueueConfigPush();
   DS_DAY_OVERRIDE=null;
-  if(typeof dsRender==='function') dsRender();
-  if(typeof dsRenderRotatePreview==='function') dsRenderRotatePreview();
-  if(typeof renderAll==='function') renderAll();
+  dsRender();
+  dsRenderRotatePreview();
+  renderAll();
 }
 // ── VARIANT ROTATION ────────────────────────────────────────────────────
 // Auto-cycles each exercise's variant (base + variants[]) one slot per week,
@@ -6384,7 +4953,7 @@ function dsToggleRotate(on){
 // get manually swapped to still see regular use. A manual swap (dsPickVariant)
 // always wins over the auto pick for that exercise — auto only fills in
 // exercises nobody has explicitly touched (DS_SWAPS[id]===undefined).
-var DS_VAR_ROTATE=true; try{ var _vr=store.get('ds_var_rotate'); DS_VAR_ROTATE=(_vr==null)?true:(_vr==='1'); }catch(e){ DS_VAR_ROTATE=true; }
+var DS_VAR_ROTATE=true; try{ var _vr=store.get('ds_var_rotate'); DS_VAR_ROTATE=(_vr==null)?true:(_vr==='1'); }catch(e){ ftCaught(e,'startup'); DS_VAR_ROTATE=true; }
 function dsVariantAutoIndex(item,dk){
   var n=(item&&item.variants)?item.variants.length:0; if(n===0) return 0;
   var w=dsWeekIndex(dk||activeDate);
@@ -6392,11 +4961,11 @@ function dsVariantAutoIndex(item,dk){
 }
 function dsToggleVarRotate(on){
   DS_VAR_ROTATE=!!on;
-  try{ store.set('ds_var_rotate', DS_VAR_ROTATE?'1':'0'); }catch(e){}
+  try{ store.set('ds_var_rotate', DS_VAR_ROTATE?'1':'0'); }catch(e){ftCaught(e,'dsToggleVarRotate');}
   dsQueueConfigPush();
-  if(typeof dsRender==='function') dsRender();
-  if(typeof dsRenderVarRotatePreview==='function') dsRenderVarRotatePreview();
-  if(typeof renderAll==='function') renderAll();
+  dsRender();
+  dsRenderVarRotatePreview();
+  renderAll();
 }
 // ── ANCHOR SET ROTATION ─────────────────────────────────────────────────
 // One isolation/machine-safe exercise per week is flagged as the "anchor
@@ -6443,7 +5012,7 @@ function dsRenderDayPicker(){
   var html='<div class="ds-mf ds-dp'+(activeKey!==realKey?' on':'')+'"><label for="ds-dp-sel">Day</label>'
     +'<select id="ds-dp-sel" onchange="dsPickDay(this.value)">'
     +DS_ORDER.map(function(d){
-      var t=''; try{ var S=dsSessOf(d); t=S&&S.title?' \u2014 '+S.title:''; }catch(e){}
+      var t=''; try{ var S=dsSessOf(d); t=S&&S.title?' \u2014 '+S.title:''; }catch(e){ftCaught(e,'dsRenderDayPicker');}
       return '<option value="'+d+'"'+(d===activeKey?' selected':'')+'>'+DS_DAYLABEL[d]+(d===realKey?' (today)':'')+t+'</option>';
     }).join('')+'</select></div>';
   // v250: Extra tab removed from the day picker.
@@ -6457,7 +5026,7 @@ function dsRenderDayPicker(){
   }
 }
 
-var DS_PR={"y-swan": {"settle": "Fold over the front shin to your honest end range — weight even, hips square, breathe.", "pail": "Press the front shin and outer hip down into the floor — contract the glute and outer hip you feel stretching. Ramp to ~60–70% over 10s and hold.", "rail": "Switch the effort: gently draw the front knee down and fold a touch deeper using your hip — pull yourself into more range."}, "y-dragon": {"settle": "Sink the hips low and forward to your end range, back knee grounded, torso tall.", "pail": "Drag the back knee forward into the floor isometrically (it won't move) — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and press the hips further forward into extension — pull yourself deeper."}, "y-cat": {"settle": "Round forward over the legs to your end range, let the spine drape, breathe.", "pail": "Press the backs of the legs and heels down into the floor — contract the hamstrings that are stretching. Ramp to ~60–70%.", "rail": "Switch: engage the quads and hip flexors to actively fold yourself deeper over the legs."}, "m-9090": {"settle": "Half-kneel, hips square, shift forward to your honest end range.", "pail": "Drag the back knee forward into the floor isometrically — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and push the hips further forward into extension."}, "p-9090": {"settle": "Half-kneel, hips square, shift forward to your honest end range.", "pail": "Drag the back knee forward into the floor isometrically — contract the front-of-hip that's stretching. Ramp to ~60–70%.", "rail": "Switch: squeeze the back glute and push the hips further forward into extension."}, "mob-hip": {"settle": "Settle into a deep hip end range — a 90/90 front-leg fold or a pigeon. Breathe to your honest limit.", "pail": "Press the stretching hip down and into the floor — contract the tissue at length, ramp to ~60–70%.", "rail": "Switch: use the opposite hip muscles to pull yourself deeper into the range."}, "mob-shoulder": {"settle": "Take the shoulder to an end-range reach — overhead, or a doorway chest opener. Find your honest limit.", "pail": "Press the arm into the wall or doorway — contract the front-of-shoulder that's stretching, ramp to ~60–70%.", "rail": "Switch: use the back-of-shoulder muscles to pull the arm further into range."}, "mob-spine": {"settle": "Take the spine to a gentle end range of rotation or flexion — easy, never forced.", "pail": "Lightly contract into the stretch — ~50–60% only, keep it gentle near the SI joint.", "rail": "Switch: gently use the opposing muscles to ease a touch deeper. Stop at anything sharp.", "settleSecs": 60}};
+// DS_PR lives in data-exercises.js
 
 
 
@@ -6831,12 +5400,12 @@ function dsFatigueCheck(refKey){
   return {flag:reasons.length>0, reasons:reasons};
 }
 
-var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){DS_UI={};}
+var DS_UI={}; try{DS_UI=JSON.parse(store.get("ds_ui")||"{}");}catch(e){ ftCaught(e,'startup');DS_UI={};}
 // ── JOINT / PAIN LOG ─────────────────────────────────────────────────────
 // Kept in local storage rather than the Sheets payload, because the Apps Script
 // column schema would have to change to carry it. Shape: {dateKey:{exId:{lvl,site}}}
 // lvl 1 = niggle, 2 = sore, 3 = sharp / stop.
-var DS_PAIN={}; try{ DS_PAIN=JSON.parse(store.get("ds_pain")||"{}"); }catch(e){ DS_PAIN={}; }
+var DS_PAIN={}; try{ DS_PAIN=JSON.parse(store.get("ds_pain")||"{}"); }catch(e){ ftCaught(e,'startup'); DS_PAIN={}; }
 var DS_PAIN_SITES=['R elbow','R shoulder','R SI joint','L knee','Low back','Other'];
 var DS_PAIN_LVL=['','niggle','sore','sharp'];
 // DS_PAIN is keyed by calendar date, so unlike the exercise-id-
@@ -6847,9 +5416,9 @@ var DS_PAIN_LVL=['','niggle','sore','sharp'];
 function dsTrimDateKeys(obj,days){
   try{ var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days); var ck=localDateKey(cutoff);
     Object.keys(obj).forEach(function(k){ if(/^\d{4}-\d{2}-\d{2}$/.test(k) && k<ck) delete obj[k]; });
-  }catch(e){}
+  }catch(e){ftCaught(e,'dsTrimDateKeys');}
 }
-function dsPainSave(){ dsTrimDateKeys(DS_PAIN,120); try{ store.set("ds_pain",JSON.stringify(DS_PAIN)); }catch(e){} dsQueueConfigPush(); }
+function dsPainSave(){ dsTrimDateKeys(DS_PAIN,120); try{ store.set("ds_pain",JSON.stringify(DS_PAIN)); }catch(e){ftCaught(e,'dsPainSave');} dsQueueConfigPush(); }
 function dsPainGet(id,dateKey){ var d=DS_PAIN[dateKey||activeDate]; return (d&&d[id])||null; }
 function dsPainSet(id,lvl,site){
   var k=activeDate; if(!DS_PAIN[k]) DS_PAIN[k]={};
@@ -6907,7 +5476,7 @@ function dsCopyPainReport(){
   try{ navigator.clipboard.writeText(txt); alert('Joint log copied \u2014 paste it anywhere.'); }
   catch(e){ alert(txt); }
 }
-var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){DS_SWAPS={};}
+var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){ ftCaught(e,'startup');DS_SWAPS={};}
 // One-time defaults: neutral-grip curl (left wrist pop) + Bird Dog for Dead Bug (right SI joint pop).
 // Only applied if the user hasn't already made a swap choice for that exercise, and only once ever.
 (function(){
@@ -6917,7 +5486,7 @@ var DS_SWAPS={}; try{DS_SWAPS=JSON.parse(store.get("ds_swaps")||"{}");}catch(e){
     for(var k in defaults){ if(DS_SWAPS[k]==null) DS_SWAPS[k]=defaults[k]; }
     store.set("ds_swaps",JSON.stringify(DS_SWAPS));
     store.set("ds_wristsi_defaults_applied","1");
-  }catch(e){}
+  }catch(e){ftCaught(e,'startup');}
 })();
 // Remap saved swap picks by exercise NAME after the v242 streamline removed
 // alternates (indices shifted). Versioned inside DS_SWAPS so an older copy
@@ -6936,64 +5505,34 @@ function dsMigrateSwaps(){
   DS_SWAPS.__v=DS_SWAPS_VER;
   return true;
 }
-try{ if(dsMigrateSwaps()) store.set("ds_swaps",JSON.stringify(DS_SWAPS)); }catch(e){}
+try{ if(dsMigrateSwaps()) store.set("ds_swaps",JSON.stringify(DS_SWAPS)); }catch(e){ftCaught(e,'startup');}
 function dsFlowDay(sk){ return sk==='wed'; }
 function dsSplitDaysMap(){ return {mon:1,tue:1,thu:1,fri:1}; }
-// Moves that are not in the weekly plan (cut, replaced or superseded) but must still resolve:
-// one-day picks and exercise history look them up here.
-var DS_RESERVE_MOVES=[
-  // v453: cut from Tue/Fri for the 8-week lower-body recovery block (Nov 9 2026). Bring back in wks 5–8.
-  {"id":"tue-squat","name":"Banded Squat","slot":"Squat","target":"Quads · Glutes","equip":"Clench mini loop above knees","rx":"4×12–15","cal":40,"cue":"Mini loop above the knees — sit back and down, knees push out against the band","demo":"squat","log":"setsreps","sets":4,"ramp":"1 set bodyweight × 10, 1 set with a lighter band × 8, then your working sets. If you are on the Heavy Band Front Squat variant, ramp through 2 lighter bands before the working band.","variants":[{"name":"Long-Length Partial Squat","equip":"Mini loop above knees or bodyweight","rx":"3×15–20","cue":"Drop to the bottom of the squat, then only rise about halfway before sinking back down — never straighten up. Stay loaded in the deep stretch the whole set; quads burn fast.","demo":"squat"},{"name":"Ball Wall Squat","equip":"Stability ball against wall","rx":"3×15","cue":"Ball in the low back against the wall — roll down to parallel, drive up through the heels. Very SI-friendly","demo":"squat"},{"name":"Heavy Band Front Squat","equip":"Clench 35–75 lb band now → green 75–150 lb band once it arrives","rx":"4×10–12","cue":"Your main quad lift. Stand centered on the band, handles racked at the shoulders, torso upright — sit straight down, drive up through the whole foot. 1–2 reps in reserve. Move to the green band once you hit 12 reps twice.","demo":"squat","setup":"Step both feet onto the middle of the band, shoulder-width apart, and bring the handles to the front of your shoulders with elbows up. Squat down with the torso upright, then drive up. Bands are lightest at the bottom and heaviest at the top, so control the descent and push hard through lockout. Wider feet on the band = more tension."},{"name":"Myo-Rep Partial Squat Finisher","equip":"Bodyweight or light band","rx":"1 set to ~15 reps, then 3–4 myo-rep clusters of 3–5","cue":"A quad-fatigue finisher, not a strength set — run it after your working sets, not instead of them.","demo":"squat","setup":"Take one set of shallow, partial-range squats — only come up about two-thirds of the way before sinking back down, never fully standing — to a real, near-failure effort (roughly 15-20 reps). Rest just 5–10 seconds, then squeeze out 3–5 more partial reps. Repeat that short rest + mini-set pattern 3–4 times. Keeping the range partial and the load light means you can chase real quad fatigue here without any extra load on the knees or spine — good for a day the quads need more work but the joints don't need more stress."}],"lockVar":3},
-  {"id":"tue-legext","name":"Banded Leg Extension","slot":"Quads","target":"Quads · Rectus Femoris","equip":"75 lb 41″ loop band anchored low · 13″ purple Clench mini band around both feet · piano bench","rx":"4×12–15","cal":20,"cue":"Squats under-train the rectus femoris — this is the direct quad isolator. Sit tall on the bench with both feet in the mini band, and straighten both knees together until the legs are level, squeezing the quads for 1 sec. Lower over 3 sec back to a bent knee — don’t let the band yank the legs back.","demo":null,"log":"setsreps","sets":4,"setup":"Loop the 75 lb 41″ band around the bottom door anchor. Put the 13″ purple Clench mini band around both feet and hook the 75 lb band over it so the two are joined. Sit on the piano bench facing away from the door and scoot forward until there is tension with the knees fully bent. Hold the bench edge, keep the thighs planted, and move only the lower legs, both together. Stretched-position tension is highest at the bottom, so use the full bend. Log the band as one number (75).","variants":[{"name":"Single-Leg Band Extension","equip":"Tube 20–30 → 40–50 lb, anchored low behind you","rx":"3×12–15/leg","cue":"Band around one ankle, all reps on one side then switch — use it to even out a weaker leg."}]},
-  {"id":"tue-lyingcurl","name":"Lying Band Leg Curl","slot":"Knee Flexion","target":"Hamstrings","equip":"75 lb 41″ loop band, bottom door anchor · 13″ purple mini band around both feet · piano bench","rx":"3×10–15","cal":20,"cue":"Face down on the bench, feet toward the door. Squeeze your glutes so the hips stay pinned, curl both heels toward your glutes, 1-sec squeeze, lower over 3 sec. Second hamstring hit of the week — Friday does the seated version.","demo":"ballcurl","log":"setsreps","sets":3,"variants":[{"name":"Seated Band Leg Curl","equip":"75 lb loop, middle door anchor · purple mini band · piano bench","rx":"3×10–15","cue":"Sit facing the door, legs straight, band taut. Pull both heels under the bench, 1-sec squeeze, 3-sec return.","demo":"ballcurl"}]},
-  {"id":"fri-slrdl","name":"Romanian Deadlift (Bilateral)","slot":"Hinge","target":"Hamstrings","equip":"Tube 40–50 → stacked 90+ → Clench 75 on Clench handles (see Super Band RDL) → green","rx":"4×8–12","cal":35,"cue":"Stand on the tube, soft knees, push the hips straight back — flat back, handles tracing down the thighs into a deep hamstring stretch, pause 2 counts, then drive the hips forward. Eyes forward, not down, to keep the spine neutral. Primary Friday hinge: work at 1–3 reps in reserve (it's a spinal-loaded lift, so it never gets the true-failure anchor set) and move up a band once you hit the top of the range twice.","demo":"hinge","log":"setsreps","sets":4,"ramp":"1 set light band × 10, 1 set one step below working band × 6–8, then working sets. Extra important once you're on the heavier bands, since spinal loading goes up with them.","variants":[{"name":"Single-Leg RDL","equip":"Tube 20–30 lb · stand on it with the working foot","rx":"3×10–12/leg","cue":"Hinge forward as the free leg extends behind you, handle(s) tracing down the standing leg — hips stay square, slow 3-count down. Great for left/right balance.","demo":"slrdl"},{"name":"Super Band RDL","equip":"Clench 35–75 lb band underfoot (→ green 75–150 as it gets easy)","rx":"3–4×8–10","cue":"Stand on the band, hinge back — tension peaks at lockout, squeeze the glutes hard at the top. The move to reach for once the 40–50 lb tube stops being a real challenge.","demo":"hinge"}],"setup":"Stand on the center of the band with both feet, soft bend in the knees. Push your hips straight back, letting the handles trace down the front of your thighs with a flat back, until you feel a deep hamstring stretch — pause 2 counts here — then drive the hips forward to stand tall. Keep your gaze forward the whole rep, not down at the floor."},
-  {"id":"fri-goodmorning","name":"Banded Good Morning","slot":"Hinge · Hamstrings","target":"Hamstrings · Glutes · Lower Back","equip":"Tube 20–30 lb, stand on band","rx":"3×10–12","cal":25,"cue":"Band anchored under both feet, handles across the upper back or held at the chest — hinge at the hips with a soft knee bend, flat back, until you feel a deep hamstring stretch, then drive the hips forward to stand tall. Lighter and shorter range than the RDL — this is a second hamstring angle, not a replacement.","demo":"hinge","log":"setsreps","sets":3,"variants":[{"name":"Bodyweight Good Morning (light band around upper back)","equip":"Bodyweight or light band","rx":"3×12–15","cue":"Hands behind head or crossed on chest, hinge forward keeping back flat, return to standing — good option on days the SI joint wants less spinal loading","demo":"hinge"}]},
-  {"id":"fri-nordic","pair":"A","name":"Stability Ball Leg Curl","lockVar":3,"slot":"Knee Flexion","target":"Hamstrings","equip":"Stability ball","rx":"4×10–12","cal":30,"cue":"Hips stay up the whole set — curl the ball in, roll out over a slow 3-count","demo":"ballcurl","log":"setsreps","sets":4,"variants":[{"name":"Single-Leg Ball Curl","equip":"Stability ball","rx":"3×6–8/leg","cue":"One heel on the ball — hips level, slow 3-count roll-out","demo":"ballcurl"},{"name":"Standing Band Hamstring Curl","equip":"Tube 10–20 lb, low anchor","rx":"3×12–15/leg","cue":"Anchor the band low around one ankle, stand tall holding a wall or chair for balance — curl the heel back toward the glute against the band tension, slow controlled return. Same knee-flexion target as the ball curl, no ball needed — good rotation option or swap-in if the ball setup is not handy","demo":"ballcurl"},{"name":"Lying Band Leg Curl","equip":"75 lb 41″ loop band, bottom door anchor · 13″ purple mini band around both feet · piano bench","rx":"3×10–15","cue":"Face down on the bench, feet toward the door. Squeeze your glutes so the hips stay pinned, curl both heels toward your glutes, 1-sec squeeze, lower over 3 sec. Don’t let the band snap the legs straight."},{"name":"Seated Band Leg Curl","equip":"75 lb 41″ loop band, middle door anchor · 13″ purple mini band around both feet · piano bench","rx":"3×10–15","cue":"Sit facing the door with legs straight out and the band taut. Grip the bench, keep the knees together, and pull both heels under the bench, 1-sec squeeze, then let the legs extend slowly over 3 sec. Biggest hamstring stretch of the three curls."}]},
-  {"id":"fri-legext","name":"Banded Leg Extension","slot":"Quads","target":"Quads · Rectus Femoris","equip":"75 lb 41″ loop band anchored low · 13″ purple Clench mini band around both feet · piano bench","rx":"3×12–15","cal":20,"cue":"Second weekly quad touch. Same rig as Tuesday: both feet in the mini band, straighten both knees until the legs are level, squeeze 1 sec, lower over 3 sec to a full bend.","demo":null,"log":"setsreps","sets":3,"setup":"Loop the 75 lb band on the bottom door anchor, hook it over the 13″ purple mini band around both feet. Sit on the piano bench facing away from the door, scoot forward until there is tension with the knees fully bent. Thighs stay planted; only the lower legs move."},
-  {"id":"fri-seatcurl","name":"Seated Band Leg Curl","slot":"Knee Flexion (stretch)","target":"Hamstrings","equip":"75 lb 41″ loop band, middle door anchor · 13″ purple mini band around both feet · piano bench","rx":"3×10–15","cal":20,"cue":"Sit facing the door, legs straight out, band taut. Grip the bench, knees together, pull both heels under the bench, 1-sec squeeze, 3-sec return. Seated trains the hamstrings at long length — the best curl for growth.","demo":"ballcurl","log":"setsreps","sets":3,"variants":[{"name":"Lying Band Leg Curl","equip":"75 lb loop, bottom door anchor · purple mini band · piano bench","rx":"3×10–15","cue":"Face down, feet toward the door, glutes squeezed. Curl, squeeze, 3-sec lower.","demo":"ballcurl"}]},
-  {"id":"ut-slpulldown","name":"Single-Arm Lat Pulldown","slot":"Pull · Vertical Pull","target":"Lats","equip":"Tube 30–50 lb → loop on Clench handles · high door anchor","rx":"2×12–20/side","cal":25,"tempo":"2-1-1-1","demo":"pulldown","log":"setsreps","sets":2,"cue":"One arm at a time so each lat gets the whole band. Reach up and slightly across for a full lat stretch, then drive the elbow down toward your hip and pause 1 sec. Hips square, brace — only a slight lean toward the working side.","setup":"Anchor the band at the top of a door and close and lock it. Kneel or half-kneel a step back, one handle in the working hand, arm reaching up and slightly across your body so you feel the lat stretch. Pull the elbow down and back to your side, pause, then return over 2–3 sec. Finish all reps on one side, then switch."},
-      {"id":"fri-bulg","name":"Banded Bulgarian Split Squat","slot":"Unilateral Squat","target":"Quads · Balance","equip":"Tube 20–30 → 40–50 lb","rx":"3×10/leg","cal":40,"cue":"Front heel drives through the floor — torso stays tall","demo":"splitsquat","log":"setsreps","sets":3,"variants":[{"name":"Banded Reverse Lunge","equip":"Tube 20–30 lb","rx":"3×10/leg","cue":"Step back, drop the knee, drive through the front heel — easier to balance than Bulgarians, same quad work","demo":"splitsquat"},{"name":"Upright Walking Lunge (short steps)","equip":"Bodyweight (tube under the front foot to load it)","rx":"3×10–12/leg","cue":"Short steps, torso upright (not leaning forward) — front knee tracks straight over the toes, not past them. The short step + upright torso keeps this quad-dominant and pulls in adductors and calves too, unlike a long-step glute-focused lunge. Walk forward continuously, alternating legs each step.","demo":"splitsquat"},{"name":"Front-Elevated Split Squat (glute-biased)","equip":"Yoga block or low step · bodyweight or tube under the front foot","rx":"3×10–12/leg","cue":"Front foot elevated on a block, back foot stepped far behind you — this shifts the emphasis onto the front glute and takes the front knee through a deeper range than the standard Bulgarian. Torso can lean forward slightly here (unlike the upright cue on the standard version) to load the hip more than the knee.","demo":"splitsquat"}]},
-  {"id":"mon-elbowrot","name":"Elbow — Band Pronation/Supination","slot":"Rehab","target":"Medial epicondyle · Forearm rotators","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb) · under your foot","rx":"2×12–15/direction","cal":8,"demo":"extrot","log":"setsreps","sets":2,"cue":"Elbow pinned to your side — only the forearm rotates. Slow 3–4 sec return. Mild muscle burn is fine; sharp inner-elbow pain means a lighter stretch.","setup":"Sit with your forearm on your knee, elbow bent 90° and tucked near your side, wrist just past the edge. Loop one end of the orange band under your foot and hold the other end in your fist. Rotate the forearm against the band (palm turning down = pronation), then return slowly over 3–4 seconds. Switch which side of the hand the band pulls from to train supination (palm turning up) the same way. 2×12–15 each direction.","variants":[{"name":"Isometric Pronation Hold","equip":"Orange loop 41in (5–15 lb) → yellow loop (7–25 lb)","rx":"3×30–45s","cue":"Rotate to mid-range and hold still against the band — steady tension, no movement. Gentlest way to load an irritated tendon; use it on days the reps feel aggravating.","demo":"extrot"}]},
-  {"id":"thu-elbow","name":"Elbow — Band Wrist Curl","slot":"Rehab","target":"Medial epicondyle (golfer's elbow)","equip":"Light tube · under your foot","rx":"3×15/side","cal":12,"cue":"Up and down with the working hand only, no help. Slow 3-count on the way down. Mild ache is fine; sharp pain means a lighter band.","demo":"wristecc","log":"setsreps","sets":3,"setup":"Sit with a light band looped under your foot, forearm resting on your knee, palm up, handle in hand. Curl the wrist up, then lower it back down over about 3 seconds. The working hand does both directions, no help from the other hand. 3×15, most days. A mild ache through the forearm is fine; sharp pain means a lighter band. Do it even when the elbow feels fine.","variants":[{"name":"Isometric Wrist Flexion Hold","equip":"light mini band","rx":"3×20–30s/side","cue":"Hold still with steady tension, no movement. Use on days the band curl feels too aggravating — isometrics load the tendon with less irritation.","demo":"wristecc"}]},
-  {"id":"tue-jump","name":"Jump Squat","slot":"Power","target":"Quads · Glutes","equip":"Bodyweight","rx":"3×3–5","cal":30,"cue":"Power move, not a burnout set — 3–5 max-effort reps, then rest. Land softly, toes first, knees bending to absorb. Past rep 5 you're not jumping any higher, just stacking landings on a left knee/right SI history that doesn't need the extra impact.","demo":"squat","log":"setsreps","sets":3,"variants":[{"name":"Squat to Calf Raise","equip":"Tube 30–40 lb","rx":"3×12","cue":"Zero-impact power swap — squat, drive up, finish tall on the toes with a 1-sec squeeze","demo":"squat"}]},
-  {"id":"mon-pressaround","name":"Single-Arm Band Press-Around","lockVar":2,"slot":"Push · Chest Finisher","target":"Chest","equip":"Tube 10–20 lb, chest-height anchor","rx":"3×10–12/side","cal":25,"cue":"Anchor behind you at chest height — press the handle across your body in a wide arc, squeezing the chest hard at full extension where the pec fibers cross the midline, then control the return","demo":"fly","log":"setsreps","sets":3,"setup":"Anchor the band behind you at chest height. Standing side-on to the anchor, hold the handle at your chest with the working arm, then press and sweep it across your body in an arc until the arm is fully extended toward the opposite side — this crossing motion loads the chest at its peak contraction, which a straight-ahead press or fly does not reach. Squeeze hard at the end range, then return under control. Do all reps one side before switching.","variants":[{"name":"Standing Band Fly (stretch-biased)","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb · anchored behind you at chest height","rx":"3×12–15","cue":"Split stance, step forward until the band is already tight with your arms open wide — that pre-tension is what loads the stretch. Slight fixed elbow bend, 1-sec pause wide, hug the handles together in front, control back. Open only as far as the shoulder is comfortable — never past the line of your body.","demo":"fly"},{"name":"Low-Anchor Band Fly (rest-pause)","tempo":"2-0-1-1","equip":"Two loop/tube bands · door anchor at the bottom hinge, arm's-width apart","rx":"2×10–12 + 1 rest-pause set","cue":"Face away from a low door anchor, split stance. Sweep the hands from low to high, finishing just below chin level — elbows stay low and slightly bent. Squeeze hard at the top, 1–2 sec lowering. Sets 1–2: 10–12 reps at 1–2 RIR. Set 3 (weekly anchor set): same band, rep to failure → 15 deep breaths → failure → 15 breaths → failure. If chest is still sore by Thursday, skip the rest-pause for a week.","demo":"fly"}]},
-  {"id":"mon-legraise","name":"Leg Raise","slot":"Core","target":"Core","equip":"Bodyweight","rx":"1×10–12","cal":20,"cue":"Low back stays flat — lower only as far as it stays down","demo":null,"log":"setsreps","sets":3},
-  {"id":"tue-lat","name":"Banded Lateral Walk","demo":"latwalk","slot":"Abductors","target":"Hip Abductors","equip":"Mini loop above knees","rx":"3×12/side","cal":25,"cue":"Stay in the quarter squat — don't stand up between steps","log":"setsreps","sets":3,"variants":[{"name":"Standing Clamshell (banded)","equip":"Mini loop above knees","rx":"3×15/side","cue":"Stand on one leg holding a wall or chair, band above the knees — drive the free knee out to the side and back without rotating the hips. Same abductor target, less quad fatigue than the walk","demo":"latwalk"}]},
-  {"id":"mon-pullapart","name":"Band Pull-Apart","slot":"Pull · Rear Delts","target":"Rear Delts","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 50 lb","rx":"3×15–20","cal":25,"cue":"Crack a walnut between your shoulder blades — arms stay straight","demo":"fly","log":"setsreps","sets":3,"variants":[{"name":"Cross-Body Rear Delt Fly","equip":"Tube 10–20 lb · chest-height anchor","rx":"3×12–15/side","cue":"Anchor at chest height, reach the working arm all the way across your body toward the anchor for a deep pre-stretch, then sweep it out and back — rear delt only, no shrugging","demo":"fly"}]},
-  {"id":"fri-goblet","name":"Banded Front Squat (light)","slot":"Quads (light add-on)","target":"Quads · Glutes","equip":"Tube 20–30 lb · stand on it, handles at the shoulders","rx":"2–3×12–15","cal":25,"cue":"Light top-off after the hinge work, not a max effort — sit straight down between the knees, torso tall, 2–3 reps in reserve every set.","demo":"squat","log":"setsreps","sets":3,"setup":"Stand on the middle of the tube, feet shoulder-width, handles resting at the front of your shoulders. Sit straight down, then drive up through the whole foot. This is only 2–3 easy sets of extra quad volume, so it doesn't compete with Tuesday's squat or pre-fatigue today's hinge.","variants":[{"name":"Banded Squat","equip":"Mini loop above knees","rx":"2–3×15–20","cue":"Loop the mini band above the knees, bodyweight squat, actively push the knees out against the band the whole way. Zero load on the grip/forearm, same light top-off intent","demo":"squat"}]},
-  {"id":"fri-obliques","name":"Obliques / Rotation","demo":"woodchop","slot":"Rotation","target":"Obliques","equip":"Tube 10–20 or yellow loop (7–25) on Clench handles → 30 lb","rx":"3×10/side","cal":25,"cue":"Power from the hips rotating — arms guide, core drives. Stop short of any pinch near the SI joint — rotation under load is a higher-demand pattern for it.","log":"setsreps","sets":3,"variants":[{"name":"Slow Standing Pallof Rotation","equip":"Tube 10–20 lb · anchor to one side","rx":"3×8/side","cue":"Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern, far less rotational force on the SI joint","demo":"pallof"}]},
-  DS_WARMUP_ARMCIRCLE,
-  {"id":"mon-highfly","name":"High-Anchor Band Fly","tempo":"2-0-1-2","slot":"Push · Lower Chest","target":"Chest — Lower (sternal)","equip":"Tube or loop band · door anchor at the top, arm's-width apart","rx":"2×15","cal":15,"cue":"Start wide with the arms in a stretch, sweep the hands down and together in front of the hips. Pause and squeeze the lower chest hard at the bottom, then control the return. Challenging band, 0–1 RIR on the last set — this is the finisher.","demo":"fly","log":"setsreps","sets":2,"setup":"Anchor the band at the top of a closed door, face away, split stance, step out until the band is taut with the arms open wide. Slight fixed elbow bend. Sweep down and in toward the hips, squeeze 1–2 sec, return slowly to the wide stretch."},
-  {"id":"mon-forearm","name":"Forearm Finisher — Wrist Curl","slot":"Pull · Forearms","target":"Forearm Flexors","equip":"Tube 5–10 lb · anchored under your foot","rx":"2×15–25/side","cal":15,"cue":"⚠️ Same tendon as the elbow rehab — this is loading, not rehab. Keep it light and end the set at the first hint of elbow ache instead of chasing failure.","demo":"wristecc","log":"setsreps","sets":2,"setup":"Seated, band under your foot, forearm across your thigh, palm up, handle in hand. Curl the wrist up, hold the top 1 second, then lower slowly until the band pulls the handle out to your fingertips. Short range, high reps (15–25).","variants":[{"name":"Band Wrist Curl (myo-rep)","equip":"Tube 10–20 lb · anchored under your foot","rx":"1 set near failure + 2–3 mini-sets of 5–8/side","cue":"First set close to failure, rest 5–15 sec, squeeze out a mini-set, repeat 2–3 times. Forearms recover fast between short rests.","demo":"wristecc"},{"name":"Ball Push-Off (plank press-off)","equip":"Stability ball or slam ball, low and stable","rx":"60 total reps, short breathers as needed","cue":"Angled plank with hands on the ball — press away using the wrist flexors, staying in the deep-stretch partial range. Add a few reps to the total each week.","demo":"wristecc"}]},
-  {"id":"pu-band","name":"7. Band-Assisted Pull-ups","rx":"3×6–8","cal":15,"demo":"pullband","log":"setsreps","sets":3,"target":"Full pulling chain","equip":"Clench 35–75 lb band over the bar (step down to a medium tube band as you get stronger)","cue":"Elbows drive down and back, chest toward the bar — twist the bar like you're breaking a twig (down and in) so the lats fire first, not the biceps","setup":"Loop the Clench band over the bar, foot or knee in the loop. This band gives more assistance than your tube bands, so it's the right starting point for this stage — do full pull-ups, logging reps and which band in the weight box. Don't just haul straight up — pull down and slightly inward from the very first inch, like snapping a wooden twig rather than an iron bar. Milestone: 6–8 reps × 3 sets, then either drop to a medium tube band for less assistance at the same rep target, or move on to Band-Assisted Top Hold."},
-  {"id":"thu-hollow","name":"Hollow Body Hold","slot":"Core","target":"Core","equip":"Bodyweight","rx":"2×30s holds","cal":20,"cue":"Press the low back into the floor, ribs down — one rigid curved line. Bend the knees the moment the back starts to lift.","demo":"hollow","log":"time","secs":30,"sets":2,"variants":[{"name":"Bent-Knee Hollow Hold","equip":"Bodyweight","cue":"Knees bent and lifted instead of legs straight — much less pull on the low back and hip flexors. Use it whenever the SI joint feels touchy.","demo":"hollow"}]},
-  {"id":"thu-forearm","name":"Forearm Finisher — Wrist Curl","slot":"Pull · Forearms","target":"Forearm Flexors","equip":"Tube 5–10 lb · anchored under your foot","rx":"2×15–25/side","cal":15,"cue":"⚠️ Same tendon as the elbow rehab — this is loading, not rehab. Keep it light and end the set at the first hint of elbow ache instead of chasing failure.","demo":"wristecc","log":"setsreps","sets":2,"setup":"Seated, band under your foot, forearm across your thigh, palm up, handle in hand. Curl the wrist up, hold the top 1 second, then lower slowly until the band pulls the handle out to your fingertips. Short range, high reps (15–25).","variants":[{"name":"Band Wrist Curl (myo-rep)","equip":"Tube 10–20 lb · anchored under your foot","rx":"1 set near failure + 2–3 mini-sets of 5–8/side","cue":"First set close to failure, rest 5–15 sec, squeeze out a mini-set, repeat 2–3 times. Forearms recover fast between short rests.","demo":"wristecc"},{"name":"Ball Push-Off (plank press-off)","equip":"Stability ball or slam ball, low and stable","rx":"60 total reps, short breathers as needed","cue":"Angled plank with hands on the ball — press away using the wrist flexors, staying in the deep-stretch partial range. Add a few reps to the total each week.","demo":"wristecc"}]},
-  {"id":"wed-rotslam","name":"Rotational Slam","demo":"slam","slot":"Power (bonus) · Obliques","target":"Obliques","equip":"10 lb slam ball","rx":"3×8/side","cal":30,"cue":"Hips lead the rotation — arms just guide it. Moved from Wednesday — more dynamic than the static Pallof rotation above. ⚠️ SI joint flag — this loads the right SI joint directly through rotation. Control matters more than reps here: if form or hip-lead starts breaking down late in a set, stop the set there rather than grinding out the rest. Any SI joint response the next day is the signal to drop to the Pallof variant below for a while.","log":"setsreps","sets":3,"variants":[{"name":"Standing Pallof Rotation","equip":"Tube 10–20 lb · anchor to one side","rx":"3×8/side","cue":"Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern as the slam, no ballistic force at all","demo":"pallof"}]},
-];
+// DS_RESERVE_MOVES lives in data-exercises.js
 // v302 dropped the first mon-pressaround alternate -> shift saved swap picks down one.
 function dsSwapShiftV302(){
   try{
     if(!DS_SWAPS||typeof DS_SWAPS!=='object'||DS_SWAPS.__v302) return false;
     ['mon-pressaround','L:mon-pressaround'].forEach(function(k){ var i=DS_SWAPS[k]; if(i==null) return; if(i===1) delete DS_SWAPS[k]; else if(i>1) DS_SWAPS[k]=i-1; });
     DS_SWAPS.__v302=1; store.set('ds_swaps',JSON.stringify(DS_SWAPS)); return true;
-  }catch(e){ return false; }
+  }catch(e){ ftCaught(e,'dsSwapShiftV302'); return false; }
 }
 dsSwapShiftV302();
 
 
-function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){} }
+function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){ftCaught(e,'dsSaveUI');} }
 // Shared debounce for anything that should ride along on the settings-sync channel
 // (see "Batch C: SETTINGS SYNC TO SHEET") so a change on one device reaches others
 // without needing its own bespoke sync plumbing. 1.2s coalesces rapid edits (e.g.
 // several quick swaps or pain-log taps) into a single push.
 var _cfgPushTimer=null;
-function dsQueueConfigPush(){ clearTimeout(_cfgPushTimer); _cfgPushTimer=setTimeout(function(){ try{pushConfig();}catch(e){} },1200); }
-function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catch(e){}
+function dsQueueConfigPush(){ clearTimeout(_cfgPushTimer); _cfgPushTimer=setTimeout(function(){ try{pushConfig();}catch(e){ftCaught(e,'dsQueueConfigPush');} },1200); }
+function dsSaveSwaps(){ try{store.set("ds_swaps",JSON.stringify(DS_SWAPS));}catch(e){ftCaught(e,'dsSaveSwaps');}
   dsQueueConfigPush(); }
 function dsDayState(){ if(!DS_UI[activeDate])DS_UI[activeDate]={}; return DS_UI[activeDate]; }
 function dsSyncedExercise(id){
   var day=getDay(), sid="sess_"+id;
-  var nm=null; try{ var raw=dsRawItem(id); nm=raw&&raw.name?String(raw.name).toLowerCase().trim():null; }catch(e){}
+  var nm=null; try{ var raw=dsRawItem(id); nm=raw&&raw.name?String(raw.name).toLowerCase().trim():null; }catch(e){ftCaught(e,'dsSyncedExercise');}
   // Respect deletion tombstones — a deleted exercise must not re-seed from stale sheet data.
   if(nm && day.exTombs){ var t=day.exTombs["n_"+nm]; if(t && t>Date.now()-30*24*3600*1000) return null; }
   for(var i=day.exercises.length-1;i>=0;i--){ if(day.exercises[i].id===sid) return day.exercises[i]; }
@@ -7003,8 +5542,8 @@ function dsSyncedExercise(id){
   return null;
 }
 // ── DYNAMIC PROGRAM UPDATES: evolving reps target per exercise, based on trend ──
-var DS_PROG={}; try{ DS_PROG=JSON.parse(store.get("ds_prog")||"{}"); }catch(e){ DS_PROG={}; }
-function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catch(e){} dsQueueConfigPush(); }
+var DS_PROG={}; try{ DS_PROG=JSON.parse(store.get("ds_prog")||"{}"); }catch(e){ ftCaught(e,'startup'); DS_PROG={}; }
+function dsProgSave(){ try{ store.set("ds_prog", JSON.stringify(DS_PROG)); }catch(e){ftCaught(e,'dsProgSave');} dsQueueConfigPush(); }
 // ── DOUBLE PROGRESSION ─────────────────────────────────────────────────
 // The plan's rule: work inside the rep range at 1-3 RIR, add a rep each
 // session, and once the TOP of the range is hit (not at failure) two sessions
@@ -7047,7 +5586,7 @@ function dsProgDecision(id){
   return {reps:t2,note:'\u2713 Beat last time by one \u2014 aim for '+t2+' (range '+rng.lo+'\u2013'+rng.hi+').'};
 }
 // v430: true when the last two sessions both hit the top of the rep range at 1+ RIR.
-function dsReadyToProgress(id){ try{ var d=dsProgDecision(id); return !!(d&&d.bandUp); }catch(e){ return false; } }
+function dsReadyToProgress(id){ try{ var d=dsProgDecision(id); return !!(d&&d.bandUp); }catch(e){ ftCaught(e,'dsReadyToProgress'); return false; } }
 function dsProgTarget(id){
   var rec=DS_PROG[id];
   if(rec && rec.day===activeDate) return rec.reps; // already computed for today, don't recompute mid-session
@@ -7140,7 +5679,7 @@ function dsTimerPaint(id,secs){
 // so a finished hold (Squat Hold, etc.) has been silently not chiming.
 // Reuses the same ivlBeep tone as the rest-timer fix for consistency.
 function beepDone(){
-  try{ if(typeof ivlBeep==='function'){ ivlBeep(880,150); setTimeout(function(){ivlBeep(880,150);},220); } }catch(e){}
+  try{ ivlBeep(880,150); setTimeout(function(){ivlBeep(880,150);},220); }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){}
 }
 function dsStartTimer(id,secs){
@@ -7160,7 +5699,7 @@ function dsStartTimer(id,secs){
       clearInterval(t.interval); t.interval=null; t.done=true;
       dsTimerPaint(id,secs);
       dsToast('Hold complete');
-      if(typeof beepDone==='function') beepDone();
+      beepDone();
       return;
     }
     dsTimerPaint(id,secs);
@@ -7185,7 +5724,7 @@ function dsRawItem(id){
   [DS_MORNING,DS_PRE,DS_MOBILITY,DS_PULLUP].forEach(function(sect){ if(fallback||!sect||!sect.moves)return; sect.moves.some(function(m){ if(m.id===id){fallback=m;return true;} return false; }); });
   // Reserve moves (cut from the plan but reachable via search / one-day picks) were missing here,
   // so Log set on e.g. High-Anchor Band Fly got null and threw silently (v407).
-  if(!fallback && typeof DS_RESERVE_MOVES!=='undefined'){ DS_RESERVE_MOVES.some(function(m){ if(m&&m.id===id){fallback=m;return true;} return false; }); }
+  if(!fallback){ DS_RESERVE_MOVES.some(function(m){ if(m&&m.id===id){fallback=m;return true;} return false; }); }
   return fallback;
 }
 
@@ -7199,7 +5738,7 @@ var PE_DAYNAME={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'F
 function peEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function peStartObj(){
   var raw=dsCustomPlanRaw();
-  if(raw){ try{ return JSON.parse(raw); }catch(e){} }
+  if(raw){ try{ return JSON.parse(raw); }catch(e){ftCaught(e,'peStartObj');} }
   // No import yet: start from the built-in week so there is something to edit.
   var out={replace:true, mv:{}};
   PE_DAYS.forEach(function(d){ var S=DS_SESSIONS[d]; if(!S) return;
@@ -7382,7 +5921,7 @@ function peSave(){
   if(err){ alert('Can\u2019t save yet:\n\n'+err); return; }
   var noMus=[]; PE_DAYS.forEach(function(d){ if(o[d]) o[d].moves.forEach(function(m){ if(m.log==='setsreps' && !o.mv[m.id]) noMus.push(m.name); }); });
   if(noMus.length && !confirm(noMus.length+' exercise'+(noMus.length>1?'s have':' has')+' no muscles set, so '+(noMus.length>1?'they':'it')+' won\u2019t count on the Volume tab:\n\n'+noMus.slice(0,8).join('\n')+(noMus.length>8?'\n\u2026':'')+'\n\nSave anyway?')) return;
-  try{ store.set('ds_custom_plan', JSON.stringify(o)); }catch(e){ alert('Could not save on this device.'); return; }
+  try{ store.set('ds_custom_plan', JSON.stringify(o)); }catch(e){ ftCaught(e,'peSave'); alert('Could not save on this device.'); return; }
   dsPlanEditorClose(true);
   dsPlanStampAndPush(SHEETS_URL ? 'Plan saved \u2014 syncing to Sheet\u2026' : 'Plan saved on this device \u2014 reloading\u2026');
 }
@@ -7451,11 +5990,10 @@ function dsPlanLibrary(){
       var c={}; for(var k in m) c[k]=m[k];
       if(!c.log) c.log='setsreps'; if(c.log==='setsreps'&&!(c.sets>0)) c.sets=3; if(!c.rx) c.rx=(c.sets||3)+' sets';
       c.lib=true; return c; });
-  }catch(e){ return []; }
+  }catch(e){ ftCaught(e,'dsPlanLibrary'); return []; }
 }
 // Register library muscle maps so custom-set picks count on the Volume tab.
 function dsRegisterLibraryMV(list){
-  if(typeof DS_MV==='undefined') return;
   list.forEach(function(m){ if(m.mv && !DS_MV[m.id]) DS_MV[m.id]=m.mv; });
 }
 
@@ -7464,7 +6002,7 @@ function dsMasterPool(){
   var pool=[]; var seen={};
   var groups=[];
   DS_ORDER.forEach(function(d){ groups.push(DS_SESSIONS[d].moves); });
-  if(typeof DS_RESERVE_MOVES!=='undefined' && DS_RESERVE_MOVES.length) groups.push(DS_RESERVE_MOVES);
+  if(DS_RESERVE_MOVES.length) groups.push(DS_RESERVE_MOVES);
   if(!dsExtrasHidden()) groups.push(DS_MORNING.moves,DS_PRE.moves,DS_MOBILITY.moves,DS_PULLUP.moves);
   var libs=dsPlanLibrary().concat(DS_GYM_LIBRARY);
   dsRegisterLibraryMV(libs);
@@ -7476,10 +6014,10 @@ function dsMasterPool(){
   return pool;
 }
 function dsMasterLookup(id){ var p=dsMasterPool(); for(var i=0;i<p.length;i++){ if(p[i].id===id) return p[i]; } return null; }
-var DS_CUSTOM={}; try{ DS_CUSTOM=JSON.parse(store.get("ds_custom")||"{}"); }catch(e){ DS_CUSTOM={}; }
-function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){} try{ dsQueueConfigPush(); }catch(e){} }
-var DS_USERMOVES={}; try{ DS_USERMOVES=JSON.parse(store.get("ds_usermoves")||"{}"); }catch(e){ DS_USERMOVES={}; }
-function dsUserMovesSave(){ try{ store.set("ds_usermoves", JSON.stringify(DS_USERMOVES)); }catch(e){} dsQueueConfigPush(); }
+var DS_CUSTOM={}; try{ DS_CUSTOM=JSON.parse(store.get("ds_custom")||"{}"); }catch(e){ ftCaught(e,'startup'); DS_CUSTOM={}; }
+function dsCustomSave(){ try{ store.set("ds_custom", JSON.stringify(DS_CUSTOM)); }catch(e){ftCaught(e,'dsCustomSave');} try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsCustomSave');} }
+var DS_USERMOVES={}; try{ DS_USERMOVES=JSON.parse(store.get("ds_usermoves")||"{}"); }catch(e){ ftCaught(e,'startup'); DS_USERMOVES={}; }
+function dsUserMovesSave(){ try{ store.set("ds_usermoves", JSON.stringify(DS_USERMOVES)); }catch(e){ftCaught(e,'dsUserMovesSave');} dsQueueConfigPush(); }
 function dsAddUserMove(dayKey,def){
   var id="user_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   var item={id:id,name:def.name,target:def.target||"",equip:def.equip||"",rx:def.rx||"",cal:def.cal||20,log:"setsreps",sets:def.sets||3,userMove:true};
@@ -7493,7 +6031,7 @@ function dsDeleteUserMove(dayKey,id){
   DS_USERMOVES[dayKey]=DS_USERMOVES[dayKey].filter(function(m){return m.id!==id;});
   if(!DS_USERMOVES[dayKey].length) delete DS_USERMOVES[dayKey];
   dsUserMovesSave();
-  try{ dsUnlog(id); }catch(e){}
+  try{ dsUnlog(id); }catch(e){ftCaught(e,'dsDeleteUserMove');}
   dsRender(); renderAll();
 }
 function dsCustomMoves(dayKey){
@@ -7574,27 +6112,13 @@ function dsAddFromLibrary(){
   if(ov&&lib&&DS_CUSTOM_PICK.length){ setTimeout(function(){ try{ ov.scrollTop=Math.max(0,lib.getBoundingClientRect().top+ov.scrollTop-90); }catch(e){} },30); }
 }
 function dsCustomClose(){
-  if(DS_CUSTOM_MODE==='today'){ dsOneDaySave(DS_CUSTOM_PICK); DS_CUSTOM_MODE='persist'; dsCustomSetMode('persist'); document.getElementById("ds-custom-overlay").style.display="none"; dsRender(); try{ renderAll(); }catch(e){} return; }
+  if(DS_CUSTOM_MODE==='today'){ dsOneDaySave(DS_CUSTOM_PICK); DS_CUSTOM_MODE='persist'; dsCustomSetMode('persist'); document.getElementById("ds-custom-overlay").style.display="none"; dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsCustomClose');} return; }
   dsCustomCommit();
   document.getElementById("ds-custom-overlay").style.display="none";
   dsRender();
 }
 
-var FRUIT_TIPS = [
-  {name:"Raspberries", tip:"Best for managing blood sugar — highest fiber, lowest sugar of common fruits.", emoji:"🍇"},
-  {name:"Blueberries", tip:"Best for reducing inflammation — highest anthocyanin content, MIND diet staple.", emoji:"🫐"},
-  {name:"Strawberries", tip:"Best for managing overall calorie intake — lowest calorie density of common fruits.", emoji:"🍓"},
-  {name:"Apples", tip:"Best convenient, slow-digesting, portable snack — eat the skin for the fiber.", emoji:"🍎"},
-  {name:"Bananas", tip:"Best for quick energy right before a workout — fast-digesting carbs, good pre-ride/pre-lift fuel.", emoji:"🍌"},
-  {name:"Oranges", tip:"Best for vitamin C and hydration — high water content plus fiber that whole juice loses.", emoji:"🍊"},
-  {name:"Watermelon", tip:"Best for post-workout rehydration — over 90% water plus some citrulline for blood flow.", emoji:"🍉"},
-  {name:"Grapes", tip:"Best frozen as a low-effort sweet-craving fix — portion yourself a small bowl since they're easy to overeat.", emoji:"🍇"},
-  {name:"Kiwi", tip:"Best fruit for vitamin C per calorie — more than an equivalent serving of oranges, skin and all if you can stand it.", emoji:"🥝"},
-  {name:"Mango", tip:"Best for vitamin A — rich in beta-carotene, though higher in sugar so watch portions in a deficit.", emoji:"🥭"},
-  {name:"Pineapple", tip:"Best for digestion — contains bromelain, an enzyme that helps break down protein.", emoji:"🍍"},
-  {name:"Cherries", tip:"Best for sleep support — natural source of melatonin, good as an evening snack.", emoji:"🍒"},
-  {name:"Pears", tip:"Best for satiety alongside apples — high in fiber, especially when eaten with the skin.", emoji:"🍐"}
-];
+// FRUIT_TIPS lives in data-food.js
 function fruitTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
   return FRUIT_TIPS[doy % FRUIT_TIPS.length];
@@ -7609,19 +6133,7 @@ function renderFruitGuide(targetId){
     FRUIT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
-var VEG_TIPS = [
-  {name:"Spinach", tip:"Best for iron and folate — cooking it down actually increases how much iron your body can absorb.", emoji:"🥬"},
-  {name:"Broccoli", tip:"Best cruciferous pick for vitamin C — has more per gram than an orange, plus fiber and sulforaphane.", emoji:"🥦"},
-  {name:"Bell Peppers", tip:"Best raw snacking vegetable for vitamin C — red peppers have roughly triple what green ones do.", emoji:"🫑"},
-  {name:"Carrots", tip:"Best for vitamin A — beta-carotene absorbs better when eaten with a little fat, like in hummus.", emoji:"🥕"},
-  {name:"Sweet Potato", tip:"Best slow-digesting starchy vegetable — high in fiber and potassium, good pre- or post-workout carb.", emoji:"🍠"},
-  {name:"Brussels Sprouts", tip:"Best cruciferous option for fiber per calorie — pairs well roasted with a lean protein for volume.", emoji:"🥬"},
-  {name:"Zucchini", tip:"Best low-calorie bulk vegetable — very high water content, good for adding volume without many calories.", emoji:"🥒"},
-  {name:"Kale", tip:"Best for vitamin K — one cup covers several days' worth, though it can interact with blood thinners.", emoji:"🥬"},
-  {name:"Tomatoes", tip:"Best for lycopene — an antioxidant that's actually more available to the body once tomatoes are cooked.", emoji:"🍅"},
-  {name:"Cucumber", tip:"Best for hydration and lowest-calorie crunch — mostly water, good sub for chips as a dipping vehicle.", emoji:"🥒"},
-  {name:"Cauliflower", tip:"Best low-carb substitute vegetable — works as a rice or mash swap to cut carbs while keeping volume.", emoji:"🥦"}
-];
+// VEG_TIPS lives in data-food.js
 function vegTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
   return VEG_TIPS[doy % VEG_TIPS.length];
@@ -7636,15 +6148,7 @@ function renderVegGuide(targetId){
     VEG_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
-var NUT_TIPS = [
-  {name:"Pistachios", tip:"Best protein-to-calorie ratio and lowest calorie density of common nuts — great volume for a deficit.", emoji:"🌰"},
-  {name:"Almonds", tip:"High in vitamin E and calcium; fiber + protein combo makes them very filling per calorie.", emoji:"🌰"},
-  {name:"Walnuts", tip:"Richest nut source of plant omega-3s (ALA) — good heart/brain pick, pairs well with fruit.", emoji:"🌰"},
-  {name:"Cashews", tip:"High in magnesium and zinc, but softer and easy to overeat since they're less filling per calorie.", emoji:"🌰"},
-  {name:"Peanuts", tip:"Technically a legume — cheapest source of nut-style protein, good for hitting protein targets economically.", emoji:"🥜"},
-  {name:"Brazil Nuts", tip:"Extremely high in selenium — 1-2 nuts covers a full day's need, easy to overdo.", emoji:"🌰"},
-  {name:"Pecans", tip:"Most calorie-dense common nut, mostly monounsaturated fat — energy-dense, easy to overshoot in a deficit.", emoji:"🌰"}
-];
+// NUT_TIPS lives in data-food.js
 function nutTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
   return NUT_TIPS[doy % NUT_TIPS.length];
@@ -7659,100 +6163,7 @@ function renderNutGuide(targetId){
     NUT_TIPS.map(function(f){return '<div style="font-size:11px;color:#9a9d8c;line-height:1.4">'+f.emoji+' <strong style="color:#ccc">'+f.name+':</strong> '+f.tip+'</div>';}).join("")+
     '</div></details>';
 }
-var MYTH_TIPS = [
-  {name:"Fruit sugar", tip:"Whole fruit isn't the same as added sugar — fiber and water slow digestion and blunt the blood sugar spike you'd get from juice or candy with the same sugar content.", emoji:"🍎"},
-  {name:"Dietary fat", tip:"Eating fat doesn't make you fat — total calories in vs. out drives body fat, and fat is essential for hormones and satiety.", emoji:"🥑"},
-  {name:"Late-night eating", tip:"Eating late doesn't uniquely cause weight gain — it's total daily calories that matter, not the clock.", emoji:"🌙"},
-  {name:"Carbs", tip:"Carbs aren't the enemy — whole-food carbs come with fiber and micronutrients; the issue is usually the ultra-processed sources, not the macro itself.", emoji:"🌾"},
-  {name:"Skipping meals", tip:"Skipping meals doesn't 'reset' your metabolism — any benefit comes from eating fewer calories that day, not from meal timing itself.", emoji:"⏱️"},
-  {name:"Spot reduction", tip:"You can't spot-reduce fat by training a specific body part — fat loss happens across the body based on overall calorie balance and genetics.", emoji:"🎯"},
-  {name:"Detox foods", tip:"No food or juice 'detoxes' you — your liver and kidneys already do that; diet quality matters, but not through a specific detox food.", emoji:"🥤"},
-  {name:"Protein timing", tip:"The 'anabolic window' is wider than people think — total daily protein intake matters far more than eating it within 30 minutes of training.", emoji:"⏰"},
-  {name:"Egg yolks", tip:"Whole eggs aren't a cardiovascular risk for most people — dietary cholesterol has a much smaller effect on blood cholesterol than once believed.", emoji:"🥚"},
-  {name:"Sweating = fat loss", tip:"How much you sweat doesn't reflect how much fat you're burning — it's mostly about temperature regulation and hydration, not calorie burn.", emoji:"💧"},
-  {name:"Protein per meal cap", tip:"The '30 g per meal' limit is a myth — larger doses keep muscle protein synthesis going longer; daily total spread over 3–5 meals matters most.", emoji:"🥩"},
-  {name:"Protein and kidneys", tip:"High-protein diets haven't been shown to harm healthy kidneys — the concern applies to people with existing kidney disease.", emoji:"🫘"},
-  {name:"Metabolic damage", tip:"Dieting doesn't 'break' your metabolism — expenditure dips a bit more than weight loss predicts, but it's modest and reversible; stalls usually come from intake creep or lower NEAT.", emoji:"🔥"},
-  {name:"Small frequent meals", tip:"Six small meals don't 'stoke the metabolism' — digestion costs about the same total calories whether you eat 2 meals or 6; pick the frequency that controls hunger.", emoji:"🍽️"},
-  {name:"Sodium and the scale", tip:"A salty meal can add 1–3 lb overnight — that's water, not fat, and it's gone in a few days. Don't panic over one weigh-in.", emoji:"🧂"},
-  {name:"White potatoes", tip:"Boiled potatoes are among the most filling foods per calorie ever tested — the fries and toppings are the problem, not the potato.", emoji:"🥔"},
-  {name:"Glycemic index", tip:"A food's GI changes in a mixed meal with protein, fat, and fiber — overall diet quality matters more than individual GI numbers.", emoji:"🍌"},
-  {name:"Plant protein", tip:"Plant protein builds muscle too — use a slightly larger dose or mix sources to match leucine; soy and blends compare closely with whey.", emoji:"🌱"},
-  {name:"Frozen & canned produce", tip:"Frozen and canned produce is often as nutritious as fresh — it's processed at peak ripeness, while fresh loses some vitamins in transport and storage.", emoji:"🥫"},
-  {name:"'Healthy' snacks", tip:"Organic, gluten-free, or keto labels say nothing about calories — granola, trail mix, and protein bars can be as calorie-dense as candy.", emoji:"🍫"},
-  {name:"Coffee dehydrates", tip:"For regular drinkers, coffee counts toward daily fluids — the mild diuretic effect largely fades with habitual use.", emoji:"☕"},
-  {name:"Breakfast", tip:"Breakfast isn't 'the most important meal' — controlled trials show no fat-loss advantage either way; eat it or skip it based on hunger and schedule.", emoji:"🍳"},
-  {name:"Lifting makes you bulky", tip:"Resistance training in a deficit doesn't make you bulky — it preserves muscle so the weight you lose is mostly fat.", emoji:"🏋️"},
-  {name:"Daily weigh-ins", tip:"Daily swings of 2–4 lb are normal — watch the 7-day average trend, not any single reading.", emoji:"⚖️"},
-  {name:"Salads are always light", tip:"Dressing, cheese, nuts, and croutons can push a salad past a burger — the greens aren't the issue, the toppings are.", emoji:"🥗"},
-  {name:"Gluten-free is healthier", tip:"Only true for people with celiac disease or gluten sensitivity — gluten-free products are often more processed and just as calorie-dense.", emoji:"🍞"},
-  {name:"Juice = fruit", tip:"Juicing strips out most of the fiber — a glass can carry 3–4 fruits' worth of sugar with almost none of the fullness.", emoji:"🧃"},
-  {name:"Honey & maple syrup", tip:"Your body handles honey and maple syrup about the same as table sugar — the trace nutrients are too small to matter.", emoji:"🍯"},
-  {name:"Low-fat is better", tip:"Low-fat products often add sugar to make up for flavor; full-fat dairy can be more filling — compare calories and protein, not the label.", emoji:"🥛"},
-  {name:"Cardio burns muscle", tip:"Moderate cardio doesn't eat muscle when protein and lifting are in place — it can even help recovery and calorie burn.", emoji:"🦴"},
-  {name:"Diet soda", tip:"Controlled trials show swapping sugary drinks for diet soda helps weight loss — the observational link to weight gain is mostly reverse causation.", emoji:"🥤"},
-  {name:"Fat-burner supplements", tip:"'Fat burners' have tiny effects at best, mostly from caffeine — calorie balance, protein, and training do the work.", emoji:"🧪"},
-  {name:"Pasta makes you gain", tip:"Pasta in normal portions fits fine in a deficit — portion size and creamy sauces are what add up.", emoji:"🍝"},
-  {name:"Bananas are too sugary", tip:"A banana is about 105 calories with fiber and potassium — it's whole fruit, not a candy bar.", emoji:"🍌"},
-  {name:"Cheat meals boost metabolism", tip:"One big meal doesn't meaningfully raise metabolism — planned higher-calorie days can help adherence, but that's psychology, not metabolism.", emoji:"🧀"},
-  {name:"Cooking with olive oil", tip:"Extra virgin olive oil holds up well at normal home cooking temperatures — it's more stable than its smoke point suggests.", emoji:"🫒"},
-  {name:"Raw eggs for protein", tip:"Your body absorbs much more protein from cooked eggs than raw ones — and cooking removes the salmonella risk.", emoji:"🥚"},
-  {name:"Cutting out foods you love", tip:"Rigid bans tend to backfire into binges — fitting small portions into your targets is easier to sustain.", emoji:"🚫"},
-  {name:"Sea salt is healthier", tip:"Sea salt and table salt are both about 40% sodium by weight — the extra minerals are trace amounts, and table salt adds iodine.", emoji:"🧂"},
-  {name:"Brown sugar beats white", tip:"Brown sugar is white sugar plus a bit of molasses — calories and blood-sugar effect are nearly identical.", emoji:"🟤"},
-  {name:"Multigrain = whole grain", tip:"'Multigrain' or 'wheat' bread can be mostly refined flour — look for '100% whole grain' as the first ingredient.", emoji:"🍞"},
-  {name:"Organic is more nutritious", tip:"Organic and conventional produce have very similar nutrient content — eating more produce matters far more than which kind.", emoji:"🌿"},
-  {name:"Negative-calorie foods", tip:"Celery doesn't burn more calories to digest than it provides — it's just very low in calories, which is still useful.", emoji:"🥬"},
-  {name:"Apple cider vinegar", tip:"Apple cider vinegar doesn't melt fat — studies show tiny effects at best, small next to calorie balance.", emoji:"🍎"},
-  {name:"8 glasses a day", tip:"There's no universal 8-glass rule — food and other drinks count, and thirst plus pale urine is a decent guide.", emoji:"💦"},
-  {name:"Alkaline water", tip:"Your stomach acid and kidneys tightly control body pH — alkaline water doesn't change it.", emoji:"🧊"},
-  {name:"Microwaving kills nutrients", tip:"Microwaving often keeps more vitamins than boiling because it's quick and uses little water.", emoji:"📡"},
-  {name:"MSG is harmful", tip:"Controlled trials haven't confirmed 'MSG sensitivity' at normal amounts — and MSG has about a third of the sodium of table salt.", emoji:"🍜"},
-  {name:"Sweeteners spike insulin", tip:"Most artificial sweeteners don't meaningfully raise blood sugar or insulin — swapping them in for sugar can help cut calories.", emoji:"🍬"},
-  {name:"Muscle turns into fat", tip:"Muscle and fat are different tissues and can't convert — stop training and muscle shrinks, while fat can grow if intake stays the same.", emoji:"💪"},
-  {name:"Fasted cardio", tip:"Fasted cardio burns more fat during the session, but you compensate later — over 24 hours fat loss is about the same.", emoji:"🌅"},
-  {name:"Creatine is a steroid", tip:"Creatine is a well-studied compound found in meat — not a hormone, and safe for healthy kidneys at normal doses.", emoji:"💊"},
-  {name:"Toning", tip:"'Toning' is just building some muscle and losing fat — light weights for high reps aren't special; train with challenging effort.", emoji:"✨"},
-  {name:"Stretching prevents soreness", tip:"Static stretching before or after training doesn't meaningfully reduce next-day soreness — soreness fades as your muscles adapt to the work.", emoji:"🧘"},
-  {name:"No pain, no gain", tip:"Soreness and 'the burn' aren't measures of growth — progressive overload and enough effort close to failure are what drive results.", emoji:"😣"},
-  {name:"Lactic acid soreness", tip:"Lactate clears within about an hour of training — next-day soreness comes from muscle repair, not leftover lactic acid.", emoji:"🧫"},
-  {name:"Women need different training", tip:"Women build muscle and strength on the same principles as men — same exercises, same progressive overload.", emoji:"👩"},
-  {name:"Train every day", tip:"Muscles grow during recovery, not during the workout — hitting each muscle about twice a week works well for most people.", emoji:"📅"},
-  {name:"BCAAs", tip:"BCAA supplements add nothing if you already eat enough protein — whole proteins already contain them.", emoji:"🧴"},
-  {name:"Collagen builds muscle", tip:"Collagen is low in leucine and poor at stimulating muscle growth — don't count it the same as whey, eggs, or meat.", emoji:"🦵"},
-  {name:"Megadose vitamins", tip:"More isn't better — excess water-soluble vitamins are excreted, and fat-soluble ones can build up to harmful levels. Food first.", emoji:"💊"},
-  {name:"'Natural' label", tip:"'Natural' is loosely regulated on most foods and says nothing about calories or nutrition.", emoji:"🏷️"},
-  {name:"'Sugar-free' label", tip:"Sugar-free foods can still be calorie-dense — fat, flour, and sugar alcohols all add calories.", emoji:"🍪"},
-  {name:"Net carbs", tip:"'Net carbs' isn't an FDA-defined term — some fibers and sugar alcohols still contribute calories and affect blood sugar.", emoji:"🔢"},
-  {name:"Zero-calorie sprays", tip:"Anything under 5 calories per serving can be labeled 0 — with tiny serving sizes, a long spray of cooking oil adds up.", emoji:"🫙"},
-  {name:"Sports drinks", tip:"For workouts under about an hour, water is enough — sports drinks mostly add sugar and calories you don't need.", emoji:"🥤"},
-  {name:"Thirst is too late", tip:"For everyday activity, thirst is a reliable signal — you don't need to drink ahead of it except in long, hot sessions.", emoji:"🚰"},
-  {name:"Slow metabolism", tip:"Resting metabolism differs only modestly between people of similar size — underestimating intake is far more common.", emoji:"🐢"},
-  {name:"Metabolism slows at 40", tip:"A large 2021 study found metabolism stays stable from about 20 to 60 — midlife changes come mostly from less activity and muscle.", emoji:"🎂"},
-  {name:"Heavy weights only", tip:"Loads from light to heavy build similar muscle when sets are taken close to failure — heavy loads mainly matter for max strength.", emoji:"🏋️"},
-  {name:"Bands aren't real training", tip:"Resistance bands build muscle when you train close to failure and keep progressing the tension — equipment matters less than effort.", emoji:"🎗️"},
-  {name:"Squats hurt knees", tip:"Well-performed squats are well tolerated by healthy knees, and knees past the toes is fine — load and volume matter more than the angle.", emoji:"🦿"},
-  {name:"Running ruins knees", tip:"Recreational runners have lower rates of knee arthritis than sedentary people — sudden jumps in mileage cause more trouble than running itself.", emoji:"🏃"},
-  {name:"Tracker calorie burn", tip:"Wearables are good at steps and heart rate but can be off by 20% or more on calories burned — treat that number as a rough estimate.", emoji:"⌚"},
-  {name:"Muscle weighs more than fat", tip:"A pound is a pound — muscle is denser, so it takes up less space at the same weight.", emoji:"🪶"},
-  {name:"You need supplements to grow", tip:"Food covers it — protein powder and creatine are convenient, not required.", emoji:"🛒"},
-  {name:"Carb loading", tip:"Carb loading only helps endurance events longer than about 90 minutes — not regular lifting or short cardio.", emoji:"🍝"},
-  {name:"Extra protein turns to fat", tip:"Protein is the hardest macro to store as fat and the most filling — high intakes are a strength during a deficit.", emoji:"🍗"},
-  {name:"Ice baths after lifting", tip:"Regular cold-water immersion right after lifting can blunt muscle growth — save it for recovery between competitions, not hypertrophy blocks.", emoji:"🛁"},
-  {name:"Stretching prevents injury", tip:"Static stretching before lifting doesn't reliably prevent injury — a dynamic warm-up and light ramp-up sets work better.", emoji:"🔁"},
-  {name:"Alcohol calories", tip:"Alcohol has 7 calories per gram and pauses fat burning while your body clears it — drinks count toward the daily total.", emoji:"🍺"},
-  {name:"Metabolism-boosting foods", tip:"Chili, green tea, and coffee raise calorie burn by only a few calories — too small to matter for fat loss.", emoji:"🌶️"},
-  {name:"'Cholesterol-free' label", tip:"Plant foods never contain cholesterol — 'cholesterol-free' on peanut butter or oil is marketing, not a benefit.", emoji:"🥜"},
-  {name:"Nutrition labels are exact", tip:"FDA rules allow label calories to be off by about 20% — consistency in tracking matters more than precision.", emoji:"📋"},
-  {name:"Out-exercising a bad diet", tip:"A 30-minute workout burns roughly 200–400 calories, easily erased by one snack — diet drives fat loss, training shapes what's lost.", emoji:"⚖️"},
-  {name:"Too old to build muscle", tip:"People build muscle at any age, including in their 70s and 80s — progressive training works at every stage.", emoji:"👴"},
-  {name:"Losing gains on rest days", tip:"A few days or even a couple of weeks off cost little muscle — and it comes back fast once you resume.", emoji:"🛋️"},
-  {name:"Protein powder is unhealthy", tip:"Protein powder is just food protein, dried — pick a third-party tested brand and treat it like any other protein source.", emoji:"🥛"},
-  {name:"Fruit ferments after meals", tip:"Fruit doesn't 'rot' in your stomach after a meal — stomach acid and digestion handle mixed meals just fine.", emoji:"🍇"},
-  {name:"Calories vs. hormones", tip:"Hormones affect hunger and expenditure, but energy balance still governs fat loss — they work through calories, not around them.", emoji:"🧬"},
-  {name:"Body type limits you", tip:"'Ectomorph/endomorph' labels are overstated — everyone builds muscle and loses fat with training and calorie control.", emoji:"🧍"},
-  {name:"10,000 steps", tip:"10,000 steps began as a marketing slogan — benefits climb steadily to around 7,000–10,000, and any increase helps.", emoji:"👟"}
-];
+// MYTH_TIPS lives in data-food.js
 function mythTipOfDay(){
   var doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5);
   return MYTH_TIPS[doy % MYTH_TIPS.length];
@@ -7769,38 +6180,20 @@ function renderMythGuide(targetId){
 }
 // Info tab sections: collapsed by default, open/closed state remembered per section.
 function infoSecInit(){
-  var st={}; try{ st=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ st={}; }
+  var st={}; try{ st=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ ftCaught(e,'infoSecInit'); st={}; }
   document.querySelectorAll('#panel-meals details.info-sec, #panel-food details.info-sec').forEach(function(d){
     var k=d.getAttribute('data-sec');
     if(!d._infoBound){
       d.open=(k in st)?!!st[k]:d.hasAttribute('data-default-open');
       d.addEventListener('toggle',function(){
-        var cur={}; try{ cur=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ cur={}; }
-        cur[k]=d.open; try{ store.set("info_sec_open",JSON.stringify(cur)); }catch(e){}
+        var cur={}; try{ cur=JSON.parse(store.get("info_sec_open")||"{}")||{}; }catch(e){ ftCaught(e,'infoSecInit'); cur={}; }
+        cur[k]=d.open; try{ store.set("info_sec_open",JSON.stringify(cur)); }catch(e){ftCaught(e,'infoSecInit');}
       });
       d._infoBound=true;
     }
   });
 }
-// ── WORD OF WISDOM (D&C 89) + GROCERY LIST ────────────────────────────
-var WOW_POINTS = {
-  avoid:[
-    {n:"Alcohol", t:"Wine, beer, spirits, and drinks made with them. Watch for alcohol in sauces and cooking wines at restaurants."},
-    {n:"Tobacco", t:"Smoking, chewing, and vaping nicotine products."},
-    {n:"Coffee &amp; tea", t:"The Church defines the \"hot drinks\" as coffee and tea, meaning brewed black, green, and other true teas. Cold brew and iced versions count too."}
-  ],
-  embrace:[
-    {n:"Fruits &amp; vegetables", t:"Wholesome herbs and fruits in their season are encouraged. This is the base of your Mediterranean/MIND/DASH pattern."},
-    {n:"Grains", t:"Called the staff of life: oats, brown rice, quinoa, whole wheat pasta, and bread."},
-    {n:"Meat, sparingly", t:"Meat is permitted but meant to be used sparingly. In practice: build meals on eggs, dairy, beans, lentils, tofu, and fish, and keep poultry or beef to one or two meals a day."}
-  ],
-  drinks:[
-    "Water, milk, and sparkling water",
-    "Herbal teas made from herbs, fruit, or flowers rather than the tea plant (peppermint, chamomile, rooibos, hibiscus, ginger)",
-    "Warm cocoa made with milk, or caffeine-free grain-based hot drinks",
-    "Fruit-infused water or diluted juice"
-  ]
-};
+// WOW_POINTS lives in data-food.js
 function renderWowGuide(targetId){
   var el=document.getElementById(targetId||"meals-wow-guide"); if(!el) return;
   function rows(a,c){ return a.map(function(x){return '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:6px"><strong style="color:'+c+'">'+x.n+':</strong> '+x.t+'</div>';}).join(""); }
@@ -7824,35 +6217,27 @@ function renderWowGuide(targetId){
     '</div>';
 }
 
-var GROCERY_LIST = [
-  {cat:"Produce", items:["Spinach","Mixed greens or romaine","Bell peppers","Broccoli","Zucchini","Carrots","Cucumbers","Cherry tomatoes","Sweet potatoes","Avocados","Onions &amp; garlic","Lemons","Bananas","Apples","Berries (fresh or frozen)","Oranges or grapefruit","Green beans or snap peas"]},
-  {cat:"Eggs &amp; dairy", items:["Eggs (2 dozen)","Greek yogurt","Cottage cheese","Milk","Shredded cheese","String cheese","Feta","Parmesan","Ricotta"]},
-  {cat:"Protein (meat used sparingly)", items:["Canned tuna","Tilapia fillets","Tofu","Chicken breast or thighs","Lean ground beef (90%+)"]},
-  {cat:"Grains &amp; bread", items:["Rolled oats","Steel-cut oats","Brown rice","Whole wheat pasta","Whole wheat tortillas","Whole grain bread","Quinoa","Whole grain crackers"]},
-  {cat:"Beans, nuts &amp; seeds", items:["White beans","Black beans","Chickpeas","Lentils","Hummus","Walnuts","Almonds","Almond or peanut butter","Chia seeds","Ground flax"]},
-  {cat:"Pantry", items:["Olive oil","Marinara sauce","Salsa","Honey","Chicken or vegetable broth","Dried herbs &amp; spices","Pineapple (canned in juice)"]},
-  {cat:"Drinks (no coffee or tea)", items:["Herbal tea (caffeine-free)","Unsweetened cocoa powder","Sparkling water"]}
-];
-function grState(){ try{ return JSON.parse(store.get("ft_grocery_checked")||"{}")||{}; }catch(e){ return {}; } }
-function grCustom(){ try{ return JSON.parse(store.get("ft_grocery_custom")||"[]")||[]; }catch(e){ return []; } }
+// GROCERY_LIST lives in data-food.js
+function grState(){ try{ return JSON.parse(store.get("ft_grocery_checked")||"{}")||{}; }catch(e){ ftCaught(e,'grState'); return {}; } }
+function grCustom(){ try{ return JSON.parse(store.get("ft_grocery_custom")||"[]")||[]; }catch(e){ ftCaught(e,'grCustom'); return []; } }
 function grKey(n){ return encodeURIComponent(n).replace(/'/g,"%27"); }
 function grToggle(k){
   var st=grState(); if(st[k]) delete st[k]; else st[k]=1;
-  try{ store.set("ft_grocery_checked", JSON.stringify(st)); }catch(e){}
+  try{ store.set("ft_grocery_checked", JSON.stringify(st)); }catch(e){ftCaught(e,'grToggle');}
   renderGrocery();
 }
-function grClear(){ try{ store.set("ft_grocery_checked","{}"); }catch(e){} renderGrocery(); }
+function grClear(){ try{ store.set("ft_grocery_checked","{}"); }catch(e){ftCaught(e,'grClear');} renderGrocery(); }
 function grAdd(){
   var inp=document.getElementById("gr-add-input"); if(!inp) return;
   var v=(inp.value||"").trim().replace(/[<>&]/g,""); if(!v) return;
   var c=grCustom(); if(c.indexOf(v)<0) c.push(v);
-  try{ store.set("ft_grocery_custom", JSON.stringify(c)); }catch(e){}
+  try{ store.set("ft_grocery_custom", JSON.stringify(c)); }catch(e){ftCaught(e,'grAdd');}
   renderGrocery();
 }
 function grRemoveCustom(k){
   var n=decodeURIComponent(k), c=grCustom().filter(function(x){return x!==n;});
-  try{ store.set("ft_grocery_custom", JSON.stringify(c)); }catch(e){}
-  var st=grState(); delete st[k]; try{ store.set("ft_grocery_checked", JSON.stringify(st)); }catch(e){}
+  try{ store.set("ft_grocery_custom", JSON.stringify(c)); }catch(e){ftCaught(e,'grRemoveCustom');}
+  var st=grState(); delete st[k]; try{ store.set("ft_grocery_checked", JSON.stringify(st)); }catch(e){ftCaught(e,'grRemoveCustom');}
   renderGrocery();
 }
 function grCopy(){
@@ -7906,15 +6291,7 @@ function renderGrocery(targetId){
 // land ~1,930–2,260 kcal and 37–53 g fiber, and swaps turkey/salmon/shrimp
 // out of family meals in the rotation.
 var RL_CATS=[["breakfast","Breakfast"],["sweet","Sweet Breakfast"],["lunch","Lunch"],["dinner","Dinner"],["snack","Snacks & Treats"],["prep","Make-Ahead & Prep"]];
-var RL_TIPS={
-  breakfast:"Start the day with protein. Avoid sugary drinks and pastries. Pair any carbs with protein and fat.",
-  sweet:"Pair sweetness with protein. Avoid syrups, honey and sugar. Sweeten only with stevia, allulose or monk fruit.",
-  lunch:"Prioritize protein. Use leftovers whenever possible. Avoid bread, chips and sugary sauces.",
-  dinner:"Start with protein. Add vegetables freely. Keep starches optional and small. Use leftovers for tomorrow's lunch.",
-  snack:"Pair sweet flavors with protein or fat. Keep portions reasonable. Avoid regular candy, baked goods and sugary drinks.",
-  prep:"Prep protein first. Roast vegetables while protein cooks. Portion into clear containers. Keep safe snacks visible."
-};
-var RL_DATA=[{"id":"rb1","cat":"breakfast","name":"Veggie & Cheese Egg Muffins","why":"High protein, easy to prep ahead","ing":["10 eggs","1 cup chopped spinach","½ cup diced bell peppers","¼ cup diced onion","½ cup shredded full-fat cheese (cheddar, mozzarella or feta)","Salt and pepper"],"steps":["Preheat oven to 375°F.","Whisk eggs with salt and pepper.","Stir in vegetables and cheese.","Pour into a greased muffin tin.","Bake 18–22 minutes until set."],"serve":"Avocado slices or berries","cal":220,"protein":14,"fat":16,"carbs":5,"cr":"4–6","per":"2 muffins","me":{"items":["4 egg muffins (4 eggs' worth, 22 g cheese)","¾ cup (170 g) 2% Greek yogurt","⅓ cup (50 g) berries","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Eggs","Shredded cheddar","Spinach","Bell peppers","Onions","Plain 2% Greek yogurt","Berries (frozen)","Raspberries (frozen)","Chia seeds"],"cal":647,"protein":51,"carbs":35,"fat":34,"fiber":12},"slot":"Breakfast","family":"One batch makes 10–12; keep in the fridge for the week.","picky":"Plain egg-and-cheese muffins.","fiber":1},{"id":"rb2","cat":"breakfast","name":"Protein Pancakes (Low-Insulin)","why":"Familiar breakfast, slower blood sugar rise","ing":["2 eggs","½ cup full-fat cottage cheese","¼ cup oat flour or almond flour","½ tsp baking powder","Cinnamon"],"steps":["Blend all ingredients until smooth.","Cook small pancakes on a greased skillet."],"serve":"Butter and berries (no syrup)","cal":280,"protein":18,"fat":16,"carbs":9,"cr":"8–10","per":"3 small pancakes","family":"Kids can have syrup on theirs; same batter.","me":{"items":["Pancakes: 2 eggs + ½ cup (120 g) egg whites + ¾ cup (170 g) 2% cottage cheese + 3 Tbsp (20 g) oat flour","½ cup (75 g) berries","1 tsp (5 g) butter","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["Eggs","Liquid egg whites","2% cottage cheese","Oat flour","Berries (frozen)","Butter","Chia seeds"],"cal":561,"protein":49,"carbs":38,"fat":24,"fiber":7},"slot":"Breakfast","picky":"Pancakes with butter and berries.","aka":["b4"],"fiber":2},{"id":"rb3","cat":"breakfast","name":"Greek Yogurt Protein Bowl","why":"Protein-rich and lightly sweet","ing":["¾–1 cup plain full-fat Greek yogurt","1 Tbsp chia seeds","¼ cup berries","1 Tbsp chopped nuts","Cinnamon (optional)"],"steps":["Mix everything in a bowl."],"cal":260,"protein":20,"fat":12,"carbs":7,"cr":"6–8","me":{"items":["1¼ cups (300 g) 2% Greek yogurt","½ scoop (15 g) whey stirred in","1 Tbsp (12 g) chia","⅓ cup (50 g) berries","1 Tbsp (10 g) chopped walnuts","Fiber add: ¾ cup (90 g) raspberries","Small starch: ⅓ cup (27 g) rolled oats, cooked or overnight"],"shop":["Plain 2% Greek yogurt","Whey protein","Chia seeds","Berries (frozen)","Walnuts","Raspberries (frozen)","Rolled oats"],"cal":577,"protein":50,"carbs":56,"fat":20,"fiber":15},"slot":"Breakfast","fiber":6,"net":1},{"id":"rb4","cat":"breakfast","name":"Savory Cottage Cheese Bowl","why":"Very filling","ing":["1 cup full-fat cottage cheese","1 soft-boiled or fried egg","Cherry tomatoes","Olive oil drizzle","Salt and pepper"],"steps":["Top cottage cheese with egg, tomatoes and olive oil.","Season to taste."],"cal":300,"protein":26,"fat":18,"carbs":5,"cr":"4–6","me":{"items":["1¼ cups (280 g) 2% cottage cheese","2 eggs, soft-boiled or fried","⅔ cup (100 g) cherry tomatoes","1 tsp (5 g) olive oil","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["2% cottage cheese","Eggs","Cherry tomatoes","Olive oil","Raspberries (frozen)","Chia seeds"],"cal":545,"protein":47,"carbs":33,"fat":25,"fiber":11},"slot":"Breakfast","fiber":1},{"id":"rb5","cat":"breakfast","name":"Breakfast Sausage & Veggie Skillet","why":"No refined carbs, very filling","ing":["Chicken breakfast sausage","Zucchini slices","Bell peppers","Onion","Olive oil"],"steps":["Sauté sausage until cooked. Remove and slice.","Cook vegetables in the same pan.","Combine and serve."],"cal":320,"protein":20,"fat":24,"carbs":7,"cr":"6–8","me":{"items":["4 oz (113 g) chicken breakfast sausage","¾ cup (180 g) egg whites scrambled in","Zucchini, pepper, onion (215 g)","1 tsp (5 g) olive oil","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia","Small starch: ⅓ cup (27 g) rolled oats, cooked or overnight"],"shop":["Chicken or turkey breakfast sausage","Liquid egg whites","Zucchini","Bell peppers","Onions","Olive oil","Raspberries (frozen)","Chia seeds","Rolled oats"],"cal":581,"protein":47,"carbs":48,"fat":24,"fiber":16},"slot":"Breakfast","fiber":2},{"id":"rb6","cat":"breakfast","name":"Avocado Egg Breakfast Plate","why":"Balanced protein and fat","ing":["2 eggs (scrambled or fried)","½ avocado","Sautéed greens (spinach or kale)"],"steps":["Cook eggs and greens.","Serve with sliced avocado."],"cal":350,"protein":18,"fat":28,"carbs":6,"cr":"5–7","me":{"items":["2 eggs + ¾ cup (180 g) egg whites","⅓ avocado (50 g)","2 cups (60 g) sautéed spinach, ½ tsp oil","¾ cup (170 g) 2% Greek yogurt on the side","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Eggs","Liquid egg whites","Avocados","Spinach","Olive oil","Plain 2% Greek yogurt","Raspberries (frozen)","Chia seeds"],"cal":579,"protein":54,"carbs":31,"fat":28,"fiber":15},"slot":"Breakfast","fiber":5},{"id":"rb7","cat":"breakfast","name":"Chia Seed Pudding (Low-Sugar)","why":"Fiber slows digestion","ing":["3 Tbsp chia seeds","1 cup unsweetened almond milk","Vanilla extract","Cinnamon"],"steps":["Mix and refrigerate overnight."],"serve":"Optional berries or nuts on top","cal":240,"protein":8,"fat":15,"carbs":6,"cr":"5–7","me":{"items":["3 Tbsp (30 g) chia + 1 cup (240 g) almond milk","1 scoop (31 g) whey stirred in","¼ cup (40 g) berries","Small starch: ⅓ cup (27 g) rolled oats, cooked or overnight"],"shop":["Chia seeds","Unsweetened almond milk","Whey protein","Berries (frozen)","Rolled oats"],"cal":426,"protein":35,"carbs":40,"fat":16,"fiber":15},"slot":"Breakfast","fiber":11,"net":1},{"id":"rb8","cat":"breakfast","name":"Smoked Salmon Breakfast Plate","why":"Protein and omega-3 fats","ing":["Smoked salmon","Hard-boiled eggs","Sliced cucumber","Full-fat cream cheese or avocado"],"steps":["Assemble on a plate."],"cal":340,"protein":22,"fat":24,"carbs":4,"cr":"3–5","me":{"items":["4 oz (113 g) smoked salmon","2 hard-boiled eggs","1 cucumber (100 g), sliced","1 Tbsp (15 g) cream cheese","½ cup (113 g) 2% cottage cheese"],"shop":["Smoked salmon","Eggs","Cucumbers","Full-fat cream cheese","2% cottage cheese"],"cal":438,"protein":47,"carbs":10,"fat":22,"fiber":0},"slot":"Breakfast","family":"Smoked salmon isn’t a family favorite — keep this one for yourself, or swap in tuna salad.","fiber":1},{"id":"rs1","cat":"sweet","name":"Blueberry Protein Muffins","why":"Muffin texture with protein","ing":["2 eggs","1 cup full-fat Greek yogurt","1½ cups almond flour","1 tsp baking powder","¼ cup allulose or monk fruit sweetener","½ cup blueberries","Vanilla and cinnamon"],"steps":["Preheat oven to 350°F.","Mix wet ingredients, then fold in dry.","Stir in blueberries.","Bake 22–25 minutes."],"cal":210,"protein":9,"fat":16,"carbs":8,"cr":"7–9","per":"1 muffin","me":{"items":["1 blueberry protein muffin","1 cup (227 g) 2% Greek yogurt","2 hard-boiled eggs","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Eggs","Plain full-fat Greek yogurt","Almond flour","Berries (frozen)","Plain 2% Greek yogurt","Raspberries (frozen)","Chia seeds"],"cal":642,"protein":50,"carbs":35,"fat":35,"fiber":13},"slot":"Breakfast","fiber":2},{"id":"rs2","cat":"sweet","name":"Cinnamon Chia Pudding","why":"Fiber slows digestion","ing":["3 Tbsp chia seeds","1 cup unsweetened almond milk","Stevia or monk fruit to taste","Cinnamon and vanilla"],"steps":["Mix and refrigerate overnight."],"cal":230,"protein":8,"fat":15,"carbs":7,"cr":"6–8","me":{"items":["3 Tbsp (30 g) chia + 1 cup (240 g) almond milk, cinnamon","1 scoop (31 g) whey stirred in","¼ cup (40 g) berries","Small starch: ⅓ cup (27 g) rolled oats, cooked or overnight","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chia seeds","Unsweetened almond milk","Whey protein","Berries (frozen)","Rolled oats","Avocados"],"cal":506,"protein":36,"carbs":44,"fat":23,"fiber":18},"slot":"Breakfast","fiber":11,"net":1},{"id":"rs3","cat":"sweet","name":"Sweet Cottage Cheese Bowl","why":"High protein, gently sweet","ing":["1 cup full-fat cottage cheese","Stevia or monk fruit to taste","Cinnamon","1 Tbsp chopped nuts","Berries (optional)"],"steps":["Stir sweetener and cinnamon into cottage cheese.","Top with nuts and berries."],"cal":280,"protein":24,"fat":16,"carbs":8,"cr":"6–9","me":{"items":["1¼ cups (300 g) 2% cottage cheese, cinnamon, stevia","1 Tbsp (10 g) chopped walnuts","½ cup (75 g) berries","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["2% cottage cheese","Walnuts","Berries (frozen)","Chia seeds"],"cal":418,"protein":37,"carbs":30,"fat":18,"fiber":6},"slot":"Snack","aka":["s2"],"fiber":1},{"id":"rs4","cat":"sweet","name":"Protein Pancakes (Sweet)","why":"Pancake flavor without the sugar","ing":["2 eggs","½ cup full-fat cottage cheese","¼ cup almond flour or oat flour","½ tsp baking powder","Stevia or allulose","Cinnamon"],"steps":["Blend ingredients.","Cook small pancakes on a greased skillet."],"cal":300,"protein":18,"fat":17,"carbs":9,"cr":"8–10","per":"3 small pancakes","me":{"items":["Pancakes: 2 eggs + ½ cup (120 g) egg whites + ¾ cup (170 g) 2% cottage cheese + 3 Tbsp (20 g) almond flour, stevia","½ cup (75 g) berries","1 tsp (5 g) butter","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["Eggs","Liquid egg whites","2% cottage cheese","Almond flour","Berries (frozen)","Butter","Chia seeds"],"cal":594,"protein":50,"carbs":29,"fat":32,"fiber":8},"slot":"Breakfast","family":"Double or triple the batter; serve berries on the side (no syrup).","picky":"Pancakes with butter and berries.","fiber":3},{"id":"rs5","cat":"sweet","name":"Vanilla Yogurt Berry Bowl","why":"Protein-forward, lightly sweet","ing":["1 cup full-fat Greek yogurt","Vanilla extract","Stevia or monk fruit","¼ cup berries","1 Tbsp chia or flax seeds"],"steps":["Mix yogurt with vanilla and sweetener.","Top with berries and seeds."],"cal":290,"protein":20,"fat":14,"carbs":8,"cr":"7–10","me":{"items":["1½ cups (340 g) 2% Greek yogurt, vanilla, stevia","½ scoop (15 g) whey","½ cup (75 g) raspberries","1 Tbsp (14 g) ground flax","½ oz (14 g) almonds"],"shop":["Plain 2% Greek yogurt","Whey protein","Raspberries (frozen)","Ground flax","Almonds"],"cal":501,"protein":52,"carbs":30,"fat":21,"fiber":10},"slot":"Breakfast","aka":["b3"],"fiber":5,"net":1},{"id":"rs6","cat":"sweet","name":"Baked Cinnamon \"Oatmeal\"","why":"Comfort-food feel","ing":["2 cups unsweetened almond milk","2 eggs","½ cup oat flour","½ cup almond flour","¼ cup allulose or monk fruit","Cinnamon and vanilla"],"steps":["Preheat oven to 375°F.","Whisk all ingredients.","Bake in a greased dish 30–35 minutes."],"cal":260,"protein":14,"fat":14,"carbs":13,"cr":"12–14","per":"1 serving","me":{"items":["1 serving baked cinnamon \"oatmeal\"","¾ cup (170 g) 2% Greek yogurt","2 hard-boiled eggs","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Unsweetened almond milk","Eggs","Oat flour","Almond flour","Plain 2% Greek yogurt","Raspberries (frozen)","Chia seeds"],"cal":566,"protein":41,"carbs":37,"fat":29,"fiber":13},"slot":"Breakfast","fiber":4},{"id":"rs7","cat":"sweet","name":"Chocolate Chia Breakfast Pudding","why":"Feels indulgent","ing":["3 Tbsp chia seeds","1 cup unsweetened almond milk","1 Tbsp unsweetened cocoa powder","Stevia or allulose"],"steps":["Mix well and refrigerate overnight."],"cal":240,"protein":8,"fat":15,"carbs":7,"cr":"6–8","me":{"items":["3 Tbsp (30 g) chia + 1 cup (240 g) almond milk + 1 Tbsp (5 g) cocoa","1 scoop (31 g) whey stirred in","¼ cup (40 g) berries","Small starch: ⅓ cup (27 g) rolled oats, cooked or overnight"],"shop":["Chia seeds","Unsweetened almond milk","Unsweetened cocoa powder","Whey protein","Berries (frozen)","Rolled oats"],"cal":437,"protein":36,"carbs":42,"fat":16,"fiber":17},"slot":"Breakfast","fiber":13,"net":1},{"id":"rl1","cat":"lunch","name":"Build-Your-Own Protein Bowl","why":"Flexible and filling","ing":["Base: mixed greens, shredded cabbage or cauliflower rice","Protein: grilled chicken, steak strips, salmon/tuna, rotisserie chicken or tofu/tempeh","Add-ins: avocado, roasted vegetables, olives, nuts or seeds","Dressing: olive oil + vinegar, or full-fat ranch/Caesar (no sugar added)"],"steps":["Build the bowl with a base, protein and add-ins.","Add dressing."],"cal":450,"protein":30,"fat":30,"carbs":13,"cr":"10–15","me":{"items":["6 oz (170 g) cooked chicken breast","Greens + shredded cabbage (135 g)","1 cup (100 g) roasted broccoli","⅓ avocado (50 g)","2 tsp (10 g) olive oil + vinegar"],"shop":["Chicken breast","Mixed greens","Coleslaw mix / cabbage","Broccoli","Avocados","Olive oil"],"cal":512,"protein":58,"carbs":17,"fat":24,"fiber":9},"slot":"Lunch","fiber":5},{"id":"rl2","cat":"lunch","name":"Turkey & Cheese Lettuce Wraps","why":"Sandwich feel without bread","ing":["Sliced turkey","Full-fat cheese slices","Large romaine or butter lettuce leaves","Mustard or full-fat mayo"],"steps":["Layer in lettuce leaves and roll."],"cal":380,"protein":28,"fat":26,"carbs":7,"cr":"6–8","me":{"items":["6 oz (170 g) sliced turkey","1 oz (28 g) cheese","Romaine leaves (85 g), mustard","Cucumber and peppers (150 g)","½ cup (113 g) 2% cottage cheese","Fiber add: ½ cup (80 g) chickpeas"],"shop":["Deli turkey","Shredded cheddar","Romaine","Mustard","Cucumbers","Bell peppers","2% cottage cheese","Chickpeas (canned)"],"cal":559,"protein":57,"carbs":43,"fat":17,"fiber":10},"slot":"Lunch","fiber":2},{"id":"rl3","cat":"lunch","name":"Chicken Salad","why":"Classic lunch, lower carb","ing":["Cooked chicken, chopped","Full-fat mayonnaise","Celery and onion","Salt and pepper","Optional: a small amount of grapes or apple"],"steps":["Mix everything and chill."],"cal":420,"protein":30,"fat":32,"carbs":8,"cr":"6–10","me":{"items":["6 oz (170 g) cooked chicken, chopped","1 Tbsp (15 g) mayo + ¼ cup (60 g) 2% Greek yogurt","Celery, onion, a few apple bits (95 g)","On 2 cups (60 g) greens","Fiber add: ½ cup (80 g) chickpeas"],"shop":["Chicken breast","Full-fat mayonnaise","Plain 2% Greek yogurt","Celery","Onions","Apples","Mixed greens","Chickpeas (canned)"],"cal":603,"protein":67,"carbs":35,"fat":21,"fiber":9},"slot":"Lunch","fiber":2},{"id":"rl4","cat":"lunch","name":"Leftover Dinner Plate","why":"No extra cooking","ing":["Leftover protein (meat, fish or tofu)","Non-starchy vegetables","Olive oil or butter"],"steps":["Reheat and serve as a plated meal."],"cal":450,"protein":30,"fat":30,"carbs":12,"cr":"8–15","me":{"items":["6 oz (170 g) leftover protein (cooked chicken shown)","2½ cups (250 g) non-starchy veg","1 tsp (5 g) olive oil or butter"],"shop":["Chicken breast","Broccoli","Cauliflower","Olive oil"],"cal":401,"protein":59,"carbs":15,"fat":12,"fiber":6},"slot":"Lunch","fiber":4},{"id":"rl5","cat":"lunch","name":"Tuna Avocado Bowl","why":"High protein and omega-3s","ing":["Canned tuna","½ avocado","Olive oil","Lemon juice","Salt and pepper"],"steps":["Mix tuna with avocado and seasonings."],"cal":410,"protein":32,"fat":28,"carbs":7,"cr":"6–8","me":{"items":["1½ cans (200 g drained) tuna","½ avocado (70 g)","1 tsp (5 g) olive oil + lemon","Cucumber (100 g) on 2 cups (60 g) greens","Fiber add: ½ cup (90 g) white beans"],"shop":["Canned tuna (in water)","Avocados","Olive oil","Lemons","Cucumbers","Mixed greens","White beans (canned)"],"cal":527,"protein":61,"carbs":32,"fat":17,"fiber":12},"slot":"Lunch","fiber":6},{"id":"rl6","cat":"lunch","name":"Soup & Salad Combo","why":"Warm and filling","ing":["Soup: chicken vegetable, beef and cabbage, or a cream soup made without flour","Salad: greens + protein + olive oil dressing"],"steps":["Make soup (or use leftovers).","Assemble salad and serve together."],"cal":450,"protein":28,"fat":30,"carbs":13,"cr":"10–15","me":{"items":["Chicken-vegetable soup: 4 oz (120 g) cooked chicken, 2 cups veg, broth","Salad: 3 cups (85 g) greens + 2 hard-boiled eggs","2 tsp (10 g) olive oil dressing","Fiber add: ½ cup (90 g) white beans"],"shop":["Chicken breast","Carrots","Celery","Onions","Coleslaw mix / cabbage","Chicken broth","Mixed greens","Eggs","Olive oil","White beans (canned)"],"cal":631,"protein":62,"carbs":38,"fat":25,"fiber":12},"slot":"Lunch","fiber":4},{"id":"rl7","cat":"lunch","name":"Cheeseburger Bowl","why":"Comfort food without the bun","ing":["Ground beef","Shredded lettuce","Tomato and pickles","Full-fat cheese","Mustard and full-fat mayo"],"steps":["Cook beef.","Assemble bowl and add toppings."],"cal":480,"protein":30,"fat":35,"carbs":10,"cr":"8–12","me":{"items":["6 oz (170 g raw) 93% ground beef","Lettuce, tomato, pickles (205 g)","¾ oz (21 g) cheddar","Mustard + 2 tsp (8 g) mayo","Fiber add: ½ cup (90 g) black beans","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Lean ground beef (93%)","Romaine","Cherry tomatoes","Pickles","Shredded cheddar","Mustard","Full-fat mayonnaise","Black beans (canned)","Avocados"],"cal":631,"protein":52,"carbs":32,"fat":33,"fiber":14},"slot":"Lunch","fiber":3},{"id":"rl8","cat":"lunch","name":"Adult Lunchables","why":"No reheating needed","ing":["Deli turkey or chicken","Full-fat cheese cubes","Olives or pickles","Nuts","Raw veggies (cucumbers, peppers)"],"steps":["Pack in a divided container and eat cold."],"cal":400,"protein":25,"fat":30,"carbs":8,"cr":"6–10","me":{"items":["5 oz (140 g) deli turkey","1 oz (28 g) cheese cubes","2 hard-boiled eggs","Olives (20 g) + ½ oz (14 g) almonds","Cucumbers and peppers (150 g)"],"shop":["Deli turkey","Shredded cheddar","Eggs","Olives","Almonds","Cucumbers","Bell peppers"],"cal":530,"protein":47,"carbs":17,"fat":30,"fiber":4},"slot":"Lunch","fiber":2},{"id":"rl9","cat":"lunch","name":"Jar Salads","why":"Portable and easy to prep ahead","ing":["Olive oil + vinegar (bottom layer)","Chopped cucumbers or peppers","Protein (chicken, steak, tuna or tofu)","Cherry tomatoes","Mixed greens","Optional: full-fat feta or mozzarella"],"steps":["Layer in a jar, dressing on the bottom and greens on top.","Shake before eating."],"cal":420,"protein":28,"fat":28,"carbs":12,"cr":"10–14","me":{"items":["2 tsp (10 g) olive oil + vinegar (bottom)","Cucumber + peppers (140 g)","6 oz (170 g) cooked chicken","Cherry tomatoes (75 g), greens (60 g)","¾ oz (20 g) feta","Fiber add: ½ cup (80 g) chickpeas","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Olive oil","Cucumbers","Bell peppers","Chicken breast","Cherry tomatoes","Mixed greens","Feta","Chickpeas (canned)","Avocados"],"cal":686,"protein":66,"carbs":38,"fat":30,"fiber":13},"slot":"Lunch","fiber":3},{"id":"rl10","cat":"lunch","name":"Egg Salad Box","why":"High protein","ing":["Hard-boiled eggs, chopped","Full-fat mayonnaise","Mustard","Salt and pepper","Celery"],"steps":["Mix and portion into containers.","Serve with lettuce cups or cucumber slices."],"cal":380,"protein":22,"fat":30,"carbs":5,"cr":"4–6","me":{"items":["Egg salad: 3 eggs, 2 tsp (10 g) mayo, 3 Tbsp (40 g) 2% Greek yogurt, mustard, celery","3 oz (85 g) deli turkey roll-ups","Raw veg (120 g)","Fiber add: ½ cup (80 g) chickpeas"],"shop":["Eggs","Full-fat mayonnaise","Plain 2% Greek yogurt","Mustard","Celery","Deli turkey","Cucumbers","Bell peppers","Chickpeas (canned)"],"cal":560,"protein":46,"carbs":34,"fat":26,"fiber":8},"slot":"Lunch","fiber":1},{"id":"rl11","cat":"lunch","name":"Rotisserie Chicken Bento","why":"Zero-prep protein","ing":["Rotisserie chicken","Avocado slices","Roasted or raw vegetables","Optional: full-fat dip"],"steps":["Assemble in a meal-prep container."],"cal":450,"protein":32,"fat":32,"carbs":10,"cr":"8–12","me":{"items":["6 oz (170 g) rotisserie chicken, skin off","⅓ avocado (50 g)","Veg (150 g): peppers, cucumber, broccoli","3 Tbsp (40 g) 2% Greek yogurt ranch dip","Fiber add: ½ cup (90 g) black beans"],"shop":["Rotisserie chicken","Avocados","Bell peppers","Cucumbers","Broccoli","Plain 2% Greek yogurt","Black beans (canned)"],"cal":567,"protein":61,"carbs":34,"fat":21,"fiber":13},"slot":"Lunch","fiber":4},{"id":"rl12","cat":"lunch","name":"Cold Salmon & Cucumber Bowl","why":"No microwave, omega-3s","ing":["Cooked salmon (served cold)","Sliced cucumber","Olive oil","Lemon","Optional: full-fat cream cheese"],"steps":["Assemble and eat chilled."],"cal":430,"protein":28,"fat":32,"carbs":7,"cr":"5–8","me":{"items":["7 oz (200 g raw) salmon, cooked and chilled","Cucumber (120 g) on greens (60 g)","1 tsp (5 g) olive oil + lemon","1 Tbsp (15 g) cream cheese"],"shop":["Salmon fillets","Cucumbers","Mixed greens","Olive oil","Lemons","Full-fat cream cheese"],"cal":545,"protein":43,"carbs":8,"fat":37,"fiber":2},"slot":"Lunch","fiber":1},{"id":"rd1","cat":"dinner","name":"Sheet Pan Lemon Chicken & Veggies","why":"One pan, easy cleanup","ing":["Chicken thighs or breasts","Broccoli, zucchini and bell peppers","Olive oil","Lemon juice","Garlic, salt, pepper"],"steps":["Preheat oven to 400°F.","Toss everything with olive oil and seasoning.","Roast 25–30 minutes until chicken is cooked."],"cal":420,"protein":32,"fat":28,"carbs":10,"cr":"8–12","family":"Rice or potatoes on the side for anyone who wants them.","me":{"items":["8 oz (225 g raw) chicken breast","Broccoli, zucchini, pepper (325 g)","2 tsp (10 g) olive oil, lemon, garlic","Small starch: ½ small sweet potato (100 g)"],"shop":["Chicken breast","Broccoli","Zucchini","Bell peppers","Olive oil","Lemons","Sweet potatoes"],"cal":539,"protein":59,"carbs":39,"fat":17,"fiber":10},"slot":"Dinner","picky":"Plain chicken and sweet potato.","aka":["d1"],"fiber":4},{"id":"rd2","cat":"dinner","name":"Taco Bowls (Build-Your-Own)","why":"Customizable for adults and kids","ing":["Ground beef or turkey","Taco seasoning (no sugar added)","Shredded lettuce","Tomatoes","Avocado","Full-fat sour cream and cheese","Optional small starch: rice or crushed tortilla chips"],"steps":["Cook meat with seasoning.","Set out toppings and let everyone build a bowl."],"cal":480,"protein":30,"fat":34,"carbs":13,"cr":"10–15","family":"Kids get tortillas; adults use lettuce wraps or a bowl.","me":{"items":["6 oz (170 g raw) 93% ground beef, taco seasoning","Lettuce + tomato (160 g)","¼ avocado (35 g)","½ oz (14 g) cheddar + 2 Tbsp (30 g) sour cream","Small starch: ¼ cup (45 g) black beans","Salsa (30 g)","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Lean ground beef (93%)","Romaine","Cherry tomatoes","Avocados","Shredded cheddar","Full-fat sour cream","Black beans","Salsa","Broccoli (frozen)"],"cal":598,"protein":51,"carbs":37,"fat":29,"fiber":14},"slot":"Dinner","picky":"Plain taco meat, rice, cheese.","aka":["d2"],"fiber":6},{"id":"rd3","cat":"dinner","name":"Creamy Garlic Salmon","why":"Omega-3s with a comforting sauce","ing":["Salmon fillets","Butter","Garlic","Full-fat heavy cream","Spinach","Lemon"],"steps":["Pan-sear salmon. Remove.","Simmer garlic in butter, add cream and spinach.","Return salmon to the pan."],"cal":460,"protein":32,"fat":34,"carbs":7,"cr":"6–8","family":"Tilapia or chicken work in the same sauce.","me":{"items":["7 oz (200 g raw) salmon","1 tsp (5 g) butter + 2 Tbsp (30 g) heavy cream, garlic, lemon","3 cups (100 g) spinach","1½ cups (150 g) roasted broccoli"],"shop":["Salmon fillets","Butter","Heavy cream","Lemons","Spinach","Broccoli"],"cal":630,"protein":48,"carbs":15,"fat":43,"fiber":6},"slot":"Dinner","picky":"Plain salmon or chicken with rice.","fiber":3},{"id":"rd4","cat":"dinner","name":"Bunless Burger Night","why":"Classic comfort without refined bread","ing":["Beef burger patties","Lettuce wraps","Tomato and pickles","Full-fat cheese","Mustard and full-fat mayo"],"steps":["Cook burgers.","Serve in lettuce wraps with toppings."],"serve":"Roasted veggies or salad","cal":500,"protein":32,"fat":38,"carbs":10,"cr":"8–12","family":"Kids use buns; adults go bunless or use a chaffle.","me":{"items":["6 oz (170 g raw) 93% beef patty","¾ oz (21 g) cheese","Lettuce wrap, tomato, pickles (150 g)","Mustard + 2 tsp (8 g) mayo","1½ cups (150 g) roasted cauliflower + zucchini, 1 tsp oil","Fiber add: ½ cup (90 g) black beans"],"shop":["Lean ground beef (93%)","Shredded cheddar","Romaine","Cherry tomatoes","Pickles","Mustard","Full-fat mayonnaise","Cauliflower","Zucchini","Olive oil","Black beans (canned)"],"cal":617,"protein":53,"carbs":32,"fat":31,"fiber":12},"slot":"Dinner","picky":"Plain burger with cheese.","fiber":3},{"id":"rd5","cat":"dinner","name":"Slow Cooker Balsamic Beef","why":"Make once, eat twice","ing":["Beef roast","Balsamic vinegar","Garlic","Onion","Olive oil","Optional: small amount of allulose"],"steps":["Cook on low 6–8 hours.","Shred and serve with vegetables."],"cal":450,"protein":35,"fat":30,"carbs":8,"cr":"6–10","me":{"items":["7 oz (200 g raw) beef chuck, slow-cooked in balsamic","1½ cups (150 g) green beans","Small starch: ½ small sweet potato (100 g)"],"shop":["Beef chuck roast","Balsamic vinegar","Onions","Olive oil","Green beans (frozen)","Sweet potatoes"],"cal":532,"protein":46,"carbs":37,"fat":23,"fiber":8},"slot":"Dinner","family":"Whole roast in the slow cooker; leftovers for lunches.","picky":"Plain beef with potatoes.","fiber":3},{"id":"rd6","cat":"dinner","name":"Creamy Chicken Alfredo (Low-Insulin)","why":"Comfort food with veggies instead of pasta","ing":["Chicken breast","Zucchini noodles or roasted cauliflower","Butter","Garlic","Full-fat heavy cream","Parmesan"],"steps":["Cook chicken.","Simmer butter, garlic, cream and cheese.","Toss with veggies and chicken."],"cal":480,"protein":34,"fat":36,"carbs":9,"cr":"7–10","family":"Kids get pasta; adults use zucchini noodles or spaghetti squash. Same sauce.","me":{"items":["7 oz (200 g raw) chicken breast","Zucchini noodles (200 g) + roasted cauliflower (100 g)","Sauce: 1 tsp (5 g) butter, 2 Tbsp (30 g) heavy cream, 2 Tbsp (15 g) parmesan, garlic","Fiber add: ½ cup (90 g) white beans"],"shop":["Chicken breast","Zucchini","Cauliflower","Butter","Heavy cream","Parmesan","White beans (canned)"],"cal":606,"protein":63,"carbs":33,"fat":25,"fiber":10},"slot":"Dinner","picky":"Buttered noodles with parmesan and plain chicken.","fiber":3},{"id":"rd7","cat":"dinner","name":"Sausage & Veggie Skillet","why":"Fast and kid-friendly","ing":["Chicken or turkey sausage","Zucchini","Peppers","Onion","Olive oil"],"steps":["Brown sausage, remove and slice.","Sauté veggies, return sausage and serve."],"cal":420,"protein":26,"fat":32,"carbs":10,"cr":"8–12","me":{"items":["4 oz (113 g) chicken sausage + 4 oz (115 g raw) chicken breast","Zucchini, peppers, onion (270 g)","1 tsp (5 g) olive oil","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Chicken sausage (no sugar added)","Chicken breast","Zucchini","Bell peppers","Onions","Olive oil","Broccoli (frozen)"],"cal":516,"protein":51,"carbs":33,"fat":22,"fiber":9},"slot":"Dinner","family":"Double the skillet.","picky":"Sausage pieces with rice.","fiber":3},{"id":"rd8","cat":"dinner","name":"Rotisserie Chicken Dinner Plate","why":"Zero-prep protein","ing":["Rotisserie chicken","Steamed or roasted vegetables","Butter or olive oil"],"steps":["Plate and serve."],"cal":430,"protein":34,"fat":30,"carbs":8,"cr":"6–10","me":{"items":["7 oz (200 g) rotisserie chicken, skin off","2½ cups (250 g) broccoli + carrots","1 tsp (5 g) butter","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Rotisserie chicken","Broccoli","Carrots","Butter","Broccoli (frozen)"],"cal":556,"protein":65,"carbs":33,"fat":21,"fiber":12},"slot":"Dinner","family":"One rotisserie chicken plus a tray of roasted veg feeds everyone.","picky":"Plain chicken and a roll.","fiber":4},{"id":"rd9","cat":"dinner","name":"Creamy Tuscan Chicken","why":"Restaurant-style flavor","ing":["Chicken breasts or thighs","Butter","Garlic","Sun-dried tomatoes (small amount)","Full-fat heavy cream","Spinach","Parmesan"],"steps":["Brown chicken and remove.","Simmer garlic in butter, add cream and tomatoes.","Stir in spinach and Parmesan.","Return chicken and simmer until cooked."],"cal":460,"protein":34,"fat":34,"carbs":9,"cr":"7–10","family":"Serve over pasta for the kids.","me":{"items":["7 oz (200 g raw) chicken breast","Sauce: 1 tsp (5 g) butter, 2 Tbsp (30 g) heavy cream, 1 Tbsp (15 g) sun-dried tomato, 2 tsp (10 g) parmesan","2½ cups (80 g) spinach","1½ cups (150 g) roasted cauliflower","Fiber add: ½ cup (90 g) white beans"],"shop":["Chicken breast","Butter","Heavy cream","Sun-dried tomatoes","Parmesan","Spinach","Cauliflower","White beans (canned)"],"cal":615,"protein":62,"carbs":35,"fat":26,"fiber":12},"slot":"Dinner","picky":"Plain chicken with rice.","fiber":3},{"id":"rd10","cat":"dinner","name":"Shrimp & Veggie Stir Fry","why":"Fast weeknight dinner, lean protein","ing":["Shrimp","Broccoli, snap peas, bell peppers","Olive or avocado oil","Garlic and ginger","Coconut aminos or low-sugar soy sauce"],"steps":["Sauté shrimp in oil and remove.","Cook veggies with garlic and ginger.","Return shrimp, splash with coconut aminos and serve."],"cal":400,"protein":30,"fat":26,"carbs":10,"cr":"8–12","family":"Chicken works if shrimp isn't a family favorite. Rice on the side for the kids.","me":{"items":["8 oz (225 g raw) shrimp","Broccoli, snap peas, peppers (280 g)","2 tsp (10 g) oil, garlic, ginger, 1 Tbsp (15 g) coconut aminos","Small starch: ⅓ cup (65 g) cooked brown rice"],"shop":["Shrimp (raw, peeled)","Broccoli","Snap peas","Bell peppers","Olive oil","Low-sugar soy sauce or coconut aminos","Brown rice"],"cal":463,"protein":55,"carbs":36,"fat":13,"fiber":8},"slot":"Dinner","picky":"Plain shrimp or chicken with rice.","fiber":4},{"id":"rd11","cat":"dinner","name":"Chicken Crust Pizza","why":"Pizza night without flour or sugar","ing":["1 lb ground chicken","1 egg","½ cup grated Parmesan","Garlic powder, salt, pepper","Low-sugar marinara (sweetened only with stevia/allulose/monk fruit if at all)","Full-fat mozzarella","Toppings: pepperoni, mushrooms, olives, peppers"],"steps":["Preheat oven to 400°F.","Mix chicken, egg, Parmesan and seasonings.","Press into a thin crust on a parchment-lined pan.","Bake 18–20 minutes until set.","Add sauce, cheese and toppings; bake 8–10 minutes."],"cal":480,"protein":38,"fat":32,"carbs":8,"cr":"6–10","family":"Kids use regular crust; adults use chicken crust or chaffles.","me":{"items":["½ chicken-crust pizza: 8 oz (227 g) ground chicken, ½ egg, 1 oz (25 g) parmesan","¼ cup (60 g) marinara, 1½ oz (40 g) mozzarella, peppers + mushrooms (80 g)","Side salad: 3 cups (85 g) greens, 1 tsp (5 g) olive oil","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Ground chicken","Eggs","Parmesan","Low-sugar marinara","Shredded mozzarella","Bell peppers","Mushrooms","Mixed greens","Olive oil","Broccoli (frozen)"],"cal":765,"protein":69,"carbs":27,"fat":44,"fiber":9},"slot":"Dinner","picky":"Plain cheese pizza on a regular crust.","fiber":2},{"id":"rn1","cat":"snack","name":"Cheese & Nut Snack Box","why":"Portable and very filling","ing":["Full-fat cheese cubes","Mixed nuts","Olives or pickles","Raw veggies (cucumbers or peppers)"],"steps":["Pack into a small container and eat cold."],"cal":300,"protein":12,"fat":24,"carbs":5,"cr":"4–6","me":{"items":["1 oz (28 g) cheese cubes","3 oz (85 g) deli turkey","½ oz (14 g) mixed nuts, olives (15 g)","Cucumbers or peppers (100 g)","Fiber add: ½ cup (75 g) shelled edamame"],"shop":["Shredded cheddar","Deli turkey","Mixed nuts","Olives","Cucumbers","Bell peppers","Edamame (frozen, shelled)"],"cal":415,"protein":34,"carbs":19,"fat":24,"fiber":7},"slot":"Snack","fiber":2},{"id":"rn2","cat":"snack","name":"Greek Yogurt Dessert Bowl","why":"Sweet and creamy with protein","ing":["¾ cup full-fat Greek yogurt","Stevia or monk fruit to taste","Cinnamon or vanilla","1 Tbsp chopped nuts"],"steps":["Mix everything in a bowl."],"cal":220,"protein":15,"fat":12,"carbs":7,"cr":"6–8","me":{"items":["1 cup (250 g) 2% Greek yogurt, cinnamon, stevia","1 Tbsp (10 g) chopped walnuts","¼ cup (40 g) berries","Fiber add: ¾ cup (90 g) raspberries"],"shop":["Plain 2% Greek yogurt","Walnuts","Berries (frozen)","Raspberries (frozen)"],"cal":318,"protein":28,"carbs":28,"fat":12,"fiber":8},"slot":"Snack","aka":["s3"],"fiber":1},{"id":"rn3","cat":"snack","name":"Hard-Boiled Eggs with Everything Seasoning","why":"Pure protein and fat","ing":["Hard-boiled eggs","Everything bagel seasoning"],"steps":["Slice eggs and sprinkle with seasoning."],"cal":160,"protein":12,"fat":12,"carbs":2,"cr":"2–3","per":"2 eggs","me":{"items":["3 hard-boiled eggs, everything seasoning","1 string cheese","Fiber add: ½ cup (75 g) shelled edamame","Healthy-fat add: ½ oz (14 g) almonds"],"shop":["Eggs","String cheese","Edamame (frozen, shelled)","Almonds"],"cal":471,"protein":38,"carbs":12,"fat":30,"fiber":6},"slot":"Snack","fiber":0},{"id":"rn4","cat":"snack","name":"Chocolate Peanut Butter Fat Bombs","why":"Rich and satisfying","ing":["½ cup natural peanut butter","¼ cup coconut oil","2 Tbsp unsweetened cocoa powder","Stevia or allulose to taste"],"steps":["Melt and mix all ingredients.","Pour into small molds and refrigerate until firm."],"cal":140,"protein":3,"fat":12,"carbs":4,"cr":"3–4","per":"1 piece","fiber":2},{"id":"rn5","cat":"snack","name":"Berry & Cream Cups","why":"Light sweetness paired with fat","ing":["¼ cup berries","Whipped full-fat heavy cream","Stevia (optional)"],"steps":["Layer berries and whipped cream in small cups."],"cal":180,"protein":2,"fat":16,"carbs":6,"cr":"5–7","fiber":1},{"id":"rn6","cat":"snack","name":"Savory Snack Plate","why":"Crunchy, salty and satisfying","ing":["Turkey or beef jerky (no sugar added)","Full-fat cheese slices","Nuts","Pickles"],"steps":["Arrange on a plate or pack for later."],"cal":320,"protein":18,"fat":24,"carbs":5,"cr":"4–6","me":{"items":["1 oz (28 g) jerky","¾ oz (21 g) cheese","½ oz (14 g) nuts, pickles","½ cup (113 g) 2% cottage cheese","Fiber add: ½ cup (75 g) shelled edamame"],"shop":["Jerky (no sugar added)","Shredded cheddar","Mixed nuts","Pickles","2% cottage cheese","Edamame (frozen, shelled)"],"cal":440,"protein":42,"carbs":18,"fat":23,"fiber":6},"slot":"Snack","fiber":1},{"id":"rn7","cat":"snack","name":"Chocolate Chia Pudding (Treat Size)","why":"Fiber plus chocolate","ing":["2 Tbsp chia seeds","¾ cup unsweetened almond milk","1 tsp cocoa powder","Stevia or allulose"],"steps":["Mix and refrigerate overnight."],"cal":180,"protein":6,"fat":10,"carbs":6,"cr":"5–7","fiber":7,"net":1},{"id":"rp1","cat":"prep","name":"Sunday Protein Prep","why":"One prep session, many meals","ing":["Choose 2–3: grilled/baked chicken, ground beef or turkey, salmon, hard-boiled eggs, rotisserie chicken"],"steps":["Cook proteins and store in airtight containers."],"cal":250,"protein":30,"fat":15,"carbs":2,"cr":"0–3","per":"1 serving","fiber":0},{"id":"rp2","cat":"prep","name":"Roasted Veggie Tray","why":"Ready vegetables for lunches and dinners","ing":["Broccoli, cauliflower, zucchini, peppers, onion","Olive oil","Salt and pepper"],"steps":["Roast at 400°F for 25–30 minutes until tender."],"cal":120,"protein":3,"fat":8,"carbs":9,"cr":"8–10","fiber":3},{"id":"rp3","cat":"prep","name":"Slow Cooker Shredded Chicken","why":"Protein for bowls, salads and wraps","ing":["Chicken breasts or thighs","Garlic","Onion","Olive oil","Salt and pepper"],"steps":["Cook on low 6–8 hours.","Shred and portion."],"cal":280,"protein":32,"fat":18,"carbs":3,"cr":"2–4","fiber":0},{"id":"rp4","cat":"prep","name":"Big Salad Base","why":"Fast lunches all week","ing":["Mixed greens or shredded cabbage","Cucumbers, peppers, tomatoes"],"steps":["Store undressed in a large container.","Add protein and dressing each day."],"cal":80,"protein":2,"fat":4,"carbs":7,"cr":"6–8","fiber":3},{"id":"rp5","cat":"prep","name":"Snack Box Assembly Line","why":"Prevents impulse eating","ing":["Full-fat cheese, nuts, eggs or jerky, raw veggies"],"steps":["Assemble several snack boxes at once and refrigerate."],"cal":350,"protein":20,"fat":25,"carbs":6,"cr":"4–8","per":"1 box","fiber":2},{"id":"rp6","cat":"prep","name":"Freezer Protein Pancakes","why":"Sweet breakfasts ready in minutes","ing":["Either Protein Pancake recipe above"],"steps":["Freeze pancakes between parchment sheets.","Reheat in the toaster or microwave."],"cal":290,"protein":18,"fat":16,"carbs":9,"cr":"8–10","per":"3 pancakes","fiber":2},{"id":"rp7","cat":"prep","name":"One-Pot Dinner for Two Nights","why":"Cook once, eat twice","ing":["Examples: balsamic beef, Tuscan chicken, sausage & veggie skillet"],"steps":["Serve fresh one night; reheat for lunch or dinner later in the week."],"cal":450,"protein":32,"fat":32,"carbs":10,"cr":"8–12","fiber":4},{"id":"b1","cat":"breakfast","name":"Protein Overnight Oats (Small-Oat)","why":"Make-ahead, protein-heavy; a small oat portion paired with protein and fat","ing":["¼ cup rolled oats per jar","¾ cup plain Greek yogurt","½ cup unsweetened almond milk","1 Tbsp chia seeds","¼ cup berries","Stevia or monk fruit, cinnamon","Optional: protein powder"],"steps":["Stir oats, yogurt, almond milk, chia and sweetener together in a jar.","Top with berries, lid on, refrigerate overnight.","Eat cold, or warm 60 sec."],"cal":462,"protein":48,"fat":12,"carbs":42,"cr":"30","per":"David's portion","src":"plan","slot":"Breakfast","me":{"items":["⅓ cup (27 g) rolled oats","1 scoop (31 g) whey","¾ cup (170 g) 2% Greek yogurt","½ cup (120 g) almond milk","1 Tbsp (12 g) chia","½ cup (75 g) raspberries"],"shop":["Rolled oats","Whey protein","Plain 2% Greek yogurt","Unsweetened almond milk","Chia seeds","Raspberries (frozen)"],"cal":462,"protein":48,"carbs":42,"fat":12,"fiber":12},"family":"Make 5 jars at once; kids' jars can skip the protein powder.","picky":"Plain yogurt jar with berries."},{"id":"b2","cat":"breakfast","name":"Veggie Egg Scramble + 1 Toast","why":"Protein first, vegetables second, one slice of whole-grain toast last","ing":["Eggs + egg whites","Spinach and bell peppers","Shredded mozzarella","Whole-grain bread (1 slice each)","Olive oil or butter"],"steps":["Sauté peppers 2–3 min in a little oil, add spinach until wilted.","Pour in eggs and whites, stir gently over medium-low until just set.","Top with cheese. Eat the eggs and vegetables before the toast."],"cal":531,"protein":46,"fat":22,"carbs":39,"cr":"19","per":"David's portion","src":"plan","slot":"Breakfast","me":{"items":["2 eggs + ¾ cup (180 g) egg whites","Spinach + peppers (100 g)","1 oz (28 g) mozzarella","1 slice (35 g) whole-grain toast","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Eggs","Liquid egg whites","Spinach","Bell peppers","Shredded mozzarella","Whole-grain bread","Raspberries (frozen)","Chia seeds"],"cal":531,"protein":46,"carbs":39,"fat":22,"fiber":14},"family":"Scramble a dozen eggs in one pan; stir veggies into your portion only if the kids won't eat them.","picky":"Plain scrambled eggs, toast, berries."},{"id":"l1","cat":"lunch","name":"Tuna & White Bean Salad","why":"High protein, no cooking; beans are the small starch","ing":["Canned tuna in water","White beans (small scoop)","Mixed greens, cucumber, cherry tomatoes","Olive oil + lemon","Feta"],"steps":["Drain tuna and beans.","Toss greens, cucumber and tomato with oil, lemon, salt and pepper.","Top with tuna, beans and feta."],"cal":649,"protein":63,"fat":26,"carbs":42,"cr":"29","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["1 can (140 g drained) tuna","½ cup (90 g) white beans","Greens, cucumber, tomato (240 g)","2 tsp (10 g) olive oil + lemon","¾ oz (20 g) feta","½ cup (113 g) 2% cottage cheese on the side","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Canned tuna (in water)","White beans","Mixed greens","Cucumbers","Cherry tomatoes","Olive oil","Lemons","Feta","2% cottage cheese","Avocados"],"cal":649,"protein":63,"carbs":42,"fat":26,"fiber":12}},{"id":"l2","cat":"lunch","name":"Chicken Burrito Bowl (Cauli-Rice)","why":"Burrito-bowl flavor with cauliflower rice; a little brown rice and beans as the small starch","ing":["Batch-cooked chicken","Cauliflower rice + a little brown rice","Black beans","Peppers and onion","Salsa","Avocado"],"steps":["Warm cauliflower rice and brown rice together.","Sauté peppers and onion.","Bowl: rice base, chicken, beans, veg, salsa, avocado."],"cal":516,"protein":59,"fat":12,"carbs":44,"cr":"31","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["5½ oz (155 g) cooked chicken breast","1 cup (150 g) cauliflower rice + ¼ cup (45 g) brown rice","¼ cup (45 g) black beans","Peppers + onion (100 g)","¼ cup (60 g) salsa","¼ avocado (35 g)"],"shop":["Chicken breast","Cauliflower rice (frozen)","Brown rice","Black beans","Bell peppers","Onions","Salsa","Avocados"],"cal":516,"protein":59,"carbs":44,"fat":12,"fiber":13},"family":"Uses the Sunday chicken batch."},{"id":"l3","cat":"lunch","name":"Chickpea Egg Salad Jar + Shake","why":"Make-ahead jars; small chickpea and quinoa portion with eggs and veg","ing":["Chickpeas","Quinoa (small scoop)","Hard-boiled eggs","Feta","Cucumber, tomato, greens","Olive oil + lemon","Whey shake"],"steps":["Layer oil and lemon in the jar bottom, then cucumber, tomato, chickpeas, quinoa, eggs, feta, greens on top.","Keeps 4 days. Shake into a bowl to eat.","Shake: whey in water."],"cal":621,"protein":49,"fat":30,"carbs":41,"cr":"29","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["⅓ cup (55 g) chickpeas + ¼ cup (45 g) quinoa","2 hard-boiled eggs","¾ oz (20 g) feta","Cucumber, tomato, greens (200 g)","1 tsp (5 g) olive oil + lemon","Shake: 1 scoop (31 g) whey in water","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chickpeas","Quinoa","Eggs","Feta","Cucumbers","Cherry tomatoes","Mixed greens","Olive oil","Lemons","Whey protein","Avocados"],"cal":621,"protein":49,"carbs":41,"fat":30,"fiber":11},"family":"Make 2–3 jars at once."},{"id":"l4","cat":"lunch","name":"Chicken Hummus Lettuce Wraps","why":"Same flavors as the old wrap, in lettuce instead of a tortilla","ing":["Batch-cooked chicken","Hummus","Romaine or butter lettuce leaves","Cucumber, peppers, carrots"],"steps":["Spread hummus in lettuce leaves.","Fill with sliced chicken and peppers.","Raw veg on the side."],"cal":502,"protein":60,"fat":18,"carbs":26,"cr":"14","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["6 oz (170 g) cooked chicken breast","3 Tbsp (45 g) hummus","Romaine leaves (60 g)","Cucumber, peppers, carrots (230 g)","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chicken breast","Hummus","Romaine","Cucumbers","Bell peppers","Carrots","Avocados"],"cal":502,"protein":60,"carbs":26,"fat":18,"fiber":11},"family":"Uses the Sunday chicken batch."},{"id":"l5","cat":"lunch","name":"Chicken & Black Bean Quesadilla + Salad","why":"One whole-wheat tortilla as the small starch, salad first","ing":["Whole-wheat tortillas","Batch-cooked chicken","Black beans","Shredded mozzarella","Salsa","Side salad"],"steps":["Fill half a tortilla with chicken, beans and cheese; fold.","Sheet pan at 425°F 8–10 min, or a dry skillet 2–3 min per side.","Eat the salad first."],"cal":680,"protein":61,"fat":27,"carbs":46,"cr":"31","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["1 whole-wheat tortilla (45 g)","5 oz (140 g) cooked chicken","¼ cup (45 g) black beans","1 oz (28 g) mozzarella","Salsa (60 g)","Side salad: greens + peppers (130 g), 1 tsp (5 g) olive oil","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Whole-wheat tortillas (8\")","Chicken breast","Black beans","Shredded mozzarella","Salsa","Mixed greens","Bell peppers","Olive oil","Avocados"],"cal":680,"protein":61,"carbs":46,"fat":27,"fiber":14},"family":"Weekend family lunch; make a stack on a sheet pan at 425°F.","picky":"Plain cheese quesadilla."},{"id":"s1","cat":"snack","name":"Protein Shake + Berries","why":"Protein paired with fruit and fat instead of a banana","ing":["Whey protein","Unsweetened almond milk","Frozen berries","Natural peanut butter"],"steps":["Blend everything with a few ice cubes."],"cal":293,"protein":30,"fat":13,"carbs":17,"cr":"14","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 scoop (31 g) whey","1 cup (240 g) almond milk","½ cup (75 g) frozen berries","1 Tbsp (16 g) peanut butter"],"shop":["Whey protein","Unsweetened almond milk","Berries (frozen)","Natural peanut butter"],"cal":293,"protein":30,"carbs":17,"fat":13,"fiber":3}},{"id":"s4","cat":"snack","name":"Edamame + String Cheese","why":"Protein and fiber, no prep","ing":["Frozen shelled edamame","String cheese"],"steps":["Microwave edamame 2–3 min, salt."],"cal":350,"protein":28,"fat":20,"carbs":18,"cr":"7","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 cup (155 g) shelled edamame","1 string cheese","Healthy-fat add: ½ oz (14 g) almonds"],"shop":["Edamame (frozen, shelled)","String cheese","Almonds"],"cal":350,"protein":28,"carbs":18,"fat":20,"fiber":10}},{"id":"d3","cat":"dinner","name":"Lentil Meat Sauce over Zucchini Noodles","why":"Pasta night with zucchini noodles; a small pasta portion is optional","ing":["1½ lb lean ground beef","1 cup dry lentils","2 jars low-sugar marinara","Zucchini noodles","Whole-wheat spaghetti (small amount, optional)","Parmesan","Side salad"],"steps":["Brown beef, drain.","Add marinara, lentils and 2 cups water; simmer 25–30 min until lentils are soft.","Sauté zucchini noodles 2–3 min. Cook a small amount of pasta for anyone who wants it.","Serve sauce over the noodles; parmesan on top. Salad first."],"cal":646,"protein":55,"fat":24,"carbs":55,"cr":"42","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["Sauce: 4 oz (115 g raw) 93% beef, ⅓ cup (65 g) cooked lentils, ½ cup (125 g) marinara","Zucchini noodles (200 g)","Optional small starch: 1 oz (28 g) dry whole-wheat spaghetti","2 Tbsp (10 g) parmesan","Side salad (50 g) + 1 tsp (5 g) olive oil","½ cup (113 g) 2% cottage cheese on the side"],"shop":["Lean ground beef (93%)","Lentils (dry)","Low-sugar marinara","Zucchini","Whole-wheat spaghetti","Parmesan","Mixed greens","Olive oil","2% cottage cheese"],"cal":646,"protein":55,"carbs":55,"fat":24,"fiber":13},"family":"The lentils disappear into the sauce. Make regular pasta for the kids.","picky":"Pasta with butter and parmesan, plain meat on the side."},{"id":"d4","cat":"dinner","name":"Parmesan Tilapia, Green Beans & a Little Quinoa","why":"Lean fish, a big vegetable side, small quinoa portion","ing":["2½ lb tilapia","Parmesan","Olive oil","2 bags frozen green beans","Quinoa (small amount)"],"steps":["Brush fish with oil, press on parmesan. 400°F, 12–15 min.","Roast or steam green beans.","Cook quinoa; serve a small scoop."],"cal":537,"protein":65,"fat":17,"carbs":38,"cr":"18","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["9 oz (250 g raw) tilapia","2 Tbsp (12 g) parmesan + 1½ tsp (7 g) olive oil","1½ cups (150 g) green beans","Small starch: ⅓ cup (60 g) cooked quinoa","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Tilapia fillets","Parmesan","Olive oil","Green beans (frozen)","Quinoa","Broccoli (frozen)"],"cal":537,"protein":65,"carbs":38,"fat":17,"fiber":11},"family":"Make rice instead of quinoa for the kids if they prefer.","picky":"Plain tilapia or chicken, rice, fruit."},{"id":"d5","cat":"dinner","name":"White Chicken Chili","why":"Protein-heavy chili; beans are the starch, no tortillas or bread","ing":["2 lb chicken breast","3 cans white beans","Onion, peppers, green chiles","Chicken broth","A little frozen corn","Greek yogurt, cheese, avocado to top"],"steps":["Simmer chicken, onion, peppers, chiles and broth (slow cooker 6 hr or stovetop 40 min).","Shred chicken, add beans and corn, simmer 10 min.","Top with yogurt, cheese and avocado."],"cal":658,"protein":71,"fat":23,"carbs":44,"cr":"30","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["5½ oz (155 g) cooked chicken","½ cup (90 g) white beans","Peppers, onion, a little corn (110 g), broth","¼ cup (60 g) 2% Greek yogurt + ½ oz (14 g) mozzarella","¼ avocado (30 g)","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chicken breast","White beans","Bell peppers","Onions","Frozen corn","Chicken broth","Plain 2% Greek yogurt","Shredded mozzarella","Avocados"],"cal":658,"protein":71,"carbs":44,"fat":23,"fiber":13},"family":"Serve rice on the side for the kids.","picky":"Shredded chicken with cheese over rice."},{"id":"d6","cat":"dinner","name":"Breakfast-for-Dinner Veggie Egg Bake","why":"Eggs, cottage cheese and vegetables; berries instead of toast","ing":["12 eggs","2 cups egg whites","2 cups cottage cheese","3 cups chopped veggies (spinach, peppers)","1½ cups mozzarella"],"steps":["Whisk eggs, whites and cottage cheese.","Fold in veggies, pour into a greased 9×13, top with cheese.","375°F, 35–40 min, until set in the center."],"cal":564,"protein":54,"fat":22,"carbs":40,"cr":"20","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["Your slice: 2 eggs, ¾ cup (180 g) egg whites, ½ cup (113 g) 2% cottage cheese","Veggies (120 g) + ¾ oz (21 g) mozzarella","½ cup (75 g) berries","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Eggs","Liquid egg whites","2% cottage cheese","Spinach","Bell peppers","Shredded mozzarella","Berries (frozen)","Raspberries (frozen)","Chia seeds"],"cal":564,"protein":54,"carbs":40,"fat":22,"fiber":14},"family":"One 9×13 pan feeds everyone.","picky":"Scrambled eggs, toast, fruit."},{"id":"d7","cat":"dinner","name":"Chicken Fried Cauliflower Rice","why":"Fried-rice night with mostly cauliflower rice and a little brown rice","ing":["2 lb chicken","Cauliflower rice + a little day-old brown rice","Eggs","Frozen peas & carrots","Edamame","Low-sugar soy sauce or coconut aminos","Oil"],"steps":["Stir-fry chicken in a little oil until cooked; set aside.","Scramble eggs in the pan; set aside.","Stir-fry cauliflower rice, brown rice, peas & carrots and edamame 5 min.","Return chicken and egg, season with soy sauce."],"cal":587,"protein":64,"fat":21,"carbs":37,"cr":"28","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["5 oz (140 g) cooked chicken + 1 egg","1 cup (150 g) cauliflower rice + ⅓ cup (65 g) brown rice","½ cup (75 g) peas & carrots + ⅓ cup (50 g) edamame","1½ tsp (7 g) oil + 2 tsp (10 g) soy sauce"],"shop":["Chicken breast","Eggs","Cauliflower rice (frozen)","Brown rice","Frozen peas & carrots","Edamame (frozen, shelled)","Olive oil","Low-sugar soy sauce or coconut aminos"],"cal":587,"protein":64,"carbs":37,"fat":21,"fiber":9},"family":"Make the kids' portion with regular rice.","picky":"Plain rice with egg and chicken pulled out before the veg go in."},{"id":"d8","cat":"dinner","name":"Sheet-Pan Chicken Fajitas","why":"Lots of peppers and onion; one tortilla or lettuce wraps","ing":["2 lb chicken strips","4 bell peppers, 2 onions","Fajita seasoning (no sugar)","Olive oil","Whole-wheat tortillas or lettuce leaves","Black beans","Salsa, Greek yogurt"],"steps":["Toss chicken, peppers and onion with oil and seasoning.","425°F, 20 min.","Fill one tortilla (or lettuce leaves); beans, salsa and yogurt on the side."],"cal":592,"protein":60,"fat":17,"carbs":49,"cr":"38","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) chicken","Peppers + onion (200 g), 1½ tsp (7 g) oil","1 whole-wheat tortilla (45 g) or lettuce","¼ cup (45 g) black beans","Salsa (30 g) + 3 Tbsp (40 g) 2% Greek yogurt"],"shop":["Chicken breast","Bell peppers","Onions","Olive oil","Whole-wheat tortillas (8\")","Black beans","Salsa","Plain 2% Greek yogurt"],"cal":592,"protein":60,"carbs":49,"fat":17,"fiber":11},"family":"Tortillas for everyone who wants them.","picky":"Plain chicken in a tortilla with cheese."},{"id":"d9","cat":"dinner","name":"Spinach-Ricotta Beef Bake (Chickpea Pasta)","why":"Baked-ziti comfort with chickpea pasta kept small and turkey added","ing":["1 lb chickpea pasta (plus regular ziti for the kids)","1 lb lean 93% ground beef","2 jars low-sugar marinara","15 oz ricotta","2 cups cottage cheese","10 oz frozen spinach","2 cups mozzarella","Side salad"],"steps":["Cook pasta 2 min short of done.","Brown turkey; stir in marinara.","Mix ricotta, cottage cheese and spinach.","Layer pasta, cheese mixture and sauce in a 9×13; top with mozzarella. 375°F, 25 min."],"cal":633,"protein":53,"fat":29,"carbs":44,"cr":"36","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["1½ oz (42 g) dry chickpea pasta","3 oz (85 g raw) 93% ground beef + ½ cup (125 g) marinara","¼ cup (60 g) ricotta + ½ cup (113 g) 2% cottage cheese, spinach (60 g)","¾ oz (21 g) mozzarella","Side salad (60 g)"],"shop":["Chickpea pasta","Lean ground turkey (93%)","Low-sugar marinara","Ricotta","2% cottage cheese","Spinach","Shredded mozzarella","Mixed greens"],"cal":633,"protein":53,"carbs":44,"fat":29,"fiber":8},"family":"Mix chickpea and regular ziti if the kids balk.","picky":"A plain-cheese corner without spinach."},{"id":"d10","cat":"dinner","name":"Beef & Bean Chili","why":"Beans are the starch; no tortillas","ing":["1½ lb lean ground beef","4 cans beans","2 cans diced tomatoes","Onion, peppers","Chili spices","Cheddar, Greek yogurt"],"steps":["Brown beef with onion and peppers.","Add tomatoes, beans and spices; simmer 30 min.","Top with cheese and yogurt."],"cal":560,"protein":50,"fat":23,"carbs":39,"cr":"25","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["5 oz (140 g raw) 93% beef","½ cup (90 g) beans","Tomatoes, peppers, onion (200 g)","½ oz (14 g) cheddar + ¼ cup (60 g) 2% Greek yogurt","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Lean ground beef (93%)","Kidney beans","Black beans","Diced tomatoes (canned)","Bell peppers","Onions","Shredded cheddar","Plain 2% Greek yogurt","Avocados"],"cal":560,"protein":50,"carbs":39,"fat":23,"fiber":13},"family":"Leftovers freeze well.","picky":"Plain beef and beans over rice with cheese."},{"id":"d11","cat":"dinner","name":"Tilapia Fish Tacos with Slaw","why":"Two small corn tortillas and a big slaw","ing":["2½ lb tilapia","Corn tortillas","Coleslaw mix","Greek yogurt + lime (slaw dressing)","Avocado","Salsa"],"steps":["Season fish; 400°F, 12 min.","Toss slaw with yogurt, lime and salt.","Two tortillas each; fill with fish, slaw, avocado and salsa."],"cal":588,"protein":68,"fat":12,"carbs":56,"cr":"27","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["9 oz (250 g raw) tilapia","2 corn tortillas (52 g)","1 cup (100 g) slaw + 3 Tbsp (40 g) 2% Greek yogurt, lime","¼ avocado (35 g) + salsa (30 g)","Fiber add: ½ cup (90 g) black beans"],"shop":["Tilapia fillets","Corn tortillas","Coleslaw mix / cabbage","Plain 2% Greek yogurt","Avocados","Salsa","Black beans (canned)"],"cal":588,"protein":68,"carbs":56,"fat":12,"fiber":16},"family":"Kids can have extra tortillas.","picky":"Plain fish (or chicken) in a tortilla with cheese."},{"id":"d12","cat":"dinner","name":"Chicken, White Bean & Barley Soup","why":"Soup heavy on chicken and vegetables; a little barley; no bread","ing":["2 lb chicken","2 cans white beans","½ cup pearl barley","2 cups each carrot, celery, onion","2 boxes broth","Parmesan"],"steps":["Simmer broth, vegetables and barley 25 min.","Add chicken (or pre-cooked shredded chicken) and beans; simmer 10 min.","Parmesan on top."],"cal":549,"protein":69,"fat":11,"carbs":44,"cr":"36","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["5 oz (140 g) cooked chicken","⅓ cup (60 g) white beans + ¼ cup (40 g) cooked barley","Carrot, celery, onion (150 g), broth","1 Tbsp (7 g) parmesan","½ cup (113 g) 2% cottage cheese on the side"],"shop":["Chicken breast","White beans","Pearl barley","Carrots","Celery","Onions","Chicken broth","Parmesan","2% cottage cheese"],"cal":549,"protein":69,"carbs":44,"fat":11,"fiber":8},"family":"Kids can have bread on the side.","picky":"Chicken, carrots and broth with noodles."},{"id":"d13","cat":"dinner","name":"Egg & Bean Breakfast Burrito (One Tortilla)","why":"One tortilla, extra egg whites and peppers","ing":["Eggs or eggs + a carton of whites","Black beans","Whole-wheat tortillas","Cheddar","Salsa","Peppers and onion"],"steps":["Sauté peppers and onion; scramble eggs and whites in.","Fill one tortilla with eggs, beans, cheese and salsa; roll.","Extras freeze for breakfasts."],"cal":636,"protein":61,"fat":22,"carbs":48,"cr":"39","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["2 eggs + ¾ cup (180 g) egg whites","1 whole-wheat tortilla (45 g)","¼ cup (45 g) black beans + ½ oz (14 g) cheddar","Peppers + onion (80 g), salsa (30 g)","¾ cup (170 g) 2% Greek yogurt on the side"],"shop":["Eggs","Liquid egg whites","Whole-wheat tortillas (8\")","Black beans","Shredded cheddar","Bell peppers","Onions","Salsa","Plain 2% Greek yogurt"],"cal":636,"protein":61,"carbs":48,"fat":22,"fiber":9},"family":"Make a batch and freeze the extras.","picky":"Egg-and-cheese burrito, fruit."},{"id":"d14","cat":"dinner","name":"Greek Chicken Bowls","why":"Lemon-oregano chicken over salad with tzatziki; a little rice and chickpeas","ing":["2 lb chicken breast","Marinade: 3 Tbsp olive oil, 2 lemons (juice), 2 tsp dried oregano, 3 cloves garlic, salt","Cucumbers, cherry tomatoes, romaine","Feta, olives","Tzatziki: 1½ cups plain Greek yogurt, ½ grated cucumber (squeezed dry), lemon, garlic, dill","Brown rice and chickpeas (small amounts)"],"steps":["Marinate chicken 30 min–overnight.","Grill, or bake at 425°F 18–22 min, to 165°F; rest 5 min and slice.","Stir tzatziki together.","Bowl: chopped romaine, cucumber, tomato, olives, a small scoop of rice and chickpeas, chicken, feta and tzatziki."],"cal":652,"protein":66,"fat":22,"carbs":51,"cr":"30","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) lemon-oregano chicken (1½ tsp / 7 g olive oil from the marinade)","Romaine, cucumber, tomato (260 g)","Small starch: ¼ cup (45 g) brown rice + ¼ cup (40 g) chickpeas","¾ oz (21 g) feta + 5 olives (15 g)","¼ cup (60 g) tzatziki (2% Greek yogurt)","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Chicken breast","Olive oil","Lemons","Romaine","Cucumbers","Cherry tomatoes","Brown rice","Chickpeas","Feta","Olives","Plain 2% Greek yogurt","Broccoli (frozen)"],"cal":652,"protein":66,"carbs":51,"fat":22,"fiber":12},"family":"Kids can have more rice; set everything out bowl-bar style.","picky":"Chicken, rice and cucumber slices, no sauce."},{"id":"m36","cat":"breakfast","name":"Blueberry Protein Oatmeal (Small Bowl)","why":"Reworked: no banana, a small oat portion thickened with egg whites and served with Greek yogurt","ing":["Rolled oats (⅓ cup per person)","Unsweetened almond milk","Egg whites","Blueberries","Cinnamon, stevia or monk fruit","Plain Greek yogurt"],"steps":["Simmer oats in almond milk 3–4 min.","Off the heat, whisk in egg whites and stir 1 min until thick and fluffy.","Top with blueberries, cinnamon and a spoon of yogurt."],"cal":572,"protein":45,"fat":25,"carbs":44,"cr":"30","per":"David's portion","src":"plan","slot":"Breakfast","me":{"items":["⅓ cup (27 g) rolled oats in ¾ cup (180 g) almond milk","¾ cup (180 g) egg whites whisked in","⅓ cup (50 g) blueberries","¾ cup (170 g) 2% Greek yogurt on top","1 Tbsp (10 g) walnuts","Fiber add: 1 Tbsp (12 g) chia stirred in","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Rolled oats","Unsweetened almond milk","Liquid egg whites","Berries (frozen)","Plain 2% Greek yogurt","Walnuts","Chia seeds","Avocados"],"cal":572,"protein":45,"carbs":44,"fat":25,"fiber":12},"family":"Kids can have it without the egg whites.","picky":"Plain oatmeal with blueberries."},{"id":"m39","cat":"breakfast","name":"Savory Oatmeal with Egg & Spinach","why":"Small oat portion, protein and greens on top; fits the book as the quarter-plate starch","ing":["Steel-cut or rolled oats","Broth or water","Eggs + egg whites","Spinach","Parmesan"],"steps":["Cook oats in broth until creamy.","Wilt spinach into the pot.","Top with eggs (fried or soft-boiled) and scrambled whites; parmesan on top."],"cal":554,"protein":50,"fat":21,"carbs":44,"cr":"24","per":"David's portion","src":"plan","slot":"Breakfast","me":{"items":["⅓ cup (27 g) oats cooked in broth","2 eggs + ½ cup (120 g) egg whites","2 cups (60 g) spinach","1 Tbsp (7 g) parmesan","½ cup (113 g) 2% cottage cheese on the side","Fiber add: ¾ cup (90 g) raspberries + 1 Tbsp (12 g) chia"],"shop":["Rolled oats","Chicken broth","Eggs","Liquid egg whites","Spinach","Parmesan","2% cottage cheese","Raspberries (frozen)","Chia seeds"],"cal":554,"protein":50,"carbs":44,"fat":21,"fiber":14}},{"id":"w9","cat":"breakfast","name":"Shakshuka with Chickpeas","why":"Reworked: no bread; eggs in spiced tomato-pepper sauce with a few chickpeas","ing":["Olive oil","Onion, 2 bell peppers, garlic","1 can crushed tomatoes","Cumin, paprika, chili flakes","1 can chickpeas","Eggs (2 per person)","Feta, parsley"],"steps":["Sauté onion and peppers in oil 6–8 min; add garlic and spices.","Add tomatoes and chickpeas; simmer 10 min.","Make wells, crack in eggs, cover and cook 5–7 min until whites set.","Top with feta and parsley."],"cal":563,"protein":45,"fat":28,"carbs":33,"cr":"26","per":"David's portion","src":"plan","slot":"Breakfast","me":{"items":["3 eggs poached in sauce","Sauce: tomatoes, peppers, onion (250 g), 1 tsp (5 g) olive oil","¼ cup (40 g) chickpeas","¾ oz (20 g) feta","¾ cup (170 g) 2% Greek yogurt on the side"],"shop":["Eggs","Diced tomatoes (canned)","Bell peppers","Onions","Olive oil","Chickpeas","Feta","Plain 2% Greek yogurt"],"cal":563,"protein":45,"carbs":33,"fat":28,"fiber":7},"family":"Works as breakfast-for-dinner; bread on the side for the kids.","picky":"Scrambled eggs with toast."},{"id":"m1d","cat":"lunch","name":"Mediterranean Tuna Salad with a Little Pasta","why":"Reworked: mostly vegetables and tuna, a small scoop of chickpea pasta","ing":["Canned tuna","Chickpea pasta (small amount)","Cherry tomatoes, cucumber, olives","Feta","Olive oil + lemon","Greens"],"steps":["Cook pasta, rinse cold.","Toss tuna, vegetables, olives and feta with oil and lemon.","Fold in a small scoop of pasta; serve over greens. Keeps 3 days."],"cal":601,"protein":61,"fat":19,"carbs":46,"cr":"20","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["1¼ cans (170 g drained) tuna","1 oz (28 g) dry chickpea pasta","Tomato, cucumber, greens (220 g) + 5 olives (15 g)","¾ oz (20 g) feta","2 tsp (10 g) olive oil + lemon","Fiber add: ½ cup (90 g) white beans"],"shop":["Canned tuna (in water)","Chickpea pasta","Cherry tomatoes","Cucumbers","Mixed greens","Olives","Feta","Olive oil","Lemons","White beans (canned)"],"cal":601,"protein":61,"carbs":46,"fat":19,"fiber":12},"family":"Make a big bowl with more pasta for the kids."},{"id":"m1e","cat":"lunch","name":"Tuna-Stuffed Bell Peppers","why":"Tuna and a little quinoa baked in peppers — the pepper is the vegetable half","ing":["Canned tuna","Quinoa (small amount)","Bell peppers, halved","Olive oil, lemon, herbs","Mozzarella"],"steps":["Mix tuna, cooked quinoa, oil, lemon and herbs.","Fill pepper halves, top with cheese.","Bake 400°F, 20–25 min, until the peppers soften."],"cal":553,"protein":62,"fat":20,"carbs":33,"cr":"21","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["1½ cans (200 g drained) tuna","¼ cup (45 g) cooked quinoa","2 bell peppers (300 g)","1 tsp (5 g) olive oil + lemon","¾ oz (21 g) mozzarella","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Canned tuna (in water)","Quinoa","Bell peppers","Olive oil","Lemons","Shredded mozzarella","Avocados"],"cal":553,"protein":62,"carbs":33,"fat":20,"fiber":11}},{"id":"m22","cat":"lunch","name":"Chicken Caesar Salad (Small Pasta)","why":"Reworked: a full Caesar salad with chicken; a small scoop of pasta instead of a pasta bowl","ing":["Chicken breast","Romaine","Parmesan","Caesar dressing: Greek yogurt, parmesan, lemon, garlic, Dijon, olive oil, anchovy paste (optional)","Bowtie or chickpea pasta (small amount)"],"steps":["Whisk the dressing.","Toss chopped romaine with dressing and parmesan.","Top with sliced chicken and a small scoop of cooled pasta."],"cal":640,"protein":76,"fat":17,"carbs":44,"cr":"18","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["6 oz (170 g) cooked chicken breast","4 cups (150 g) romaine","Dressing: 3 Tbsp (45 g) 2% Greek yogurt, 1 tsp (5 g) olive oil, lemon, Dijon","2 Tbsp (12 g) parmesan","1 oz (28 g) dry chickpea pasta","Fiber add: ½ cup (90 g) white beans"],"shop":["Chicken breast","Romaine","Plain 2% Greek yogurt","Olive oil","Mustard","Lemons","Parmesan","Chickpea pasta","White beans (canned)"],"cal":640,"protein":76,"carbs":44,"fat":17,"fiber":12},"family":"Romaine on the side so picky eaters can skip the greens; more pasta for the kids.","picky":"Chicken and pasta with parmesan."},{"id":"m40","cat":"lunch","name":"Strawberry Spinach Salad with Chicken","why":"Berries are the sweet note, paired with chicken, nuts and oil","ing":["Spinach","Strawberries","Grilled chicken","Walnuts","Feta","Olive oil + balsamic vinaigrette (no sugar)"],"steps":["Slice strawberries.","Toss spinach with vinaigrette.","Top with chicken, strawberries, walnuts and feta."],"cal":667,"protein":67,"fat":29,"carbs":34,"cr":"8","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["6 oz (170 g) cooked chicken","3 cups (90 g) spinach + ½ cup (75 g) strawberries","1 Tbsp (10 g) walnuts + ¾ oz (20 g) feta","2 tsp (10 g) olive oil + balsamic","Fiber add: ½ cup (80 g) chickpeas"],"shop":["Chicken breast","Spinach","Strawberries","Walnuts","Feta","Olive oil","Balsamic vinegar","Chickpeas (canned)"],"cal":667,"protein":67,"carbs":34,"fat":29,"fiber":10}},{"id":"m41","cat":"lunch","name":"Roasted Veggie Bowl with Chicken & a Little Quinoa","why":"Roasted vegetables as the base; chicken added; quinoa and sweet potato kept small","ing":["Broccoli, zucchini, a little sweet potato","Chickpeas","Quinoa (small amount)","Chicken","Olive oil + lemon dressing"],"steps":["Roast vegetables and chickpeas at 425°F, 25 min.","Bowl: quinoa, roasted veg, chicken; dress with oil and lemon."],"cal":630,"protein":55,"fat":25,"carbs":48,"cr":"34","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["5 oz (140 g) cooked chicken","Roasted broccoli + zucchini (200 g) + sweet potato (60 g)","¼ cup (40 g) chickpeas + ¼ cup (45 g) quinoa","2 tsp (10 g) olive oil + lemon","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chicken breast","Broccoli","Zucchini","Sweet potatoes","Chickpeas","Quinoa","Olive oil","Lemons","Avocados"],"cal":630,"protein":55,"carbs":48,"fat":25,"fiber":13}},{"id":"w3","cat":"lunch","name":"Lentil & Veggie Soup + Chicken","why":"Reworked: no bread; chicken stirred in for protein","ing":["Brown or green lentils","Carrots, celery, onion","Diced tomatoes","Spinach","Broth","Cooked chicken (optional for the family)"],"steps":["Sauté carrots, celery, onion.","Add lentils, tomatoes and broth; simmer 25–30 min.","Stir in spinach and chicken until hot."],"cal":489,"protein":57,"fat":15,"carbs":32,"cr":"19","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["1 cup soup: ⅓ cup (65 g) cooked lentils, tomatoes, carrot, celery, onion, spinach","5 oz (140 g) cooked chicken stirred in","1 Tbsp (7 g) parmesan","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Lentils (dry)","Diced tomatoes (canned)","Carrots","Celery","Onions","Spinach","Chicken broth","Chicken breast","Parmesan","Avocados"],"cal":489,"protein":57,"carbs":32,"fat":15,"fiber":12},"family":"Makes leftovers for several lunches."},{"id":"w4","cat":"lunch","name":"Chickpea, Feta & Cucumber Salad + Eggs","why":"Chickpeas as the small starch; eggs and Greek yogurt for protein","ing":["Chickpeas","Cucumber, cherry tomatoes, red onion","Feta","Olive oil + lemon","Hard-boiled eggs"],"steps":["Chop vegetables.","Toss with chickpeas, feta, oil and lemon.","Serve with hard-boiled eggs."],"cal":712,"protein":47,"fat":42,"carbs":37,"cr":"27","per":"David's portion","src":"plan","slot":"Lunch","me":{"items":["⅓ cup (55 g) chickpeas","Cucumber, tomato, red onion (220 g)","1 oz (28 g) feta + 2 tsp (10 g) olive oil","3 hard-boiled eggs","¾ cup (170 g) 2% Greek yogurt on the side","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chickpeas","Cucumbers","Cherry tomatoes","Onions","Feta","Olive oil","Eggs","Plain 2% Greek yogurt","Avocados"],"cal":712,"protein":47,"carbs":37,"fat":42,"fiber":9}},{"id":"m2","cat":"dinner","name":"Lemon-Herb Chicken, White Beans & Spinach","why":"One pan: chicken, a few beans, lots of greens, olive oil","ing":["Chicken breasts","Olive oil","Garlic","White beans","Cherry tomatoes","Spinach","Lemon and herbs"],"steps":["Sear chicken in oil 5–6 min per side; set aside.","Sauté garlic and tomatoes, add beans; simmer 5 min.","Wilt in spinach, return chicken, finish with lemon and herbs."],"cal":525,"protein":60,"fat":17,"carbs":37,"cr":"16","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) chicken breast","⅓ cup (60 g) white beans","Tomatoes (100 g) + spinach (100 g)","2 tsp (10 g) olive oil + lemon","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Chicken breast","White beans","Cherry tomatoes","Spinach","Olive oil","Lemons","Broccoli (frozen)"],"cal":525,"protein":60,"carbs":37,"fat":17,"fiber":12},"family":"Scale up; rice on the side for the kids.","picky":"Plain chicken and rice."},{"id":"m4","cat":"dinner","name":"Chicken & Pepper Stir-Fry","why":"Mostly chicken and vegetables; a small scoop of brown rice","ing":["Chicken breast","Bell peppers, snap peas, broccoli","Garlic, ginger","Low-sugar soy sauce or coconut aminos","Oil","Brown rice (small amount)"],"steps":["Stir-fry chicken in oil until cooked; set aside.","Stir-fry vegetables 4–5 min with garlic and ginger.","Return chicken, add soy sauce. Small scoop of rice."],"cal":510,"protein":54,"fat":17,"carbs":36,"cr":"28","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) chicken","Peppers, snap peas, broccoli (280 g)","2 tsp (10 g) oil + 1 Tbsp (15 g) soy sauce","Small starch: ⅓ cup (65 g) brown rice"],"shop":["Chicken breast","Bell peppers","Snap peas","Broccoli","Olive oil","Low-sugar soy sauce or coconut aminos","Brown rice"],"cal":510,"protein":54,"carbs":36,"fat":17,"fiber":8},"family":"Easily doubled; more rice for the kids.","picky":"Plain chicken and rice."},{"id":"m5","cat":"dinner","name":"Beef & Vegetable Stew with Chickpeas","why":"Lean beef and vegetables; chickpeas replace most of the potatoes","ing":["Lean stew beef","Carrots, celery, onion, a little sweet potato","Chickpeas","Diced tomatoes","Broth","Herbs"],"steps":["Brown beef in batches.","Add vegetables, tomatoes and broth; simmer 1½–2 hr (or slow cooker 7 hr).","Add chickpeas for the last 15 min."],"cal":558,"protein":49,"fat":19,"carbs":53,"cr":"30","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["6 oz (170 g raw) lean stew beef","Carrot, celery, onion, tomato (230 g) + sweet potato (60 g)","¼ cup (40 g) chickpeas, broth","1 tsp (5 g) olive oil","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Lean stew beef","Carrots","Celery","Onions","Diced tomatoes (canned)","Sweet potatoes","Chickpeas","Chicken broth","Olive oil","Broccoli (frozen)"],"cal":558,"protein":49,"carbs":53,"fat":19,"fiber":14},"family":"Makes great leftovers.","picky":"Beef and carrots with bread."},{"id":"m6","cat":"dinner","name":"Sheet-Pan Chicken Thighs, Olives & Roasted Veg","why":"Protein plus a full tray of vegetables; no starch needed","ing":["Boneless skinless chicken thighs","Olives","Cherry tomatoes","Zucchini, peppers, red onion","Olive oil, oregano, garlic"],"steps":["Toss everything with oil and seasoning on one tray.","425°F, 25–30 min, until thighs reach 175°F."],"cal":626,"protein":63,"fat":24,"carbs":41,"cr":"16","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) chicken thighs","Zucchini, peppers, onion, tomato (300 g)","6 olives (20 g) + 2 tsp (10 g) olive oil","½ cup (113 g) 2% cottage cheese on the side","Fiber add: ½ cup (90 g) white beans"],"shop":["Chicken thighs (boneless, skinless)","Zucchini","Bell peppers","Onions","Cherry tomatoes","Olives","Olive oil","2% cottage cheese","White beans (canned)"],"cal":626,"protein":63,"carbs":41,"fat":24,"fiber":11},"family":"One tray feeds everyone; potatoes on a second tray for the kids.","picky":"Plain chicken with potatoes."},{"id":"m8","cat":"dinner","name":"Pork Tenderloin, Broccoli & a Little Sweet Potato","why":"Lean pork, a big vegetable side, small sweet potato","ing":["Pork tenderloin","Broccoli","Sweet potatoes","Olive oil","Garlic, rosemary"],"steps":["Rub pork with oil, garlic and rosemary; sear 2 min per side.","Roast at 425°F 18–22 min to 145°F; rest 5 min.","Roast sweet potato cubes and broccoli on a second tray."],"cal":519,"protein":55,"fat":19,"carbs":34,"cr":"26","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["8 oz (225 g raw) pork tenderloin","2 cups (200 g) broccoli","Small starch: ½ small sweet potato (100 g)","2 tsp (10 g) olive oil"],"shop":["Pork tenderloin","Broccoli","Sweet potatoes","Olive oil"],"cal":519,"protein":55,"carbs":34,"fat":19,"fiber":8},"family":"Mild flavors for the whole table.","picky":"Plain pork and sweet potato."},{"id":"m9","cat":"dinner","name":"Lentil & Chicken Soup","why":"Reworked: no bread on the side; extra chicken","ing":["Chicken","Lentils","Carrots, celery, onion","Diced tomatoes","Spinach","Broth"],"steps":["Sauté vegetables.","Add lentils, tomatoes and broth; simmer 25 min.","Add shredded chicken and spinach; heat through."],"cal":566,"protein":69,"fat":18,"carbs":33,"cr":"19","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["6 oz (170 g) cooked chicken","⅓ cup (65 g) cooked lentils","Carrot, celery, onion, tomato, spinach (250 g), broth","2 Tbsp (12 g) parmesan","Healthy-fat add: ⅓ avocado (50 g)"],"shop":["Chicken breast","Lentils (dry)","Carrots","Celery","Onions","Diced tomatoes (canned)","Spinach","Chicken broth","Parmesan","Avocados"],"cal":566,"protein":69,"carbs":33,"fat":18,"fiber":13},"family":"Bread on the side for the kids.","picky":"Chicken and carrots in broth."},{"id":"m12","cat":"dinner","name":"Seared Tuna Steak, White Beans & Greens","why":"Lean fish, a small bean portion, greens in olive oil","ing":["Fresh tuna steaks","White beans","Greens (spinach or arugula)","Olive oil, lemon, garlic"],"steps":["Pat tuna dry, season; sear 1½–2 min per side in a hot pan.","Warm beans with garlic and oil; wilt greens.","Slice tuna, finish with lemon."],"cal":491,"protein":64,"fat":16,"carbs":22,"cr":"15","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["8 oz (225 g raw) tuna steak","⅓ cup (60 g) white beans","3 cups (100 g) greens + tomatoes (75 g)","1 Tbsp (14 g) olive oil + lemon"],"shop":["Tuna steaks (fresh)","White beans","Spinach","Cherry tomatoes","Olive oil","Lemons"],"cal":491,"protein":64,"carbs":22,"fat":16,"fiber":7},"family":"Chicken works the same way for anyone who skips fish."},{"id":"m24","cat":"dinner","name":"Chicken & Veggie Skewers","why":"Chicken and vegetables on skewers; rice kept small or swapped for a salad","ing":["Chicken breast, cubed","Peppers, zucchini, red onion","Olive oil, lemon, garlic, oregano","Brown rice (small amount)","Tzatziki or Greek yogurt dip"],"steps":["Marinate chicken 30 min.","Thread chicken and vegetables onto skewers.","Grill or roast at 425°F 15–18 min, turning once."],"cal":585,"protein":60,"fat":19,"carbs":47,"cr":"28","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) chicken","Peppers, zucchini, onion (250 g)","2 tsp (10 g) olive oil","Small starch: ⅓ cup (65 g) brown rice","¼ cup (60 g) 2% Greek yogurt dip","Fiber add: extra 2 cups (200 g) broccoli or green beans"],"shop":["Chicken breast","Bell peppers","Zucchini","Onions","Olive oil","Brown rice","Plain 2% Greek yogurt","Broccoli (frozen)"],"cal":585,"protein":60,"carbs":47,"fat":19,"fiber":10},"family":"Rice for the kids; pull a few plain pieces off for picky eaters.","picky":"Plain chicken pieces and rice."},{"id":"m25","cat":"dinner","name":"One-Pot Chicken & Cauliflower Rice","why":"Reworked: mostly cauliflower rice with a little brown rice; same mild flavors","ing":["Chicken thighs","Cauliflower rice + a little brown rice","Carrots and peas","Onion, garlic","Broth"],"steps":["Brown chicken thighs; set aside.","Sauté onion, garlic and carrots; add rice and broth, simmer 15 min (or use pre-cooked rice).","Add cauliflower rice, peas and chicken; cover 8–10 min."],"cal":484,"protein":49,"fat":15,"carbs":40,"cr":"32","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["7 oz (200 g raw) chicken thighs","1 cup (150 g) cauliflower rice + ⅓ cup (65 g) brown rice","Carrots + peas (100 g), onion, broth","1 tsp (5 g) olive oil"],"shop":["Chicken thighs (boneless, skinless)","Cauliflower rice (frozen)","Brown rice","Carrots","Frozen peas","Onions","Chicken broth","Olive oil"],"cal":484,"protein":49,"carbs":40,"fat":15,"fiber":8},"family":"Make the kids' portion with regular rice.","picky":"Plain chicken and rice."},{"id":"m26","cat":"dinner","name":"Meatballs over Zucchini Noodles","why":"Reworked: zucchini noodles instead of pasta; parmesan and egg as the binder","ing":["Lean ground beef (93%)","Egg, parmesan, garlic, Italian herbs","Low-sugar marinara","Zucchini noodles","Whole-wheat pasta for anyone who wants it"],"steps":["Mix turkey, egg, parmesan and herbs; roll into 1½-inch balls.","Bake at 400°F 18–20 min.","Simmer in marinara 5 min; serve over sautéed zucchini noodles."],"cal":647,"protein":62,"fat":25,"carbs":42,"cr":"18","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["6 meatballs: 6 oz (170 g raw) 93% beef, ¼ egg, 2 Tbsp (12 g) parmesan","½ cup (125 g) marinara","Zucchini noodles (250 g)","½ cup (113 g) 2% cottage cheese on the side","Fiber add: ½ cup (90 g) white beans"],"shop":["Lean ground turkey (93%)","Eggs","Parmesan","Low-sugar marinara","Zucchini","2% cottage cheese","White beans (canned)"],"cal":647,"protein":62,"carbs":42,"fat":25,"fiber":10},"family":"Use beef for the table; pasta for the kids.","picky":"Plain meatballs with pasta."},{"id":"m27","cat":"dinner","name":"Tuna & Broccoli Bake (Light on Noodles)","why":"Reworked: broccoli carries the bake; a small amount of whole-wheat noodles","ing":["Canned tuna","Broccoli florets","Whole-wheat egg noodles (small amount)","Greek yogurt + a little cheddar sauce","Peas"],"steps":["Cook noodles; steam broccoli.","Mix tuna, broccoli, peas, noodles, Greek yogurt and half the cheese.","Top with remaining cheese; 375°F, 20 min."],"cal":575,"protein":77,"fat":11,"carbs":43,"cr":"35","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["1½ cans (200 g drained) tuna","2 cups (200 g) broccoli + ¼ cup (35 g) peas","1 oz (28 g) dry whole-wheat egg noodles","Sauce: ½ cup (115 g) 2% Greek yogurt + ½ oz (14 g) cheddar"],"shop":["Canned tuna (in water)","Broccoli","Frozen peas","Whole-wheat egg noodles","Plain 2% Greek yogurt","Shredded cheddar"],"cal":575,"protein":77,"carbs":43,"fat":11,"fiber":8},"family":"Double the noodles in the kids' half of the dish.","picky":"Buttered noodles with tuna and cheese."},{"id":"m42","cat":"dinner","name":"Chicken & Vegetable Soup with Sweet Potato","why":"Broth-based, heavy on chicken and vegetables; sweet potato kept small","ing":["Chicken","Sweet potato","Carrots, celery, onion","Spinach","Broth"],"steps":["Simmer broth with carrots, celery, onion and sweet potato 15 min.","Add chicken; simmer until cooked through.","Stir in spinach at the end."],"cal":631,"protein":79,"fat":10,"carbs":55,"cr":"28","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["6 oz (170 g) cooked chicken","Sweet potato (80 g)","Carrot, celery, onion, spinach (190 g), broth","½ cup (113 g) 2% cottage cheese on the side","Fiber add: ½ cup (90 g) white beans"],"shop":["Chicken breast","Sweet potatoes","Carrots","Celery","Onions","Spinach","Chicken broth","2% cottage cheese","White beans (canned)"],"cal":631,"protein":79,"carbs":55,"fat":10,"fiber":13},"family":"Easy to portion for picky eaters — fish out the veg they skip.","picky":"Chicken and broth with noodles."},{"id":"w8","cat":"dinner","name":"Tofu & Vegetable Stir-Fry","why":"Tofu with lots of vegetables; small brown rice portion","ing":["Extra-firm tofu, pressed and cubed","Broccoli, peppers, snap peas","Garlic, ginger","Low-sugar soy sauce or coconut aminos","Oil","Edamame","Brown rice (small amount)"],"steps":["Sear tofu cubes in oil until golden; set aside.","Stir-fry vegetables and edamame 4–5 min.","Return tofu, add sauce; small scoop of rice."],"cal":651,"protein":56,"fat":35,"carbs":42,"cr":"26","per":"David's portion","src":"plan","slot":"Dinner","me":{"items":["8 oz (225 g) extra-firm tofu","½ cup (75 g) edamame","Broccoli, peppers, snap peas (250 g)","2 tsp (10 g) oil + 1 Tbsp (15 g) soy sauce","Small starch: ¼ cup (45 g) brown rice"],"shop":["Extra-firm tofu","Edamame (frozen, shelled)","Broccoli","Bell peppers","Snap peas","Olive oil","Low-sugar soy sauce or coconut aminos","Brown rice"],"cal":651,"protein":56,"carbs":42,"fat":35,"fiber":16},"family":"Same sauce and veg work with chicken for the family."},{"id":"m14","cat":"snack","name":"Cottage Cheese & a Little Pineapple","why":"Reworked: a small pineapple portion paired with plenty of protein","ing":["Cottage cheese","Fresh pineapple (small amount)","Chopped nuts"],"steps":["Top cottage cheese with a few pineapple chunks and nuts."],"cal":322,"protein":28,"fat":13,"carbs":27,"cr":"15","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 cup (226 g) 2% cottage cheese","¼ cup (40 g) pineapple","1 Tbsp (10 g) walnuts","Fiber add: ¾ cup (90 g) raspberries"],"shop":["2% cottage cheese","Pineapple","Walnuts","Raspberries (frozen)"],"cal":322,"protein":28,"carbs":27,"fat":13,"fiber":7}},{"id":"m15","cat":"snack","name":"Hummus & Veggie Plate","why":"Vegetables for dipping; hummus kept to a few spoonfuls; eggs for protein","ing":["Hummus","Carrots, peppers, cucumber, cherry tomatoes","Hard-boiled eggs"],"steps":["Slice vegetables; serve with hummus and eggs."],"cal":349,"protein":21,"fat":21,"carbs":22,"cr":"13","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["3 Tbsp (45 g) hummus","Veggies (200 g)","2 hard-boiled eggs","Healthy-fat add: ½ oz (14 g) almonds"],"shop":["Hummus","Carrots","Bell peppers","Cucumbers","Cherry tomatoes","Eggs","Almonds"],"cal":349,"protein":21,"carbs":22,"fat":21,"fiber":8},"family":"Easy to put out for everyone."},{"id":"m16","cat":"snack","name":"Apple Slices with Almond Butter & Cheese","why":"Reworked: half an apple, paired with fat and protein","ing":["Apple","Almond butter (no sugar)","String cheese"],"steps":["Slice half an apple; serve with almond butter and a string cheese."],"cal":378,"protein":25,"fat":21,"carbs":26,"cr":"17","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["½ apple (90 g)","1 Tbsp (16 g) almond butter","1 string cheese","½ cup (113 g) 2% cottage cheese","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["Apples","Almond butter (no sugar)","String cheese","2% cottage cheese","Chia seeds"],"cal":378,"protein":25,"carbs":26,"fat":21,"fiber":8},"family":"Kid-friendly."},{"id":"m18","cat":"snack","name":"Orange, Walnuts & String Cheese","why":"Fruit paired with fat and protein","ing":["Orange or grapefruit","Walnuts","String cheese"],"steps":["Peel and section the orange; serve with walnuts and cheese."],"cal":463,"protein":23,"fat":33,"carbs":22,"cr":"13","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 small orange (100 g)","½ oz (14 g) walnuts","2 string cheeses","Fiber add: 1 oz (28 g) almonds"],"shop":["Oranges","Walnuts","String cheese","Almonds"],"cal":463,"protein":23,"carbs":22,"fat":33,"fiber":7}},{"id":"m29","cat":"snack","name":"Cheese & Cucumber \"Crackers\"","why":"Reworked: cucumber rounds replace most of the crackers; a few seed crackers if wanted","ing":["Cheese slices or cubes","Cucumber rounds","Seed crackers (a few)","Deli turkey"],"steps":["Slice cucumber into thick rounds; top with cheese and turkey."],"cal":326,"protein":27,"fat":16,"carbs":19,"cr":"11","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 oz (28 g) cheese","2 oz (56 g) deli turkey","Cucumber rounds (120 g)","3 seed crackers (10 g)","Fiber add: ½ cup (75 g) shelled edamame"],"shop":["Shredded cheddar","Deli turkey","Cucumbers","Seed crackers","Edamame (frozen, shelled)"],"cal":326,"protein":27,"carbs":19,"fat":16,"fiber":5}},{"id":"m30","cat":"snack","name":"Yogurt Parfait Cups (No Granola)","why":"Reworked: nuts and seeds for crunch instead of granola; stevia instead of sugar","ing":["Plain Greek yogurt","Vanilla, stevia or monk fruit","Berries","Chopped almonds, pumpkin seeds, unsweetened coconut"],"steps":["Sweeten yogurt with vanilla and stevia.","Layer yogurt, berries and the nut-seed crunch in small cups.","Prep Sunday for the week; add crunch the day you eat it."],"cal":328,"protein":28,"fat":15,"carbs":23,"cr":"16","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 cup (227 g) 2% Greek yogurt, vanilla, stevia","⅓ cup (50 g) berries","Crunch: 1 Tbsp (10 g) pumpkin seeds + 1 tsp (3 g) coconut","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["Plain 2% Greek yogurt","Berries (frozen)","Pumpkin seeds","Unsweetened coconut flakes","Chia seeds"],"cal":328,"protein":28,"carbs":23,"fat":15,"fiber":6},"family":"Kids like the layered look."},{"id":"m31","cat":"snack","name":"Peanut Butter Yogurt Dip with Berries","why":"Reworked: berries instead of banana; peanut butter whipped into Greek yogurt","ing":["Plain Greek yogurt","Natural peanut butter","Stevia, cinnamon","Strawberries or apple slices"],"steps":["Stir peanut butter, stevia and cinnamon into the yogurt.","Dip strawberries."],"cal":324,"protein":24,"fat":16,"carbs":26,"cr":"17","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["¾ cup (170 g) 2% Greek yogurt + 1 Tbsp (16 g) peanut butter","1 cup (150 g) strawberries","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["Plain 2% Greek yogurt","Natural peanut butter","Strawberries","Chia seeds"],"cal":324,"protein":24,"carbs":26,"fat":16,"fiber":8},"family":"Kid favorite."},{"id":"m32","cat":"snack","name":"Homemade Nut & Seed Mix","why":"Reworked: no dried fruit or cereal; nuts, seeds and unsweetened coconut","ing":["Almonds","Walnuts","Pumpkin seeds","Unsweetened coconut flakes","Cinnamon or sea salt"],"steps":["Mix and portion into ¼-cup bags. Optional: toast at 325°F 8 min."],"cal":259,"protein":13,"fat":21,"carbs":6,"cr":"3","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["¼ cup mix: almonds 10 g, walnuts 7 g, pumpkin seeds 10 g, coconut 3 g","1 string cheese"],"shop":["Almonds","Walnuts","Pumpkin seeds","Unsweetened coconut flakes","String cheese"],"cal":259,"protein":13,"carbs":6,"fat":21,"fiber":3}},{"id":"m45","cat":"snack","name":"Berry Yogurt \"Nice Cream\"","why":"Reworked: frozen berries blended with Greek yogurt instead of banana","ing":["Frozen berries","Plain Greek yogurt","Stevia or monk fruit","Vanilla"],"steps":["Blend frozen berries, yogurt, sweetener and vanilla until thick like soft-serve.","Eat right away, or freeze 20 min for firmer."],"cal":408,"protein":34,"fat":15,"carbs":38,"cr":"26","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 cup (150 g) frozen berries","¾ cup (170 g) 2% Greek yogurt","½ scoop (15 g) whey (optional)","Fiber add: 1 Tbsp (12 g) chia stirred in","Healthy-fat add: ½ oz (14 g) almonds"],"shop":["Berries (frozen)","Plain 2% Greek yogurt","Whey protein","Chia seeds","Almonds"],"cal":408,"protein":34,"carbs":38,"fat":15,"fiber":10},"family":"Easy to make a big batch for the family."},{"id":"m46","cat":"snack","name":"Veggie Sticks with Greek Yogurt Dip","why":"Vegetables with a high-protein dip","ing":["Carrots, cucumber, bell pepper strips","Plain Greek yogurt","Ranch or herb seasoning (no sugar)"],"steps":["Stir seasoning into the yogurt; serve with vegetables."],"cal":407,"protein":40,"fat":15,"carbs":30,"cr":"17","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["¾ cup (170 g) 2% Greek yogurt ranch dip","Veggies (200 g)","2 oz (56 g) deli turkey roll-ups","Fiber add: ½ cup (75 g) shelled edamame","Healthy-fat add: ½ oz (14 g) almonds"],"shop":["Plain 2% Greek yogurt","Carrots","Cucumbers","Bell peppers","Deli turkey","Edamame (frozen, shelled)","Almonds"],"cal":407,"protein":40,"carbs":30,"fat":15,"fiber":9},"family":"Easy for picky eaters to pick around."},{"id":"w11","cat":"snack","name":"Protein Hot Cocoa","why":"Reworked: stevia instead of honey; whey for protein","ing":["Milk","Unsweetened cocoa powder","Stevia or monk fruit","Vanilla","Whey protein (optional)"],"steps":["Heat milk until steaming (don't boil).","Whisk in cocoa, sweetener and vanilla.","Off the heat, whisk in whey."],"cal":312,"protein":35,"fat":11,"carbs":22,"cr":"15","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["1 cup (245 g) 2% milk","1 Tbsp (5 g) cocoa","1 scoop (31 g) whey","Fiber add: 1 Tbsp (12 g) chia stirred in"],"shop":["2% milk","Unsweetened cocoa powder","Whey protein","Chia seeds"],"cal":312,"protein":35,"carbs":22,"fat":11,"fiber":6},"family":"Kids' cups can skip the whey."},{"id":"w12","cat":"snack","name":"Roasted Chickpeas + String Cheese","why":"Crunchy snack with fiber; small portion paired with protein","ing":["Canned chickpeas","Olive oil","Spices (smoked paprika, cumin, salt)","String cheese"],"steps":["Rinse and dry chickpeas thoroughly.","Toss with oil and spices; roast 400°F 30–35 min, shaking halfway.","Cool to crisp."],"cal":350,"protein":22,"fat":21,"carbs":20,"cr":"13","per":"David's portion","src":"plan","slot":"Snack","me":{"items":["⅓ cup (55 g) roasted chickpeas, ½ tsp (2 g) oil","2 string cheeses","Healthy-fat add: ½ oz (14 g) almonds"],"shop":["Chickpeas","Olive oil","String cheese","Almonds"],"cal":350,"protein":22,"carbs":20,"fat":21,"fiber":6}}];
+// RL_TIPS, RL_DATA live in data-food.js
 var MP_TOPUPS=[{"id":"t1","name":"Almonds","note":"1 oz (28 g)","cal":162,"protein":6,"carbs":6,"fat":14,"fiber":4},{"id":"t2","name":"Peanut butter + celery","note":"1 Tbsp (16 g) PB, 2 celery sticks","cal":107,"protein":5,"carbs":6,"fat":8,"fiber":2},{"id":"t3","name":"Avocado","note":"⅓ avocado (50 g), salt and lemon","cal":80,"protein":1,"carbs":4,"fat":7,"fiber":3},{"id":"t4","name":"Cheese + cucumber","note":"1 oz (28 g) cheese, a cucumber","cal":128,"protein":7,"carbs":4,"fat":9,"fiber":0},{"id":"t5","name":"Berries & cream","note":"½ cup berries + 2 Tbsp heavy cream, whipped","cal":145,"protein":1,"carbs":12,"fat":11,"fiber":2}];
 var MP_ROTATION=[[["b1","l2","s4","d5"],["rb6","m41","m31","rd1"],["rs7","l4","m15","d3"],["rb1","w3","w12","d8"],["rs5","rl5","rn3","m9"],["w9","l1","m45","d13"],["rb4","l3","m16","rd5"]],[["rs2","l5","rn2","d10"],["m36","rl11","s4","d11"],["rb5","m1e","m30","d7"],["rb3","rl1","rs3","m5"],["rb7","rl9","m46","d12"],["rs4","w4","w12","rd2"],["rb2","rl7","m15","m2"]]];
 var MP_MERGED={"b3":"rs5","b4":"rb2","s2":"rs3","s3":"rn2","d1":"rd1","d2":"rd2"};
@@ -7983,10 +6360,10 @@ function rlRender(keepFocus){
 // v457: Food tab — today's meal plan on top, then the 2-week plan, Recipe Library and grocery list.
 function renderFoodTab(){
   infoSecInit();
-  try{ mpRenderToday(); }catch(e){}
-  try{ mpRenderPlan(); }catch(e){}
-  try{ rlRender(); }catch(e){}
-  try{ renderGrocery("meals-grocery"); }catch(e){}
+  try{ mpRenderToday(); }catch(e){ftCaught(e,'renderFoodTab');}
+  try{ mpRenderPlan(); }catch(e){ftCaught(e,'renderFoodTab');}
+  try{ rlRender(); }catch(e){ftCaught(e,'renderFoodTab');}
+  try{ renderGrocery("meals-grocery"); }catch(e){ftCaught(e,'renderFoodTab');}
 }
 function renderMealsTab(){
   infoSecInit();
@@ -7996,8 +6373,8 @@ function renderMealsTab(){
   renderMythGuide("meals-myth-guide");
   renderWowGuide("meals-wow-guide");
   renderGrocery("meals-grocery");
-  try{ rlRender(); }catch(e){}
-  try{ mpRenderPlan(); }catch(e){}
+  try{ rlRender(); }catch(e){ftCaught(e,'renderMealsTab');}
+  try{ mpRenderPlan(); }catch(e){ftCaught(e,'renderMealsTab');}
 }
 // ── 2-WEEK FAMILY MEAL PLAN ─────────────────────────────────────────────
 // Rotation anchored to Mon 2026-10-26 = Week 1, Monday. Breakfast and dinner
@@ -8028,7 +6405,7 @@ function mpPos(dateKey){
   var dow=((days%7)+7)%7, wk=Math.floor(days/7);
   return {week:((((wk+mpWeekOff())%2)+2)%2), day:dow};
 }
-function mpSwaps(){ try{ return JSON.parse(store.get("ft_mp_swaps")||"{}")||{}; }catch(e){ return {}; } }
+function mpSwaps(){ try{ return JSON.parse(store.get("ft_mp_swaps")||"{}")||{}; }catch(e){ ftCaught(e,'mpSwaps'); return {}; } }
 function mpMealsAt(week,day,dateKey){
   var ids=MP_DATA.rotation[week][day], sw=dateKey?mpSwaps():{};
   return ids.map(function(id,i){
@@ -8052,8 +6429,8 @@ function mpLog(id,slot){
 function mpSwap(dateKey,slot,id){
   var sw=mpSwaps(), pos=mpPos(dateKey), def=MP_DATA.rotation[pos.week][pos.day][MP_SLOTS.indexOf(slot)];
   if(!id||id===def) delete sw[dateKey+"|"+slot]; else sw[dateKey+"|"+slot]=id;
-  try{ store.set("ft_mp_swaps",JSON.stringify(sw)); }catch(e){}
-  renderAll(); if(typeof mpRenderPlan==="function") mpRenderPlan();
+  try{ store.set("ft_mp_swaps",JSON.stringify(sw)); }catch(e){ftCaught(e,'mpSwap');}
+  renderAll(); mpRenderPlan();
 }
 function mpTopups(gap){
   var out=[], left=gap;
@@ -8101,7 +6478,7 @@ function mpRenderToday(){
     '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:4px">Week '+(pos.week+1)+' · '+MP_DOW[pos.day]+' · '+calGoalLabelForKey(key)+'</div>'+
     rows+
     '<div style="font-size:12px;margin-top:8px;color:#9a9d8c">Plan total: '+mpStatLine(s,goal)+'</div>'+tu;
-  try{ mpRenderTomorrow(); }catch(e){}
+  try{ mpRenderTomorrow(); }catch(e){ftCaught(e,'mpRenderToday');}
 }
 // v459: tomorrow's breakfast and lunch (plus a dinner heads-up) so they can be prepped tonight.
 function mpRenderTomorrow(){
@@ -8126,13 +6503,13 @@ function mpRenderTomorrow(){
     (din?'<div style="font-size:12px;color:#9a9d8c;margin-top:8px">Dinner tomorrow: <b style="color:#d8d8d0">'+din.meal.name+'</b> — thaw or marinate tonight if needed.</div>':'');
 }
 function mpSetView(w,d){ if(w!=null) mpViewWeek=w; if(d!=null) mpViewDay=d; mpRenderPlan(); }
-function mpToggleWeekOff(){ try{ store.set("ft_mp_weekoff", mpWeekOff()?"0":"1"); }catch(e){} mpViewWeek=null; renderAll(); mpRenderPlan(); }
+function mpToggleWeekOff(){ try{ store.set("ft_mp_weekoff", mpWeekOff()?"0":"1"); }catch(e){ftCaught(e,'mpToggleWeekOff');} mpViewWeek=null; renderAll(); mpRenderPlan(); }
 function mpAddGroceries(w){
   var c=grCustom(), base={}; GROCERY_LIST.forEach(function(g){ g.items.forEach(function(n){ base[n.replace(/&amp;/g,"&").toLowerCase()]=1; }); });
   var added=0;
   MP_DATA.rotation[w].forEach(function(ids){ ids.forEach(function(id){ MP_BY[id].shop.forEach(function(n){
     if(c.indexOf(n)<0 && !base[n.toLowerCase()]){ c.push(n); added++; } }); }); });
-  try{ store.set("ft_grocery_custom",JSON.stringify(c)); }catch(e){}
+  try{ store.set("ft_grocery_custom",JSON.stringify(c)); }catch(e){ftCaught(e,'mpAddGroceries');}
   renderGrocery("meals-grocery");
   var b=document.getElementById("mp-gr-btn"); if(b){ b.textContent=added?("Added "+added+" items"):"Already on list"; setTimeout(function(){ b.textContent="Add Week "+(w+1)+" to grocery list"; },1800); }
 }
@@ -8160,7 +6537,7 @@ function rvOpen(id){
     ((owner&&r.me)?'<button class="bs" style="margin-top:12px;width:100%" onclick="rlLog(\''+r.id+'\',1);rvClose()">Log my portion</button>':'')+
     '</div>';
   ov.innerHTML=h; ov.classList.add('on'); ov.scrollTop=0;
-  try{ history.pushState({rv:1},''); }catch(e){}
+  try{ history.pushState({rv:1},''); }catch(e){ftCaught(e,'rvOpen');}
 }
 function rvClose(){ var ov=document.getElementById('rv-overlay'); if(ov) ov.classList.remove('on'); }
 window.addEventListener('popstate',function(){ var ov=document.getElementById('rv-overlay'); if(ov&&ov.classList.contains('on')) ov.classList.remove('on'); });
@@ -8735,29 +7112,7 @@ function dsPic(panels,notes){
   notes.forEach(function(n,i){ s+='<text x="8" y="'+(292+i*18)+'" fill="#a8a8c0" style="font:500 12px system-ui,sans-serif">'+n+'</text>'; });
   return s+'</svg>';
 }
-var DS_SETUPPICS={
-  'Heavy Band Front Squat':function(){ return dsPic([
-    {cx:95,title:'Top (standing)',head:[95,60],torso:[[95,76],[95,138]],legs:[[95,138],[95,190],[95,246],[112,246]],arm:[[95,86],[120,98],[102,80]],band:[[96,248],[102,82]],tags:[[4,120,'Band taut'],[4,134,'at the start']]},
-    {cx:285,title:'Bottom',head:[290,82],torso:[[289,98],[272,178]],legs:[[272,178],[322,196],[285,246],[302,246]],arm:[[287,108],[316,120],[296,102]],band:[[286,248],[296,104]],bw:4,tags:[[196,224,'Knees forward']]}
-  ],['Feet on the band, elbows up, chest tall, heels flat','3 sec down · 1 sec pause · drive up']); },
-  'Banded Leg Extension':function(){ return dsPic([
-    {cx:95,title:'Start (knee bent)',head:[72,90],torso:[[72,106],[72,190]],legs:[[72,190],[122,190],[126,244],[144,244]],arm:[[72,118],[84,160],[92,196]],lines:[[40,197,112,197],[46,197,46,252],[106,197,106,252]],band:[[8,250],[126,246]],tags:[[8,268,'Low anchor']]},
-    {cx:285,title:'Top (leg level)',head:[262,90],torso:[[262,106],[262,190]],legs:[[262,190],[312,190],[358,190],[366,190]],arm:[[262,118],[274,160],[282,196]],lines:[[230,197,302,197],[236,197,236,252],[296,197,296,252]],band:[[198,250],[358,192]],bw:4,tags:[[292,172,'Squeeze 1 sec'],[198,268,'Low anchor']]}
-  ],['Band around both feet, thighs stay planted','1 sec up · 1 sec squeeze · 3 sec down']); },
-  'Lying Band Leg Curl':function(){ return dsPic([
-    {cx:95,title:'Start (legs straight)',head:[30,182],torso:[[44,188],[110,190]],legs:[[110,190],[146,190],[176,192]],arm:[[56,190],[50,212],[50,224]],lines:[[24,200,124,200],[30,200,30,252],[118,200,118,252]],band:[[176,194],[186,250]],tags:[[118,268,'Low anchor']]},
-    {cx:285,title:'Top (heels up)',head:[220,182],torso:[[234,188],[300,190]],legs:[[300,190],[336,190],[326,140]],arm:[[246,190],[240,212],[240,224]],lines:[[214,200,314,200],[220,200,220,252],[308,200,308,252]],band:[[326,142],[376,250]],bw:4,tags:[[290,128,'Squeeze 1 sec'],[308,268,'Low anchor']]}
-  ],['Face down, band around both feet, hips pinned to the bench','1 sec up · 1 sec squeeze · 3 sec down']); },
-  'Seated Band Leg Curl':function(){ return dsPic([
-    {cx:95,title:'Start (legs out)',head:[40,90],torso:[[40,106],[40,190]],legs:[[40,190],[90,190],[140,196]],arm:[[40,118],[52,160],[60,196]],lines:[[10,197,80,197],[14,197,14,252],[76,197,76,252]],band:[[140,196],[184,196]],tags:[[120,180,'Mid anchor']]},
-    {cx:285,title:'Pulled in (heels under)',head:[230,90],torso:[[230,106],[230,190]],legs:[[230,190],[280,190],[266,244]],arm:[[230,118],[242,160],[250,196]],lines:[[200,197,270,197],[204,197,204,252],[266,197,266,252]],band:[[266,242],[374,196]],bw:4,tags:[[284,236,'Squeeze 1 sec'],[310,180,'Mid anchor']]}
-  ],['Face the door, band taut, grip the bench, knees together','Pull heels under · 1 sec squeeze · 3 sec back out']); },
-  'Kneeling Banded Hip Thrust':function(){ return dsPic([
-    {cx:95,title:'Hips back',head:[112,72],torso:[[108,86],[82,150]],legs:[[82,150],[112,212],[70,212]],arm:[[104,98],[122,130],[126,150]],band:[[10,206],[82,150]],tags:[[10,230,'Low anchor']]},
-    {cx:285,title:'Lockout (squeeze)',head:[290,64],torso:[[290,78],[290,150]],legs:[[290,150],[292,212],[250,212]],arm:[[290,92],[300,128],[302,148]],band:[[200,206],[290,150]],bw:4,tags:[[300,166,'Squeeze 1 sec'],[200,230,'Low anchor']]}
-  ],['Kneel facing away from a low anchor, band at your hips','Drive hips forward · 1 sec squeeze · shuffle back to exit']); },
-  'Bayesian Curl (low anchor)':function(){ return dsBayesianPic(); }
-};
+// DS_SETUPPICS lives in data-figures.js
 /* v369 new-style biceps figures: orange working arm, drawn props, labels beside the part, band + anchor in teal. */
 function dsBayesianPic(){
   var st={head:[95,60],torso:[[95,76],[95,146]],legs:[[95,146],[98,200],[95,246],[112,246]],
@@ -9497,7 +7852,7 @@ function dsRenderMuscleChips(){
 }
 var DS_SEARCH_HITS=0;
 function dsMainFieldsMatch(item,q){
-  var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ return false; }
+  var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ ftCaught(e,'dsMainFieldsMatch'); return false; }
   var fields=[item.name,item.target,item.slot,item.equip,item.cue];
   for(var i=0;i<fields.length;i++){ if(fields[i]&&re.test(String(fields[i])))return true; }
   return false;
@@ -9516,7 +7871,7 @@ function dsSearchPattern(q){
     return t.split('').map(dsEsc).join('[-\\s]?')+suf;
   }).join('[-\\s]*');
 }
-function dsHi(text,q){ if(!q||!text)return text; try{ var re=new RegExp('('+dsSearchPattern(q)+')','ig'); return String(text).replace(re,'<mark class="ds-hit">$1</mark>'); }catch(e){ return text; } }
+function dsHi(text,q){ if(!q||!text)return text; try{ var re=new RegExp('('+dsSearchPattern(q)+')','ig'); return String(text).replace(re,'<mark class="ds-hit">$1</mark>'); }catch(e){ ftCaught(e,'dsHi'); return text; } }
 function dsItemMatchesSearch(rawItem,q){
   if(!q)return true;
   var item=dsViewOf(rawItem);
@@ -9524,19 +7879,19 @@ function dsItemMatchesSearch(rawItem,q){
     // Muscle-group chips: match on whole word boundaries, so e.g. the Lats chip
     // won't hit "flat back" or "bilateral", and the Shoulders chip won't pull in
     // Rear-Delts-only or Chest-only items.
-    var cre; try{ cre=new RegExp('\\b'+q+'\\b','i'); }catch(e){ return false; }
+    var cre; try{ cre=new RegExp('\\b'+q+'\\b','i'); }catch(e){ ftCaught(e,'dsItemMatchesSearch'); return false; }
     if(item.target && cre.test(String(item.target))) return true;
     // Fallback: the target field is a headline, not a full muscle list. Compound
     // presses and pulls train secondary movers that never show up there, so also
     // check DS_MV, which is the actual muscle attribution used for volume.
     try{
       var mvid=(rawItem&&rawItem.id)||item.id;
-      var mv=(typeof DS_MV!=='undefined')&&DS_MV&&DS_MV[mvid];
+      var mv=DS_MV&&DS_MV[mvid];
       if(mv){ for(var mk in mv){ if(mv[mk]>0 && cre.test(mk)) return true; } }
-    }catch(e){}
+    }catch(e){ftCaught(e,'dsItemMatchesSearch');}
     return false;
   }
-  var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ return false; }
+  var re; try{ re=new RegExp(dsSearchPattern(q),'i'); }catch(e){ ftCaught(e,'dsItemMatchesSearch'); return false; }
   var fields=[item.name,item.target,item.slot,item.equip,item.cue];
   for(var i=0;i<fields.length;i++){ if(fields[i]&&re.test(String(fields[i])))return true; }
   if(rawItem.variants&&rawItem.variants.length){
@@ -9567,7 +7922,7 @@ function dsPairMates(raw){
     if(!raw||!raw.pair||!DS_ITEM_CTX) return [];
     var S=DS_SESSIONS[DS_ITEM_CTX.sk]; if(!S||!S.moves) return [];
     return S.moves.filter(function(m){ return m&&m.pair===raw.pair&&m.id!==raw.id&&m.log==='setsreps'; }).map(function(m){ return m.id; });
-  }catch(e){ return []; }
+  }catch(e){ ftCaught(e,'dsPairMates'); return []; }
 }
 function dsPairNoteHtml(raw){
   try{
@@ -9577,7 +7932,7 @@ function dsPairNoteHtml(raw){
       .map(function(m){ var v=dsViewOf(m); return String((v&&v.name)||m.name).split(/ \u2014 | \(/)[0]; });
     if(!mates.length) return '';
     return '<div style="font-size:11px;color:#7dd3fc;margin:2px 0 4px;font-family:\'DM Mono\',monospace">\u21c4 Superset '+raw.pair+' \u00b7 alternate with '+mates.join(' + ')+' \u00b7 ~60s between</div>';
-  }catch(e){ return ''; }
+  }catch(e){ ftCaught(e,'dsPairNoteHtml'); return ''; }
 }
 function dsRenderItem(rawItem,idx,accent){
   var item=dsViewOf(rawItem);
@@ -9597,11 +7952,11 @@ function dsRenderItem(rawItem,idx,accent){
   if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
   h+=dsLoadTipHtml(item.name)||dsLoadTipHtml(rawItem.name);
-  if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){} }
+  if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){ftCaught(e,'dsRenderItem');} }
   if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); var _mates=dsPairMates(rawItem); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\',\''+_mates.join(',')+'\')">\u25b6 Guided '+(_mates.length?'superset':'sets')+'</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   var _hasPic=false;
-  if(typeof DS_SETUPPICS!=='undefined'&&DS_SETUPPICS[item.name]){ DS_PIC_NAME=item.name; h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
+  if(DS_SETUPPICS[item.name]){ DS_PIC_NAME=item.name; h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
   else if(typeof YG_FLOWMAP!=='undefined'&&YG_FLOWMAP[item.id]){ var _yf=ygFigHtml(YG_FLOWMAP[item.id]); if(_yf){ h+='<div class="ds-setuppic">'+_yf+'</div>'; _hasPic=true; } }
   if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
@@ -9616,7 +7971,7 @@ function dsRenderItem(rawItem,idx,accent){
       +(_mopen?'<ul class="ds-mistakes-list">'+rawItem.mistakes.map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>':'')
       +'</div>';
   }
-  if(typeof DS_PR!=="undefined"&&DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
+  if(DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
     var _matchedOnlyViaVariant=_q&&!DS_CHIP_MODE&&!dsMainFieldsMatch(item,_q);
     var _chipBrowsing=_q&&DS_CHIP_MODE; // muscle-group chip: show every variant, not just the currently active one
@@ -9729,8 +8084,8 @@ function dsPainRow(id){
   }
   return h+'</div>';
 }
-var DS_COLLAPSE={}; try{ DS_COLLAPSE=JSON.parse(store.get("ds_collapse")||"{}"); }catch(e){ DS_COLLAPSE={}; }
-function dsSaveCollapse(){ try{ store.set("ds_collapse", JSON.stringify(DS_COLLAPSE)); }catch(e){} }
+var DS_COLLAPSE={}; try{ DS_COLLAPSE=JSON.parse(store.get("ds_collapse")||"{}"); }catch(e){ ftCaught(e,'startup'); DS_COLLAPSE={}; }
+function dsSaveCollapse(){ try{ store.set("ds_collapse", JSON.stringify(DS_COLLAPSE)); }catch(e){ftCaught(e,'dsSaveCollapse');} }
 function dsSecKey(label){ return String(label).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''); }
 function dsToggleSection(key,evt){ if(evt)evt.stopPropagation(); DS_COLLAPSE[key]=!DS_COLLAPSE[key]; dsSaveCollapse(); dsRender(); }
 function dsRenderSection(label,meta,accent,items,blurb){
@@ -9844,7 +8199,7 @@ function dsFormatTrainingTime(totalSecs){
 // each exercise's start/end time in the health/week exports.
 function dsFmtClock(ts){
   if(!ts) return '';
-  try{ return new Date(ts).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }catch(e){ return ''; }
+  try{ return new Date(ts).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }catch(e){ ftCaught(e,'dsFmtClock'); return ''; }
 }
 function dsFmtTimeRange(ex){
   if(!ex || !ex.startTs) return '';
@@ -9987,7 +8342,7 @@ function dsBuildExerciseHistoryText(id){
   return lines.join("\n");
 }
 function dsShowExerciseHistory(id){
-  try{ dsToast('Loading progress\u2026'); }catch(e0){}
+  try{ dsToast('Loading progress\u2026'); }catch(e0){ftCaught(e0,'dsShowExerciseHistory');}
   var modal = document.getElementById('ds-health-export-modal');
   var ta = document.getElementById('ds-health-export-text');
   var title = document.getElementById('ds-health-export-title');
@@ -10192,13 +8547,13 @@ function dsCalendarWeekActivityMinutes(refKey){
   }
   return Math.round(totalMin);
 }
-var DS_TIME_CRUNCH = (function(){ try{ return store.get("ds_tc")==="1"; }catch(e){ return false; } })();
+var DS_TIME_CRUNCH = (function(){ try{ return store.get("ds_tc")==="1"; }catch(e){ ftCaught(e,'startup'); return false; } })();
 var DS_TC_KEEP_SLOTS = {"Warm-up":1,"Horizontal Push":1,"Vertical Push":1,"Horizontal Pull":1,"Vertical Pull":1,"Squat":1,"Hinge":1};
 var DS_TC_KEEP_IDS = {"tue-bridge":1,"tue-lat":1};  // glute activation kept on crunch days (SI-joint priority)
 function dsTcKeep(m){ return !!(DS_TC_KEEP_SLOTS[m.slot] || DS_TC_KEEP_IDS[m.id]); }
-function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("ds_tc", DS_TIME_CRUNCH?"1":"0"); }catch(e){} dsRender(); }
-function dsGuestShowExtras(){ try{ return store.get('ds_guest_extras')==='1'; }catch(e){ return false; } }
-function dsSetGuestExtras(on){ try{ store.set('ds_guest_extras', on?'1':'0'); }catch(e){} dsRender(); }
+function dsToggleTimeCrunch(){ DS_TIME_CRUNCH=!DS_TIME_CRUNCH; try{ store.set("ds_tc", DS_TIME_CRUNCH?"1":"0"); }catch(e){ftCaught(e,'dsToggleTimeCrunch');} dsRender(); }
+function dsGuestShowExtras(){ try{ return store.get('ds_guest_extras')==='1'; }catch(e){ ftCaught(e,'dsGuestShowExtras'); return false; } }
+function dsSetGuestExtras(on){ try{ store.set('ds_guest_extras', on?'1':'0'); }catch(e){ftCaught(e,'dsSetGuestExtras');} dsRender(); }
 function dsExtrasHidden(){ return dsGuestMode() && !dsGuestShowExtras(); }
 function dsRenderExtras(){
   if(dsExtrasHidden()){
@@ -10239,9 +8594,9 @@ function dsRenderSearchAll(q){
     var _seen={};
     DS_ORDER.forEach(function(d){ dsSessOf(d).moves.forEach(function(it){ if(it&&it.id)_seen[it.id]=1; }); });
     extras.forEach(function(ex){ ex.moves.forEach(function(it){ if(it&&it.id)_seen[it.id]=1; }); });
-    var _res=(typeof DS_RESERVE_MOVES!=='undefined'?DS_RESERVE_MOVES:[]).filter(function(it){ return it&&it.id&&it.name&&!_seen[it.id]&&dsItemMatchesSearch(it,q); });
+    var _res=(DS_RESERVE_MOVES).filter(function(it){ return it&&it.id&&it.name&&!_seen[it.id]&&dsItemMatchesSearch(it,q); });
     if(_res.length){ totalHits+=_res.length; html+=dsRenderSection('Not in current plan','','var(--muted)',_res,''); }
-  }catch(e){}
+  }catch(e){ftCaught(e,'dsRenderSearchAll');}
   DS_SEARCH_HITS=totalHits;
   return html;
 }
@@ -10283,180 +8638,7 @@ function dsProteinByMealToday(dayKey){
   return out;
 }
 var DS_MV_ORDER=['Chest','Back','Shoulders','Rear Delts','Biceps','Triceps','Forearms','Quads','Glutes','Hamstrings','Calves','Core'];
-var DS_MV={
-  'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
-  'mon-ohp':{'Shoulders':1,'Triceps':.5},
-  'mon-pullapart':{'Rear Delts':1,'Back':.5},
-  'mon-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
-  /* --- v99: these were logging real working sets but contributing zero muscle
-     volume, because they had no DS_MV entry. The bodyweight leg circuit and the
-     pull-up ladder were the biggest gaps. --- */
-  /* --- v117: same bug as v99 — the Wednesday finisher block (bodyweight split
-     squat, glute bridge, single-leg RDL reach, wall sit) logs real working sets
-     but had no DS_MV entry, so none of it counted toward weekly Quads/
-     Hamstrings/Glutes volume. --- */
-  'wed-fin-splitsquat':{'Quads':1,'Glutes':.5},
-  'wed-fin-glutebridge':{'Hamstrings':1,'Glutes':1},
-  'wed-fin-slrdl':{'Hamstrings':1,'Glutes':.5},
-  'wed-fin-wallsit':{'Quads':.5},
-  'thu-shrug':{'Traps':1,'Shoulders':.2},
-  'thu-uprightrow':{'Traps':1,'Shoulders':.7},
-  'thu-ohtriceps':{'Triceps':1},
-  // Saturday Upper C moved from thu-* to sat-* ids; these were never counted.
-  'sat-ohtriceps':{'Triceps':1},
-  'sat-facepull':{'Back':.5,'Shoulders':.7,'Traps':.5},
-  'sat-lateral':{'Shoulders':1},
-  'sat-curl':{'Biceps':1},
-  'sat-preacher':{'Biceps':1},
-  'mon-preacher':{'Biceps':1},
-  'sat-forearm':{'Forearms':1},
-  'sat-wristcurl':{'Forearms':1},
-  'sat-shrug':{'Traps':1,'Shoulders':.2},
-  'sat-uprightrow':{'Traps':1,'Shoulders':.7},
-  'sat-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
-  'sat-chest':{'Chest':1},
-  'sat-standpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
-  'sat-inclinecurl':{'Biceps':1},
-  'sat-frontsquat':{'Quads':1,'Glutes':.5},
-  'sat-hipthrust':{'Glutes':1,'Hamstrings':.5},
-  'sat-bandcrunch':{'Core':1},
-  'mon-pressaround':{'Chest':1},
-  'mon-highfly':{'Chest':1},
-  'mon-forearm':{'Forearms':1},
-  'thu-forearm':{'Forearms':1},
-  'mon-lateral':{'Shoulders':1},
-  'mon-pulldown':{'Back':1,'Biceps':.4,'Forearms':.3},
-  'thu-bandcrunch':{'Core':1},
-  'thu-wristext':{'Forearms':.5},
-  'mon-extrot':{'Rear Delts':.5},
-  'mon-elbowrot':{'Forearms':.5},
-  'thu-elbowrot':{'Forearms':.5},
-  'thu-wallwalk':{'Traps':.5},
-  'sat-sideplank':{'Core':1},
-  'fri-kbswing':{'Glutes':1,'Hamstrings':.5,'Core':.5},
-  'mon-standbandpress':{'Chest':1,'Triceps':.5,'Shoulders':.5},
-  'mon-slamskull':{'Triceps':1},
-  'thu-ballpullover':{'Back':1,'Chest':.5,'Core':.5},
-  'pu-hang':{'Back':.5},
-  'pu-scaprow':{'Back':1,'Rear Delts':.5,'Biceps':.5},
-  'pu-aussie':{'Back':1,'Biceps':.5,'Rear Delts':.5,'Core':.5},
-  'pu-jackknife':{'Back':1,'Biceps':.5},
-  'pu-jacktop':{'Back':.5,'Biceps':.5},
-  'pu-bandtop':{'Back':.5,'Biceps':.5},
-  'pu-bodyweight':{'Back':1,'Biceps':1,'Core':.5},
-  // Forearm/grip attribution. Hangs, rows and curls load the flexor-pronator mass
-  // heavily — the exact tissue involved in medial epicondylitis — and none of it
-  // was being counted anywhere.
-  // Rehab sets at 2 lb are tendon-loading work, not hypertrophy volume, so they
-  // count as indirect. Weighting them 1.0 pushed the weekly total past MAV and
-  // would have made a healthy rehab dose look like overtraining.
-  'mob-elbow':{'Forearms':0.5},
-  'mob-elbowiso':{'Forearms':0.5},
-  'mob-elbowrot':{'Forearms':0.5},
-  'mob-elbowgrip':{'Forearms':0.5},
-  'mob-elbowradial':{'Forearms':0.5},
-  'mon-row':{'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Forearms':0.5},
-  'mon-fly':{'Chest':1},
-  'tue-spanish':{'Quads':1,'Glutes':.25},
-  'tue-chairsquat':{'Quads':1,'Glutes':.5},
-  'tue-clamshell':{'Abductors':1},
-  'fri-hinge':{'Hamstrings':.5,'Glutes':.5},
-  'fri-bridge':{'Glutes':1,'Hamstrings':.25},
-  'fri-birddog':{'Lower Back':.5,'Core':.5},
-  'fri-sideplank':{'Core':1},
-  'fri-legext':{'Quads':1},
-  'thu-row':{'Back':1,'Biceps':0.5,'Rear Delts':0.5},
-  'sat-row':{'Back':1,'Biceps':0.5,'Rear Delts':0.5},'mon-bandcrunch':{'Core':1},'thu2-legraise':{'Core':1},
-  'pu-hang':{'Back':0.5,'Forearms':1},
-  'pu-scaprow':{'Back':1,'Rear Delts':0.5,'Biceps':0.5,'Forearms':0.5},
-  'pu-aussie':{'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Core':0.5,'Forearms':0.5},
-  'pu-bodyweight':{'Back':1,'Biceps':1,'Core':0.5,'Forearms':0.5},
-  'atg-hipflexor':{'Core':1,'Quads':.5},
-  'atg-extrot':{'Shoulders':1,'Rear Delts':.5},
-  'atg-trap3':{'Shoulders':1,'Back':.5},
-  'bwl-squat':{'Quads':1,'Glutes':1,'Core':.5},
-  'bwl-revlunge':{'Quads':1,'Glutes':1,'Hamstrings':.5},
-  'bwl-slhinge':{'Hamstrings':1,'Glutes':1,'Core':.5},
-  'bwl-curtsy':{'Glutes':1,'Quads':.5},
-  'bwl-slthrust':{'Glutes':1,'Hamstrings':.5},
-  'bwl-legabd':{'Glutes':1},
-  'bwl-liftoff':{'Glutes':1,'Hamstrings':.5,'Quads':.5},
-  'mon-curl':{'Biceps':1,'Forearms':.3},
-  'mon-tri':{'Triceps':1,'Forearms':.3},
-  'mon-elbow':{'Forearms':.5},
-  'thu-elbow':{'Forearms':.5},
-  'mon-inclinepress':{'Chest':1,'Triceps':.7,'Shoulders':.5},
-  'mon-calf':{'Calves':1},
-  'fri-calf':{'Calves':1},
-  'thu-pullover':{'Back':1},
-  'mon-hollow':{'Core':1},
-  'tue-squat':{'Quads':1,'Glutes':.5},
-  'fri-goblet':{'Quads':1,'Glutes':.5},
-  'tue-lat':{'Glutes':1},
-  'atg-backwalk':{'Quads':.5},
-  'tue-bridge':{'Glutes':1,'Hamstrings':.5},
-  'tue-ballcurl':{'Hamstrings':1,'Glutes':.5},
-  'tue-pallof':{'Core':1},
-  'tue-lyingcurl':{'Hamstrings':1},
-  'tue-jump':{'Quads':1,'Glutes':.5,'Calves':.5},
-  'tue-step':{'Quads':1,'Glutes':.5},
-  'thu-chest':{'Chest':1},
-  'thu-facepull':{'Rear Delts':1,'Back':.5},
-  'thu-lat':{'Back':1,'Biceps':.7,'Forearms':.5},
-  'thu-lateral':{'Shoulders':1},
-  'thu-hammer':{'Biceps':1,'Forearms':0.5},
-  'thu-inclinecurl':{'Biceps':1},
-  'thu-tri':{'Triceps':1,'Forearms':.3},
-  'thu-hollow':{'Core':1},
-  'tue-legext':{'Quads':1},
-  'fri-bulg':{'Quads':1,'Glutes':.5},
-  'fri-sumo':{'Glutes':1,'Quads':.5},
-  'fri-slrdl':{'Hamstrings':1,'Glutes':.5,'Forearms':.3},
-  'fri-goodmorning':{'Hamstrings':1,'Glutes':.5,'Back':.5},
-  'fri-nordic':{'Hamstrings':1,'Glutes':.5},
-  'fri-seatcurl':{'Hamstrings':1},
-  'fri-obliques':{'Core':1},
-  'fri-deadbug':{'Core':1},
-  'fri-sqpress':{'Quads':1,'Glutes':.5,'Shoulders':.5,'Triceps':.5},
-  'fri-plank':{'Core':1},
-  'sathot-squat':{'Quads':1,'Glutes':.5},
-  'sathot-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
-  'sathot-bridge':{'Glutes':1,'Hamstrings':.5},
-  'sathot-lateral':{'Shoulders':1},
-  'sathot-latwalk':{'Glutes':1},
-  'sathot-hammer':{'Biceps':1},
-  'sathot-deadbug':{'Core':1},
-  'hiit-mon-row':{'Back':1,'Biceps':.5,'Rear Delts':.5},
-  'hiit-mon-pullapart':{'Rear Delts':1,'Back':.5},
-  'hiit-mon-fly':{'Chest':1},
-  'hiit-mon-curl':{'Biceps':1},
-  'hiit-tue-squat':{'Quads':1,'Glutes':.5},
-  'hiit-tue-bridge':{'Glutes':1,'Hamstrings':.5},
-  'hiit-tue-pallof-l':{'Core':1},
-  'hiit-tue-pallof-r':{'Core':1},
-  'hiit-thu-pulldown':{'Back':1,'Biceps':.5},
-  'hiit-thu-facepull':{'Rear Delts':1,'Back':.5},
-  'hiit-thu-lateral':{'Shoulders':1},
-  'hiit-thu-hammer':{'Biceps':1},
-  'hiit-fri-rdl':{'Hamstrings':1,'Glutes':.5},
-  'hiit-fri-latwalk':{'Glutes':1},
-  'hiit-fri-deadbug':{'Core':1},
-  'hiit-fri-bridge':{'Glutes':1,'Hamstrings':.5},
-  'pu-scap':{'Back':.5},
-  'pu-neg':{'Back':1,'Biceps':.5},
-  'pu-band':{'Back':1,'Biceps':.5},
-  'atg-dip':{'Triceps':1,'Chest':.5},
-  'atg-splitsquat':{'Quads':1,'Glutes':.5},
-  'atg-fullsquat':{'Quads':1,'Glutes':.5},
-  'atg-nordic':{'Hamstrings':1},
-  'mob-clam':{'Glutes':.5},
-  'wed-slam':{'Core':.5},
-  'wed-rotslam':{'Core':1},
-  'wed-bike':{'Core':1},
-  'mon-legraise':{'Core':1},
-  'thu-legraise':{'Core':1},
-  'wed-hollow':{'Core':1}
-};
+// DS_MV lives in data-exercises.js
   DS_MV['sat-growth-row']={'Back':1,'Biceps':0.5,'Rear Delts':0.5,'Forearms':0.5};
   DS_MV['sat-growth-pulldown']={'Back':1,'Biceps':.7,'Forearms':.5};
   DS_MV['sat-growth-ohp']={'Shoulders':1,'Triceps':.5};
@@ -10467,14 +8649,14 @@ var DS_MV={
 // The custom-plan loader runs earlier in the file, before DS_MV/DS_SETUPS exist,
 // so its muscle map and setup text are applied here on a second pass.
 (function dsReapplyCustomPlanTables(){
-  var raw=(typeof dsCustomPlanRaw==='function')?dsCustomPlanRaw():"";
+  var raw=dsCustomPlanRaw();
   if(!raw) return;
   try{
     var obj=JSON.parse(raw);
     if(obj.mv) for(var id in obj.mv) DS_MV[id]=obj.mv[id];
     if(obj.setups) for(var sid in obj.setups) DS_SETUPS[sid]=obj.setups[sid];
     if(obj.demos) for(var did in obj.demos){ if(DS_DEMOS[obj.demos[did]]) DS_DEMOMAP[did]=obj.demos[did]; }
-  }catch(e){ console.warn('Custom plan tables could not be applied.'); }
+  }catch(e){ ftCaught(e,'dsReapplyCustomPlanTables'); console.warn('Custom plan tables could not be applied.'); }
 })();
 var DS_MV_NAMEIDX=null;
 function dsMVNameIdx(){
@@ -10483,7 +8665,7 @@ function dsMVNameIdx(){
   Object.keys(DS_MV).forEach(function(id){
     try{ var raw=dsRawItem(id); if(raw&&raw.name) DS_MV_NAMEIDX[String(raw.name).toLowerCase().trim()]=id;
       if(raw&&raw.variants){ raw.variants.forEach(function(v){ if(v&&v.name) DS_MV_NAMEIDX[String(v.name).toLowerCase().trim()]=id; }); }
-    }catch(e){}
+    }catch(e){ftCaught(e,'dsMVNameIdx');}
   });
   return DS_MV_NAMEIDX;
 }
@@ -10517,7 +8699,7 @@ function dsMVWeek(dateKeys){
       if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid])sessCount[xid]=n1; return; }
       if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
         if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid])sessCount[mid]=n2; return; } }
-    }); } }catch(e){}
+    }); } }catch(e){ftCaught(e,'dsMVWeek');}
     var cloudDay=DS_CLOUD_VOL[key]||{};
     Object.keys(DS_MV).forEach(function(id){
       var st=ui[id];
@@ -10551,7 +8733,7 @@ function dsMuscleVolBreakdown(muscle,dateKeys){
       if(eid.indexOf('sess_')===0){ var xid=eid.slice(5); var n1=(e.sets!=null?e.sets:1); if(!sessCount[xid]||n1>sessCount[xid]){sessCount[xid]=n1; sessName[xid]=e.name;} return; }
       if(eid.indexOf('sheet_')===0){ var mid=dsMVNameIdx()[String(e.name||'').toLowerCase().trim()];
         if(mid){ var n2=(e.sets!=null?e.sets:1); if(!sessCount[mid]||n2>sessCount[mid]){sessCount[mid]=n2; sessName[mid]=e.name;} return; } }
-    }); } }catch(e){}
+    }); } }catch(e){ftCaught(e,'dsMuscleVolBreakdown');}
     var cloudDay=DS_CLOUD_VOL[key]||{};
     Object.keys(DS_MV).forEach(function(id){
       var map=DS_MV[id]; if(!map[muscle]) return;
@@ -10571,7 +8753,7 @@ function dsMuscleVolBreakdown(muscle,dateKeys){
 var DS_MV_BREAKDOWN_OPEN=null; // muscle name currently expanded, or null
 function dsToggleMvBreakdown(muscle){
   DS_MV_BREAKDOWN_OPEN=(DS_MV_BREAKDOWN_OPEN===muscle)?null:muscle;
-  if(typeof dsRenderMuscleVolume==='function') dsRenderMuscleVolume();
+  dsRenderMuscleVolume();
 }
 function dsMvBreakdownHtml(muscle){
   var rows=dsMuscleVolBreakdown(muscle);
@@ -10730,7 +8912,7 @@ function dsRender(){
   if(_q&&!_hasHit){ html='<div class="ds-nomatch">No matches for \u201c'+_q+'\u201d across any day.</div>'; }
   host.innerHTML=html; dsUpdateStats(); if(DS_BR_RUN) dsBrPaint();
 }
-function renderToday(){ try{dsRender();}catch(e){} }
+function renderToday(){ try{dsRender();}catch(e){ftCaught(e,'renderToday');} }
 function dsUpdateStats(){
   var vis=dsVisibleItems(), all=dsAllItems(), total=vis.length, done=0, burned=0;
   // Same fix as dsComplete: a naive "sess_"+id match only ever sees entries logged on
@@ -10764,12 +8946,12 @@ function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===tr
 function dsTempoParse(t){ var p=String(t||'3-0-1-1').split('-').map(function(x){return Math.max(0,+x||0);}); while(p.length<4)p.push(0); return {down:p[0],pause:p[1],up:p[2],sq:p[3]}; }
 function dsTempoText(tp){ var a=['Lower '+tp.down+'s']; if(tp.pause)a.push('pause '+tp.pause+'s'); a.push('up '+(tp.up||1)+'s'); if(tp.sq)a.push('squeeze '+tp.sq+'s'); return a.join(' \u00b7 '); }
 var dsTP={on:false,t:null,ctx:null,lock:null};
-function dsTPBeep(f,ms,vol){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C)return; if(!dsTP.ctx)dsTP.ctx=new C(); if(dsTP.ctx.state==='suspended')dsTP.ctx.resume(); var c=dsTP.ctx,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(vol||0.18,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){} }
+function dsTPBeep(f,ms,vol){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C)return; if(!dsTP.ctx)dsTP.ctx=new C(); if(dsTP.ctx.state==='suspended')dsTP.ctx.resume(); var c=dsTP.ctx,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(vol||0.18,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){ftCaught(e,'dsTPBeep');} }
 function dsTPVib(p){ try{ if(navigator.vibrate)navigator.vibrate(p); }catch(e){} }
 function dsIsElasticBand(item){ var e=(item.equip||''); return /tube|band|loop/i.test(e) && !/dumbbell|kettlebell|\bkb\b/i.test(e); }
 // v478: any sets/reps exercise can be switched to separate L/R logging (sticky per exercise),
 // and single-leg/single-arm variants that inherit a parent rx are detected by name.
-function dsLRMap(){ try{ return JSON.parse(store.get('ft_lr_force')||'{}')||{}; }catch(e){ return {}; } }
+function dsLRMap(){ try{ return JSON.parse(store.get('ft_lr_force')||'{}')||{}; }catch(e){ ftCaught(e,'dsLRMap'); return {}; } }
 function dsIsUnilateral(item){
   if(!item) return false;
   var f=dsLRMap(); if(item.id && f[item.id]!=null) return !!f[item.id];
@@ -10780,7 +8962,7 @@ function dsToggleLR(id){
   var st=dsItemState(id);
   if(on){ var r=st._reps||10; if(st._repsL==null) st._repsL=r; if(st._repsR==null) st._repsR=r; }
   else { st._reps=Math.max(_dsSideVal(st._repsL),_dsSideVal(st._repsR))||st._reps||10; }
-  try{ dsQueueConfigPush(); }catch(e){}
+  try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsToggleLR');}
   dsSaveUI(); dsRender();
 }
 function dsRememberLoad(id){ var st=dsItemState(id); var el=document.getElementById('ds-load-'+id); if(el){st._load=el.value;st._loadTouched=true;dsSaveUI();} }
@@ -10870,7 +9052,7 @@ function dsLogSet(id,target){
   st.sets.push(setObj);
   dsAutoregulate(id);
   dsSyncPartialLog(dsViewOf(dsRawItem(id)));
-  if(!(dsGP&&dsGP.noRest) && typeof tgStartTimer==="function" && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){} }
+  if(!(dsGP&&dsGP.noRest) && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){ftCaught(e,'dsLogSet');} }
   dsSaveUI(); dsRender(); renderAll();
 }
 var DS_EFFORT_TAGS=[
@@ -10963,7 +9145,7 @@ function tgStartTimer(secs,name,label){
     if(_twState.secs<=0){
       _twState.secs=0; _twRender();
       clearInterval(_twState.interval); _twState.interval=null;
-      try{ if(typeof ivlBeep==='function'){ ivlBeep(880,150); setTimeout(function(){ivlBeep(880,150);},220); } }catch(e){}
+      try{ ivlBeep(880,150); setTimeout(function(){ivlBeep(880,150);},220); }catch(e){}
       try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){}
       setTimeout(function(){ closeTimer(); },1500);
       return;
@@ -11278,1509 +9460,9 @@ YG_PICS['frog']=function(){
   return ygPic(side,top,'From the side','From above',
     ['Knees wide, ankles in line with knees, feet flexed','Sink hips back only until the groin opens, never sharp','Block under the chest if the floor is far']); };
 var YG_FLOWMAP={'wed-flow-hk-frog':'frog','wed-flow-catcow':'catcow','wed-flow-child':'childs','wed-flow-downdog':'downdog','wed-flow-dragon':'low-lunge','wed-flow-warrior1':'warrior1','wed-flow-warrior2':'warrior2','wed-flow-warrior3':'warrior3','wed-flow-trianglepose':'triangle','wed-flow-cobra':'cobra','wed-flow-fold':'standing-forward','wed-flow-twist':'supine-twist','wed-flow-bridge':'bridge','wed-flow-legsup':'legs-up','wed-flow-sav':'corpse','wed-flow-hk-sav':'corpse','wed-flow-hk-happybaby':'happy-baby','wed-flow-cat':'seated-forward','wed-flow-revwarrior':'reverse-warrior'};
-function ygFigHtml(poseId){ try{ return (typeof YG_PICS!=='undefined'&&YG_PICS[poseId])?YG_PICS[poseId]():''; }catch(e){ return ''; } }
+function ygFigHtml(poseId){ try{ return (typeof YG_PICS!=='undefined'&&YG_PICS[poseId])?YG_PICS[poseId]():''; }catch(e){ ftCaught(e,'ygFigHtml'); return ''; } }
 
-var YOGA_DEMOS={
-  "mountain":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="52" x2="100" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="88" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="112" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="52" x2="90" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="52" x2="110" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="40" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "childs":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="140" y1="108" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="108" x2="105" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="98" x2="80" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="80" y1="108" x2="55" y2="116" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="80" cy="108" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "catcow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="62" y1="122" x2="62" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="122" x2="140" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M62 98 Q100 90 140 98" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M62 98 Q100 84 140 98;M62 98 Q100 108 140 98;M62 98 Q100 84 140 98" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite"/></path>'+
-    '<line x1="140" y1="98" x2="152" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="160" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</svg>';},
-  "downdog":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="108" y1="82" x2="70" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="108" y1="82" x2="150" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="108" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "cobra":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="150" y1="122" x2="80" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="80" y1="108" x2="95" y2="122" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="96" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "sphinx":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="150" y1="122" x2="85" y2="114" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="85" y1="114" x2="85" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="72" cy="100" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "seated-forward":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="58" y1="122" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="58" y1="122" x2="90" y2="102" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="102" x2="122" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="122" y1="116" x2="142" y2="120" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="122" cy="116" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "bridge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="58" y1="122" x2="85" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="85" y1="98" x2="130" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="130" y1="98" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="50" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "butterfly":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="122" x2="80" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="120" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "happy-baby":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="45" y1="124" x2="60" y2="124" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="60" y1="124" x2="100" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="124" x2="95" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="90" x2="122" y2="86" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="95" y1="90" x2="108" y2="98" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="45" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "reclined-butterfly":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="4.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="40" y1="118" x2="55" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="55" y1="118" x2="115" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="115" y1="118" x2="95" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="95" y1="100" x2="112" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="40" cy="118" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "corpse":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="35" y1="122" x2="58" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="58" y1="122" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="58" y1="122" x2="48" y2="112" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<line x1="140" y1="114" x2="168" y2="106" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="35" cy="122" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "legs-up":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="4.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="50" y1="124" x2="60" y2="124" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="60" y1="124" x2="150" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="150" y1="124" x2="156" y2="40" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="158" y1="12" x2="158" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="50" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "supine-twist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="45" y1="118" x2="58" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="58" y1="118" x2="95" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="95" y1="118" x2="125" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="125" y1="100" x2="140" y2="82" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="118" x2="78" y2="104" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="45" cy="118" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "staff":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="122" x2="150" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="122" x2="60" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="60" cy="70" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "puppy":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="135" y1="124" x2="135" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="135" y1="100" x2="95" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="95" y1="108" x2="70" y2="120" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="70" y1="120" x2="55" y2="124" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="120" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "easy-pose":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="122" x2="78" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="122" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="100" y2="72" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="72" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "standing-forward":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="100" x2="100" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="100" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="92" x2="100" y2="126" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="92" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "low-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="96" x2="88" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="118" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="118" y1="98" x2="118" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "warrior1":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="96" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="120" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="44" x2="70" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="88" y1="44" x2="106" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "warrior2":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="100" y2="46" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="68" y1="66" x2="132" y2="66" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "reverse-warrior":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="100" y2="46" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="128" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="46" x2="80" y2="40" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="46" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "ext-side-angle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="135" y1="118" x2="100" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="98" x2="132" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="132" y1="76" x2="150" y2="58" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="132" cy="76" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "triangle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="124" x2="120" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="132" y2="58" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="95" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="132" y1="58" x2="140" y2="46" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="132" cy="58" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "warrior3":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="124" x2="95" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="98" x2="55" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="98" x2="135" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="55" y1="90" x2="38" y2="86" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="55" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "half-moon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="124" x2="90" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="92" x2="68" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="90" y1="92" x2="130" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="92" x2="108" y2="50" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="98" cy="84" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "chair":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="124" x2="88" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="100" x2="112" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="100" x2="100" y2="52" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="52" x2="82" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="52" x2="118" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "eagle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="124" x2="96" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="96" y1="100" x2="108" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="96" y1="100" x2="100" y2="48" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="48" x2="96" y2="52" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="48" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "tree":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="124" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="80" x2="82" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="80" x2="100" y2="58" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="94" y1="68" x2="106" y2="68" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="72" y1="124" x2="110" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="118" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="118" x2="110" y2="62" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="110" cy="62" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "boat":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="105" y1="122" x2="150" y2="82" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="122" x2="70" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="86" x2="45" y2="92" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "camel":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="124" x2="95" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="100" x2="118" y2="84" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="118" y1="84" x2="128" y2="72" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="95" y1="100" x2="112" y2="118" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="128" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "bow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="125" y1="118" x2="100" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="116" x2="85" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="85" y1="100" x2="90" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="125" y1="118" x2="118" y2="96" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="85" y1="100" x2="118" y2="96" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "locust":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="118" x2="60" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="118" x2="48" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="60" y1="118" x2="35" y2="106" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="118" x2="168" y2="104" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="48" cy="112" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "seated-twist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="122" x2="95" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="95" y1="116" x2="100" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="116" x2="108" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="82" x2="124" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="124" y1="76" x2="132" y2="88" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="92" y1="82" x2="80" y2="100" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="108" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "rev-warrior":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="72" y1="124" x2="115" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="148" y1="124" x2="115" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="115" y1="100" x2="95" y2="64" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="95" y1="64" x2="80" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="95" y1="64" x2="116" y2="40" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="95" cy="64" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "thread-needle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="122" x2="60" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="122" x2="150" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="98" x2="150" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="60" y1="98" x2="130" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="140" cy="114" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "pyramid":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="76" y1="124" x2="135" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="76" y1="124" x2="95" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="95" y1="104" x2="112" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="112" cy="98" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "wide-fold":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="58" y1="124" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="142" y1="124" x2="100" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="108" x2="100" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="118" x2="88" y2="124" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<line x1="100" y1="118" x2="112" y2="124" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="118" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "crescent-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="124" x2="88" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="60" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="96" x2="88" y2="44" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="44" x2="72" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="88" y1="44" x2="104" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="88" cy="44" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "upward-dog":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="150" y1="124" x2="90" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="108" x2="60" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="108" x2="82" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="82" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "half-pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="122" x2="108" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="108" y1="118" x2="148" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="108" y1="118" x2="88" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="88" y1="108" x2="72" y2="100" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="72" cy="100" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "dolphin":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="90" x2="70" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="118" x2="70" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="150" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="95" cy="80" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "fish":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="122" x2="90" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="118" x2="118" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="118" y1="98" x2="132" y2="116" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="118" y1="98" x2="145" y2="120" stroke="#9a9d8c" stroke-width="2" stroke-linecap="round"/>'+
-    '<circle cx="132" cy="116" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "hero":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="122" x2="105" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="122" x2="100" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="76" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "cow-face":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="122" x2="85" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="115" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="100" y2="74" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="74" x2="80" y2="70" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="100" y1="74" x2="122" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="74" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "half-lord":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="72" y1="122" x2="98" y2="114" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="98" y1="114" x2="102" y2="116" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="98" y1="114" x2="118" y2="108" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="102" y1="116" x2="110" y2="72" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="94" y1="82" x2="126" y2="76" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="126" y1="76" x2="134" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="94" y1="82" x2="82" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="110" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "crow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="92" y1="120" x2="100" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="108" y1="120" x2="100" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="108" x2="100" y2="96" stroke="#9a9d8c" stroke-width="6" stroke-linecap="round"/>'+
-    '<line x1="100" y1="96" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="94" y1="96" x2="108" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="106" y1="96" x2="112" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="86" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "side-crow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="120" x2="102" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="110" y1="120" x2="102" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="102" y1="106" x2="102" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="102" y1="98" x2="70" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="70" y1="104" x2="48" y2="98" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="102" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "headstand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    ''+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="18" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="85" y1="80" x2="115" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="18" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "forearm-stand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    ''+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="20" x2="100" y2="78" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="80" y1="98" x2="120" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="80" y1="98" x2="100" y2="78" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="120" y1="98" x2="100" y2="78" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="20" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "shoulder-stand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    ''+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="124" x2="80" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="80" y1="124" x2="95" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="90" x2="95" y2="36" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="55" cy="124" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "plow":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    ''+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="122" x2="95" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="104" x2="140" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="55" cy="124" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "wheel":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="124" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="90" y1="90" x2="130" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="130" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="78" cy="98" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "king-pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="68" y1="122" x2="105" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="116" x2="112" y2="86" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="86" x2="118" y2="72" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="105" y1="116" x2="140" y2="78" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="140" y1="78" x2="124" y2="58" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="118" cy="72" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "side-plank":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="118" x2="95" y2="108" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="108" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="108" x2="85" y2="80" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="102" cy="98" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "king-dancer":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="92" y1="124" x2="92" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="92" y1="92" x2="105" y2="76" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="76" x2="112" y2="64" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="112" y1="64" x2="130" y2="52" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="105" y1="76" x2="108" y2="38" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="112" cy="64" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "firefly":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="88" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="112" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="100" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="158" y2="92" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "eight-angle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="120" x2="98" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="106" y1="120" x2="98" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="98" y1="108" x2="98" y2="92" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="98" y1="104" x2="130" y2="96" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="130" y1="96" x2="140" y2="108" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<circle cx="98" cy="92" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "peacock":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="120" x2="90" y2="108" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="108" x2="160" y2="104" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="172" cy="104" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "flying-pigeon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="118" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="112" y2="98" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="104" x2="100" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="140" y2="96" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "scale":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="86" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="114" y1="120" x2="100" y2="104" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="94" y1="104" x2="100" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="106" y1="104" x2="100" y2="116" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="92" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "handstand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    ''+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="18" x2="100" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="85" y1="80" x2="115" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="18" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "wild-thing":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="62" y1="122" x2="88" y2="106" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="88" y1="106" x2="112" y2="94" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="112" y1="94" x2="126" y2="102" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="112" y1="94" x2="146" y2="68" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="126" cy="102" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "lotus":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="118" x2="85" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="118" x2="115" y2="122" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="118" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="86" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "standing-split":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="95" y1="124" x2="95" y2="98" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="95" y1="98" x2="90" y2="90" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="90" y1="90" x2="76" y2="128" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="95" y1="98" x2="120" y2="48" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="90" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "splits":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="40" y1="122" x2="100" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="160" y2="122" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="122" x2="100" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="86" r="8" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "chin-stand":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    ''+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="80" y1="124" x2="98" y2="106" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="98" y1="106" x2="122" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="122" y1="100" x2="140" y2="86" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="140" y1="86" x2="132" y2="112" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "banana":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<path d="M50,120 Q100,90 150,110" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M50,120 Q100,90 150,110;M50,116 Q100,80 150,116;M50,120 Q100,90 150,110" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="155" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "barrelroll":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="50" y1="100" x2="150" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="100" x2="100" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 118;22 100 118;0 100 118;-22 100 118;0 100 118" keyTimes="0;0.25;0.5;0.75;1" dur="4.2s" repeatCount="indefinite"/><line x1="100" y1="118" x2="80" y2="132" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="118" x2="120" y2="132" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</g>'+
-    '</svg>';},
-  "chaturanga":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="118" x2="150" y2="112" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="118" x2="72" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="148" y1="112" x2="140" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="48" cy="120" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "cobraroll":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<path d="M50,124 Q90,124 130,124" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M50,124 Q90,124 130,124;M50,124 Q90,90 140,70;M50,124 Q90,124 130,124" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="140" cy="106" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animate attributeName="cy" values="120;70;120" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/><animate attributeName="cx" values="130;140;130" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '<line x1="60" y1="120" x2="50" y2="105" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "downdogpedal":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="124" x2="105" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="124" x2="105" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="80" x2="60" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="105" y1="80" x2="60" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="56" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<circle cx="140" cy="124" r="6" fill="none" stroke="#4ec98a" stroke-width="2"><animate attributeName="cy" values="124;114;124" keyTimes="0;0.5;1" dur="2.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '</g>'+
-    '</svg>';},
-  "figure8":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="80" x2="80" y2="95" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="80" x2="120" y2="95" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="112" r="4" fill="none" stroke="#4ec98a" stroke-width="2" opacity="0.8"><animateMotion dur="3.2s" repeatCount="indefinite" path="M0,0 C-8,-3 -8,3 0,0 C8,-3 8,3 0,0"/></circle>'+
-    '</g>'+
-    '</svg>';},
-  "headcircle":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animateMotion dur="4s" repeatCount="indefinite" path="M0,0 C6,4 6,10 0,12 C-6,10 -6,4 0,0"/></circle>'+
-    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="110" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "highplank":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="110" x2="150" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="110" x2="60" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="148" y1="105" x2="148" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="48" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "kneeling-sugarcane":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="128" x2="90" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="80" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<path d="M90,95 Q110,80 100,50" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="105" x2="130" y2="80" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="80;70;80" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "knees-chest":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="110" x2="60" y2="105" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="50" cy="102" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<path d="M90,110 Q100,90 90,70" fill="none" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="d" values="M90,110 Q100,90 90,70;M90,110 Q95,85 80,68;M90,110 Q100,90 90,70" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '</g>'+
-    '</svg>';},
-  "lizardlunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="110" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="110" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="110" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="110" y1="60" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="110" y1="60" x2="150" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "lizardtwist":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="110" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="150" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="110" y1="90" x2="110" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="110" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="110" y1="60" x2="70" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="110" y1="60" x2="150" y2="20" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="20;14;20" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "low-lunge-side":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="95" x2="145" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M105,95 Q95,70 115,45" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="d" values="M105,95 Q95,70 115,45;M105,95 Q90,68 108,40;M105,95 Q95,70 115,45" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></path>'+
-    '<circle cx="115" cy="38" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="115" y1="50" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "neck-shoulder-release":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="72" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="60" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"><animateTransform attributeName="transform" type="rotate" values="0 100 72;18 100 72;0 100 72" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></circle>'+
-    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "prone-pec":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="120" x2="140" y2="120" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="150" cy="116" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="120" x2="90" y2="90" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="transform" values="rotate(0 90 120);rotate(25 90 120);rotate(0 90 120)" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "rev-half-moon":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="90" y1="100" x2="90" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="90" cy="50" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="68" x2="60" y2="55" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="68" x2="120" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="30;22;30" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '<line x1="90" y1="100" x2="90" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="90" y1="100" x2="140" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="y2" values="90;96;90" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "rev-high-lunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="75" y1="128" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="150" y1="110" x2="105" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="105" y1="95" x2="105" y2="55" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="105" cy="47" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="105" y1="65" x2="80" y2="110" stroke="#9a9d8c" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="105" y1="65" x2="130" y2="30" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="30;24;30" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "revtable":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="124" x2="60" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="100" x2="120" y2="100" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="120" y1="100" x2="140" y2="124" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="100" x2="80" y2="124" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="130" cy="92" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "side-leg-ext":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="118" x2="130" y2="118" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<circle cx="45" cy="112" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="130" y1="118" x2="165" y2="118" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y2" values="118;90;118" keyTimes="0;0.5;1" dur="3s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '</g>'+
-    '</svg>';},
-  "side-plank-mod":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="55" y1="95" x2="150" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="60" y1="95" x2="60" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="150" y1="105" x2="150" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"><animate attributeName="y1" values="105;98;105" keyTimes="0;0.5;1" dur="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '<circle cx="48" cy="90" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '</g>'+
-    '</svg>';},
-  "sidelunge":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="90" x2="60" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"><animate attributeName="x1" values="100;130;100" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/></line>'+
-    '<line x1="100" y1="90" x2="140" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="90" x2="100" y2="50" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="42" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="60" x2="80" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="60" x2="120" y2="80" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "spinalrot":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="70" y1="128" x2="130" y2="128" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 100;-18 100 100;0 100 100;18 100 100;0 100 100" keyTimes="0;0.25;0.5;0.75;1" dur="4.4s" repeatCount="indefinite"/><line x1="100" y1="100" x2="100" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+'<line x1="100" y1="72" x2="75" y2="85" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="72" x2="125" y2="85" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</g>'+
-    '</svg>';},
-  "standing-fold-bound":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="124" x2="100" y2="90" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M100,90 Q100,60 100,55" fill="none" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="50" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="90" y1="70" x2="110" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="124" x2="85" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="100" y1="124" x2="115" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';},
-  "windshield-wipers":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,0;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="60" y1="105" x2="140" y2="105" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="rotate" values="0 100 105;28 100 105;0 100 105;-28 100 105;0 100 105" keyTimes="0;0.25;0.5;0.75;1" dur="4.4s" repeatCount="indefinite"/><line x1="100" y1="105" x2="90" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+'<line x1="100" y1="105" x2="110" y2="128" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/></g>'+
-    '</g>'+
-    '</svg>';},
-  "wrist-figure8":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<line x1="60" y1="128" x2="100" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="140" y1="128" x2="100" y2="95" stroke="#9a9d8c" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="100" y1="95" x2="100" y2="60" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="52" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<circle cx="60" cy="128" r="5" fill="none" stroke="#4ec98a" stroke-width="2">'+
-    '<animateMotion dur="2.8s" repeatCount="indefinite" path="M0,0 C6,-5 6,5 0,0 C-6,-5 -6,5 0,0"/></circle>'+
-    '</svg>';},
-  "wrist-rolls":function(){return '<svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">'+
-    '<line x1="28" y1="128" x2="172" y2="128" stroke="#5F5E5A" stroke-width="3" stroke-linecap="round"/>'+
-    '<g><animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" keyTimes="0;0.5;1" dur="3.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>'+
-    '<line x1="100" y1="110" x2="100" y2="70" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="100" cy="58" r="9" fill="none" stroke="#9a9d8c" stroke-width="4"/>'+
-    '<line x1="100" y1="85" x2="80" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '<circle cx="80" cy="100" r="6" fill="none" stroke="#4ec98a" stroke-width="2"><animateMotion dur="2.4s" repeatCount="indefinite" path="M0,0 C4,-4 4,4 0,0 C-4,-4 -4,4 0,0"/></circle>'+
-    '<line x1="100" y1="85" x2="120" y2="100" stroke="#9a9d8c" stroke-width="4" stroke-linecap="round"/>'+
-    '</g>'+
-    '</svg>';}
-};
-
-var POSES = [
-
-// ═══════════════════════════════════════════════════
-// BEGINNER
-// ═══════════════════════════════════════════════════
-{id:"mountain",e:"🧍",n:"Mountain Pose",s:"Tadasana",l:"beginner",c:"standing",cpm:2.2,dur:60,
-desc:"The foundation of all standing poses. Develops body awareness, alignment, and intentional standing.",
-steps:["Stand feet together or hip-width, toes forward.","Distribute weight evenly across all four corners of both feet.","Engage thighs, lift kneecaps, tuck tailbone slightly.","Roll shoulders back and down, arms at sides, palms forward.","Lengthen through crown of head as if a string pulls you upward.","Breathe deeply and hold 30-60 seconds."],
-cue:"Press all four corners into the earth. Feel tall and rooted.",
-ben:["Posture","Body Awareness","Grounding","Focus","Balance"]},
-
-{id:"childs",e:"🙇",n:"Child's Pose",s:"Balasana",l:"beginner",c:"restorative",cpm:1.8,dur:90,
-desc:"A resting pose that gently stretches the hips, thighs, and lower back. Perfect between harder poses.",
-steps:["Kneel with big toes touching, knees wide apart.","Sit hips back toward heels.","Walk hands forward, lower forehead to mat.","Extend arms forward or rest alongside body.","Let belly fall between thighs and breathe into your back.","Hold 30 seconds to 3 minutes."],
-cue:"With each exhale, let hips sink heavier toward your heels.",
-ben:["Hip Flexors","Lower Back","Stress Relief","Recovery","Breath"]},
-
-{id:"catcow",e:"🐄",n:"Cat-Cow",s:"Marjaryasana-Bitilasana",l:"beginner",c:"seated",cpm:2.5,dur:60,
-desc:"A gentle flow between two poses that warms up the spine. Excellent for back pain and as a morning warm-up.",
-steps:["Start on hands and knees, wrists under shoulders, knees under hips.","COW: Inhale, drop belly, lift chest and tailbone, gaze forward.","CAT: Exhale, round spine to ceiling, tuck chin and tailbone.","Flow smoothly, matching each movement to your breath.","Move slowly — this is about spinal mobility, not speed.","Complete 8-12 rounds."],
-cue:"Let your breath lead. Inhale to open, exhale to round.",
-ben:["Spinal Mobility","Back Pain","Core Warm-Up","Breath","Hip Mobility"]},
-
-{id:"downdog",e:"🐕",n:"Downward Dog",s:"Adho Mukha Svanasana",l:"beginner",c:"standing",cpm:3.2,dur:60,
-desc:"One of yoga's most iconic poses. Strengthens arms while stretching the entire back of the body.",
-steps:["Start in tabletop. Curl toes under, push hips up and back.","Straighten legs (slight bend OK if hamstrings are tight).","Press hands firmly, spread fingers wide.","Rotate inner elbows toward each other to protect shoulders.","Let head hang between arms — no neck strain.","Press heels toward floor and hold 30-60 seconds."],
-cue:"Push the floor away with your hands. Keep a long spine.",
-ben:["Hamstrings","Calves","Shoulders","Upper Back","Inversion"]},
-
-{id:"cobra",e:"🐍",n:"Cobra Pose",s:"Bhujangasana",l:"beginner",c:"backbend",cpm:2.8,dur:45,
-desc:"A gentle backbend that strengthens the spine and opens the chest. Counter-movement for forward-bent postures.",
-steps:["Lie face down, hands under shoulders, elbows close to body.","Press tops of feet and pelvis into the mat.","Inhale and lift chest off the floor using back muscles first.","Use hands for light support — don't push yourself up.","Keep elbows slightly bent, shoulders away from ears.","Hold 15-30 seconds, lower slowly."],
-cue:"Lift from your back, not from your arms. Slide forward and up.",
-ben:["Lower Back","Chest","Shoulders","Posture","Energy"]},
-
-{id:"sphinx",e:"🦁",n:"Sphinx Pose",s:"Salamba Bhujangasana",l:"beginner",c:"backbend",cpm:2.0,dur:60,
-desc:"A gentler backbend than Cobra. Great for those with sensitive lower backs or as a warm-up to deeper backbends.",
-steps:["Lie face down with legs extended, feet hip-width.","Bring elbows under shoulders, forearms on the mat parallel.","Press forearms down and lift chest and head.","Keep lower back relaxed — no squeezing the glutes.","Gaze forward or slightly up.","Hold 30-60 seconds."],
-cue:"Press forearms into mat like you're pushing the floor away from you.",
-ben:["Lower Back","Chest Opening","Spine","Posture","Gentle Backbend"]},
-
-{id:"seated-forward",e:"🙏",n:"Seated Forward Fold",s:"Paschimottanasana",l:"beginner",c:"seated",cpm:2.0,dur:60,
-desc:"A deep stretch for the entire back of the body. Calming for the nervous system and excellent for tight hamstrings.",
-steps:["Sit with legs extended, feet flexed.","Inhale and sit tall, lengthening spine.","Exhale and hinge forward from hips — keep back flat as long as possible.","Reach for feet, ankles, or shins without rounding.","With each inhale lengthen, with each exhale fold deeper.","Hold 30-90 seconds. Never force or bounce."],
-cue:"Lead with your chest forward, not just fold down.",
-ben:["Hamstrings","Lower Back","Calves","Spine","Calming"]},
-
-{id:"bridge",e:"🌉",n:"Bridge Pose",s:"Setu Bandha Sarvangasana",l:"beginner",c:"backbend",cpm:3.5,dur:45,
-desc:"Strengthens the glutes, hamstrings, and lower back while opening the chest. Perfect antidote to sitting.",
-steps:["Lie on back, knees bent, feet flat hip-width apart.","Arms flat at sides, palms down.","Press feet firmly and lift hips toward ceiling.","Squeeze glutes and press arms into mat.","Keep knees over heels — don't let them splay.","Hold 30-60 seconds, lower slowly. Repeat 2-3x."],
-cue:"Drive through your heels, not your toes. Squeeze glutes hard.",
-ben:["Glutes","Hamstrings","Lower Back","Hip Flexors","Chest"]},
-
-{id:"butterfly",e:"🦋",n:"Butterfly Pose",s:"Baddha Konasana",l:"beginner",c:"seated",cpm:1.8,dur:90,
-desc:"A gentle hip opener that stretches the inner thighs and groin. Works well for cyclists and desk workers.",
-steps:["Sit with soles of feet together, knees out to sides.","Hold ankles or feet with both hands.","Sit tall and breathe into the inner groin.","Gently press knees toward the floor — don't force.","Option to hinge forward for a deeper stretch.","Hold 60-120 seconds."],
-cue:"Breathe into your hips. Let gravity open them rather than forcing.",
-ben:["Inner Thighs","Groin","Hip Opening","Lower Back","Circulation"]},
-
-{id:"happy-baby",e:"👶",n:"Happy Baby",s:"Ananda Balasana",l:"beginner",c:"restorative",cpm:1.8,dur:90,
-desc:"A deeply relaxing hip opener that releases tension in the lower back and inner thighs. Hard to do without smiling.",
-steps:["Lie on your back. Exhale and bend knees to chest.","Grip outside edges of feet (or shins).","Open knees wider than torso, bringing toward armpits.","Flex feet, stacking ankles over knees.","Gently pull feet down as if pushing knees toward the floor.","Rock gently side to side. Hold 60-90 seconds."],
-cue:"Let your spine melt into the mat. Rock gently like a content baby.",
-ben:["Hips","Inner Thighs","Lower Back","Stress Relief","Recovery"]},
-
-{id:"reclined-butterfly",e:"🌸",n:"Reclined Butterfly",s:"Supta Baddha Konasana",l:"beginner",c:"restorative",cpm:1.5,dur:180,
-desc:"A fully passive hip opener. Place pillows under knees for support if needed. Perfect for end of practice.",
-steps:["Lie on your back with soles of feet together.","Let knees fall out to the sides.","Place hands on belly or extend arms out to sides.","Close eyes and breathe deeply.","Option: place pillows or blocks under each knee for support.","Hold 2-5 minutes."],
-cue:"There is nothing to do here. Simply breathe and release.",
-ben:["Hips","Groin","Inner Thighs","Nervous System","Recovery"]},
-
-{id:"corpse",e:"😴",n:"Corpse Pose",s:"Savasana",l:"beginner",c:"restorative",cpm:1.2,dur:300,
-desc:"The most important pose in yoga. Deep rest that allows your body to absorb the benefits of practice. Never skip it.",
-steps:["Lie flat on back, feet mat-width apart, toes falling out.","Arms slightly away from body, palms facing up.","Close eyes and let body become completely heavy.","Consciously relax each part from feet to face.","Breathe naturally. Return to breath when mind wanders.","Stay 3-10 minutes."],
-cue:"Nowhere to go. Nothing to do. Just be here.",
-ben:["Recovery","Stress Relief","Nervous System","Absorption","Rest"]},
-
-{id:"legs-up",e:"🦵",n:"Legs Up the Wall",s:"Viparita Karani",l:"beginner",c:"restorative",cpm:1.5,dur:300,
-desc:"A gentle inversion with massive recovery benefits. Reduces leg swelling and calms the nervous system.",
-steps:["Sit sideways with one hip against the wall.","Swing legs up wall as you lie back.","Scoot hips as close to wall as comfortable.","Arms at sides or on belly, palms up.","Close eyes and fully relax.","Hold 5-15 minutes."],
-cue:"Let gravity do all the work. Breathe and release.",
-ben:["Leg Recovery","Circulation","Stress Relief","Lower Back","Blood Pressure"]},
-
-{id:"supine-twist",e:"🌀",n:"Supine Spinal Twist",s:"Supta Matsyendrasana",l:"beginner",c:"twist",cpm:2.0,dur:60,
-desc:"A passive twist that releases the spine and outer hips. Perfect way to end a practice or release after cycling.",
-steps:["Lie on back. Draw right knee to chest.","Cross right knee over body to the left, letting it fall toward the floor.","Extend right arm out to the right, gaze right.","Keep both shoulders grounded — the twist happens in the spine.","Place left hand on right knee for a gentle assist.","Hold 30-60 seconds each side."],
-cue:"Let shoulder blades melt into the floor. Don't force the twist.",
-ben:["Spine","IT Band","Outer Hip","Lower Back","Digestion"]},
-
-{id:"staff",e:"📏",n:"Staff Pose",s:"Dandasana",l:"beginner",c:"seated",cpm:2.0,dur:30,
-desc:"The seated equivalent of Mountain Pose. Establishes proper alignment for all seated poses.",
-steps:["Sit with legs extended straight in front of you.","Place hands on floor beside hips, fingers forward.","Flex feet toward you.","Sit tall — press sitting bones into floor and lengthen spine.","Press palms down to help lift the chest.","Hold 30-60 seconds."],
-cue:"Sitting up straight is harder than it looks. Use your core.",
-ben:["Posture","Core","Hamstrings","Body Awareness","Alignment"]},
-
-{id:"puppy",e:"🐶",n:"Puppy Pose",s:"Uttana Shishosana",l:"beginner",c:"restorative",cpm:2.0,dur:60,
-desc:"A heart-melting pose halfway between Child's and Downward Dog. Opens the chest and shoulders beautifully.",
-steps:["Start in tabletop on hands and knees.","Walk hands forward while keeping hips over knees.","Lower chest and chin (or forehead) toward the mat.","Keep arms active — press into palms.","Let chest melt toward the floor.","Hold 30-60 seconds."],
-cue:"Hips stay high over knees. Let your heart sink toward the earth.",
-ben:["Chest","Shoulders","Spine","Upper Back","Hip Flexors"]},
-
-{id:"easy-pose",e:"🧘",n:"Easy Pose",s:"Sukhasana",l:"beginner",c:"seated",cpm:1.5,dur:120,
-desc:"A comfortable cross-legged seated position for meditation and breathing exercises. The starting point of many practices.",
-steps:["Sit on floor or folded blanket for added height.","Cross legs comfortably at shins (not lotus).","Place hands on knees, palms up or down.","Sit tall — spine long, shoulders relaxed.","Close eyes or soften your gaze.","Hold as long as comfortable."],
-cue:"Sit tall as if a thread lifts the crown of your head.",
-ben:["Posture","Calming","Hip Flexibility","Focus","Meditation"]},
-
-{id:"standing-forward",e:"🌊",n:"Standing Forward Fold",s:"Uttanasana",l:"beginner",c:"standing",cpm:2.5,dur:60,
-desc:"A full-body forward fold that releases the hamstrings, calves, and spine. Calming and grounding.",
-steps:["Stand with feet hip-width apart.","Exhale and hinge forward from hips, folding over legs.","Bend knees generously if hamstrings are tight.","Let head hang heavy — release neck completely.","Hold elbows and sway gently, or reach for the floor.","Hold 30-60 seconds."],
-cue:"Let your head be the heaviest thing. Release everything downward.",
-ben:["Hamstrings","Calves","Spine","Inversion Benefits","Calming"]},
-
-{id:"low-lunge",e:"🏃",n:"Low Lunge",s:"Anjaneyasana",l:"beginner",c:"standing",cpm:3.2,dur:45,
-desc:"A deep hip flexor opener that's essential for cyclists and runners. Also opens the chest and builds leg strength.",
-steps:["From standing, step right foot forward into a lunge.","Lower left knee to the mat, untuck toes.","Adjust front knee to be directly over ankle.","Lift torso upright and raise arms overhead.","Sink hips down and forward — feel the hip flexor stretch.","Hold 30-60 seconds, repeat left side."],
-cue:"Sink hips toward the floor. The more your hip drops, the deeper the stretch.",
-ben:["Hip Flexors","Quads","Groin","Chest","Balance"]},
-
-// ═══════════════════════════════════════════════════
-// INTERMEDIATE
-// ═══════════════════════════════════════════════════
-{id:"warrior1",e:"⚔️",n:"Warrior I",s:"Virabhadrasana I",l:"intermediate",c:"standing",cpm:4.0,dur:45,
-desc:"A powerful standing pose that builds leg and core strength while opening the hips and chest.",
-steps:["Step left foot back 3-4 feet into a lunge.","Turn left foot out 45 degrees, press outer edge down.","Bend right knee over right ankle (aim for 90 degrees).","Square hips forward toward the front of the mat.","Raise arms overhead, palms facing each other.","Hold 30-45 seconds, repeat other side."],
-cue:"Ground through the back foot. Feel warrior strength rising up.",
-ben:["Quads","Glutes","Hip Flexors","Core","Shoulders"]},
-
-{id:"warrior2",e:"🏹",n:"Warrior II",s:"Virabhadrasana II",l:"intermediate",c:"standing",cpm:4.2,dur:45,
-desc:"The quintessential warrior pose. Opens hips, builds leg strength, challenges focus and steadiness.",
-steps:["Feet wide (about 4 feet), right foot pointing right, left in slightly.","Bend right knee to 90 degrees over ankle.","Extend arms parallel to floor, reaching actively both ways.","Gaze over right middle finger — steady and focused.","Keep torso upright, not leaning forward or back.","Hold 30-45 seconds, repeat left side."],
-cue:"Sink deep into the bent knee. Extend through both fingertips.",
-ben:["Inner Thighs","Quads","Glutes","Shoulders","Stamina"]},
-
-{id:"reverse-warrior",e:"🌈",n:"Reverse Warrior",s:"Viparita Virabhadrasana",l:"intermediate",c:"standing",cpm:3.8,dur:30,
-desc:"A beautiful side stretch from Warrior II that opens the entire side body and builds lateral flexibility.",
-steps:["From Warrior II with right knee bent.","Flip front palm up and reach right arm up and back.","Slide left hand down the back left leg.","Let the torso arc back and to the side in a long curve.","Keep the front knee bent at 90 degrees.","Hold 20-30 seconds, repeat other side."],
-cue:"Create a long arc from your back heel to your fingertips.",
-ben:["Side Body","Obliques","Hip Flexors","Chest","Shoulder Opening"]},
-
-{id:"ext-side-angle",e:"📐",n:"Extended Side Angle",s:"Utthita Parsvakonasana",l:"intermediate",c:"standing",cpm:4.0,dur:30,
-desc:"A lateral strengthening pose that opens the side body, strengthens the legs, and builds endurance.",
-steps:["From Warrior II, lower right forearm to right thigh (or hand to floor outside foot).","Extend left arm over left ear, palm down — one long diagonal line.","Press outer edge of back foot firmly into mat.","Rotate top shoulder open toward the ceiling.","Gaze up at top hand or forward.","Hold 30 seconds, repeat other side."],
-cue:"One long line from back foot to top fingertips. Open the chest to the ceiling.",
-ben:["Side Body","Legs","Core","Chest","Stamina"]},
-
-{id:"triangle",e:"📐",n:"Triangle Pose",s:"Trikonasana",l:"intermediate",c:"standing",cpm:3.5,dur:45,
-desc:"A deep lateral stretch that opens the sides of the body, strengthens the legs, and improves balance.",
-steps:["Feet wide, right foot right, left foot slightly in.","Extend arms parallel to floor.","Shift right hip back as you reach right hand to shin, ankle, or floor.","Extend left arm straight up toward ceiling.","Keep both legs straight. Gaze up at left hand.","Hold 30-45 seconds each side."],
-cue:"Stack top hip over bottom. Open your chest to the ceiling.",
-ben:["Hamstrings","IT Band","Side Body","Balance","Hip Opening"]},
-
-{id:"warrior3",e:"🦅",n:"Warrior III",s:"Virabhadrasana III",l:"intermediate",c:"balance",cpm:4.5,dur:30,
-desc:"A challenging balance pose that builds leg strength, core stability, and full-body coordination.",
-steps:["Shift weight onto right foot from standing.","Lean torso forward as you lift left leg behind.","Aim for a T-shape — torso and lifted leg parallel to floor.","Arms extend forward, out to sides, or back alongside body.","Engage core and standing leg. Flex raised foot.","Hold 15-30 seconds each side."],
-cue:"Reach through your raised heel as much as your extended arms.",
-ben:["Balance","Core","Glutes","Hamstrings","Focus"]},
-
-{id:"half-moon",e:"🌙",n:"Half Moon Pose",s:"Ardha Chandrasana",l:"intermediate",c:"balance",cpm:4.2,dur:30,
-desc:"Combines strength, flexibility, and focus. Opens the hips and side body while challenging balance.",
-steps:["From Triangle, bend right knee and place right hand on floor 12 inches in front of right foot.","Shift weight to right hand and foot.","Lift left leg parallel to floor, open left hip to ceiling.","Extend left arm toward ceiling.","Gaze at floor for stability or look up at top hand.","Hold 15-30 seconds each side."],
-cue:"Stack hips and shoulders. Let the top side be free and open.",
-ben:["Balance","Core","Hip Opening","Hamstrings","Focus"]},
-
-{id:"chair",e:"💺",n:"Chair Pose",s:"Utkatasana",l:"intermediate",c:"standing",cpm:4.5,dur:30,
-desc:"One of the most demanding standing poses. Burns calories, builds leg strength, and challenges mental fortitude.",
-steps:["Stand with feet together or hip-width.","Inhale and raise arms overhead.","Exhale and bend knees deeply as if sitting into a chair.","Aim for thighs parallel to floor — or as low as you can go.","Keep chest lifted, weight in heels.","Hold 30-60 seconds. Feel the burn."],
-cue:"Sit lower. Chest up. Arms active. Breathe through the discomfort.",
-ben:["Quads","Glutes","Core","Ankles","Endurance"]},
-
-{id:"eagle",e:"🦆",n:"Eagle Pose",s:"Garudasana",l:"intermediate",c:"balance",cpm:3.8,dur:30,
-desc:"A complex balance pose that requires wrapping the limbs. Excellent for improving focus and coordination.",
-steps:["Stand and shift weight to right foot.","Bend right knee slightly and cross left thigh over right.","Wrap left foot around right calf if possible.","Cross right arm under left at elbows, then wrap forearms, palms together.","Lift elbows to shoulder height and sink deeper.","Hold 20-30 seconds, repeat other side."],
-cue:"Every wrap squeezes the midline. Breathe wide into your back.",
-ben:["Balance","Hip Flexibility","Shoulder Mobility","Focus","Ankles"]},
-
-{id:"tree",e:"🌳",n:"Tree Pose",s:"Vrksasana",l:"intermediate",c:"balance",cpm:3.2,dur:45,
-desc:"The classic balance pose. Builds ankle stability, leg strength, and concentration. Great for developing focus.",
-steps:["Stand on right foot. Bend left knee.","Place left foot on inner right thigh or calf (never on the knee).","Press foot into leg and leg back into foot.","Bring hands to heart center or raise overhead.","Fix gaze on a still point in front of you.","Hold 30-60 seconds, repeat other side."],
-cue:"Find stillness in the ground. Your standing leg is the trunk — rooted.",
-ben:["Balance","Leg Strength","Hip Flexibility","Focus","Posture"]},
-
-{id:"pigeon",e:"🕊️",n:"Pigeon Pose",s:"Eka Pada Rajakapotasana",l:"intermediate",c:"seated",cpm:2.8,dur:90,
-desc:"One of the deepest hip openers in yoga. Targets the piriformis and hip flexors — crucial for cyclists.",
-steps:["From downward dog, bring right knee forward toward right wrist.","Lower right shin to floor at an angle.","Extend left leg straight back, knee and top of foot on floor.","Square hips forward as much as possible.","Stay upright on hands or fold forward over front shin.","Hold 60-120 seconds, repeat left side."],
-cue:"Breathe into the tension. This is the hip opening cyclists need.",
-ben:["Hip Flexors","Piriformis","IT Band","Lower Back","Psoas"]},
-
-{id:"boat",e:"⛵",n:"Boat Pose",s:"Navasana",l:"intermediate",c:"core",cpm:5.0,dur:30,
-desc:"An intense core strengthener targeting the abs, hip flexors, and lower back simultaneously.",
-steps:["Sit with knees bent, feet flat.","Lean back slightly and lift feet off floor, balance on sitting bones.","Extend legs to 45 degrees (or straighten fully).","Extend arms forward parallel to floor, palms facing.","Keep chest lifted, spine long — do NOT round.","Hold 20-30 seconds. Rest and repeat 3-5 times."],
-cue:"Lift through your chest, not just your legs. Core works as a unit.",
-ben:["Core","Hip Flexors","Lower Back","Balance","Digestion"]},
-
-{id:"camel",e:"🐪",n:"Camel Pose",s:"Ustrasana",l:"intermediate",c:"backbend",cpm:3.8,dur:30,
-desc:"A deep chest and hip flexor opener. One of the best antidotes to phone and desk posture.",
-steps:["Kneel with knees hip-width, tops of feet flat.","Hands on lower back, fingers pointing down.","Engage core, slowly arch back, opening chest to ceiling.","Reach back for heels one at a time if comfortable.","Keep hips over knees.","Hold 20-30 seconds. Come out slowly."],
-cue:"Open your chest to the sky. Let your heart lead the way back.",
-ben:["Chest","Hip Flexors","Spine","Posture","Energy"]},
-
-{id:"bow",e:"🏹",n:"Bow Pose",s:"Dhanurasana",l:"intermediate",c:"backbend",cpm:4.5,dur:30,
-desc:"A full backbend that simultaneously strengthens the back and stretches the front of the body.",
-steps:["Lie face down, arms at sides.","Bend knees and reach back to grab ankles.","Inhale and lift chest and thighs simultaneously off the floor.","Rock on your belly if you can.","Keep knees hip-width — don't let them splay.","Hold 20-30 seconds, release, repeat 2-3 times."],
-cue:"Kick feet into hands and hands away from feet — the tension creates the lift.",
-ben:["Back Strength","Chest","Hip Flexors","Hamstrings","Posture"]},
-
-{id:"locust",e:"🦗",n:"Locust Pose",s:"Salabhasana",l:"intermediate",c:"backbend",cpm:4.0,dur:30,
-desc:"A prone backbend that directly strengthens the lower back — often neglected and very important.",
-steps:["Lie face down, arms alongside body, palms facing up.","Forehead or chin on mat.","Inhale and simultaneously lift head, chest, arms, and legs.","Keep legs straight and together.","Reach actively through arms behind you.","Hold 20-30 seconds, lower, rest, repeat."],
-cue:"Squeeze your inner thighs toward each other. Reach your fingertips toward your feet.",
-ben:["Lower Back","Glutes","Hamstrings","Core","Posture"]},
-
-{id:"seated-twist",e:"🌀",n:"Seated Spinal Twist",s:"Ardha Matsyendrasana",l:"intermediate",c:"twist",cpm:2.5,dur:60,
-desc:"One of the most important twists. Detoxifying for the organs, releases the spine, and stretches the outer hips.",
-steps:["Sit with legs extended. Bend right knee and cross foot over left leg, planting outside left knee.","Place right hand on the floor behind you.","Wrap left arm around right knee or hook elbow to knee.","Inhale to lengthen spine, exhale to twist right.","Hold 30-60 seconds, then switch sides."],
-cue:"Inhale to grow tall, exhale to twist deeper. The spine must lengthen before it rotates.",
-ben:["Spine","Outer Hip","Digestion","IT Band","Lower Back"]},
-
-{id:"rev-warrior",e:"🌈",n:"Revolved Triangle",s:"Parivrtta Trikonasana",l:"intermediate",c:"twist",cpm:3.8,dur:30,
-desc:"A challenging twist that combines balance, hamstring flexibility, and spinal rotation.",
-steps:["Stand feet wide, right foot forward.","Bring left hand to outside of right foot or block.","Open right arm toward ceiling, twisting torso right.","Keep hips level and square as possible.","Keep both legs straight (slight bend in front knee is fine).","Hold 20-30 seconds each side."],
-cue:"Lengthen your spine before you rotate. Roots before the branch can twist.",
-ben:["Hamstrings","Spine","Balance","Detox","Hip Stability"]},
-
-{id:"thread-needle",e:"🧵",n:"Thread the Needle",s:"Parsva Balasana",l:"intermediate",c:"twist",cpm:2.2,dur:60,
-desc:"A gentle shoulder and upper back twist done from hands and knees. Excellent for tight shoulders.",
-steps:["Start in tabletop on hands and knees.","Slide right arm under left arm along the floor, shoulder coming down.","Rest right cheek or temple on the mat.","Left arm stays extended or presses into floor for leverage.","Breathe into the right shoulder and upper back.","Hold 30-60 seconds, repeat other side."],
-cue:"Let your shoulder melt into the mat. Breathe into the tight spots.",
-ben:["Upper Back","Shoulders","Neck","Thoracic Spine","Stress Relief"]},
-
-{id:"pyramid",e:"🏛️",n:"Pyramid Pose",s:"Parsvottanasana",l:"intermediate",c:"standing",cpm:3.2,dur:45,
-desc:"An intense hamstring stretch combined with hip balance. Develops focus and lengthens the entire back of the body.",
-steps:["Stand with right foot forward, left foot back at 45 degrees, feet hip-width.","Square hips as much as possible toward front.","Inhale and lengthen spine, exhale and fold over front leg.","Keep both legs straight (slight bend if needed).","Hands on floor, shins, or in prayer behind back.","Hold 30-45 seconds each side."],
-cue:"Fold over your front leg like a pyramid. Keep the back hip from lifting.",
-ben:["Hamstrings","Hip Alignment","Balance","Lower Back","Calves"]},
-
-{id:"wide-fold",e:"🦁",n:"Wide-Legged Forward Fold",s:"Prasarita Padottanasana",l:"intermediate",c:"standing",cpm:2.8,dur:60,
-desc:"A wide-stance forward fold that opens the inner thighs and hamstrings while providing mild inversion benefits.",
-steps:["Stand with feet wide apart (4-5 feet).","Place hands on hips.","Inhale and lengthen spine.","Exhale and hinge forward from hips, placing hands on floor.","Walk hands back between feet, lowering crown of head toward floor.","Hold 30-60 seconds."],
-cue:"Press outer edges of feet down. Let gravity lengthen your spine.",
-ben:["Inner Thighs","Hamstrings","Inversion","Lower Back","Calming"]},
-
-{id:"crescent-lunge",e:"🌙",n:"Crescent Lunge",s:"Ashta Chandrasana",l:"intermediate",c:"standing",cpm:4.0,dur:45,
-desc:"A powerful variation of Low Lunge with the back knee lifted. Builds serious leg and core strength.",
-steps:["From standing, step right foot forward into a deep lunge.","Lift back knee off the floor, pressing back heel high.","Both legs are active and engaged.","Raise arms overhead and lift chest.","Stack front knee over ankle.","Hold 30-45 seconds, repeat other side."],
-cue:"Back heel pushes high, front knee drives forward. Create opposing forces.",
-ben:["Hip Flexors","Quads","Core","Balance","Upper Body"]},
-
-{id:"upward-dog",e:"🐕",n:"Upward Dog",s:"Urdhva Mukha Svanasana",l:"intermediate",c:"backbend",cpm:3.0,dur:20,
-desc:"A deeper backbend than Cobra that also strengthens the arms and wrists. Key pose in sun salutations.",
-steps:["Lie face down, hands under shoulders.","Press tops of feet into mat (not tucked under).","Press hands firmly and fully straighten arms, lifting entire torso and thighs off floor.","Only hands and tops of feet touch the mat.","Lift chest high, gaze forward or slightly up.","Hold 15-30 seconds."],
-cue:"Press the floor away fully — hips and thighs completely off the mat.",
-ben:["Chest","Wrists","Arms","Back Strength","Hip Flexors"]},
-
-{id:"half-pigeon",e:"🕊️",n:"Half Pigeon Forward Fold",s:"Ardha Kapotasana",l:"intermediate",c:"seated",cpm:2.2,dur:120,
-desc:"Pigeon with a forward fold. A deeper, more restorative version that targets the hip rotators intensely.",
-steps:["Set up pigeon with right shin forward.","Walk hands forward and lower forehead to mat or stacked fists.","Keep hips as square as possible.","Breathe into the right outer hip and glute.","With each exhale, allow the hip to soften.","Hold 90-120 seconds, repeat left side."],
-cue:"The deeper you breathe, the deeper you'll go. Don't rush this one.",
-ben:["Piriformis","Hip Rotators","IT Band","Lower Back","Stress Relief"]},
-
-{id:"dolphin",e:"🐬",n:"Dolphin Pose",s:"Ardha Pincha Mayurasana",l:"intermediate",c:"inversion",cpm:4.2,dur:30,
-desc:"A forearm-supported inversion preparation that builds shoulder strength for headstand and forearm stand.",
-steps:["Start in forearm plank — elbows under shoulders, forearms on mat.","Curl toes under and press hips up as in downward dog.","Walk feet toward elbows as far as possible.","Press forearms firmly into mat, lift hips high.","Keep neck relaxed, gaze between hands or at feet.","Hold 20-30 seconds."],
-cue:"Press your forearms into the earth like you're trying to push it away.",
-ben:["Shoulders","Core","Hamstrings","Inversion Prep","Upper Back"]},
-
-{id:"fish",e:"🐟",n:"Fish Pose",s:"Matsyasana",l:"intermediate",c:"backbend",cpm:2.8,dur:30,
-desc:"A chest-opening backbend that counters shoulder rounding. Often used as a counter-pose after shoulder stand.",
-steps:["Lie on back with arms alongside body, palms down.","Press elbows into floor and lift chest high.","Tilt head back and rest crown or top of head lightly on mat.","The weight should be on elbows and forearms — not the neck.","Legs can be straight or crossed in lotus.","Hold 20-30 seconds."],
-cue:"Most of the weight is on your elbows, not your head. Lift your chest high.",
-ben:["Chest","Throat","Shoulders","Hip Flexors","Energy"]},
-
-{id:"hero",e:"🦸",n:"Hero Pose",s:"Virasana",l:"intermediate",c:"seated",cpm:1.8,dur:120,
-desc:"A kneeling pose that stretches the knees, ankles, and quads deeply. Sit on a block if knees are sensitive.",
-steps:["Kneel with knees together, feet wider than hips.","Sit your hips between your heels (use a block if needed).","Place hands on thighs, palms down.","Sit tall, lengthening the spine.","Keep toes pointing straight back.","Hold 1-3 minutes."],
-cue:"Sit in this pose with the same dignity as a hero at rest.",
-ben:["Quads","Knees","Ankles","Posture","Digestion"]},
-
-{id:"cow-face",e:"🐮",n:"Cow Face Pose",s:"Gomukhasana",l:"intermediate",c:"seated",cpm:2.2,dur:60,
-desc:"Deeply opens the hips and shoulders simultaneously. One of the most thorough stretches in yoga.",
-steps:["Sit with left knee on top of right — knees stacked, feet out to sides.","Reach right arm up and bend elbow, hand behind head.","Reach left arm behind back from below.","Clasp hands behind back (use a strap if they don't reach).","Sit tall and breathe.","Hold 30-60 seconds, repeat other side."],
-cue:"Stack the knees directly on top of each other for full effect.",
-ben:["Hips","Shoulders","Chest","IT Band","Thoracic Spine"]},
-
-{id:"half-lord",e:"🌀",n:"Half Lord of Fishes",s:"Ardha Matsyendrasana",l:"intermediate",c:"twist",cpm:2.5,dur:60,
-desc:"A deep seated twist that massages the abdominal organs, releases the spine, and opens the outer hip.",
-steps:["Sit with both legs extended. Bend right knee, foot flat on floor outside left thigh.","Option to bend left leg and tuck foot near right hip.","Left elbow hooks outside right knee.","Right hand on floor behind you.","Inhale to grow tall, exhale to twist right.","Hold 30-60 seconds, switch sides."],
-cue:"Grow taller with every inhale, twist deeper with every exhale.",
-ben:["Spine","Outer Hip","Organs","IT Band","Shoulder"]},
-
-// ═══════════════════════════════════════════════════
-// ADVANCED
-// ═══════════════════════════════════════════════════
-{id:"crow",e:"🐦",n:"Crow Pose",s:"Bakasana",l:"advanced",c:"balance",cpm:5.5,dur:20,
-desc:"The gateway arm balance. Requires core strength, arm strength, and courage to lean forward and fly.",
-steps:["Squat with feet together. Place hands flat, shoulder-width.","Bend elbows and rest knees on backs of upper arms.","Lean weight forward — this is the key step.","Lift one foot, then the other. Squeeze knees into arms.","Gaze forward, not down.","Hold as long as possible."],
-cue:"Lean forward more than feels safe. That's the only way to fly.",
-ben:["Upper Body","Core","Wrist Strength","Focus","Confidence"]},
-
-{id:"side-crow",e:"🦅",n:"Side Crow",s:"Parsva Bakasana",l:"advanced",c:"balance",cpm:6.0,dur:15,
-desc:"A rotational arm balance that takes crow to the next level. Requires core strength and hip flexibility.",
-steps:["Squat and twist torso to the right.","Place both hands on the floor to the right of your feet.","Stack knees on right upper arm (both knees).","Lean forward and lift feet off the floor.","Keep legs together and active.","Hold 5-15 seconds, repeat other side."],
-cue:"Both knees on ONE arm. Commit to the lean. Breathe.",
-ben:["Core","Obliques","Arm Strength","Balance","Hip Flexibility"]},
-
-{id:"headstand",e:"🙃",n:"Headstand",s:"Sirsasana",l:"advanced",c:"inversion",cpm:5.0,dur:60,
-desc:"The king of yoga poses. Full-body strength, improved circulation, remarkable balance and focus.",
-steps:["Kneel and interlace fingers on mat, forming a triangle base with forearms.","Place crown of head on mat, cradled by hands.","Straighten legs and walk feet toward face.","Engage core and lift one knee then the other to chest.","Extend legs straight up toward ceiling.","Hold 15-60 seconds. Counter with child's pose."],
-cue:"Arms do most of the work — not your neck. Press forearms firmly.",
-ben:["Full Body","Inversion","Balance","Focus","Circulation"]},
-
-{id:"forearm-stand",e:"🤸",n:"Forearm Stand",s:"Pincha Mayurasana",l:"advanced",c:"inversion",cpm:5.5,dur:30,
-desc:"A full inversion on the forearms requiring shoulder strength, core control, and significant balance.",
-steps:["Set up like Dolphin Pose with forearms on mat.","Walk feet in close to your torso.","Kick one leg up and follow with the other.","Stack hips over shoulders over elbows.","Press forearms firmly into floor, engage core.","Hold 10-30 seconds. Use a wall when learning."],
-cue:"The forearms are your foundation. Press them into the earth with intention.",
-ben:["Shoulder Strength","Core","Balance","Full Inversion","Focus"]},
-
-{id:"shoulder-stand",e:"🕯️",n:"Shoulder Stand",s:"Salamba Sarvangasana",l:"advanced",c:"inversion",cpm:4.0,dur:60,
-desc:"The queen of yoga poses. Full inversion with thyroid stimulation, calming effects, and leg recovery benefits.",
-steps:["Lie on back. Swing legs over head with momentum.","Support lower back with hands, elbows on mat.","Extend legs straight up toward ceiling.","Keep weight on shoulders and upper arms — not neck.","Gaze at chest, not to the side.","Hold 30-120 seconds. Counter with fish pose."],
-cue:"Walk your hands down your back toward shoulders. The straighter the body, the easier.",
-ben:["Full Inversion","Thyroid","Leg Recovery","Calming","Core"]},
-
-{id:"plow",e:"🚜",n:"Plow Pose",s:"Halasana",l:"advanced",c:"inversion",cpm:3.5,dur:60,
-desc:"An inversion that stretches the back of the neck and upper spine intensely. Often done after shoulder stand.",
-steps:["From shoulder stand, lower straight legs over head to the floor.","Toes may or may not touch the floor.","Keep hands on lower back for support.","Keep legs as straight as possible.","Breathe slowly — this position compresses the chest.","Hold 30-60 seconds."],
-cue:"Never turn your head in Plow. Breathe carefully into your upper back.",
-ben:["Upper Back","Neck","Hamstrings","Inversion","Calming"]},
-
-{id:"wheel",e:"🎡",n:"Wheel Pose",s:"Urdhva Dhanurasana",l:"advanced",c:"backbend",cpm:5.8,dur:20,
-desc:"A full backbend that opens the entire front of the body. Energizing and powerful.",
-steps:["Lie on back. Bend knees, feet flat hip-width.","Place hands by ears, fingers toward feet.","Press hands and feet simultaneously, lift hips.","Straighten arms (work toward it) and let head hang.","Press chest toward the wall behind you.","Hold 10-20 seconds. Rest knees to chest after."],
-cue:"Press the floor away with your hands. Chest forward, hips high.",
-ben:["Spine Flexibility","Chest","Shoulders","Hip Flexors","Energy"]},
-
-{id:"king-pigeon",e:"👑",n:"King Pigeon Pose",s:"Raja Kapotasana",l:"advanced",c:"backbend",cpm:4.5,dur:30,
-desc:"The full expression of pigeon — a deep backbend combined with a hip opener. Takes years to develop.",
-steps:["From pigeon with right shin forward, prop up on hands.","Bend left knee and reach back with left hand to catch foot.","Arch back deeply and try to bring foot toward head.","Use both hands if possible.","Keep front hip pressing toward the floor.","Hold 15-30 seconds, repeat other side."],
-cue:"Open through your entire front body. This is a pose of full surrender.",
-ben:["Full Spine","Hip Flexors","Chest","Shoulders","Quadriceps"]},
-
-{id:"side-plank",e:"💪",n:"Side Plank",s:"Vasisthasana",l:"advanced",c:"core",cpm:6.0,dur:30,
-desc:"Powerful lateral core strengthener that builds shoulder stability and balance. Best oblique exercise in yoga.",
-steps:["Start in plank on hands.","Shift weight to right hand and foot, stacking left foot on top.","Lift left arm to ceiling.","Keep body in one straight line — don't let hips sag.","Gaze at top hand or forward.","Hold 15-30 seconds each side."],
-cue:"Push the floor away with your supporting hand. One plank of wood.",
-ben:["Obliques","Core","Shoulder Stability","Balance","Wrist Strength"]},
-
-{id:"king-dancer",e:"💃",n:"King Dancer",s:"Natarajasana",l:"advanced",c:"balance",cpm:4.8,dur:30,
-desc:"A graceful and challenging balance pose that opens the chest and requires hip flexor flexibility.",
-steps:["Stand on right foot. Bend left knee and reach back with left hand to grab ankle.","Extend right arm forward for balance.","Kick left foot back and up as high as you can.","Lean torso forward as leg rises — counterbalancing.","Find a fixed point to gaze at.","Hold 15-30 seconds, repeat other side."],
-cue:"It's a backbend disguised as balance. Let your heart open forward.",
-ben:["Balance","Hip Flexors","Chest","Shoulder","Core"]},
-
-{id:"firefly",e:"✨",n:"Firefly Pose",s:"Tittibhasana",l:"advanced",c:"balance",cpm:6.5,dur:15,
-desc:"An advanced arm balance demanding core strength, hip flexibility, and total body control.",
-steps:["Squat with feet slightly wider than hips.","Thread arms under legs, placing hands behind heels.","Bend elbows slightly and shift weight back into hands.","Lift hips and extend legs straight out to sides.","Flex feet and keep legs as parallel to floor as possible.","Hold as long as possible."],
-cue:"Squeeze arms with thighs. Your core is everything here.",
-ben:["Core","Upper Body","Hip Flexibility","Arm Strength","Focus"]},
-
-{id:"eight-angle",e:"🔢",n:"Eight-Angle Pose",s:"Astavakrasana",l:"advanced",c:"balance",cpm:6.5,dur:15,
-desc:"A complex arm balance requiring the body to hook one leg over the upper arm while extending both legs.",
-steps:["From seated, lift right leg and hook right thigh over right upper arm.","Place both hands on floor.","Hook left foot behind right foot.","Lean forward onto arms and lift hips, extending legs to the right.","Keep chest lifted, gaze forward.","Hold 5-15 seconds, repeat other side."],
-cue:"The hooking is the key. Once the leg is hooked, the lean makes it fly.",
-ben:["Core","Arms","Hip Flexibility","Balance","Coordination"]},
-
-{id:"peacock",e:"🦚",n:"Peacock Pose",s:"Mayurasana",l:"advanced",c:"balance",cpm:7.0,dur:10,
-desc:"One of the most demanding arm balances. Requires exceptional core and arm strength to balance horizontally.",
-steps:["Kneel and place hands on floor, fingers pointing toward feet.","Bend elbows and press upper arms into belly.","Lean forward until belly rests on elbows.","Extend legs back and lean forward until feet lift off.","Body should be horizontal, parallel to floor.","Hold 5-10 seconds."],
-cue:"Squeeze elbows together. The balance point is smaller than you think.",
-ben:["Core","Arms","Wrists","Balance","Digestion Stimulation"]},
-
-{id:"flying-pigeon",e:"🦅",n:"Flying Pigeon",s:"Eka Pada Galavasana",l:"advanced",c:"balance",cpm:6.0,dur:15,
-desc:"Combines the hip opening of pigeon with the demands of arm balancing. A pose of grace and strength.",
-steps:["Stand and cross right ankle over left thigh in figure four.","Bend standing leg and bring hands to floor.","Hook right foot around right upper arm.","Lean forward and slowly shift weight to hands.","Extend left leg back and up as you balance.","Hold 5-15 seconds, repeat other side."],
-cue:"The hip opening from the figure four makes the balance achievable. Commit to the lean.",
-ben:["Hip Opening","Core","Arms","Balance","Coordination"]},
-
-{id:"scale",e:"⚖️",n:"Scale Pose",s:"Tolasana",l:"advanced",c:"balance",cpm:5.5,dur:15,
-desc:"An arm balance done from a seated position, lifting the entire body off the floor. Builds serious core and arm strength.",
-steps:["Sit in lotus or cross-legged position.","Place hands on floor beside hips.","Press palms down and engage core strongly.","Lift your entire lower body off the floor.","Keep legs tucked and body compact.","Hold 5-15 seconds."],
-cue:"Round your lower back like a C and compress. That's the lift.",
-ben:["Core","Arms","Wrists","Hip Flexors","Focus"]},
-
-{id:"handstand",e:"🙌",n:"Handstand",s:"Adho Mukha Vrksasana",l:"advanced",c:"inversion",cpm:6.0,dur:20,
-desc:"The ultimate inversion. Full body upside down on the hands requires total body strength and fearlessness.",
-steps:["Face the wall. Place hands 6 inches from wall, shoulder-width.","Walk feet in close and look between your hands.","Kick one leg up strongly and follow with the other.","Engage core and press legs toward the wall.","Press floor away with your hands — active arms.","Hold 5-30 seconds."],
-cue:"Press the floor away like you're trying to push the earth down. Spread your fingers.",
-ben:["Full Body Strength","Balance","Wrists","Core","Confidence"]},
-
-{id:"wild-thing",e:"🌟",n:"Wild Thing",s:"Camatkarasana",l:"advanced",c:"backbend",cpm:4.5,dur:20,
-desc:"A joyful, expressive backbend that opens the chest and hip flexors from a side plank base.",
-steps:["From side plank on right hand.","Flip your body open — lift hips high.","Step left foot back and down behind right leg.","Let right hip drop and back arch.","Reach left arm up and over in a backbend.","Hold 15-20 seconds, repeat other side."],
-cue:"This pose is meant to feel like throwing yourself open to the world.",
-ben:["Chest","Hip Flexors","Shoulder","Core","Backbend"]},
-
-{id:"lotus",e:"💮",n:"Lotus Pose",s:"Padmasana",l:"advanced",c:"seated",cpm:1.5,dur:120,
-desc:"The iconic meditation seat. Takes years of hip opening to do without strain. Never force this pose.",
-steps:["Sit in easy pose. Take right foot and place on top of left thigh, sole facing up.","Take left foot and place on top of right thigh, sole facing up.","Both knees ideally touch the floor.","Hands on knees in mudra.","Spine long and tall.","Hold as long as comfortable."],
-cue:"Only enter lotus if your hips allow it fully. Never force the knees.",
-ben:["Hip Opening","Meditation","Posture","Ankle Flexibility","Focus"]},
-
-{id:"standing-split",e:"🤸",n:"Standing Split",s:"Urdhva Prasarita Eka Padasana",l:"advanced",c:"balance",cpm:4.0,dur:30,
-desc:"A challenging single-leg balance with a forward fold. Opens the hamstrings and hip flexors deeply.",
-steps:["From standing forward fold, shift weight to right foot.","Lift left leg as high as possible toward the ceiling.","Keep both hips squared toward the floor.","Hands can be on the floor, ankle, or shin.","Flex the raised foot.","Hold 20-30 seconds, repeat other side."],
-cue:"Square your hips — don't let the lifting hip rotate open.",
-ben:["Hamstrings","Balance","Hip Flexors","Core","Focus"]},
-
-{id:"splits",e:"🙆",n:"Full Splits",s:"Hanumanasana",l:"advanced",c:"seated",cpm:3.0,dur:60,
-desc:"The full front split. One of yoga's most demanding flexibility poses. Takes months or years to achieve safely.",
-steps:["From low lunge with right foot forward, start to slide feet apart.","Keep hips squared forward.","Lower hips toward the floor using blocks for support.","Front leg is straight, back leg extends behind, top of foot on floor.","Hands at hips or extended overhead.","Hold 30-60 seconds, repeat other side."],
-cue:"Use blocks. This pose cannot be forced. Let the hip flexor surrender over time.",
-ben:["Hip Flexors","Hamstrings","Hip Opening","Groin","Patience"]},
-
-{id:"chin-stand",e:"😶",n:"Chin Stand",s:"Gandha Bherundasana",l:"advanced",c:"backbend",cpm:5.0,dur:10,
-desc:"An extreme backbend where the chin rests on the floor while the legs extend overhead. Requires exceptional spine flexibility.",
-steps:["Start lying face down, hands under shoulders.","Press up into a deep Cobra.","Continue arching back as far as possible.","Walk feet toward head.","Lower chin to mat if your spine allows.","This is a pose for very flexible practitioners only."],
-cue:"Never force this. It is years of backbend work expressing itself.",
-ben:["Full Spine Flexibility","Chest","Shoulders","Hip Flexors","Back Strength"]},
-
-// ═══════════════════════════════════════════════════
-// MOBILITY FLOWS (added 2026-08-11)
-// ═══════════════════════════════════════════════════
-{id:"figure8",e:"➰",n:"Hip Figure 8s",s:"Ashtanga Chalanasana",l:"beginner",c:"seated",cpm:2.4,dur:60,
-desc:"A fluid hip-mobility drill tracing a figure-8 pattern through the pelvis. Loosens the hips and lower back and warms up the SI joint.",
-steps:["Stand with feet a bit wider than hips, soft knees, hands on hips.","Shift weight into the right hip, then trace the pelvis forward, across, and back in a figure-8 path.","Let the motion flow continuously — don't stop at the corners.","Keep the upper body relatively still; the movement stays in the hips and pelvis.","Reverse the direction of the 8 halfway through.","Continue 45-60 seconds, moving slow and controlled."],
-cue:"Trace a lazy figure-8 with your hips — smooth and continuous, not choppy.",
-ben:["Hip Mobility","SI Joint","Lower Back","Pelvic Control","Warm-Up"]},
-
-{id:"spinalrot",e:"🔄",n:"Seated Spinal Rotations",s:"Parivrtta Sukhasana Flow",l:"beginner",c:"twist",cpm:2.2,dur:60,
-desc:"A gentle, repeated rotational drill through the thoracic spine. Improves rotational mobility and eases tension along the back.",
-steps:["Sit cross-legged or in a chair, spine tall.","Place right hand on left knee, left hand behind you on the floor/chair back.","Inhale to lengthen the spine, exhale to rotate left from the ribcage.","Lead the twist with the breath, not force — go a little further each exhale.","Return to center with control, then repeat to the other side.","Alternate sides continuously for 45-60 seconds."],
-cue:"Lengthen up out of the hips first, then twist — don't collapse into the rotation.",
-ben:["Thoracic Mobility","Spinal Health","Digestion","Posture","Back Tension"]},
-
-{id:"cobraroll",e:"🐍",n:"Cobra Rolls",s:"Bhujangasana Chalanasana",l:"beginner",c:"backbend",cpm:2.6,dur:60,
-desc:"A wave-like flow from Chaturanga through Cobra and back, rolling through the spine one segment at a time. Builds spinal articulation and back extensor strength.",
-steps:["Lie face down, hands under shoulders, elbows hugging the ribs.","Inhale, roll up through the spine one vertebra at a time — tailbone, low back, mid back, chest, then head last.","Keep the pelvis and lower ribs light on the mat as you rise, avoiding a hard crunch into the low back.","Exhale, reverse the roll — head lowers first, then chest, then unstack down to the tailbone.","Keep the motion slow and wave-like the entire time.","Repeat for 45-60 seconds."],
-cue:"Roll through the spine like a wave — one vertebra at a time, not a single hinge.",
-ben:["Spinal Articulation","Back Extensors","Core Control","Posture","Mobility"]},
-
-{id:"barrelroll",e:"🛢️",n:"Barrel Rolls",s:"Vasisthasana Chalanasana",l:"intermediate",c:"core",cpm:3.4,dur:45,
-desc:"A rolling side-to-side drill through the torso, transitioning between side plank-like positions. Builds rotational core control and shoulder stability.",
-steps:["Lie on your back, arms out in a T, knees bent and stacked.","Keeping shoulders grounded, let the knees roll to one side toward the floor.","Roll the knees back through center and continue to the opposite side, like a barrel rolling.","Keep the motion slow and controlled — this is mobility, not momentum.","Let the head gently counter-rotate opposite the knees for a full spinal wring.","Continue rolling side to side for 30-45 seconds."],
-cue:"Move like a barrel rolling smoothly — slow, controlled, no momentum flinging you side to side.",
-ben:["Rotational Core","Obliques","Spinal Mobility","Shoulder Stability","SI Joint"]},
-
-{id:"downdogpedal",e:"🐕",n:"Downward Dog Pedals",s:"Adho Mukha Svanasana Chalanasana",l:"beginner",c:"standing",cpm:3.6,dur:60,
-desc:"Downward Dog with alternating heel presses, 'pedaling' one leg at a time. Warms up calves and hamstrings and adds gentle movement to the classic hold.",
-steps:["Start in Downward Dog — hips high, hands pressing firmly, spine long.","Bend the right knee and press the left heel toward the floor.","Switch, bending the left knee and pressing the right heel down.","Keep alternating in a smooth pedaling rhythm, like walking out the hamstrings.","Keep hips lifted and even the whole time — avoid rocking side to side.","Continue pedaling for 45-60 seconds."],
-cue:"Pedal the feet like you're walking out your hamstrings — steady rhythm, hips stay tall.",
-ben:["Hamstrings","Calves","Shoulders","Ankle Mobility","Warm-Up"]},
-
-{id:"lizardlunge",e:"🦎",n:"Lizard Lunge",s:"Utthan Pristhasana",l:"intermediate",c:"standing",cpm:2.8,dur:60,
-desc:"A deep hip-opening lunge with the front foot planted outside the hand. Targets hip flexors, groin, and hamstrings simultaneously.",
-steps:["From Downward Dog, step the right foot forward outside the right hand.","Lower onto the left knee (or keep back leg lifted for more challenge).","Let the front knee track out over the pinky toe, hips sinking low and forward.","Keep the chest lifted or lower to forearms for a deeper stretch.","Breathe into the front hip and groin, letting it release with each exhale.","Hold 30-60 seconds, then switch sides."],
-cue:"Sink the hips low and forward — let gravity open the front hip, don't force it.",
-ben:["Hip Flexors","Groin","Hamstrings","Hip Opening","Deep Squat Prep"]},
-
-{id:"lizardtwist",e:"🦎",n:"Lizard Twist",s:"Parivrtta Utthan Pristhasana",l:"intermediate",c:"twist",cpm:3.0,dur:45,
-desc:"Lizard Lunge with an added rotation and reach, combining a deep hip opener with thoracic rotation. Great for the hips and mid-back together.",
-steps:["Set up in Lizard Lunge, front foot outside the same-side hand.","Shift weight onto the outside hand, freeing the inside arm.","Rotate the chest open and reach the inside arm toward the ceiling.","Follow the reaching hand with your gaze if balance allows.","Hold the rotation for a few breaths, feeling the twist through the upper back.","Return to center, then switch sides."],
-cue:"Rotate from the chest, not the low back — let the reaching arm lead the twist.",
-ben:["Hip Opening","Thoracic Rotation","Balance","Groin","Obliques"]},
-
-{id:"sidelunge",e:"🤸",n:"Side Lunge",s:"Skandasana",l:"beginner",c:"standing",cpm:3.0,dur:45,
-desc:"A lateral lunge that stretches the inner thigh of the extended leg while strengthening the bent-knee side. Builds frontal-plane hip mobility often missing from forward-only training.",
-steps:["Stand with feet wide, toes forward.","Shift weight into the right leg, bending the right knee and sitting the hips back.","Keep the left leg straight, foot flat, toes forward — feel the inner thigh stretch.","Keep the chest lifted and both feet grounded through the whole range.","Push through the right heel to return to center.","Repeat on the other side, alternating for 30-45 seconds."],
-cue:"Sit back and down into the bent knee like a sideways squat — keep the straight leg's foot flat.",
-ben:["Inner Thighs","Hip Mobility","Adductors","Groin","Frontal-Plane Strength"]},
-
-{id:"revtable",e:"🪑",n:"Reverse Table Top",s:"Ardha Purvottanasana",l:"intermediate",c:"backbend",cpm:2.8,dur:45,
-desc:"A backward-facing bridge-like pose that opens the chest and shoulders while strengthening the posterior chain and wrists.",
-steps:["Sit with knees bent, feet flat, hands behind hips with fingers pointing toward feet.","Press through hands and feet to lift the hips until the torso is parallel to the floor.","Knees stack over ankles, shoulders stack over wrists — tabletop shape.","Let the head relax back gently, or keep it neutral if the neck is sensitive.","Squeeze the glutes and press the chest open.","Hold 20-45 seconds, then lower with control."],
-cue:"Press the hips up like leveling a tabletop — knees and shoulders stacked over ankles and wrists.",
-ben:["Shoulders","Chest","Glutes","Wrists","Posterior Chain"]},
-
-{id:"headcircle",e:"⭕",n:"Head Circles",s:"Griva Chalanasana",l:"beginner",c:"seated",cpm:1.6,dur:60,
-desc:"Slow, controlled circles of the head and neck. Releases tension in the cervical spine and upper traps — a gentle way to start or end a flow.",
-steps:["Sit or stand tall, shoulders relaxed away from the ears.","Slowly drop the chin toward the chest.","Roll the head gently toward one shoulder, then back, then toward the other shoulder in a smooth circle.","Keep the movement slow and small — this is not a full aggressive neck roll.","Complete 4-5 circles one direction, then reverse.","Breathe steadily throughout, 45-60 seconds total."],
-cue:"Keep it slow and small — let gravity do the work, don't force the range.",
-ben:["Neck Tension","Cervical Mobility","Upper Traps","Stress Relief","Warm-Up"]},
-
-// ═══════════════════════════════════════════════════
-// CHARLIE FOLLOWS SET (added 2026-08-11)
-// ═══════════════════════════════════════════════════
-{id:"rev-high-lunge",e:"🤸",n:"Revolved High Lunge",s:"Parivrtta Ashta Chandrasana",l:"intermediate",c:"twist",cpm:3.2,dur:45,
-desc:"High Lunge with a torso twist toward the front leg, arms extended in a T. Builds rotational control while under a hip-flexor stretch.",
-steps:["Start in High Lunge, right foot forward, back heel lifted.","Square the hips forward and press the back heel toward the wall behind you.","Rotate the torso toward the front leg, sweeping arms out into a T.","Keep the front knee tracking over the ankle, back leg strong and straight.","Hold the twist for a few breaths, feeling length through the spine before rotating.","Untwist with control, then repeat on the other side."],
-cue:"Lengthen the spine first, then rotate from the ribcage — the twist follows the length.",
-ben:["Rotational Core","Hip Flexors","Balance","Thoracic Mobility","Leg Strength"]},
-
-{id:"low-lunge-side",e:"🙆",n:"Low Lunge with Side Bend",s:"Anjaneyasana Variation",l:"beginner",c:"standing",cpm:2.6,dur:45,
-desc:"Low Lunge with a lateral reach over the side body. Combines a hip-flexor stretch with a side-body opener.",
-steps:["From Low Lunge, back knee down, front knee stacked over ankle.","Sink the hips forward and down to deepen the hip flexor stretch.","Reach the same-side arm as the back leg up and over into a side bend.","Let the opposite hand rest on the front thigh for support.","Breathe into the stretch along the ribs and hip together.","Hold 30-45 seconds, then switch sides."],
-cue:"Sink the hips forward first, then reach up and over — don't shortcut the hip stretch for the side bend.",
-ben:["Hip Flexors","Side Body","Obliques","Hip Opening","Posture"]},
-
-{id:"rev-half-moon",e:"🌗",n:"Revolved Half Moon",s:"Parivrtta Ardha Chandrasana",l:"advanced",c:"balance",cpm:4.0,dur:30,
-desc:"A standing balance pose combining a forward hinge, a twist, and a lifted back leg. Demands hip, hamstring, and core coordination together.",
-steps:["From a forward fold, shift weight onto the right foot.","Lift the left leg straight back to hip height as the torso hinges forward.","Lower the right hand (or a block) to the floor under the shoulder.","Rotate the torso open, reaching the left arm toward the ceiling.","Keep the standing knee soft, not locked, and the lifted leg active.","Hold a few breaths, then release with control and switch sides."],
-cue:"Root through the standing foot first — the twist and lift both come from a stable base, not the reverse.",
-ben:["Balance","Hamstrings","Rotational Core","Hip Stability","Focus"]},
-
-{id:"standing-fold-bound",e:"🙇",n:"Standing Forward Fold, Bound Arms",s:"Uttanasana Variation",l:"intermediate",c:"standing",cpm:2.4,dur:45,
-desc:"Standing Forward Fold with the arms clasped behind the back and lifted overhead. Adds a shoulder and chest opener to the hamstring stretch.",
-steps:["Stand with feet hip-width, then hinge forward from the hips into a fold.","Clasp the hands behind your back, arms straight.","Let the fold deepen as you lift the clasped arms up and over, away from your back.","Keep a slight bend in the knees if the hamstrings are tight.","Let the head hang heavy, breathing into the stretch.","Hold 30-45 seconds, then release the hands before rolling up."],
-cue:"Lift the clasped hands up and away from your back — that's what opens the shoulders here.",
-ben:["Hamstrings","Shoulders","Chest","Spinal Decompression","Stress Relief"]},
-
-{id:"highplank",e:"🧍",n:"High Plank",s:"Phalakasana",l:"beginner",c:"core",cpm:3.4,dur:45,
-desc:"A full-body isometric hold from hands to toes. Builds core, shoulder, and full-body stability that underlies most other poses.",
-steps:["Start on hands and knees, wrists stacked under shoulders.","Step feet back one at a time into a straight line from head to heels.","Press the floor away, spreading fingers wide, engaging the shoulders.","Draw the belly in and squeeze the glutes to keep the hips level — no sagging or piking.","Keep the neck long, gaze slightly forward of the hands.","Hold 20-45 seconds, breathing steadily throughout."],
-cue:"Push the floor away and zip the ribs down — a straight line from head to heels, nothing sagging.",
-ben:["Core Strength","Shoulder Stability","Full-Body Strength","Posture","Wrist Strength"]},
-
-{id:"side-plank-mod",e:"🤸",n:"Modified Side Plank (Kneeling)",s:"Supported Vasisthasana",l:"beginner",c:"core",cpm:2.6,dur:30,
-desc:"A kneeling version of Side Plank that stacks a lateral side-body and neck stretch on top of the core and shoulder work.",
-steps:["Kneel, then lower onto the right forearm or hand, knees stacked and bent behind you.","Lift the hips so the body forms a diagonal line from knee to shoulder.","Extend the left arm overhead, reaching long through the side body.","Optionally tilt the head away from the lifted arm for a gentle neck stretch.","Keep the hips lifted and square, not sagging toward the floor.","Hold 20-30 seconds, then switch sides."],
-cue:"Lift the hips up and reach long through the top arm — think one long line from knee to fingertips.",
-ben:["Obliques","Shoulder Stability","Side Body","Neck Release","Core"]},
-
-{id:"chaturanga",e:"💪",n:"Chaturanga",s:"Chaturanga Dandasana",l:"intermediate",c:"core",cpm:4.0,dur:15,
-desc:"A low push-up hold with elbows hugging the ribs. Builds the pressing strength that links plank to upward-facing dog in a vinyasa flow.",
-steps:["Start in High Plank, shoulders slightly ahead of the wrists.","Shift weight forward, then bend the elbows straight back, hugging the ribs.","Lower until the upper arms are roughly parallel to the floor — no lower.","Keep the body in one straight line the entire way down, no sagging hips.","Hold briefly at the bottom or flow directly into Upward Dog or Cobra.","For a modified version, lower the knees to the floor first."],
-cue:"Elbows hug the ribs like closing a door — don't let them wing out to the sides.",
-ben:["Triceps","Shoulders","Core Strength","Chest","Full-Body Control"]},
-
-{id:"prone-pec",e:"🦅",n:"Prone Pec Stretch",s:"Broken Wing Pose",l:"intermediate",c:"backbend",cpm:2.0,dur:45,
-desc:"A deep chest and shoulder stretch performed lying prone with one arm extended to a T, rolling weight onto the side and hip.",
-steps:["Lie face down, right arm extended straight out to the side in a T, palm down.","Bend the left knee and plant the left foot near the right knee.","Use the left foot to push, rolling the hips and chest up and over the right arm.","Let the right shoulder and chest sink toward the floor, feeling the stretch through the chest and front shoulder.","Rest the head on the mat or turn it away from the extended arm.","Hold 30-45 seconds, then roll back and switch sides."],
-cue:"Let gravity roll the chest open over the extended arm — don't force the roll, sink into it.",
-ben:["Chest","Front Shoulder","Rotator Cuff","Thoracic Mobility","Posture"]},
-
-{id:"kneeling-sugarcane",e:"🏹",n:"Kneeling Sugarcane",s:"Supported Vasisthasana Variation",l:"advanced",c:"backbend",cpm:3.2,dur:30,
-desc:"Modified Side Plank with a reach back to catch the top foot, adding a quad and hip-flexor stretch to the side-body and shoulder work of Side Plank.",
-steps:["Set up in Modified Side Plank (Kneeling), hips lifted, top arm reaching overhead.","Bend the top knee, reaching the top hand back to catch the top foot.","Draw the heel toward the glute, feeling the stretch through the quad and hip flexor.","Keep the hips lifted and square — don't let them sag as you reach back.","Press the foot into the hand slightly to deepen the bow shape.","Hold 20-30 seconds, then release and switch sides."],
-cue:"Keep the hips lifted first, then reach back for the foot — the bow shape comes after the hips are set.",
-ben:["Quads","Hip Flexors","Obliques","Shoulder Stability","Balance"]},
-
-{id:"banana",e:"🍌",n:"Banana Pose",s:"Bananasana",l:"beginner",c:"restorative",cpm:1.6,dur:60,
-desc:"A reclined crescent-shaped side stretch with the ankles crossed. A gentle, passive way to lengthen the entire side body.",
-steps:["Lie on your back, then walk both feet and hips a few inches to the right.","Cross the right ankle over the left, staying in that shifted crescent shape.","Reach both arms overhead and shift them slightly to the right as well, creating a full-body banana curve.","Relax completely into the stretch along the left side body.","Breathe slowly, letting the stretch deepen with each exhale.","Hold 45-60 seconds, then switch to curve the other direction."],
-cue:"Let the whole body curve like a banana — hips, ribs, and arms all shift the same direction.",
-ben:["Side Body","Obliques","Lats","Relaxation","Spinal Decompression"]},
-
-{id:"windshield-wipers",e:"🚗",n:"Reclined Windshield Wipers",s:"Jathara Parivartanasana Variation",l:"beginner",c:"twist",cpm:2.2,dur:45,
-desc:"Bent knees sweeping side to side while lying on the back (or belly), gently massaging and mobilizing the lower spine.",
-steps:["Lie on your back, knees bent and stacked, feet flat, arms out in a T.","Keeping the knees together, let them fall slowly to the right toward the floor.","Keep both shoulders grounded as the knees lower.","Sweep the knees back through center and continue to the left side.","Keep the movement slow and controlled, breathing with each sweep.","Continue side to side for 30-45 seconds."],
-cue:"Keep both shoulders glued to the floor — the twist happens below the ribs, not through the upper back.",
-ben:["Lower Back","SI Joint","Spinal Mobility","Obliques","Relaxation"]},
-
-{id:"side-leg-ext",e:"🦵",n:"Side-Lying Leg Extensions",s:"Anantasana Variation",l:"beginner",c:"core",cpm:2.4,dur:45,
-desc:"Lying on the side, drawing the top knee to the chest and then extending the leg skyward. Builds hip flexibility and hamstring control together.",
-steps:["Lie on your right side, head resting on the right arm or a block.","Draw the left knee in toward the chest, hugging it with the left hand.","Straighten the left leg up toward the ceiling, holding the foot, calf, or a strap.","Keep the leg as straight as comfortable without rounding the low back.","Lower back to the bent-knee hug, then extend again.","Repeat 6-8 times, then switch sides."],
-cue:"Hug the knee in fully before you extend — don't rush straight to the straight-leg reach.",
-ben:["Hamstrings","Hip Flexibility","Core Control","Balance","Leg Strength"]},
-
-{id:"knees-chest",e:"🤰",n:"Knees-to-Chest",s:"Apanasana",l:"beginner",c:"restorative",cpm:1.6,dur:60,
-desc:"A simple reclined pose hugging both knees to the chest. Gently massages the lower back and relieves tension after backbend or twist-heavy work.",
-steps:["Lie on your back, then draw both knees in toward the chest.","Wrap the arms around the shins or behind the thighs.","Gently rock side to side or in small circles if it feels good on the low back.","Keep the head and shoulders relaxed on the mat.","Breathe slowly, letting the low back release with each exhale.","Hold 45-60 seconds, or longer as a resting pose."],
-cue:"Let the knees pull gently toward the chest with each exhale — don't grip, just breathe into it.",
-ben:["Lower Back","SI Joint","Digestion","Relaxation","Recovery"]},
-
-{id:"wrist-rolls",e:"🤲",n:"Wrist Rolls",s:"Standing/Seated Wrist Mobility",l:"beginner",c:"seated",cpm:1.4,dur:45,
-desc:"Simple circular wrist mobilization, done standing or seated. A quick warm-up before any weight-bearing hand work like Plank or Downward Dog.",
-steps:["Extend both arms forward or clasp the hands together at chest height.","Slowly circle both wrists in one direction, going through the full range of motion.","Complete 8-10 slow circles, then reverse direction for another 8-10.","Keep the shoulders relaxed and the motion isolated to the wrists.","If seated, you can also press palms together and circle at the wrist joint.","Finish by gently shaking out the hands."],
-cue:"Keep the circles slow and full — this is about range, not speed.",
-ben:["Wrist Mobility","Forearms","Injury Prevention","Warm-Up","Circulation"]},
-
-{id:"wrist-figure8",e:"➰",n:"Tabletop Wrist Figure 8s",s:"Tabletop Wrist Chalanasana",l:"beginner",c:"core",cpm:2.0,dur:45,
-desc:"Weighted figure-8 circles through the wrist while in tabletop position. Builds wrist resilience and stability for load-bearing poses.",
-steps:["Come to tabletop, hands under shoulders, knees under hips.","Keeping the palm planted, rock the weight in a figure-8 pattern through the wrist — forward-diagonal, back-diagonal, repeat.","Move slowly, exploring the full range without pain.","Complete 30 seconds on one hand, then switch.","Keep the shoulder stacked over the wrist as you rock, avoiding collapsing into the joint.","Breathe steadily throughout."],
-cue:"Trace a slow figure-8 through the palm and wrist — small range, full control.",
-ben:["Wrist Resilience","Forearm Strength","Injury Prevention","Grip Stability","Warm-Up"]},
-
-{id:"neck-shoulder-release",e:"🙆",n:"Seated Neck & Shoulder Release",s:"Kneeling Griva Chalanasana",l:"beginner",c:"seated",cpm:1.6,dur:60,
-desc:"A lateral ear-to-shoulder stretch with the hands clasped behind the lower back or gently guiding the head. Releases the upper traps and side of the neck.",
-steps:["Sit or kneel tall, clasp the hands behind the lower back (or let one arm hang if that's more accessible).","Gently tilt the right ear toward the right shoulder, feeling the stretch along the left side of the neck.","Optionally use the right hand to add slight, gentle overpressure — never pull hard.","Keep the shoulders down and away from the ears throughout.","Hold 20-30 seconds, breathing slowly, then return to center.","Switch sides and repeat."],
-cue:"Let the ear drift toward the shoulder — any hand pressure should be a whisper, not a pull.",
-ben:["Neck Tension","Upper Traps","Stress Relief","Posture","Shoulder Release"]}
-
-]; // end POSES
-
+// YOGA_DEMOS, POSES live in data-yoga.js
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
@@ -12796,7 +9478,7 @@ var collapsed = {beginner:false, intermediate:false, advanced:false};
 // CALORIE CALC
 // ═══════════════════════════════════════════════════
 function cal(cpm, secs) {
-  var w = (typeof getLatestWeight==="function" && getLatestWeight()) ||
+  var w = (getLatestWeight()) ||
           (typeof START_WEIGHT!=="undefined" && START_WEIGHT) || WEIGHT || 200;
   return Math.round(cpm * (secs/60) * (w/150));
 }
@@ -12865,7 +9547,7 @@ function ygRenderStatsBar() {
     '<div class="yoga-stat"><div class="yoga-stat-val">'+s.totalMin+'</div><div class="yoga-stat-lbl">Min this month</div></div>'+
     '<div class="yoga-stat"><div class="yoga-stat-val">'+s.sessions+'</div><div class="yoga-stat-lbl">Sessions this month</div></div>';
 }
-try { ygRenderStatsBar(); } catch(e) {}
+try { ygRenderStatsBar(); } catch(e) {ftCaught(e,'startup');}
 
 // ═══════════════════════════════════════════════════
 // FILTERS
@@ -12908,7 +9590,7 @@ function renderPoses() {
       var inR = routine.some(function(r){ return r.pose.id===p.id; });
       var c = cal(p.cpm, p.dur);
       var tagCls = p.l==="beginner"?"tag-b":p.l==="intermediate"?"tag-i":"tag-a";
-      var demoHtml = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : p.e;
+      var demoHtml = (YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : p.e;
       html += '<div class="pose-card'+(inR?" selected":"") +'" id="card-'+p.id+'">';
       html += '<div class="pose-header" onclick="toggleDetail(\''+p.id+'\')">';
       html += '<div class="pose-emoji">'+demoHtml+'</div>';
@@ -13141,7 +9823,7 @@ function ygLoadPose() {
   var demoEl=document.getElementById("sess-demo");
   var _sf=ygFigHtml(p.id);
   // v317: when a pose has the side-by-side figure, it replaces the old animated stick figure
-  if (demoEl) { demoEl.innerHTML = (!_sf && typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : ""; demoEl.style.display=_sf?"none":""; }
+  if (demoEl) { demoEl.innerHTML = (!_sf && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : ""; demoEl.style.display=_sf?"none":""; }
   var figEl=document.getElementById("sess-figs"); if (figEl) { figEl.innerHTML=_sf; figEl.style.display=_sf?"block":"none"; }
   var badge=document.getElementById("sess-emoji-badge"); if(badge) badge.textContent=p.e;
   document.getElementById("sess-name").textContent=p.n;
@@ -13174,7 +9856,7 @@ function dsUnlockAudio() {
     src.connect(_audioCtx.destination);
     src.start(0);
     if (_audioCtx.state === "running") _audioUnlocked = true;
-  } catch (e) {}
+  } catch (e) {ftCaught(e,'dsUnlockAudio');}
 }
 (function () {
   function onFirstTouch() {
@@ -13191,7 +9873,7 @@ function dsUnlockAudio() {
   // Browsers suspend the context when the app is backgrounded — re-arm on return.
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && _audioCtx && _audioCtx.state === 'suspended') {
-      try { _audioCtx.resume(); } catch (e) {}
+      try { _audioCtx.resume(); } catch (e) {ftCaught(e,'startup');}
     }
   });
 })();
@@ -13249,7 +9931,7 @@ function yogaBeep(freq, dur, vol) {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (dur || 0.3));
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + (dur || 0.3));
-  } catch(e) {}
+  } catch(e) {ftCaught(e,'yogaBeep');}
 }
 
 function yogaBeepWarning() {
@@ -13323,7 +10005,7 @@ function ygShowUpNext() {
   var next=routine[sessIdx+1]; if(!next) return;
   var p=next.pose;
   var demoEl=document.getElementById("sess-upnext-demo");
-  if (demoEl) demoEl.innerHTML = (typeof YOGA_DEMOS!=="undefined" && YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : p.e;
+  if (demoEl) demoEl.innerHTML = (YOGA_DEMOS[p.id]) ? YOGA_DEMOS[p.id]() : p.e;
   var nameEl=document.getElementById("sess-upnext-name"); if(nameEl) nameEl.textContent=p.n;
   var strip=document.getElementById("sess-upnext"); if(strip) strip.classList.add("show");
 }
@@ -13381,11 +10063,11 @@ function ygCrossLog(totCal, totMins, label) {
       ftData[dk].exercises.push({name:label,calories:calAdj(totCal),type:"yoga",id:Date.now().toString(),actualSecs:totMins*60,startTs:Date.now()-totMins*60000,endTs:Date.now()});
       store.set("ft_data",JSON.stringify(ftData));
       if(typeof appData!=="undefined") appData=ftData;
-      if(typeof renderAll==="function") renderAll();
-      if(typeof pushToSheets==="function") pushToSheets();
+      renderAll();
+      pushToSheets();
     }
     return true;
-  } catch(e){ return false; }
+  } catch(e){ ftCaught(e,'ygCrossLog'); return false; }
 }
 function ygShowDone() {
   var totCal=0;
@@ -13394,7 +10076,7 @@ function ygShowDone() {
   document.getElementById("done-cal").textContent=totCal;
   document.getElementById("done-ov").classList.add("open");
   ygCrossLog(totCal, totMins, "Yoga ("+totMins+" min)");
-  try { ygRenderStatsBar(); } catch(e) {}
+  try { ygRenderStatsBar(); } catch(e) {ftCaught(e,'ygShowDone');}
 }
 // Closing with ✕ used to discard the whole session silently — no credit for
 // whatever was actually practiced. Now it logs the poses actually completed
@@ -13409,7 +10091,7 @@ function ygExitAndLog() {
   }
   if (totMins>0) {
     ygCrossLog(totCal, totMins, "Yoga ("+totMins+" min, partial)");
-    try { ygRenderStatsBar(); } catch(e) {}
+    try { ygRenderStatsBar(); } catch(e) {ftCaught(e,'ygExitAndLog');}
   }
   ygEndSession();
 }
@@ -13419,363 +10101,7 @@ function ygCloseDone() {
 }
 
 
-// ═══════════════════════════════════════════════════
-// PRESET ROUTINES
-// ═══════════════════════════════════════════════════
-var PRESETS = [
-  {
-    id:"hamstring-length",
-    icon:"🦵",
-    name:"Hamstring Length & Strength",
-    desc:"Builds real, retained hamstring range — not just temporary looseness. Standing work first while you're warm, then long loaded holds. Best on Wednesday or a rest day, NOT before a lower session.",
-    level:"intermediate",
-    duration:"~25 min",
-    focus:"Hamstring Extensibility",
-    poses:[
-      {id:"easy-pose",       dur:60},
-      {id:"catcow",          dur:60},
-      {id:"downdog",         dur:60},
-      {id:"standing-forward",dur:75},
-      {id:"pyramid",         dur:75},
-      {id:"pyramid",         dur:75},
-      {id:"wide-fold",       dur:90},
-      {id:"triangle",        dur:60},
-      {id:"triangle",        dur:60},
-      {id:"standing-split",  dur:60},
-      {id:"standing-split",  dur:60},
-      {id:"staff",           dur:45},
-      {id:"seated-forward",  dur:150},
-      {id:"half-lord",       dur:60},
-      {id:"half-lord",       dur:60},
-      {id:"bridge",          dur:60},
-      {id:"supine-twist",    dur:60},
-      {id:"supine-twist",    dur:60},
-      {id:"legs-up",         dur:180},
-      {id:"corpse",          dur:120}
-    ]
-  },
-  {
-    id:"post-ride-hamstring",
-    icon:"🚴",
-    name:"Post-Ride Hamstring Reset",
-    desc:"Short option for straight after a bike ride. Hamstrings are warm and shortened from the saddle — this is passive, no forcing. Pairs with or replaces Post-Ride Recovery.",
-    level:"beginner",
-    duration:"~15 min",
-    focus:"Post-Ride Hamstrings",
-    poses:[
-      {id:"childs",          dur:60},
-      {id:"downdog",         dur:60},
-      {id:"standing-forward",dur:75},
-      {id:"pyramid",         dur:60},
-      {id:"pyramid",         dur:60},
-      {id:"low-lunge",       dur:60},
-      {id:"low-lunge",       dur:60},
-      {id:"staff",           dur:45},
-      {id:"seated-forward",  dur:120},
-      {id:"happy-baby",      dur:60},
-      {id:"supine-twist",    dur:45},
-      {id:"supine-twist",    dur:45},
-      {id:"legs-up",         dur:180}
-    ]
-  },
-  {
-    id:"morning-wake",
-    icon:"🌅",
-    name:"Morning Wake-Up",
-    desc:"A gentle 15-minute flow to ease into the day. Opens the spine, hips, and chest. Perfect before coffee.",
-    level:"beginner",
-    duration:"~15 min",
-    focus:"Energizing",
-    poses:[
-      {id:"easy-pose",    dur:60},
-      {id:"catcow",       dur:60},
-      {id:"puppy",        dur:45},
-      {id:"downdog",      dur:45},
-      {id:"low-lunge",    dur:45},
-      {id:"low-lunge",    dur:45},
-      {id:"standing-forward",dur:45},
-      {id:"mountain",     dur:30},
-      {id:"downdog",      dur:30},
-      {id:"cobra",        dur:30},
-      {id:"childs",       dur:60},
-      {id:"supine-twist", dur:45},
-      {id:"supine-twist", dur:45},
-      {id:"corpse",       dur:120}
-    ]
-  },
-  {
-    id:"hip-opener",
-    icon:"🦋",
-    name:"Deep Hip Release",
-    desc:"Targets the hips, hip flexors, and glutes. Essential after long bike rides or sitting all day. Go slow.",
-    level:"beginner",
-    duration:"~25 min",
-    focus:"Hip Flexibility",
-    poses:[
-      {id:"easy-pose",       dur:60},
-      {id:"butterfly",       dur:90},
-      {id:"low-lunge",       dur:60},
-      {id:"low-lunge",       dur:60},
-      {id:"pigeon",          dur:120},
-      {id:"pigeon",          dur:120},
-      {id:"half-pigeon",     dur:90},
-      {id:"half-pigeon",     dur:90},
-      {id:"supine-twist",    dur:60},
-      {id:"supine-twist",    dur:60},
-      {id:"happy-baby",      dur:90},
-      {id:"reclined-butterfly",dur:180},
-      {id:"legs-up",         dur:180}
-    ]
-  },
-  {
-    id:"post-ride",
-    icon:"🚵",
-    name:"Post-Ride Recovery",
-    desc:"Built for after a mountain bike ride. Targets quads, hamstrings, IT band, and lower back.",
-    level:"beginner",
-    duration:"~20 min",
-    focus:"Recovery",
-    poses:[
-      {id:"standing-forward",dur:60},
-      {id:"low-lunge",       dur:60},
-      {id:"low-lunge",       dur:60},
-      {id:"pyramid",         dur:45},
-      {id:"pyramid",         dur:45},
-      {id:"pigeon",          dur:120},
-      {id:"pigeon",          dur:120},
-      {id:"supine-twist",    dur:60},
-      {id:"supine-twist",    dur:60},
-      {id:"legs-up",         dur:300}
-    ]
-  },
-  {
-    id:"core-strength",
-    icon:"💪",
-    name:"Core & Strength",
-    desc:"A challenging core-focused flow. Burns serious calories and builds the functional strength that carries over to everything else.",
-    level:"intermediate",
-    duration:"~25 min",
-    focus:"Strength & Calorie Burn",
-    poses:[
-      {id:"mountain",       dur:30},
-      {id:"chair",          dur:45},
-      {id:"warrior1",       dur:45},
-      {id:"warrior1",       dur:45},
-      {id:"warrior2",       dur:45},
-      {id:"warrior2",       dur:45},
-      {id:"warrior3",       dur:30},
-      {id:"warrior3",       dur:30},
-      {id:"boat",           dur:30},
-      {id:"boat",           dur:30},
-      {id:"side-plank",     dur:30},
-      {id:"side-plank",     dur:30},
-      {id:"locust",         dur:30},
-      {id:"bridge",         dur:45},
-      {id:"childs",         dur:60}
-    ]
-  },
-  {
-    id:"stress-relief",
-    icon:"🧘",
-    name:"Stress & Anxiety Relief",
-    desc:"A slow, restorative practice focused on calming the nervous system. Ideal for evenings or high-stress days.",
-    level:"beginner",
-    duration:"~30 min",
-    focus:"Calming",
-    poses:[
-      {id:"easy-pose",        dur:120},
-      {id:"catcow",           dur:90},
-      {id:"thread-needle",    dur:60},
-      {id:"thread-needle",    dur:60},
-      {id:"puppy",            dur:90},
-      {id:"childs",           dur:120},
-      {id:"seated-forward",   dur:90},
-      {id:"butterfly",        dur:90},
-      {id:"supine-twist",     dur:60},
-      {id:"supine-twist",     dur:60},
-      {id:"happy-baby",       dur:90},
-      {id:"reclined-butterfly",dur:180},
-      {id:"legs-up",          dur:300},
-      {id:"corpse",           dur:300}
-    ]
-  },
-  {
-    id:"sun-salutation",
-    icon:"☀️",
-    name:"Sun Salutation Flow",
-    desc:"The classic yoga sequence done as a flowing practice. Each breath links to a movement. Energizing and complete.",
-    level:"intermediate",
-    duration:"~20 min",
-    focus:"Flow & Energy",
-    poses:[
-      {id:"mountain",         dur:20},
-      {id:"standing-forward", dur:20},
-      {id:"low-lunge",        dur:30},
-      {id:"downdog",          dur:30},
-      {id:"cobra",            dur:20},
-      {id:"downdog",          dur:30},
-      {id:"low-lunge",        dur:30},
-      {id:"standing-forward", dur:20},
-      {id:"mountain",         dur:20},
-      {id:"chair",            dur:30},
-      {id:"warrior1",         dur:30},
-      {id:"warrior2",         dur:30},
-      {id:"reverse-warrior",  dur:20},
-      {id:"ext-side-angle",   dur:30},
-      {id:"triangle",         dur:30},
-      {id:"childs",           dur:60},
-      {id:"corpse",           dur:120}
-    ]
-  },
-  {
-    id:"balance-focus",
-    icon:"🌿",
-    name:"Balance & Focus",
-    desc:"A balance-heavy sequence that builds single-leg strength, ankle stability, and laser focus. Great before a big day.",
-    level:"intermediate",
-    duration:"~20 min",
-    focus:"Balance & Mental Clarity",
-    poses:[
-      {id:"mountain",    dur:45},
-      {id:"tree",        dur:45},
-      {id:"tree",        dur:45},
-      {id:"warrior3",    dur:30},
-      {id:"warrior3",    dur:30},
-      {id:"half-moon",   dur:30},
-      {id:"half-moon",   dur:30},
-      {id:"eagle",       dur:30},
-      {id:"eagle",       dur:30},
-      {id:"king-dancer", dur:20},
-      {id:"king-dancer", dur:20},
-      {id:"standing-split",dur:30},
-      {id:"standing-split",dur:30},
-      {id:"childs",      dur:60},
-      {id:"corpse",      dur:120}
-    ]
-  },
-  {
-    id:"back-pain",
-    icon:"🔙",
-    name:"Lower Back Relief",
-    desc:"Specifically designed to relieve lower back tension. A combination of gentle stretches and strengthening moves.",
-    level:"beginner",
-    duration:"~20 min",
-    focus:"Back Pain Relief",
-    poses:[
-      {id:"catcow",        dur:90},
-      {id:"childs",        dur:90},
-      {id:"sphinx",        dur:60},
-      {id:"cobra",         dur:30},
-      {id:"bridge",        dur:45},
-      {id:"bridge",        dur:45},
-      {id:"supine-twist",  dur:60},
-      {id:"supine-twist",  dur:60},
-      {id:"happy-baby",    dur:90},
-      {id:"knee-to-chest", dur:60},
-      {id:"legs-up",       dur:180},
-      {id:"corpse",        dur:120}
-    ]
-  },
-  {
-    id:"power-yoga",
-    icon:"🔥",
-    name:"Power Yoga Burn",
-    desc:"A high-intensity, calorie-torching sequence for those days when you want your yoga to feel like a real workout.",
-    level:"advanced",
-    duration:"~30 min",
-    focus:"Maximum Calorie Burn",
-    poses:[
-      {id:"chair",         dur:45},
-      {id:"warrior1",      dur:45},
-      {id:"warrior2",      dur:45},
-      {id:"warrior3",      dur:30},
-      {id:"half-moon",     dur:30},
-      {id:"crescent-lunge",dur:45},
-      {id:"boat",          dur:30},
-      {id:"boat",          dur:30},
-      {id:"side-plank",    dur:30},
-      {id:"side-plank",    dur:30},
-      {id:"crow",          dur:20},
-      {id:"locust",        dur:30},
-      {id:"bow",           dur:30},
-      {id:"wheel",         dur:20},
-      {id:"camel",         dur:30},
-      {id:"childs",        dur:60},
-      {id:"corpse",        dur:120}
-    ]
-  },
-  {
-    id:"evening-unwind",
-    icon:"🌙",
-    name:"Evening Unwind",
-    desc:"A 20-minute pre-bed sequence to decompress the body and calm the mind. Better sleep guaranteed.",
-    level:"beginner",
-    duration:"~20 min",
-    focus:"Sleep & Recovery",
-    poses:[
-      {id:"easy-pose",        dur:90},
-      {id:"seated-twist",     dur:60},
-      {id:"seated-twist",     dur:60},
-      {id:"butterfly",        dur:90},
-      {id:"seated-forward",   dur:90},
-      {id:"supine-twist",     dur:60},
-      {id:"supine-twist",     dur:60},
-      {id:"happy-baby",       dur:90},
-      {id:"reclined-butterfly",dur:120},
-      {id:"legs-up",          dur:300},
-      {id:"corpse",           dur:300}
-    ]
-  },
-  {
-    id:"chest-shoulders",
-    icon:"🏋️",
-    name:"Chest & Shoulder Opener",
-    desc:"Counteracts the forward hunch from cycling and screen time. Opens the chest and releases tight shoulders.",
-    level:"intermediate",
-    duration:"~20 min",
-    focus:"Posture",
-    poses:[
-      {id:"puppy",       dur:60},
-      {id:"thread-needle",dur:60},
-      {id:"thread-needle",dur:60},
-      {id:"cobra",       dur:30},
-      {id:"sphinx",      dur:60},
-      {id:"upward-dog",  dur:20},
-      {id:"bow",         dur:30},
-      {id:"camel",       dur:30},
-      {id:"fish",        dur:30},
-      {id:"bridge",      dur:45},
-      {id:"wheel",       dur:20},
-      {id:"childs",      dur:90},
-      {id:"corpse",      dur:120}
-    ]
-  },
-  {
-    id:"arm-balance-intro",
-    icon:"✈️",
-    name:"Arm Balance Introduction",
-    desc:"A progressive sequence building toward your first arm balance. Develops wrist strength, core, and confidence.",
-    level:"advanced",
-    duration:"~25 min",
-    focus:"Arm Balances",
-    poses:[
-      {id:"downdog",      dur:45},
-      {id:"dolphin",      dur:30},
-      {id:"dolphin",      dur:30},
-      {id:"boat",         dur:30},
-      {id:"boat",         dur:30},
-      {id:"side-plank",   dur:30},
-      {id:"side-plank",   dur:30},
-      {id:"crow",         dur:20},
-      {id:"crow",         dur:20},
-      {id:"side-crow",    dur:15},
-      {id:"side-crow",    dur:15},
-      {id:"scale",        dur:15},
-      {id:"childs",       dur:90},
-      {id:"corpse",       dur:120}
-    ]
-  }
-];
+// PRESETS lives in data-yoga.js
 
 var loadedPresetId = null;
 
@@ -13849,8 +10175,8 @@ function togglePresetPoses(id) {
 }
 
 // ── Preset usage tracking: powers "Last practiced" / "Most used" badges ──
-function ygPresetLog() { try{ return JSON.parse(store.get("yoga_preset_log")||"{}"); }catch(e){ return {}; } }
-function ygPresetLogSave(log) { try{ store.set("yoga_preset_log", JSON.stringify(log)); }catch(e){} }
+function ygPresetLog() { try{ return JSON.parse(store.get("yoga_preset_log")||"{}"); }catch(e){ ftCaught(e,'ygPresetLog'); return {}; } }
+function ygPresetLogSave(log) { try{ store.set("yoga_preset_log", JSON.stringify(log)); }catch(e){ftCaught(e,'ygPresetLogSave');} }
 function ygPresetMarkUsed(presetId) {
   var log = ygPresetLog();
   var entry = log[presetId] || {count:0, last:null};
@@ -13894,10 +10220,10 @@ function loadPreset(presetId) {
 // SAVED ROUTINES
 // ═══════════════════════════════════════════════════
 function getSaved() {
-  try { return JSON.parse(store.get("yoga_saved") || "[]"); } catch(e) { return []; }
+  try { return JSON.parse(store.get("yoga_saved") || "[]"); } catch(e) { ftCaught(e,'getSaved'); return []; }
 }
 function putSaved(arr) {
-  try { store.set("yoga_saved", JSON.stringify(arr)); } catch(e) {}
+  try { store.set("yoga_saved", JSON.stringify(arr)); } catch(e) {ftCaught(e,'putSaved');}
 }
 
 function saveRoutine() {
@@ -14036,8 +10362,8 @@ if('serviceWorker' in navigator){
   // still used of the old Training Guide module (removed v479).
   function pad(n){return String(n).padStart(2,"0");}
   function today(){var d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
-  function loadDone(){try{return JSON.parse(localStorage.getItem("eg_done")||"{}")||{};}catch(e){return {};}}
-  function saveDone(o){try{localStorage.setItem("eg_done",JSON.stringify(o));}catch(e){}}
+  function loadDone(){try{return JSON.parse(localStorage.getItem("eg_done")||"{}")||{};}catch(e){ ftCaught(e,'loadDone');return {};}}
+  function saveDone(o){try{localStorage.setItem("eg_done",JSON.stringify(o));}catch(e){ftCaught(e,'saveDone');}}
   function url(){return localStorage.getItem("ft_sheets_url")||"";}
   var syncTimer=null;
   function scheduleSync(){ if(!url())return; clearTimeout(syncTimer); syncTimer=setTimeout(pushSync,4000); }
@@ -14109,7 +10435,7 @@ function qtStart() {
   clearInterval(qtInterval);
   qtInterval = setInterval(qtTick, 250);
   qtReqWake();
-  try{ qtTick(); }catch(e){}
+  try{ qtTick(); }catch(e){ftCaught(e,'qtStart');}
 }
 function qtShowRunningView() {
   document.getElementById('qt-setup').style.display='none';
@@ -14183,13 +10509,13 @@ function qtCloseDone() {
 }
 function qtChime() {
   try {
-    var fn = (typeof yogaBeep === 'function') ? yogaBeep : null;
+    var fn = yogaBeep;
     if (fn) {
       fn(880, 0.18, 0.5);
       setTimeout(function(){ fn(880, 0.18, 0.5); }, 280);
       setTimeout(function(){ fn(1100, 0.3, 0.55); }, 560);
     }
-  } catch(e) {}
+  } catch(e) {ftCaught(e,'qtChime');}
 }
 // Acronym dictionary filter (Info tab)
 function acroFilter(q){
@@ -14211,32 +10537,11 @@ var MM_EXTRA={'fri-add':{'Adductors':1},
   'tue-squat':{'Abductors':0.5},'fri-bulg':{'Abductors':0.5},
   'thu-facepull':{'Rotator Cuff':1},'wu-shoulder-cars':{'Rotator Cuff':0.5},'warmup-bandshoulder':{'Rotator Cuff':0.5},
   'wu-hip-cars':{'Hip Flexors':0.5},'warmup-hipflow-7':{'Hip Flexors':0.5},'mon-hollow':{'Hip Flexors':0.5}};
-var MM_INFO={
-  'Chest':{name:'Chest (pecs)',does:'Pulls your arms across your body and pushes things away from you. The upper fibers (near the collarbone) help press up at an angle; the larger lower part handles flat pressing.',feel:'Press your palms together hard in front of your chest — that tightening is your pecs. On presses, think "bring the inner biceps toward the chest" at lockout.',tip:'Grows best from deep stretch under load — the bottom of the deficit push-up and the band press with tension at the start.'},
-  'Shoulders':{name:'Front & side delts',does:'The front delt lifts your arm forward and helps every press. The side delt lifts your arm out to the side — it is what makes shoulders look wider.',feel:'Lift your arm straight out to the side and touch the top of your shoulder — that round muscle firming up is the side delt.',tip:'Presses cover the front delt well. Lateral raises are the main driver for side-delt width.'},
-  'Rear Delts':{name:'Rear delts',does:'Pull your arm backward and rotate it outward. Small, but key for shoulder health and posture after years of desk work.',feel:'Arms out wide, pull your elbows back like you are spreading a big towel — the back of the shoulder tightens.',tip:'Light weight and high reps work well here. Keep the elbows high on face pulls.'},
-  'Biceps':{name:'Biceps & brachialis',does:'Bend the elbow and turn the palm up. The brachialis sits underneath and pushes the biceps up — hammer curls hit it hard, which makes the whole arm look thicker.',feel:'Curl your arm and squeeze the top — the peak bunches up. Palms-up curls favor the biceps; thumbs-up curls favor the brachialis.',tip:'The stretched position matters: behind-the-body (Bayesian-style) curls load the biceps at full length.'},
-  'Triceps':{name:'Triceps',does:'Straighten the elbow. They make up about two-thirds of your upper-arm size, so they matter more than biceps for bigger arms.',feel:'Straighten your arm hard and flex — the horseshoe on the back of the arm pops out.',tip:'The long head only gets fully stretched with the arm overhead — that is why skull crushers and overhead extensions are in the plan.'},
-  'Forearms':{name:'Forearms & grip',does:'Grip, wrist control, and turning the hand. They work in almost every pulling exercise.',feel:'Squeeze a handle as hard as you can — the whole forearm tightens.',tip:'Mostly trained indirectly by rows, pulldowns, and hammer curls. The wrist rehab also strengthens the elbow tendons.'},
-  'Core':{name:'Abs & obliques',does:'The abs brace the spine and stop it from over-arching. The obliques on your sides resist twisting and side-bending.',feel:'Cough or brace like someone is about to poke your stomach — that firm wall is your core.',tip:'Bracing work (hollow hold, plank, Pallof press) trains the core the way it is actually used: holding the spine still under load.'},
-  'Traps':{name:'Traps',does:'Lift and steady the shoulder blades. The upper traps shrug; the middle and lower parts pull the blades together and down.',feel:'Shrug your shoulders toward your ears and hold — the muscle between neck and shoulder hardens.',tip:'Shrugs train the upper traps directly; rows and pulldowns cover the middle and lower parts.'},
-  'Back':{name:'Lats & upper back',does:'The lats pull your arms down and back. They are the big V-shape muscles. The upper back (rhomboids and mid traps) squeezes the shoulder blades together.',feel:'Pull your elbows down into your back pockets — the area under your armpit tightens. That is the lats.',tip:'Let the arms go all the way up on pulldowns for a full lat stretch, then drive the elbows down.'},
-  'Lower Back':{name:'Lower back (spinal erectors)',does:'Two thick columns of muscle along the spine that hold it straight when you bend forward or carry load. They work as stabilizers, not movers, in most lifts.',feel:'Hinge forward a little with a flat back — the columns on either side of your spine firm up.',tip:'Good mornings and RDLs train them hard. Keep the spine neutral and let the hips do the moving — the back should hold, not bend.'},
-  'Abductors':{name:'Hip abductors (glute medius)',does:'Sit on the side of the hip. They push the leg out to the side, keep your knees from caving in, and hold your pelvis level when you stand on one leg — every step of a run.',feel:'Lie on your side and lift the top leg — the side of the hip burns quickly.',tip:'Your plan only reaches these indirectly (knees-out squats, split squats). If knees cave or hips ache when running, add lateral band walks or side-lying raises.'},
-  'Rotator Cuff':{name:'Rotator cuff',does:'Four small muscles around the shoulder blade that keep the ball of the shoulder centered in its socket during every press and pull.',feel:'Elbow pinned to your side, rotate your forearm outward against a light band — the back of the shoulder works.',tip:'Light, controlled work is enough. Face pulls (thumbs back at the end) and shoulder CARs keep them healthy.'},
-  'Hip Flexors':{name:'Hip flexors',does:'Lift the knee toward the chest — every pedal stroke, stride, and leg raise. Long hours of sitting leave them short and tight more often than weak.',feel:'Stand and lift one knee up high and hold — the front of the hip crease works.',tip:'They mostly need length, not strength: lunge and hip-flexor stretches in yoga matter as much as the hip CARs and hollow holds.'},
-  'Glutes':{name:'Glutes',does:'Drive the hips forward (standing up, climbing, hinging) and keep the knees from caving in. The biggest muscle in the body.',feel:'Squeeze your butt hard while standing tall — that is a glute contraction. Hip thrusts should end with that same squeeze.',tip:'Hip thrusts load them at the top; split squats and RDLs load them in the stretch.'},
-  'Quads':{name:'Quads',does:'Straighten the knee. Four muscles on the front of the thigh that power squats, stairs, and pedaling your bike.',feel:'Sit with your leg straight and tighten the front of the thigh — the kneecap pulls up.',tip:'Split squats and deep squats load them in the stretch; leg extensions isolate them.'},
-  'Hamstrings':{name:'Hamstrings',does:'Bend the knee and help the glutes extend the hip. They run down the back of the thigh.',feel:'At the bottom of an RDL you feel a strong pull behind the thigh — that stretch is the hamstrings working.',tip:'You need both jobs: hinges (RDL, good morning) for hip extension and leg curls for knee bending.'},
-  'Adductors':{name:'Adductors (inner thigh)',does:'Pull the legs together and help stabilize the hips and knees in squats and lunges.',feel:'Squeeze your knees together around a pillow — the inner thigh tightens.',tip:'Squats also work them in the deep position; the side-lying raise adds direct work.'},
-  'Calves':{name:'Calves',does:'Point the foot and push you off the ground on every step, run, and ride.',feel:'Rise onto your toes and hold — the back of the lower leg bulges.',tip:'Calves respond best to a full stretch at the bottom and a 2-second squeeze at the top.'},
-  'Shins':{name:'Shins (tibialis)',does:'Lift the toes and control the foot as it lands. Strong shins protect the knees and help prevent shin splints when running.',feel:'Pull your toes up toward your shin — the muscle beside the shin bone tightens.',tip:'Tibialis raises balance all the calf and running work.'}
-};
+// MM_INFO lives in data-exercises.js
 var MM_SEL=null;
-function mmWeights(m){ var a=(typeof DS_MV!=='undefined'&&DS_MV[m.id])||null, b=MM_EXTRA[m.id]||null; if(!a&&!b) return null; var w={},k; for(k in a) w[k]=a[k]; for(k in b) w[k]=b[k]; return w; }
+function mmWeights(m){ var a=(DS_MV[m.id])||null, b=MM_EXTRA[m.id]||null; if(!a&&!b) return null; var w={},k; for(k in a) w[k]=a[k]; for(k in b) w[k]=b[k]; return w; }
 function mmUses(group){
   var out=[], names={mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
-  if(typeof DS_SESSIONS==='undefined') return out;
   Object.keys(names).forEach(function(d){
     var s=DS_SESSIONS[d]; if(!s||!s.moves) return;
     s.moves.forEach(function(m){ if(!m) return; var w=mmWeights(m); if(w&&w[group]) out.push({day:names[d],name:m.name,w:w[group],sets:m.sets||0}); });
@@ -14307,7 +10612,7 @@ function mmRender(){
   }
   root.innerHTML=h;
 }
-try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{mmRender();}catch(e){} }); else mmRender(); }catch(e){}
+try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{mmRender();}catch(e){ftCaught(e,'startup');} }); else mmRender(); }catch(e){ftCaught(e,'startup');}
 
 /* ── v316: crash protection · update banner · lock-in guard · weekly review ── */
 // 1) Crash protection: if a screen fails to draw, show a reload box instead of a blank page.
@@ -14352,16 +10657,16 @@ function ftCheckUpdate(){
         document.body.appendChild(b);
       }
     }).catch(function(){});
-  }catch(e){}
+  }catch(e){ftCaught(e,'ftCheckUpdate');}
 }
 try{
   setTimeout(ftCheckUpdate,4000);
   document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') ftCheckUpdate(); });
   if(/[?&]u=\d+/.test(location.search) && window.history && history.replaceState) history.replaceState(null,'',location.pathname);
-}catch(e){}
+}catch(e){ftCaught(e,'startup');}
 // 3) Lock-in guard: gentle check before editing the program mid-block.
 var FT_LOCK_WEEKS=8;
-function ftLockStart(){ try{ return store.get('ft_lockin_start')||'2026-10-07'; }catch(e){ return '2026-10-07'; } }
+function ftLockStart(){ try{ return store.get('ft_lockin_start')||'2026-10-07'; }catch(e){ ftCaught(e,'ftLockStart'); return '2026-10-07'; } }
 function ftLockInfo(){
   var st=keyToDate(ftLockStart()), days=Math.floor((Date.now()-st.getTime())/86400000);
   if(days<0) return null; var wk=Math.floor(days/7)+1; if(wk>FT_LOCK_WEEKS) return null;
@@ -14371,13 +10676,13 @@ function ftLockInfo(){
   var orig=window.dsCustomOpen; if(typeof orig!=='function') return;
   window.dsCustomOpen=function(){
     try{
-      var li=(typeof dsGuestMode==='function'&&dsGuestMode())?null:ftLockInfo();
+      var li=(dsGuestMode())?null:ftLockInfo();
       if(li && !window._ftLockAck){
         var msg='You’re in week '+li.week+' of your '+li.total+'-week lock-in (started '+li.start.toLocaleDateString(undefined,{month:'short',day:'numeric'})+').\n\nChanging exercises now resets the comparison and makes progress harder to see. If something hurts, swap just that one exercise.\n\nOpen the editor anyway?';
         if(!window.confirm(msg)) return;
         window._ftLockAck=true;
       }
-    }catch(e){}
+    }catch(e){ftCaught(e,'dsCustomOpen');}
     return orig.apply(this,arguments);
   };
 })();
@@ -14395,11 +10700,11 @@ function ftWeeklyReview(){
       if(d.foods&&d.foods.length){ var p=d.foods.reduce(function(a,f){return a+(+f.protein||0);},0); proDays++; proSum+=p; if(p>=(GOALS.protein-PROTEIN_BAND)) proHit++; }
     });
     var up=0, upNames=[], upKinds={up:0,bandup:0,upvol:0};
-    try{ strengthTrendData().forEach(function(x){ var c=x.cmp; if(c&&c.cur&&upKinds.hasOwnProperty(c.kind)&&keys.indexOf(c.cur.date)>=0){ up++; upKinds[c.kind]++; upNames.push({k:c.kind,t:x.name+(c.kind==='bandup'?' (heavier band)':c.kind==='upvol'?' (more volume)':' (more reps)')}); } }); }catch(e){}
+    try{ strengthTrendData().forEach(function(x){ var c=x.cmp; if(c&&c.cur&&upKinds.hasOwnProperty(c.kind)&&keys.indexOf(c.cur.date)>=0){ up++; upKinds[c.kind]++; upNames.push({k:c.kind,t:x.name+(c.kind==='bandup'?' (heavier band)':c.kind==='upvol'?' (more volume)':' (more reps)')}); } }); }catch(e){ftCaught(e,'ftWeeklyReview');}
     var _ord={bandup:0,up:1,upvol:2}; upNames=upNames.sort(function(p,q){return _ord[p.k]-_ord[q.k];}).map(function(o){return o.t;});
     var upParts=[]; if(upKinds.up) upParts.push(upKinds.up+' more reps'); if(upKinds.bandup) upParts.push(upKinds.bandup+' heavier band'); if(upKinds.upvol) upParts.push(upKinds.upvol+' more volume');
     var low=[];
-    try{ var v=dsMVWeek(keys); Object.keys(MUSCLE_LANDMARKS).forEach(function(m){ if(v[m]!=null&&v[m]<MUSCLE_LANDMARKS[m][0]) low.push(m); }); }catch(e){}
+    try{ var v=dsMVWeek(keys); Object.keys(MUSCLE_LANDMARKS).forEach(function(m){ if(v[m]!=null&&v[m]<MUSCLE_LANDMARKS[m][0]) low.push(m); }); }catch(e){ftCaught(e,'ftWeeklyReview');}
     var isSun=(new Date().getDay()===0);
     var h='<div class="card-title">'+(isSun?'📋 Week in Review':'📋 This Week So Far')+'</div><div class="ft-wr">';
     h+='<div class="ft-wr-s"><b>'+done+'</b><span>workouts logged'+(planned?(done>planned?' · '+planned+' planned + '+(done-planned)+' extra':' (of '+planned+' lift days so far)'):'')+'</span></div>';
@@ -14409,14 +10714,14 @@ function ftWeeklyReview(){
     if(isSun&&low.length) h+='<div class="ft-wr-n" style="color:#fbbf24">Below minimum volume this week: '+low.join(', ')+'</div>';
     var li=ftLockInfo(); if(li) h+='<div class="ft-wr-n">🔒 Lock-in week '+li.week+' of '+li.total+' — keep the plan steady.</div>';
     el.innerHTML=h; el.style.display='';
-  }catch(e){ el.style.display='none'; }
+  }catch(e){ ftCaught(e,'ftWeeklyReview'); el.style.display='none'; }
 }
 (function(){
   var orig=window.renderDash; if(typeof orig!=='function') return;
-  var w=function(){ var r=orig.apply(this,arguments); try{ ftWeeklyReview(); }catch(e){} return r; };
+  var w=function(){ var r=orig.apply(this,arguments); try{ ftWeeklyReview(); }catch(e){ftCaught(e,'w');} return r; };
   w._ftWrapped=orig._ftWrapped; window.renderDash=w;
 })();
-try{ ftWeeklyReview(); }catch(e){}
+try{ ftWeeklyReview(); }catch(e){ftCaught(e,'startup');}
 
 // ── LAST-USED PING ──────────────────────────────────────────────────────
 // Sends only a random install ID, the app build and a timestamp to the
@@ -14443,13 +10748,14 @@ var USAGE_PING_URL = "https://script.google.com/macros/s/AKfycbyQEVBRw2_yuuq-Wmd
         if(now-last<MIN_GAP) return;
         var q='?id='+encodeURIComponent(installId())+'&build='+encodeURIComponent(String(APP_BUILD).split(' ')[0])+'&t='+now;
         fetch(USAGE_PING_URL+q,{method:'GET',mode:'no-cors',keepalive:true}).then(function(){ store.set('ft_last_ping',String(now)); }).catch(function(){});
-      }catch(e){}
+      }catch(e){ftCaught(e,'ping');}
     }
     // Show this install's ID in Settings so it can be matched to a row in the usage sheet.
-    try{ var idEl=document.getElementById('ft-install-id'); if(idEl) idEl.textContent=installId(); }catch(e){}
+    try{ var idEl=document.getElementById('ft-install-id'); if(idEl) idEl.textContent=installId(); }catch(e){ftCaught(e,'startup');}
+    try{ ftRenderErrLog(); }catch(e){ftCaught(e,'startup');}
     setTimeout(ping,3000);
     document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') ping(); });
-  }catch(e){}
+  }catch(e){ftCaught(e,'startup');}
 })();
 
 /* ── v320: Exercise Libraries (Info tab) — thumbnail of the side-by-side setup diagram + name, for
@@ -14477,7 +10783,7 @@ var XL_CFG={
 var XL_ST={};   // per-kind state: {list, open, q}
 function xlPic(name,thumb){
   DS_PIC_THUMB=!!thumb;
-  try{ DS_PIC_NAME=name; return DS_SETUPPICS[name](); }catch(e){ return ''; }
+  try{ DS_PIC_NAME=name; return DS_SETUPPICS[name](); }catch(e){ ftCaught(e,'xlPic'); return ''; }
   finally{ DS_PIC_THUMB=false; }
 }
 function xlEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -14486,7 +10792,7 @@ function xlBuild(kind){
   var C=XL_CFG[kind], out=[], seen=[];
   Object.keys(DS_SETUPPICS||{}).forEach(function(n){
     var fn=DS_SETUPPICS[n]; if(seen.indexOf(fn)>=0) return;   // alias of a diagram already listed
-    var ok=false; try{ ok=C.pick(n) && xlUsesAnchor(n); }catch(e){}
+    var ok=false; try{ ok=C.pick(n) && xlUsesAnchor(n); }catch(e){ftCaught(e,'xlBuild');}
     if(ok){ seen.push(fn); out.push({name:n,group:C.group(n)}); }
   });
   out.sort(function(a,b){ return C.groups.indexOf(a.group)-C.groups.indexOf(b.group) || (a.name<b.name?-1:1); });
@@ -14525,11 +10831,11 @@ function xlInit(){
   Object.keys(XL_CFG).forEach(function(kind){
     var d=document.querySelector('details[data-sec="'+XL_CFG[kind].sec+'"]'); if(!d||d._xlBound) return;
     d._xlBound=true;
-    var go=function(){ if(d.open && !d._xlDone){ d._xlDone=true; try{ xlRender(kind); }catch(e){} } };
+    var go=function(){ if(d.open && !d._xlDone){ d._xlDone=true; try{ xlRender(kind); }catch(e){ftCaught(e,'go');} } };
     d.addEventListener('toggle',go); go();
   });
 }
-try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{xlInit();}catch(e){} }); else xlInit(); }catch(e){}
+try{ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ try{xlInit();}catch(e){ftCaught(e,'startup');} }); else xlInit(); }catch(e){ftCaught(e,'startup');}
 
 /* v395 Stretch-load tips: bands are weakest in the stretched position, so each card
    shows how to keep tension there. [setup, every rep, last set]. Keyed by exercise name. */
@@ -14940,7 +11246,7 @@ function dsSaveBodyBasics(){
   var h=parseFloat(document.getElementById('ft-height-ft').value)*12+(parseFloat(document.getElementById('ft-height-inch').value)||0);
   var a=parseInt(document.getElementById('ft-age2').value,10);
   if(h>0) store.set('ft_height_in',h); if(a>0){ store.set('ft_age',a); USER_AGE=a; }
-  try{ dsQueueConfigPush(); }catch(e){}
+  try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsSaveBodyBasics');}
   renderAll(); dsRenderStepsCard(); toast('\u2713 Saved');
 }
 function dsRenderStepsCard(){
@@ -14958,7 +11264,7 @@ function dsRenderStepsCard(){
     +(f?'<div style="font-size:11px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin-top:6px">Size/steps maintenance estimate: <b style="color:#ddd">'+f.tdee+' kcal</b> (BMR '+f.bmr+' \u00d7 '+f.pal+' + '+f.trainKcal+' training)</div>':'');
 }
 (function(){ // seed David's basics once (from chat, Nov 10 2026)
-  try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_height_in')){ store.set('ft_height_in',72); if(!store.get('ft_age')) store.set('ft_age',45); } }catch(e){}
+  try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_height_in')){ store.set('ft_height_in',72); if(!store.get('ft_age')) store.set('ft_age',45); } }catch(e){ftCaught(e,'startup');}
 })();
 
 (function(){ // v470 one-time: steps David pasted in chat (Oct 12 – Nov 9, 2026)
@@ -14967,20 +11273,20 @@ function dsRenderStepsCard(){
     var S={"2026-11-09":4679,"2026-11-08":4037,"2026-11-07":5497,"2026-11-06":3600,"2026-11-05":8186,"2026-11-04":3987,"2026-11-03":5980,"2026-11-02":1043,"2026-11-01":3924,"2026-10-31":4489,"2026-10-30":6214,"2026-10-29":4546,"2026-10-28":6200,"2026-10-27":4918,"2026-10-26":7290,"2026-10-25":5892,"2026-10-24":6332,"2026-10-23":6272,"2026-10-22":4470,"2026-10-21":7987,"2026-10-20":3832,"2026-10-19":5693,"2026-10-18":8001,"2026-10-17":7317,"2026-10-16":6268,"2026-10-15":4727,"2026-10-14":2665,"2026-10-13":7037,"2026-10-12":7790};
     setTimeout(function(){ try{
       Object.keys(S).forEach(function(k){ var d=getDay(k); d.wellness=d.wellness||{}; if(!(+d.wellness.steps>0)) d.wellness.steps=S[k]; appData[k]=d; });
-      store.set('ft_steps_seed470','1'); saveAll(); try{pushToSheets();}catch(e){} renderAll();
-    }catch(e){} },4500);
-  }catch(e){}
+      store.set('ft_steps_seed470','1'); saveAll(); try{pushToSheets();}catch(e){ftCaught(e,'startup');} renderAll();
+    }catch(e){ftCaught(e,'startup');} },4500);
+  }catch(e){ftCaught(e,'startup');}
 })();
 
 // ── v475: FAT-LOSS PROJECTION LINE on the Trends weight chart ──────────
 // Expected path from a start date/weight to the goal: ~0.7 lb/wk at the
 // start, tapering to ~0.5 lb/wk near goal (deficit shrinks as weight drops).
-function dsProjGet(){ try{ var p=JSON.parse(store.get('ft_proj')||'null'); return (p&&p.start&&p.w0>0)?p:null; }catch(e){ return null; } }
+function dsProjGet(){ try{ var p=JSON.parse(store.get('ft_proj')||'null'); return (p&&p.start&&p.w0>0)?p:null; }catch(e){ ftCaught(e,'dsProjGet'); return null; } }
 function dsProjStart(){
-  var a=null; try{ a=weightAvgWindow(7); }catch(e){}
+  var a=null; try{ a=weightAvgWindow(7); }catch(e){ftCaught(e,'dsProjStart');}
   var w0=a&&a.avg?Math.round(a.avg*10)/10:parseFloat(getLatestWeight()); if(!(w0>0)) return;
   store.set('ft_proj', JSON.stringify({start:todayKey(), w0:w0, fast:0.7, slow:0.5}));
-  try{ dsQueueConfigPush(); }catch(e){}
+  try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsProjStart');}
 }
 function dsProjAt(p, t){ // t = ms timestamp → projected weight
   var goal=GOAL_WEIGHT||0, days=(t-new Date(p.start+'T00:00:00').getTime())/864e5;
@@ -14994,7 +11300,7 @@ function dsProjAt(p, t){ // t = ms timestamp → projected weight
   return goal?Math.max(goal,w):w;
 }
 function dsProjStatusHtml(p){
-  var a=null; try{ a=weightAvgWindow(7); }catch(e){} if(!a||!a.avg) return '';
+  var a=null; try{ a=weightAvgWindow(7); }catch(e){ftCaught(e,'dsProjStatusHtml');} if(!a||!a.avg) return '';
   var exp=dsProjAt(p, new Date(todayKey()+'T00:00:00').getTime()), d=a.avg-exp;
   var col=Math.abs(d)<=1?'#5eead4':(d>0?'#fb923c':'#5eead4');
   var txt=Math.abs(d)<=1?'on plan':(d>0?Math.abs(d).toFixed(1)+' lb behind plan':Math.abs(d).toFixed(1)+' lb ahead of plan');
@@ -15003,7 +11309,7 @@ function dsProjStatusHtml(p){
     +' \u00b7 <a href="#" onclick="if(confirm(\'Restart the plan line from today\\\'s 7-day average?\'))dsProjStart();renderTrends();return false;" style="color:#a78bfa">restart</a></div>';
 }
 (function(){ // seed David's projection once (fat-loss plan agreed Nov 10, 2026)
-  try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_proj')) store.set('ft_proj', JSON.stringify({start:'2026-11-10', w0:213, fast:0.7, slow:0.5})); }catch(e){}
+  try{ if((store.get('ft_name')||'')==='David' && !store.get('ft_proj')) store.set('ft_proj', JSON.stringify({start:'2026-11-10', w0:213, fast:0.7, slow:0.5})); }catch(e){ftCaught(e,'startup');}
 })();
 
 (function(){ // v476 one-time: David switched to the fat-loss plan (Nov 10, 2026): Lean cut + 185 g protein
@@ -15012,6 +11318,6 @@ function dsProjStatusHtml(p){
     store.set('ft_cut476','1');
     GOAL_MODE='cut'; store.set('ft_goal_mode','cut');
     GOALS.protein=185; store.set('ft_protein',185);
-    setTimeout(function(){ try{ dsQueueConfigPush(); }catch(e){} try{ renderAll(); }catch(e){} },3000);
-  }catch(e){}
+    setTimeout(function(){ try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'startup');} try{ renderAll(); }catch(e){ftCaught(e,'startup');} },3000);
+  }catch(e){ftCaught(e,'startup');}
 })();
