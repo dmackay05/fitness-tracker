@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v481 — 2026-11-10";
+var APP_BUILD = "v482 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6301,7 +6301,7 @@ function renderGrocery(targetId){
 // out of family meals in the rotation.
 var RL_CATS=[["breakfast","Breakfast"],["sweet","Sweet Breakfast"],["lunch","Lunch"],["dinner","Dinner"],["snack","Snacks & Treats"],["prep","Make-Ahead & Prep"]];
 // RL_TIPS, RL_DATA live in data-food.js
-var MP_TOPUPS=[{"id":"t1","name":"Almonds","note":"1 oz (28 g)","cal":162,"protein":6,"carbs":6,"fat":14,"fiber":4},{"id":"t2","name":"Peanut butter + celery","note":"1 Tbsp (16 g) PB, 2 celery sticks","cal":107,"protein":5,"carbs":6,"fat":8,"fiber":2},{"id":"t3","name":"Avocado","note":"⅓ avocado (50 g), salt and lemon","cal":80,"protein":1,"carbs":4,"fat":7,"fiber":3},{"id":"t4","name":"Cheese + cucumber","note":"1 oz (28 g) cheese, a cucumber","cal":128,"protein":7,"carbs":4,"fat":9,"fiber":0},{"id":"t5","name":"Berries & cream","note":"½ cup berries + 2 Tbsp heavy cream, whipped","cal":145,"protein":1,"carbs":12,"fat":11,"fiber":2}];
+var MP_TOPUPS=[{"id":"t1","name":"Almonds","note":"1 oz (28 g)","cal":162,"protein":6,"carbs":6,"fat":14,"fiber":4},{"id":"t2","name":"Peanut butter + celery","note":"1 Tbsp (16 g) PB, 2 celery sticks","cal":107,"protein":5,"carbs":6,"fat":8,"fiber":2},{"id":"t3","name":"Avocado","note":"1/3 avocado (50 g), salt and lemon","cal":80,"protein":1,"carbs":4,"fat":7,"fiber":3},{"id":"t4","name":"Cheese + cucumber","note":"1 oz (28 g) cheese, a cucumber","cal":128,"protein":7,"carbs":4,"fat":9,"fiber":0},{"id":"t5","name":"Berries & cream","note":"1/2 cup berries + 2 Tbsp heavy cream, whipped","cal":145,"protein":1,"carbs":12,"fat":11,"fiber":2}];
 var MP_ROTATION=[[["b1","l2","s4","d5"],["rb6","m41","m31","rd1"],["rs7","l4","m15","d3"],["rb1","w3","w12","d8"],["rs5","rl5","rn3","m9"],["w9","l1","m45","d13"],["rb4","l3","m16","rd5"]],[["rs2","l5","rn2","d10"],["m36","rl11","s4","d11"],["rb5","m1e","m30","d7"],["rb3","rl1","rs3","m5"],["rb7","rl9","m46","d12"],["rs4","w4","w12","rd2"],["rb2","rl7","m15","m2"]]];
 var MP_MERGED={"b3":"rs5","b4":"rb2","s2":"rs3","s3":"rn2","d1":"rd1","d2":"rd2"};
 var RL_CAT=null, RL_Q="";
@@ -6481,7 +6481,7 @@ function mpRenderToday(){
         '<span><b style="color:#d8d8d0">'+t.name+'</b> · '+t.note+' · '+t.cal+' kcal, '+t.protein+'g P</span>'+
         '<button class="bs" onclick="mpLog(\''+t.id+'\',\'Snack\')">Log</button></div>'; }).join("");
   } else if(gap<-120){
-    tu='<div style="margin-top:10px;font-size:12px;color:#fbbf24">Plan is '+(-gap)+' kcal over today\'s target. Trim the snack or use ½ the rice/pasta at dinner.</div>';
+    tu='<div style="margin-top:10px;font-size:12px;color:#fbbf24">Plan is '+(-gap)+' kcal over today\'s target. Trim the snack or use 1/2 the rice/pasta at dinner.</div>';
   }
   el.innerHTML='<div class="card-title" style="margin-bottom:2px">📋 Today\'s Meal Plan</div>'+
     '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:4px">Week '+(pos.week+1)+' · '+MP_DOW[pos.day]+' · '+calGoalLabelForKey(key)+'</div>'+
