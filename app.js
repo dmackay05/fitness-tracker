@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v482 — 2026-11-10";
+var APP_BUILD = "v483 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6326,6 +6326,7 @@ function rlCard(r){
       '<span style="color:#888;font-size:12px;flex-shrink:0">▸</span></div></summary>'+
     '<div style="margin-top:10px;font-size:12px;line-height:1.55;color:#ccc">'+
       '<div style="color:#9a9d8c;font-style:italic;margin-bottom:8px">'+esc(r.why)+'</div>'+
+      (RL_SERVES[r.id]?'<div class="rv-serves">\ud83c\udf7d Makes: <b>'+esc(RL_SERVES[r.id])+'</b></div>':'')+
       '<div style="font-weight:700;margin-bottom:2px">Ingredients</div><ul style="margin:0 0 8px 18px;padding:0">'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join("")+'</ul>'+
       '<div style="font-weight:700;margin-bottom:2px">Directions</div><ol style="margin:0 0 8px 18px;padding:0">'+r.steps.map(function(s){return '<li>'+esc(s)+'</li>';}).join("")+'</ol>'+
       (r.serve?'<div style="margin-bottom:6px"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+
@@ -6538,6 +6539,7 @@ function rvOpen(id){
     '<div class="rv-title">'+esc(r.name)+'</div>'+
     (r.why?'<div class="rv-why">'+esc(r.why)+'</div>':'')+
     ((owner&&r.me)?'<div class="rv-box"><div class="rv-h" style="color:#5eead4">Your portion · '+r.me.cal+' kcal · '+r.me.protein+'g P · '+r.me.carbs+'g C · '+r.me.fat+'g F</div><ul>'+r.me.items.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul></div>':'')+
+    (RL_SERVES[r.id]?'<div class="rv-serves">\ud83c\udf7d Makes: <b>'+esc(RL_SERVES[r.id])+'</b></div>':'')+
     '<div class="rv-h">Ingredients'+(r.src==='plan'?' (family batch)':'')+'</div><ul>'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'+
     '<div class="rv-h">Directions</div><ol class="rv-steps">'+r.steps.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ol>'+
     (r.serve?'<div class="rv-note"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+

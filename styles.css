@@ -1080,3 +1080,7 @@ body:not(.is-owner) .owner-only{display:none!important}
 /* v481: portion visible on meal rows */
 .mp-myplate{font-size:12px;color:#9a9d8c;line-height:1.45;margin-top:3px;}
 .mp-myplate b{color:#d8d8d0;}
+
+/* v483: servings line on recipes */
+.rv-serves{font-size:13px;color:#cfcfda;margin:10px 0 2px;padding:7px 10px;border:1px solid #ffffff14;border-radius:8px;background:rgba(255,255,255,.03);}
+.rv-serves b{color:#5eead4;}
