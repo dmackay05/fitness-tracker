@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v483 — 2026-11-10";
+var APP_BUILD = "v484 — 2026-11-10";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8806,6 +8806,14 @@ function dsMvBreakdownHtml(muscle){
 }
 
 // v481: the four numbers that matter during the cut, on top of the Today tab. Tap a tile to jump to where it's logged.
+// v484: Steps tile jumps straight to the steps box (Settings -> Nutrition) with the cursor in it.
+function dsGoLogSteps(){
+  openSettings();
+  setTimeout(function(){ var d=document.getElementById('set-nutrition'); if(d) d.open=true;
+    var i=document.getElementById('steps-in'); if(!i) return;
+    i.scrollIntoView({behavior:'smooth',block:'center'});
+    setTimeout(function(){ try{ i.focus({preventScroll:true}); }catch(e){} },400); },150);
+}
 function dsRenderCutStrip(){
   var el=document.getElementById('ds-cutstrip'); if(!el) return;
   if(!ftIsOwner()){ el.innerHTML=''; return; }
@@ -8817,12 +8825,13 @@ function dsRenderCutStrip(){
   var dn=document.getElementById('ds-done'), dsDone=dn?(parseInt(dn.textContent,10)||0):0;
   var trained=(d.exercises||[]).filter(_bpIsLiftEntry).length>0||dsDone>0;
   var tile=function(lbl,val,sub,ok,tab){
-    return '<button type="button" class="ds-cut-tile'+(ok?' ok':'')+'" onclick="switchTab(\''+tab+'\')"><span class="ds-cut-k">'+lbl+'</span><span class="ds-cut-v">'+val+'</span><span class="ds-cut-s">'+sub+'</span></button>';
+    var act=tab==='steps'?'dsGoLogSteps()':'switchTab(\''+tab+'\')';
+    return '<button type="button" class="ds-cut-tile'+(ok?' ok':'')+'" onclick="'+act+'"><span class="ds-cut-k">'+lbl+'</span><span class="ds-cut-v">'+val+'</span><span class="ds-cut-s">'+sub+'</span></button>';
   };
   el.innerHTML='<div class="ds-cutstrip">'
     +tile('Weight 7d', w?w.avg.toFixed(1):'\u2014', wd!=null?((wd<=0?'\u2212':'+')+Math.abs(wd).toFixed(1)+' vs last wk'):'log weigh-ins', wd!=null&&wd<0, 'dash')
     +tile('Protein', pro+'<small>/'+pg+'</small>', pro>=pg?'hit':(pg-pro)+'g to go', pg>0&&pro>=pg, 'log')
-    +tile('Steps', st?(st/1000).toFixed(1)+'k':'\u2014', st>=sg?'hit':'goal 7k', st>=sg, 'dash')
+    +tile('Steps', st?(st/1000).toFixed(1)+'k':'\u2014', st>=sg?'hit':'tap to log', st>=sg, 'steps')
     +tile('Trained', trained?'\u2713':'\u2014', trained?'logged':'not yet', trained, 'today')
     +'</div>';
 }
