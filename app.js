@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v486 — 2026-11-11";
+var APP_BUILD = "v487 — 2026-11-12";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6373,6 +6373,7 @@ function renderFoodTab(){
   try{ mpRenderToday(); }catch(e){ftCaught(e,'renderFoodTab');}
   try{ mpRenderPlan(); }catch(e){ftCaught(e,'renderFoodTab');}
   try{ rlRender(); }catch(e){ftCaught(e,'renderFoodTab');}
+  try{ renderFruitGuide("meals-fruit-guide"); renderVegGuide("meals-veg-guide"); renderNutGuide("meals-nut-guide"); renderMythGuide("meals-myth-guide"); }catch(e){ftCaught(e,'renderFoodTab');}
   try{ renderGrocery("meals-grocery"); }catch(e){ftCaught(e,'renderFoodTab');}
 }
 function renderMealsTab(){
