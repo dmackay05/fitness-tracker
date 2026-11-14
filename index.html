@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=491">
+<link rel="stylesheet" href="styles.css?v=492">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -166,6 +166,19 @@
 <div class="dash-item" id="dj-pmeal">
       <div id="dash-protein-meal"></div>
 </div>
+<div class="dash-item" id="dj-water">
+      <div class="card">
+        <div class="card-title" style="color:#38bdf8">💧 Water</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
+          <div class="big-num" id="dash-water-oz" style="color:#38bdf8;font-size:32px">0</div>
+          <div style="font-size:12px;color:#8b8b9c;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-water-goal">oz · goal --</div>
+        </div>
+        <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
+      </div>
+</div>
+<div class="dash-item" id="dj-supps">
+      <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+</div>
 </div>
 </details>
 <details class="info-sec dash-sec" data-dsec="week" open>
@@ -201,34 +214,16 @@
         <div id="dash-med-streak" style="font-size:12px;line-height:1.5"></div>
       </div>
 </div>
-</div>
-</details>
-<details class="info-sec dash-sec" data-dsec="checkins">
-<summary class="info-sec-hd"><span>Check-ins</span><span class="info-sec-chev">▸</span></summary>
-<div class="info-sec-body dash-sec-body">
-<div class="dash-item" id="dj-stiff" style="display:none">
-      <div class="card">
-        <div class="card-title" style="color:#c084fc">🦵 Lower-body check-in</div>
-        <div id="dash-stiff-body"></div>
-      </div>
-</div>
-<div class="dash-item" id="dj-water">
-      <div class="card">
-        <div class="card-title" style="color:#38bdf8">💧 Water</div>
-        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
-          <div class="big-num" id="dash-water-oz" style="color:#38bdf8;font-size:32px">0</div>
-          <div style="font-size:12px;color:#8b8b9c;margin-bottom:6px;font-family:'DM Mono',monospace" id="dash-water-goal">oz · goal --</div>
-        </div>
-        <div class="water-bar-wrap"><div class="water-bar" id="dash-water-bar" style="width:0%"></div></div>
-      </div>
-</div>
-<div class="dash-item" id="dj-supps">
-      <div class="card"><div class="card-title">💊 Supplements Today</div><div id="dash-supps" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-</div>
 <div class="dash-item" id="dj-readiness">
       <div class="card">
         <div class="card-title">🛌 Readiness</div>
         <div id="dash-recovery" style="font-size:12px;line-height:1.5"></div>
+      </div>
+</div>
+<div class="dash-item" id="dj-stiff" style="display:none">
+      <div class="card">
+        <div class="card-title" style="color:#c084fc">🦵 Lower-body check-in</div>
+        <div id="dash-stiff-body"></div>
       </div>
 </div>
 </div>
@@ -274,11 +269,6 @@
         <div id="trend-chart"></div>
       </div>
 </div>
-</div>
-</details>
-<details class="info-sec dash-sec" data-dsec="deep">
-<summary class="info-sec-hd"><span>Deep Dive</span><span class="info-sec-chev">▸</span></summary>
-<div class="info-sec-body dash-sec-body">
 <div class="dash-item" id="dj-maint">
       <div class="card" data-cid="maint" data-default="closed">
         <div class="card-title">Measured Maintenance</div>
@@ -1793,11 +1783,11 @@
   </div>
 </div>
 
-<script src="data-figures.js?v=491"></script>
-<script src="data-exercises.js?v=491"></script>
-<script src="data-food.js?v=491"></script>
-<script src="data-yoga.js?v=491"></script>
-<script src="app.js?v=491"></script>
+<script src="data-figures.js?v=492"></script>
+<script src="data-exercises.js?v=492"></script>
+<script src="data-food.js?v=492"></script>
+<script src="data-yoga.js?v=492"></script>
+<script src="app.js?v=492"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>

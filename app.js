@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v491 — 2026-11-14";
+var APP_BUILD = "v492 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -2066,7 +2066,7 @@ function renderDashFocus(){
 // ── DASHBOARD VIEWS: Daily / Progress, plus collapsible Progress cards ──
 // Display only. Every card keeps its element ids, so every renderer still works
 // whichever view is showing.
-var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep']];
+var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['water','Water','today'],['supps','Supplements','today'],['readiness','Readiness','week'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','progress']];
 function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ ftCaught(e,'dashSecState'); return {}; } }
 function dashJump(id,sec){
   var d=document.querySelector('#panel-dash details[data-dsec="'+sec+'"]'); if(d&&!d.open){ d.open=true; }
