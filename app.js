@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v489 — 2026-11-13";
+var APP_BUILD = "v490 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3772,7 +3772,7 @@ function toast(msg){
 
 // ── BATCH C: SETTINGS SYNC TO SHEET ─────────────────────────────────────
 function buildConfig(){
-  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ds_swaps","ds_usermoves","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ds_hidden","ds_flowcustom","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj","ft_lr_force"];
+  var keys=["ft_stiff","ft_name","ft_start_weight","ft_goal_weight","ft_cal","ft_cal_rest","ft_goal_mode","ft_cal_maint","ft_last_deload","ft_cal_recovery","ft_cal_active","ft_cal_ride","ft_protein","ft_carbs","ft_fat","ft_burned","ft_water","ft_supps","ds_swaps","ds_usermoves","ds_ut_on","ds_lt_on","ds_backreset","ds_pain","ds_prog","ds_rotate","ds_var_rotate","ds_custom","ds_hidden","ds_layout","ds_flowcustom","ft_cfg_ts","ft_height_in","ft_age","ft_sex","ft_proj","ft_lr_force"];
   var cfg={}; keys.forEach(function(k){ var v=store.get(k); if(v!=null&&v!=="") cfg[k]=v; });
   // Imported Mon–Sun plan travels with a timestamp so the newest import/reset wins
   // across devices. Only sent once this device has touched the plan (ts set), so a
@@ -3828,6 +3828,7 @@ function applyConfig(cfg){
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){ftCaught(e,'applyConfig');}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
@@ -4527,7 +4528,70 @@ function dsSessOfRaw(sk){ var _od=dsOneDaySession(); if(_od)return _od; if(DS_LT
 var DS_HIDDEN={}; try{ DS_HIDDEN=JSON.parse(store.get("ds_hidden")||"{}")||{}; }catch(e){ ftCaught(e,'startup'); DS_HIDDEN={}; }
 var _dsHidCache=null;
 function dsHiddenSave(){ _dsHidCache=null; try{ store.set("ds_hidden", JSON.stringify(DS_HIDDEN)); }catch(e){ftCaught(e,'dsHiddenSave');} try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsHiddenSave');} }
+// v490: Day Layout. Each weekday is Warm-up / Main work / Core, and David picks what goes
+// in each. Until a day is edited it shows the current program sorted into the three
+// sections (computed, not stored, so a fresh device never overwrites the Sheet copy).
+// Once edited, the day is saved in ds_layout, synced to the Sheet, and stays until changed.
+var DS_LAYOUT={}; try{ DS_LAYOUT=JSON.parse(store.get('ds_layout')||'{}')||{}; }catch(e){ ftCaught(e,'startup'); DS_LAYOUT={}; }
+var DS_LAYOUT_SECS=[['w','Warm-Up'],['m','Main Work'],['c','Core']];
+var _dsLayCache={};
+function dsLayoutOn(sk){ return ftIsOwner() && !dsDayIsCustom(sk); }
+function dsLayoutSave(){ _dsLayCache={}; try{ store.set('ds_layout',JSON.stringify(DS_LAYOUT)); }catch(e){ftCaught(e,'dsLayoutSave');} try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsLayoutSave');} }
+function dsLayoutDefault(sk){
+  var S=(sk==='wed'?(dsWedFocusSession()||DS_SESSIONS.wed):DS_SESSIONS[sk])||{moves:[]};
+  var hid=DS_HIDDEN[sk]||[], out={w:[],m:[],c:[]}, seen={};
+  var add=function(m){ if(!m||!m.id||seen[m.id]||hid.indexOf(m.id)>=0) return; seen[m.id]=1; var b=dsSectionBucket(m); out[b==='warmup'?'w':(b==='core'?'c':'m')].push(m.id); };
+  (S.moves||[]).forEach(add);
+  (DS_CUSTOM[sk]||[]).forEach(function(id){ add(dsMasterLookup(id)); });
+  return out;
+}
+function dsLayoutGet(sk){
+  var L=DS_LAYOUT[sk];
+  if(L&&typeof L==='object') return {w:(L.w||[]).slice(),m:(L.m||[]).slice(),c:(L.c||[]).slice()};
+  return dsLayoutDefault(sk);
+}
+function dsLayoutSession(sk){
+  var L=dsLayoutGet(sk), key=JSON.stringify(L);
+  var c=_dsLayCache[sk]; if(c&&c.key===key) return c.sess;
+  var base=DS_SESSIONS[sk]||{}, sess={}; for(var k in base) sess[k]=base[k];
+  var secOf={}, moves=[];
+  ['w','m','c'].forEach(function(sec){ L[sec].forEach(function(id){ var m=dsMasterLookup(id); if(m&&!secOf[m.id]){ secOf[m.id]=sec; moves.push(m); } }); });
+  sess.moves=moves; sess._layout=true; sess._secOf=secOf;
+  _dsLayCache[sk]={key:key,sess:sess}; return sess;
+}
+function dsLayoutRemove(sk,id){
+  var L=dsLayoutGet(sk), base=String(id).split('#')[0];
+  ['w','m','c'].forEach(function(sec){ L[sec]=L[sec].filter(function(x){ return String(x).split('#')[0]!==base; }); });
+  DS_LAYOUT[sk]=L; dsLayoutSave();
+}
+var DS_LAYOUT_SEC=null;
+function dsLayoutAdd(sec){
+  var sk=dsSessionKey(activeDate);
+  DS_LAYOUT_SEC=sec;
+  DS_CUSTOM_PICK=dsLayoutGet(sk)[sec].slice();
+  DS_CUSTOM_PICK_ORIGINAL=null; DS_CUSTOM_DAYS={};
+  dsCustomSetMode('layout');
+  var nm=(DS_LAYOUT_SECS.filter(function(x){return x[0]===sec;})[0]||['',''])[1];
+  var t=document.getElementById('ds-custom-title'); if(t) t.textContent=nm+' · '+DS_DAYLABEL[sk];
+  document.getElementById("ds-custom-search").value="";
+  dsCustomRenderSelected(); dsCustomRenderLibrary();
+  document.getElementById("ds-custom-overlay").style.display="flex";
+  document.getElementById("ds-custom-overlay").scrollTop=0;
+}
+function dsLayoutCommitPick(){
+  var sk=dsSessionKey(activeDate), L=dsLayoutGet(sk), sec=DS_LAYOUT_SEC||'m';
+  var pick=DS_CUSTOM_PICK.map(function(x){ return String(x).split('#')[0]; });
+  // a move lives in one section only
+  ['w','m','c'].forEach(function(o){ if(o!==sec) L[o]=L[o].filter(function(x){ return pick.indexOf(x)<0; }); });
+  L[sec]=pick.filter(function(x,i){ return pick.indexOf(x)===i; });
+  DS_LAYOUT[sk]=L; dsLayoutSave(); DS_LAYOUT_SEC=null;
+}
+function dsLayoutReset(sk){
+  if(!confirm('Reset '+DS_DAYLABEL[sk]+' back to the original program moves?')) return;
+  delete DS_LAYOUT[sk]; DS_LAYOUT[sk]=null; dsLayoutSave(); dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsLayoutReset');}
+}
 function dsSessOf(sk){
+  if(dsLayoutOn(sk)) return dsLayoutSession(sk);
   var S=dsSessOfRaw(sk), hid=DS_HIDDEN[sk];
   if(!S || S._oneday || !hid || !hid.length || !Array.isArray(S.moves)) return S;
   var key=sk+'|'+hid.join(',')+'|'+S.title+'|'+S.moves.length;
@@ -4553,9 +4617,11 @@ function dsRemoveFromDay(id){
   var sk=dsSessionKey(activeDate);
   var m=null; try{ m=dsRawItem(id); }catch(e){ftCaught(e,'dsRemoveFromDay');}
   var nm=(m&&m.name)||'this exercise';
-  if(!confirm('Remove "'+nm+'" from '+DS_DAYLABEL[sk]+'?\n\nIt stays in the library and you can restore it any time from the list at the bottom of this day.')) return;
+  if(!confirm('Remove "'+nm+'" from '+DS_DAYLABEL[sk]+'?\n\nIt stays in the library — add it back any time with the + Add button.')) return;
   var base=String(id).split('#')[0];
-  if(dsOneDayOn()){
+  if(dsLayoutOn(sk)){
+    dsLayoutRemove(sk,id);
+  } else if(dsOneDayOn()){
     var ids=DS_ONEDAY.ids.filter(function(x){ return String(x).split('#')[0]!==base; });
     dsOneDaySave(ids.length?ids:null);
     if(!ids.length) toast('Back to the regular plan');
@@ -6044,6 +6110,7 @@ function dsDeleteUserMove(dayKey,id){
   dsRender(); renderAll();
 }
 function dsCustomMoves(dayKey){
+  if(dsLayoutOn(dayKey)) return [];
   if(dsOneDayOn() && dayKey===dsSessionKey(activeDate)) return [];
   var ids=DS_CUSTOM[dayKey]||[];
   return ids.map(function(id){ return dsMasterLookup(id); }).filter(Boolean);
@@ -6075,7 +6142,7 @@ function dsCustomSetMode(m){
   var t=m==='today';
   var q=function(id){ return document.getElementById(id); };
   if(q('ds-custom-title')) q('ds-custom-title').textContent=t?'\u26a1 Today\u2019s Workout':'\ud83c\udfcb\ufe0f Custom Set';
-  if(q('ds-custom-days-card')) q('ds-custom-days-card').style.display=t?'none':'';
+  if(q('ds-custom-days-card')) q('ds-custom-days-card').style.display=(t||m==='layout')?'none':'';
   if(q('ds-custom-today-tools')) q('ds-custom-today-tools').style.display=t?'':'none';
   if(q('ds-oneday-preset')) q('ds-oneday-preset').style.display=(t&&!dsGuestMode())?'':'none';
 }
@@ -6121,6 +6188,7 @@ function dsAddFromLibrary(){
   if(ov&&lib&&DS_CUSTOM_PICK.length){ setTimeout(function(){ try{ ov.scrollTop=Math.max(0,lib.getBoundingClientRect().top+ov.scrollTop-90); }catch(e){} },30); }
 }
 function dsCustomClose(){
+  if(DS_CUSTOM_MODE==='layout'){ dsLayoutCommitPick(); dsCustomSetMode('persist'); document.getElementById("ds-custom-overlay").style.display="none"; dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsCustomClose');} return; }
   if(DS_CUSTOM_MODE==='today'){ dsOneDaySave(DS_CUSTOM_PICK); DS_CUSTOM_MODE='persist'; dsCustomSetMode('persist'); document.getElementById("ds-custom-overlay").style.display="none"; dsRender(); try{ renderAll(); }catch(e){ftCaught(e,'dsCustomClose');} return; }
   dsCustomCommit();
   document.getElementById("ds-custom-overlay").style.display="none";
@@ -6646,6 +6714,7 @@ function dsCustomRenderLibrary(){
   var el=document.getElementById("ds-custom-library"); if(!el) return;
   var q=(document.getElementById("ds-custom-search").value||"").toLowerCase().trim();
   var pool=dsMasterPool();
+  if(DS_CUSTOM_MODE==='layout') pool=pool.filter(function(m){ return !m.lib; });
   if(q) pool=pool.filter(function(m){ return (m.name+" "+(m.target||"")+" "+(m.slot||"")).toLowerCase().indexOf(q)!==-1; });
   if(q && DS_CUSTOM_MODE==='today'){
     var _vr=[];
@@ -8886,25 +8955,22 @@ function dsRender(){
         _odBtn='<div style="margin:0 0 14px;"><button onclick="dsOneDayOpen()" style="width:100%;'+_bs+'border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">\u26a1 Build today\u2019s workout (today only)</button></div>';
       }
     }
-    var _editBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleEditMode()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_EDIT_MODE?'#5eead4':'#ffffff1a')+';background:'+(DS_EDIT_MODE?'#5eead418':'transparent')+';color:'+(DS_EDIT_MODE?'#5eead4':'#888')+';">'+(DS_EDIT_MODE?'\u2713 Done editing':'\u270E Edit exercises \u2014 remove or add')+'</button></div>';
+    var _editBtn='<div style="margin:0 0 14px;"><button onclick="dsToggleEditMode()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid '+(DS_EDIT_MODE?'#5eead4':'#ffffff1a')+';background:'+(DS_EDIT_MODE?'#5eead418':'transparent')+';color:'+(DS_EDIT_MODE?'#5eead4':'#888')+';">'+(DS_EDIT_MODE?'\u2713 Done editing':(SS&&SS._layout?'\u270E Edit day \u2014 remove exercises':'\u270E Edit exercises \u2014 remove or add'))+'</button></div>';
     // v481: every "change today" option lives in one collapsed menu so a normal day shows just the plan.
     // The menu opens itself when one of them is switched on, so it's always one tap to undo.
-    var _swActive=[];
-    if(_od) _swActive.push('Custom session');
-    if(DS_UT_ON[activeDate]===true) _swActive.push('Upper Total');
-    if(DS_UT_ON[activeDate]==='short') _swActive.push('Upper Short');
-    if(DS_LT_ON[activeDate]) _swActive.push('Lower Total');
-    if(_tcOn) _swActive.push('Time Crunch');
-    if(DS_EDIT_MODE) _swActive.push('Editing');
-    var _swInner=_odBtn+_utBtn+_satHeatBtn+_tcBtn+_editBtn;
-    var _swMenu=_swInner?('<details class="ds-swapmenu"'+(_swActive.length?' open':'')+'><summary>'
-      +(_swActive.length?'\u21C4 Changed today: <b>'+_swActive.join(' + ')+'</b>':'\u21C4 Not feeling it? Swap or trim today')
-      +'</summary><div class="ds-swapmenu-body">'+_swInner+'</div></details>'):'';
-    html=_swMenu+_flowBar+_flowEdit;
+    html=(SS&&SS._layout?_editBtn:(_odBtn+_utBtn+_satHeatBtn+_tcBtn+_editBtn))+_flowBar+_flowEdit;
     DS_ITEM_CTX={sk:sk};
     var _splitDays=dsSplitDaysMap();
     var _totOn=!!(SS&&(SS._ut||SS._lt));
-    if((_splitDays[sk]||_od||_totOn) && !dsDayIsCustom(sk)){
+    if(SS&&SS._layout){
+      var _so=SS._secOf||{}, _acc={w:DS_SEC_ACCENT_WARMUP,m:DS_SEC_ACCENT_MAIN,c:DS_SEC_ACCENT_CORE};
+      DS_LAYOUT_SECS.forEach(function(p){
+        var its=_allMoves.filter(function(m){ return _so[m.id]===p[0]; });
+        html+=its.length?dsRenderSection(p[1],'',_acc[p[0]],its,''):('<div class="ds-sec-label" style="margin:14px 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:'+_acc[p[0]]+';font-family:\'DM Mono\',monospace">'+p[1]+'</div><div style="font-size:12px;color:#8b8b9c;margin:0 0 6px">Nothing added yet.</div>');
+        html+='<div style="margin:0 0 16px;"><button onclick="dsLayoutAdd(\''+p[0]+'\')" style="width:100%;padding:9px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;cursor:pointer;border:1px dashed '+_acc[p[0]]+'66;background:transparent;color:'+_acc[p[0]]+';">+ Add to '+p[1]+'</button></div>';
+      });
+      if(DS_EDIT_MODE&&DS_LAYOUT[sk]) html+='<div style="margin:0 0 14px;text-align:center"><button onclick="dsLayoutReset(\''+sk+'\')" style="border:none;background:transparent;color:#8b8b9c;font-size:11px;text-decoration:underline;cursor:pointer">Reset '+DS_DAYLABEL[sk]+' to the original program</button></div>';
+    } else if((_splitDays[sk]||_od||_totOn) && !dsDayIsCustom(sk)){
       var _wu=[],_core=[],_main=[];
       _moves.forEach(function(m){ var b=dsSectionBucket(m); if(b==='warmup')_wu.push(m); else if(b==='core')_core.push(m); else _main.push(m); });
       html+=(_wu.length?dsRenderSection('Warm-Up','',DS_SEC_ACCENT_WARMUP,_wu,''):'')
@@ -8929,9 +8995,9 @@ function dsRender(){
       html+='<div style="margin:-6px 0 14px;display:flex;flex-wrap:wrap;gap:8px">'+_userMoves.map(function(m){return '<button onclick="dsDeleteUserMove(\''+sk+'\',\''+m.id+'\')" style="border:1px solid #ffffff1a;background:transparent;color:#888;font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer">Remove &ldquo;'+m.name+'&rdquo;</button>';}).join('')+'</div>';
     }
     DS_ITEM_CTX=null;
-    if(DS_EDIT_MODE) html+=dsHiddenPanelHtml(sk);
-    if(DS_EDIT_MODE) html+='<div style="margin:0 0 10px;"><button onclick="dsAddFromLibrary()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">+ Add from exercise library — '+(_od?'today only':DS_DAYLABEL[sk])+'</button></div>';
-    if(!DS_USERADD_OPEN){
+    if(DS_EDIT_MODE&&!SS._layout) html+=dsHiddenPanelHtml(sk);
+    if(DS_EDIT_MODE&&!SS._layout) html+='<div style="margin:0 0 10px;"><button onclick="dsAddFromLibrary()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #fbbf2466;background:#fbbf2410;color:#fbbf24;">+ Add from exercise library — '+(_od?'today only':DS_DAYLABEL[sk])+'</button></div>';
+    if(SS._layout){ /* v490: blank custom form removed; add from the library per section */ } else if(!DS_USERADD_OPEN){
       html+='<div style="margin:0 0 18px;"><button onclick="dsUserAddToggle()" style="width:100%;padding:11px 14px;border-radius:12px;font-family:\'DM Mono\',monospace;font-size:12px;letter-spacing:.04em;cursor:pointer;border:1px solid #5eead440;background:#5eead410;color:#5eead4;">+ Add Custom Exercise to '+DS_DAYLABEL[sk]+'</button></div>';
     } else {
       html+='<div style="margin:0 0 18px;padding:14px;border:1px solid #5eead440;border-radius:12px;background:#5eead408;">'
