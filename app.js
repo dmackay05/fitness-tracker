@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v492 — 2026-11-14";
+var APP_BUILD = "v493 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8003,24 +8003,6 @@ function dsIsCompound(item){
   if(DS_ISOLATION_RE.test(n)) return false;
   return DS_COMPOUND_RE.test(n) || /hinge|squat|vertical pull|horizontal pull|horizontal push|vertical push/i.test(slot);
 }
-// Superset label: moves sharing a "pair" letter in today's session are alternated.
-function dsPairMates(raw){
-  try{
-    if(!raw||!raw.pair||!DS_ITEM_CTX) return [];
-    var S=DS_SESSIONS[DS_ITEM_CTX.sk]; if(!S||!S.moves) return [];
-    return S.moves.filter(function(m){ return m&&m.pair===raw.pair&&m.id!==raw.id&&m.log==='setsreps'; }).map(function(m){ return m.id; });
-  }catch(e){ ftCaught(e,'dsPairMates'); return []; }
-}
-function dsPairNoteHtml(raw){
-  try{
-    if(!raw||!raw.pair||!DS_ITEM_CTX) return '';
-    var S=DS_SESSIONS[DS_ITEM_CTX.sk]; if(!S||!S.moves) return '';
-    var mates=S.moves.filter(function(m){ return m&&m.pair===raw.pair&&m.id!==raw.id; })
-      .map(function(m){ var v=dsViewOf(m); return String((v&&v.name)||m.name).split(/ \u2014 | \(/)[0]; });
-    if(!mates.length) return '';
-    return '<div style="font-size:11px;color:#7dd3fc;margin:2px 0 4px;font-family:\'DM Mono\',monospace">\u21c4 Superset '+raw.pair+' \u00b7 alternate with '+mates.join(' + ')+' \u00b7 ~60s between</div>';
-  }catch(e){ ftCaught(e,'dsPairNoteHtml'); return ''; }
-}
 function dsRenderItem(rawItem,idx,accent){
   var item=dsViewOf(rawItem);
   var st=dsItemState(item.id); var done=dsComplete(item.id);
@@ -8029,7 +8011,7 @@ function dsRenderItem(rawItem,idx,accent){
   var idxLabel=done?'\u2713':(idx==null?'\u2022':idx);
   var _isAnchor=dsIsAnchorSet(item.id); var _isComp=dsIsCompound(item);
   var h='<div class="'+cls+(_isAnchor?' ds-anchor-card':'')+(_isComp?' ds-compound':'')+'" id="ds-move-'+item.id+'"'+(accent?' style="border-left:4px solid '+accent+'"':'')+'><div class="ds-mhead" onclick="dsToggleCard(\''+item.id+'\')">';
-  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+(dsReadyToProgress(item.id)?' <span class="ds-ready-tag" style="display:inline-block;font-size:10px;font-weight:700;color:#0b1220;background:#5eead4;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle">\u25B2 Ready to progress</span>':'')+(dsNeedsPush(item.id)?' <span class="ds-push-tag">\ud83d\udd25 Push closer to failure</span>':'')+'</div>'+dsPairNoteHtml(rawItem);
+  h+='<div class="ds-midx">'+idxLabel+'</div><div class="ds-minfo"><div class="ds-mname">'+dsHi(item.name,_q)+(_isAnchor?' <span class="ds-anchor-tag">\ud83c\udfaf Anchor Set</span>':'')+(dsReadyToProgress(item.id)?' <span class="ds-ready-tag" style="display:inline-block;font-size:10px;font-weight:700;color:#0b1220;background:#5eead4;border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:middle">\u25B2 Ready to progress</span>':'')+(dsNeedsPush(item.id)?' <span class="ds-push-tag">\ud83d\udd25 Push closer to failure</span>':'')+'</div>';
   var _target=item.target||'';
   var _equip=item.equip||'';
   var _rx=item.rx||'';
@@ -8040,7 +8022,7 @@ function dsRenderItem(rawItem,idx,accent){
   if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
   h+=dsLoadTipHtml(item.name)||dsLoadTipHtml(rawItem.name);
   if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){ftCaught(e,'dsRenderItem');} }
-  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); var _mates=dsPairMates(rawItem); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\',\''+_mates.join(',')+'\')">\u25b6 Guided '+(_mates.length?'superset':'sets')+'</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
+  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   var _hasPic=false;
   if(DS_SETUPPICS[item.name]){ DS_PIC_NAME=item.name; h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
@@ -8075,10 +8057,6 @@ function dsRenderItem(rawItem,idx,accent){
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
     if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
-    // Progress link is independent of "Last time" — that line only appears when a past
-    // session has reps data, but tapping "Done" directly (no per-set logging) still creates
-    // history with no reps recorded. Show Progress whenever ANY history exists at all.
-    if(dsExerciseHistory(item.id).length)h+='<button type="button" class="ds-swap" onclick="event.stopPropagation();dsShowExerciseHistory(\''+item.id+'\')" style="color:var(--accent);border-color:var(--accent);margin-top:2px">\ud83d\udcc8 View Progress</button>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg){
       if(dsReadyToProgress(item.id)) h+='<div class="ds-suggline ds-ready" style="font-size:12px;color:#5eead4;margin:4px 0 8px;line-height:1.45;border:1px solid #5eead4;border-radius:8px;padding:6px 8px;font-weight:600">'+_sugg+'</div>';
@@ -8106,7 +8084,7 @@ function dsRenderItem(rawItem,idx,accent){
       h+='<div style="font-size:10.5px;margin:-2px 0 6px"><a href="#" onclick="dsToggleLR(\''+item.id+'\');return false;" style="color:#8b8b9c">\u21C4 log both sides together</a> <span style="color:#666">\u00b7 set a side to 0 to skip it</span></div>';
     } else {
       h+='<div class="ds-logrow"><span class="ds-lbl">Reps</span><div class="ds-stepper"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',-1)">\u2212</button><input type="number" inputmode="numeric" min="1" max="999" class="ds-stepval ds-stepinput" id="ds-reps-'+item.id+'" value="'+(st._reps||10)+'" oninput="dsRepsInput(\''+item.id+'\')" onblur="dsRepsBlur(\''+item.id+'\')"><button class="ds-stepbtn" onclick="dsBump(\''+item.id+'\',1)">+</button></div>'+loadFld+'<div class="ds-dots" id="ds-dots-'+item.id+'">'+dsDots(item.id,target)+'</div></div>';
-      h+='<div style="font-size:10.5px;margin:-2px 0 6px"><a href="#" onclick="dsToggleLR(\''+item.id+'\');return false;" style="color:#8b8b9c">\u21C4 log left / right separately</a></div>';
+      if(dsCanSplitLR(item)) h+='<div style="font-size:10.5px;margin:-2px 0 6px"><a href="#" onclick="dsToggleLR(\''+item.id+'\');return false;" style="color:#8b8b9c">\u21C4 log left / right separately</a></div>';
     }
     // v449: Effort chips removed from the card (unused, took space). Gym-mode RIR buttons still log RIR.
     // v453: optional one-tap effort tag, shown only once the last target set is logged.
@@ -9085,6 +9063,14 @@ function dsIsUnilateral(item){
   if(!item) return false;
   var f=dsLRMap(); if(item.id && f[item.id]!=null) return !!f[item.id];
   return /\/side|\/leg/i.test(item.rx||'') || /single[- ](arm|leg)|one[- ](arm|leg|foot)\b(?! band lateral)|\bunilateral\b/i.test(item.name||'');
+}
+// v493: moves that need both arms/legs together never offer split L/R logging.
+var DS_BILATERAL_RE=/pass-through|push-?up|pull-?apart|face pull|crunch|leg raise|squat|hip thrust|glute bridge|hinge|deadlift|good morning|wall walk|wall slide|leg extension|leg curl|lateral walk|slam|pulldown|pull-?up|close-grip|y-raise/i;
+function dsCanSplitLR(item){
+  if(!item) return false;
+  if(dsIsUnilateral(item)) return true;
+  if(/single[- ](arm|leg)|one[- ](arm|leg)/i.test(item.name||'')) return true;
+  return !DS_BILATERAL_RE.test(item.name||'');
 }
 function dsToggleLR(id){
   var item=dsViewOf(dsRawItem(id)); var on=!dsIsUnilateral(item), f=dsLRMap(); f[id]=on; store.set('ft_lr_force',JSON.stringify(f));
@@ -11138,7 +11124,7 @@ function dsGPLog(rir){
 }
 function dsGPRest(secs){
   var c=dsGPCtx(), o=dsGPEl(); dsGPClear(); dsGP.state='rest'; dsGP.left=secs; dsGP.side=c.uni?'Left':null;
-  o.innerHTML=dsGPHead(c,' next')+(dsGP.queue&&dsGP.queue.length>1?'<div class="gp-sub" style="color:#7dd3fc">\u21c4 Superset \u2014 get set up for this one</div>':'')+'<div class="gp-phase" style="color:#7dd3fc">REST</div><div class="gp-huge" id="gp-n">'+secs+'</div>'
+  o.innerHTML=dsGPHead(c,' next')+'<div class="gp-phase" style="color:#7dd3fc">REST</div><div class="gp-huge" id="gp-n">'+secs+'</div>'
     +(c.st._autoNote?'<div class="gp-sub">'+c.st._autoNote+'</div>':'')
     +'<div class="gp-lbl">Next set reps</div><div class="gp-adj"><button onclick="dsGPAdj(-1)">\u2212</button><div class="gp-big" id="gp-tgt">'+dsGP.target+'</div><button onclick="dsGPAdj(1)">+</button></div>'
     +'<div class="gp-row"><button onclick="dsGP.left+=30">+30s</button><button onclick="dsGP.left=0">Skip rest</button></div>';

@@ -156,10 +156,10 @@ var DS_WARMUP_BANDSHOULDER={id:'warmup-bandshoulder',name:'Banded Shoulder Pass-
 // logs still resolve.
 //
 //   Order = door-anchor height (high → chest → low) so the band moves as little as possible.
-//   Same "pair" letter = superset: alternate sets, ~60 s between. Core always renders last.
+//   Core always renders last.
 //   (The per-day exercise list that used to be copied here went stale; DS_SESSIONS below is the list.)
 //   v434 LOCKED (Nov 2 2026, 8 weeks): skull crusher removed (Thu = overhead extension), Mon kickback 4,
-//   Sat overhead ext 3, Sat press ⇄ row superset (new sat-row), Sat forearm curls 4→2,
+//   Sat overhead ext 3, new sat-row, Sat forearm curls 4→2,
 //   loaded band crunch on all three upper days (Mon 3 new, Sat 3), Thu leg raise 3 (thu2-legraise).
 //   (v392 rebalance: Mon 39→32, Thu 44→24 sets; thu-elbow + mon-elbowrot moved to DS_RESERVE_MOVES.)
 //
