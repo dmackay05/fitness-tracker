@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v495 — 2026-11-14";
+var APP_BUILD = "v496 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8025,17 +8025,17 @@ function dsRenderItem(rawItem,idx,accent){
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(!_hasPic&&demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
   var _fig=h; h='';
-  if(_equip)h+='<div class="ds-mequip" style="background:none;padding:0;margin:0 0 6px;color:#fdba74;font-size:13px">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
-  if(item.cue)h+='<div class="ds-mcue" style="color:#f0f0f0;font-size:14px;margin:0 0 6px">'+dsHi(item.cue,_q)+'</div>';
+  if(_equip)h+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Equipment</b> '+dsHi(_equip,_q)+'</div>';
+  if(item.cue)h+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Cue</b> '+dsHi(item.cue,_q)+'</div>';
   h+=dsLoadTipHtml(item.name,true)||dsLoadTipHtml(rawItem.name,true);
   if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){ftCaught(e,'dsRenderItem');} }
-  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo" style="border-top:1px solid #fb923c33;margin-top:8px;padding-top:6px">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
+  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Tempo</b> '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
-  if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
+  if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Ramp-up</b> '+rawItem.ramp+'</div>';
   var varIdx=dsEffectiveVarIdx(rawItem);
   var _av=(varIdx>0&&rawItem.variants)?rawItem.variants[varIdx-1]:null;
   var setupTxt=(_av&&(_av.setup||DS_VARIANT_SETUPS[item.id+"::"+varIdx]))||(varIdx>0?null:(rawItem.setup||DS_SETUPS[item.id]));
-  if(setupTxt)h+='<div class="ds-setup">'+setupTxt+'</div>';
+  if(setupTxt)h+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Setup</b> '+setupTxt+'</div>';
   if(rawItem.mistakes&&rawItem.mistakes.length){
     var _mkey=item.id, _mopen=!!st._mistakesOpen;
     h+='<div class="ds-mistakes" onclick="dsToggleMistakes(\''+_mkey+'\')"><div class="ds-mistakes-h">\u26A0 Common Mistakes '+(_mopen?'\u25B4':'\u25BE')+'</div>'
@@ -8059,13 +8059,13 @@ function dsRenderItem(rawItem,idx,accent){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt&&lt.reps)_box+='<div class="ds-lastline" style="border-top:1px solid #fb923c33;margin-top:8px;padding-top:6px">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt&&lt.reps)_box+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Last time</b> <span>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</span></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg){
-      if(dsReadyToProgress(item.id)) _box+='<div class="ds-suggline ds-ready" style="font-size:12px;color:#5eead4;margin:4px 0 8px;line-height:1.45;border:1px solid #5eead4;border-radius:8px;padding:6px 8px;font-weight:600">'+_sugg+'</div>';
-      else _box+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
+      if(dsReadyToProgress(item.id)) _box+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Next</b> '+_sugg+'</div>';
+      else _box+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Next</b> '+_sugg+'</div>';
     }
-    if(st._autoNote)_box+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
+    if(st._autoNote)_box+='<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Note</b> '+st._autoNote+'</div>';
     var _prog=DS_PROG[item.id];
     if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
       var _prng=dsRepRange(item.id);
@@ -8125,7 +8125,7 @@ function dsRenderItem(rawItem,idx,accent){
   } else {
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
-  h=_hb+_fig+(_box?'<div class="ds-loadtip ds-infobox" style="margin:10px 0;background:rgba(251,146,60,0.10);border-left:3px solid #fb923c;border-radius:6px;padding:8px 10px">'+_box+'</div>':'')+h;
+  h=_hb+_fig+(_box?'<div class="ds-loadtip ds-infobox" style="margin:10px 0;background:rgba(251,146,60,0.10);border-left:3px solid #fb923c;border-radius:6px;padding:8px 10px"><div class="ds-lt-h" style="font-size:13px;font-weight:700;color:#fdba74;margin-bottom:4px">💪 How to do it</div>'+_box+'</div>':'')+h;
   h+='</div></div>'; return h;
 }
 // Two taps: level, then site. Collapsed to one line until something is flagged.
@@ -11022,10 +11022,10 @@ var DS_LOADTIPS=(function(){
 })();
 function dsLoadTipHtml(name,inner){
   var t=DS_LOADTIPS[name]; if(!t) return '';
-  return '<div class="'+(inner?'ds-lt-in':'ds-loadtip')+'"><div class="ds-lt-h">💪 Load the stretch</div>'
-    +'<div class="ds-lt-r"><b>Setup</b> '+t[0]+'</div>'
-    +'<div class="ds-lt-r"><b>Each rep</b> '+t[1]+'</div>'
-    +'<div class="ds-lt-r"><b>Last set</b> '+t[2]+'</div></div>';
+  return '<div class="'+(inner?'ds-lt-in':'ds-loadtip')+'">'+(inner?'':'<div class="ds-lt-h">💪 Load the stretch</div>')
+    +'<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Setup</b> '+t[0]+'</div>'
+    +'<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Each rep</b> '+t[1]+'</div>'
+    +'<div class="ds-lt-r" style="font-size:14px;line-height:1.45;color:#f0f0f0;margin-top:3px"><b style="color:#fdba74;margin-right:4px">Last set</b> '+t[2]+'</div></div>';
 }
 
 /* v396 Guided pacer: full-screen overlay that runs countdown → paced reps → log effort → rest,

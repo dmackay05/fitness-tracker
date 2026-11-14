@@ -1090,6 +1090,6 @@ body:not(.is-owner) .owner-only{display:none!important}
 #panel-today .ds-infobox{margin:10px 0;}
 #panel-today .ds-infobox .ds-mequip{background:none;padding:0;margin:0 0 6px;color:#fdba74;font-size:13px;}
 #panel-today .ds-infobox .ds-mcue{color:#f0f0f0;font-size:14px;margin:0 0 6px;}
-#panel-today .ds-infobox .ds-lt-in{border-top:1px solid #fb923c33;margin-top:6px;padding-top:6px;}
+#panel-today .ds-infobox .ds-lt-in{margin:0;padding:0;border:0;background:none;}
 #panel-today .ds-infobox .ds-setup{color:#d6d6d6;margin:6px 0 0;}
 #panel-today .ds-infobox .ds-mtempo{border-top:1px solid #fb923c33;margin-top:8px;padding-top:6px;}
