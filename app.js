@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v502 — 2026-11-14";
+var APP_BUILD = "v503 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -5097,7 +5097,7 @@ function dsRenderDayPicker(){
   var html='<div class="ds-mf ds-dp'+(activeKey!==realKey?' on':'')+'"><label for="ds-dp-sel">Day</label>'
     +'<select id="ds-dp-sel" onchange="dsPickDay(this.value)">'
     +DS_ORDER.map(function(d){
-      var t=''; try{ var S=dsSessOf(d); t=S&&S.title?' \u2014 '+S.title:''; }catch(e){ftCaught(e,'dsRenderDayPicker');}
+      var t='';
       return '<option value="'+d+'"'+(d===activeKey?' selected':'')+'>'+DS_DAYLABEL[d]+(d===realKey?' (today)':'')+t+'</option>';
     }).join('')+'</select></div>';
   // v250: Extra tab removed from the day picker.
@@ -8926,10 +8926,10 @@ function dsRender(){
   dsRenderDayPicker();
   dsRenderMuscleChips();
   var sk=dsSessionKey(activeDate); var SS=dsSessOf(sk);
-  var eb=document.getElementById('ds-eyebrow'); if(eb)eb.textContent=DS_EXTRAS_ACTIVE?'Optional extras':((activeDate===todayKey()?'Today':'Selected day')+' \u00b7 '+DS_DAYLABEL[sk]);
-  var tt=document.getElementById('ds-title'); if(tt)tt.textContent=DS_EXTRAS_ACTIVE?'Extras':SS.title;
-  var sb=document.getElementById('ds-sub'); if(sb)sb.textContent=DS_EXTRAS_ACTIVE?'Not day-specific \u2014 stack any of these on top of your regular session':SS.sub;
-  var dl=document.getElementById('ds-deload'); if(dl){var fc=dsFatigueCheck(activeDate); if(fc.flag){dl.textContent='Recovery flag \u2014 consider a lighter week: '+fc.reasons.join('; ');dl.className='ds-deload warn';}else{dl.textContent='Recovery looks normal \u2014 training as programmed';dl.className='ds-deload';}}
+  var eb=document.getElementById('ds-eyebrow'); if(eb)eb.style.display='none';
+  var tt=document.getElementById('ds-title'); if(tt)tt.textContent=DS_EXTRAS_ACTIVE?'Extras':({mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'})[sk]||DS_DAYLABEL[sk];
+  var sb=document.getElementById('ds-sub'); if(sb)sb.style.display='none';
+  var dl=document.getElementById('ds-deload'); if(dl)dl.style.display='none';
   var _q=(DS_SEARCH||'').trim();
   DS_SEARCH_HITS=0;
   var html;
