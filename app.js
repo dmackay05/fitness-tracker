@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v494 — 2026-11-14";
+var APP_BUILD = "v495 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8025,11 +8025,11 @@ function dsRenderItem(rawItem,idx,accent){
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(!_hasPic&&demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
   var _fig=h; h='';
-  if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
-  if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
+  if(_equip)h+='<div class="ds-mequip" style="background:none;padding:0;margin:0 0 6px;color:#fdba74;font-size:13px">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
+  if(item.cue)h+='<div class="ds-mcue" style="color:#f0f0f0;font-size:14px;margin:0 0 6px">'+dsHi(item.cue,_q)+'</div>';
   h+=dsLoadTipHtml(item.name,true)||dsLoadTipHtml(rawItem.name,true);
   if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){ftCaught(e,'dsRenderItem');} }
-  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
+  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo" style="border-top:1px solid #fb923c33;margin-top:8px;padding-top:6px">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
   if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
   if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var varIdx=dsEffectiveVarIdx(rawItem);
@@ -8042,7 +8042,7 @@ function dsRenderItem(rawItem,idx,accent){
       +(_mopen?'<ul class="ds-mistakes-list">'+rawItem.mistakes.map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>':'')
       +'</div>';
   }
-  h=_hb+_fig+(h?'<div class="ds-loadtip ds-infobox">'+h+'</div>':'');
+  var _box=h; h='';
   if(DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
     var _matchedOnlyViaVariant=_q&&!DS_CHIP_MODE&&!dsMainFieldsMatch(item,_q);
@@ -8059,23 +8059,23 @@ function dsRenderItem(rawItem,idx,accent){
   }
   if(item.log==='setsreps'){
     var target=item.sets||3; var lt=dsLastTime(item.id);
-    if(lt&&lt.reps)h+='<div class="ds-lastline">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
+    if(lt&&lt.reps)_box+='<div class="ds-lastline" style="border-top:1px solid #fb923c33;margin-top:8px;padding-top:6px">Last time: <b>'+((lt.repsL!=null&&lt.repsR!=null)?(lt.repsL+'L / '+lt.repsR+'R'):(lt.reps+' reps'))+((lt.rir!=null)?(' \u00b7 '+dsRirLabel(lt.rir)):'')+(lt.load?(' \u00b7 '+lt.load):'')+'</b></div>';
     var _sugg=dsSuggestNext(item,lt);
     if(_sugg){
-      if(dsReadyToProgress(item.id)) h+='<div class="ds-suggline ds-ready" style="font-size:12px;color:#5eead4;margin:4px 0 8px;line-height:1.45;border:1px solid #5eead4;border-radius:8px;padding:6px 8px;font-weight:600">'+_sugg+'</div>';
-      else h+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
+      if(dsReadyToProgress(item.id)) _box+='<div class="ds-suggline ds-ready" style="font-size:12px;color:#5eead4;margin:4px 0 8px;line-height:1.45;border:1px solid #5eead4;border-radius:8px;padding:6px 8px;font-weight:600">'+_sugg+'</div>';
+      else _box+='<div class="ds-suggline" style="font-size:11px;color:#5eead4;margin:2px 0 6px;line-height:1.4">'+_sugg+'</div>';
     }
-    if(st._autoNote)h+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
+    if(st._autoNote)_box+='<div class="ds-autoline" style="font-size:11px;color:#fbbf24;margin:2px 0 6px;line-height:1.4;font-weight:600">'+st._autoNote+'</div>';
     var _prog=DS_PROG[item.id];
     if(_prog && _prog.day===activeDate && _prog.prevReps!=null && _prog.prevReps!==_prog.reps){
       var _prng=dsRepRange(item.id);
       if(_prog.reps>_prog.prevReps){
-        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u2191 Target up to '+_prog.reps+' reps (was '+_prog.prevReps+') \u2014 you earned it last session.</div>';
+        _box+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u2191 Target up to '+_prog.reps+' reps (was '+_prog.prevReps+') \u2014 you earned it last session.</div>';
       } else if(_prog.bandUp){
-        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u25B2 Progress day: step further back from the anchor (or slow the tempo) and restart at '+_prog.reps+' reps.</div>';
+        _box+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u25B2 Progress day: step further back from the anchor (or slow the tempo) and restart at '+_prog.reps+' reps.</div>';
       } else if(_prng){
         // Lower number only because the prescribed range itself changed.
-        h+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB This week\u2019s plan: range is '+_prng.lo+'\u2013'+_prng.hi+'. The number is a minimum \u2014 keep going until you have 0\u20132 reps left, and log what you actually did.</div>';
+        _box+='<div class="ds-progline" style="font-size:11px;color:#c084fc;margin:2px 0 6px;line-height:1.4">\u21BB This week\u2019s plan: range is '+_prng.lo+'\u2013'+_prng.hi+'. The number is a minimum \u2014 keep going until you have 0\u20132 reps left, and log what you actually did.</div>';
       }
     }
     var _deloadFill = dsDeloadActive() && st._load && !st._loadTouched;
@@ -8125,6 +8125,7 @@ function dsRenderItem(rawItem,idx,accent){
   } else {
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
+  h=_hb+_fig+(_box?'<div class="ds-loadtip ds-infobox" style="margin:10px 0;background:rgba(251,146,60,0.10);border-left:3px solid #fb923c;border-radius:6px;padding:8px 10px">'+_box+'</div>':'')+h;
   h+='</div></div>'; return h;
 }
 // Two taps: level, then site. Collapsed to one line until something is flagged.
