@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v500 — 2026-11-14";
+var APP_BUILD = "v501 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3372,6 +3372,18 @@ function checkPin(){
 (function(){ var need = APP_PIN && sessionStorage.getItem("unlocked")!=="1"; document.getElementById("pin-screen").style.display = need ? "flex" : "none"; })();
 
 document.querySelectorAll(".tab-btn").forEach(function(btn){ btn.addEventListener("click",function(){ switchTab(btn.dataset.tab); }); });
+// v501: hide Food / Yoga / Learn tabs from Settings → App (per device)
+var FT_HIDEABLE_TABS=[['food','Food'],['yoga','Yoga'],['meals','Learn']];
+function ftHiddenTabs(){ try{ return JSON.parse(store.get('ft_hidden_tabs')||'[]')||[]; }catch(e){ ftCaught(e,'ftHiddenTabs'); return []; } }
+function ftApplyHiddenTabs(){
+  var hid=ftHiddenTabs();
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.style.display=hid.indexOf(b.dataset.tab)>=0?'none':''; });
+  var cur=document.querySelector('.tab-btn.active'); if(cur&&hid.indexOf(cur.dataset.tab)>=0){ try{ switchTab('today'); }catch(e){ftCaught(e,'ftApplyHiddenTabs');} }
+  var box=document.getElementById('ft-tabtoggles'); if(box) box.innerHTML=FT_HIDEABLE_TABS.map(function(t){ var off=hid.indexOf(t[0])>=0;
+    return '<button onclick="ftToggleTab(\''+t[0]+'\')" style="flex:1;min-width:90px;padding:9px 10px;border-radius:10px;cursor:pointer;font-size:12px;border:1px solid '+(off?'#ffffff2a':'#5eead4')+';background:'+(off?'transparent':'#5eead418')+';color:'+(off?'#888':'#5eead4')+'">'+(off?'Show ':'Hide ')+t[1]+'</button>'; }).join('');
+}
+function ftToggleTab(t){ var hid=ftHiddenTabs(), i=hid.indexOf(t); if(i>=0) hid.splice(i,1); else hid.push(t); store.set('ft_hidden_tabs',JSON.stringify(hid)); ftApplyHiddenTabs(); }
+try{ ftApplyHiddenTabs(); }catch(e){ ftCaught(e,'startup'); }
 // v286: the app now opens on Today (index.html marks it active; renderAll renders it).
 
 setTimeout(renderAll, 0);
