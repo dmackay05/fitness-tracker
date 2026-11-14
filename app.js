@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v493 — 2026-11-14";
+var APP_BUILD = "v494 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8018,18 +8018,20 @@ function dsRenderItem(rawItem,idx,accent){
   h+='<div class="ds-mtags">'+(_isComp?'<span class="ds-comp-tag">\u25C6 Compound</span>':'')+(_target?'<span>'+dsHi(_target,_q)+'</span>':'')+'</div></div>';
   h+='<div style="text-align:right">'+(_rx?'<div class="ds-mrx">'+_rx+'</div>':'')+'<div class="ds-chev">\u25BC</div></div>'+((DS_ITEM_CTX&&DS_EDIT_MODE&&!_q)?'<button type="button" aria-label="Remove from '+DS_DAYLABEL[DS_ITEM_CTX.sk]+'" onclick="event.stopPropagation();dsRemoveFromDay(\''+rawItem.id+'\')" style="flex-shrink:0;margin-left:8px;width:36px;height:36px;border-radius:10px;border:1px solid #f8717166;background:#f8717112;color:#f87171;font-size:16px;cursor:pointer">\u2715</button>':'')+'</div>';
   h+='<div class="ds-mbody">';
-  if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
-  if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
-  h+=dsLoadTipHtml(item.name)||dsLoadTipHtml(rawItem.name);
-  if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){ftCaught(e,'dsRenderItem');} }
-  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
-  if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
+  var _hb=h; h='';
   var _hasPic=false;
   if(DS_SETUPPICS[item.name]){ DS_PIC_NAME=item.name; h+='<div class="ds-setuppic">'+DS_SETUPPICS[item.name]()+'</div>'; _hasPic=true; }
   else if(typeof YG_FLOWMAP!=='undefined'&&YG_FLOWMAP[item.id]){ var _yf=ygFigHtml(YG_FLOWMAP[item.id]); if(_yf){ h+='<div class="ds-setuppic">'+_yf+'</div>'; _hasPic=true; } }
-  if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var demoKey=item.demo||(DS_DEMOMAP[item.id]||null);
   if(!_hasPic&&demoKey&&DS_DEMOS[demoKey])h+='<div class="ds-demo">'+DS_DEMOS[demoKey]()+'<div class="ds-demo-cap">'+(DS_DEMOCAP[demoKey]||'looped demo of the motion')+'</div></div>';
+  var _fig=h; h='';
+  if(_equip)h+='<div class="ds-mequip">\ud83d\udd27 '+dsHi(_equip,_q)+'</div>';
+  if(item.cue)h+='<div class="ds-mcue">'+dsHi(item.cue,_q)+'</div>';
+  h+=dsLoadTipHtml(item.name,true)||dsLoadTipHtml(rawItem.name,true);
+  if(/^wed-flow-/.test(item.id)){ try{ var _fi=dsFlowActiveIds(), _fp=_fi.indexOf(item.id); if(_fp>0){ var _pr=dsRawItem(_fi[_fp-1]); if(_pr) h+='<div class="ds-mtrans">Coming from: '+String(_pr.name).split(/ \u2014 | \(/)[0]+'</div>'; } }catch(e){ftCaught(e,'dsRenderItem');} }
+  if(item.log==='setsreps'){ var _tp=dsTempoParse(item.tempo); h+='<div class="ds-mtempo">\u23f1 Tempo '+dsTempoText(_tp)+' <button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')">\u25b6 Guided sets</button>'+(dsIsElasticBand(item)?' '+'<details class="ds-mtempo-d"><summary>How to progress</summary><span class="ds-mtempo-l">'+(item.tempo?'':'Band taut at the start; if it snaps you back, the rep doesn\u2019t count. ')+'Progress after 2 sessions at the top of the range at 1\u20133 RIR: step back 6\u201312 in \u2192 stack a 10 lb tube \u2192 next band. Under 8 controlled reps at this tempo = don\u2019t size up yet; 20+ = size up.</span></details></div>':'</div>'); }
+  if(_isAnchor)h+='<div class="ds-anchor">\ud83c\udfaf This week\u2019s anchor set \u2014 take it to TRUE failure (0 RIR, real form breakdown) to recalibrate what failure actually feels like. Everything else this week stays at your normal 1\u20133 RIR.</div>';
+  if(rawItem.ramp&&dsEffectiveVarIdx(rawItem)===0)h+='<div class="ds-ramp">\u25B2 Ramp-up: '+rawItem.ramp+'</div>';
   var varIdx=dsEffectiveVarIdx(rawItem);
   var _av=(varIdx>0&&rawItem.variants)?rawItem.variants[varIdx-1]:null;
   var setupTxt=(_av&&(_av.setup||DS_VARIANT_SETUPS[item.id+"::"+varIdx]))||(varIdx>0?null:(rawItem.setup||DS_SETUPS[item.id]));
@@ -8040,6 +8042,7 @@ function dsRenderItem(rawItem,idx,accent){
       +(_mopen?'<ul class="ds-mistakes-list">'+rawItem.mistakes.map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>':'')
       +'</div>';
   }
+  h=_hb+_fig+(h?'<div class="ds-loadtip ds-infobox">'+h+'</div>':'');
   if(DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
   if(rawItem.variants&&rawItem.variants.length){
     var _matchedOnlyViaVariant=_q&&!DS_CHIP_MODE&&!dsMainFieldsMatch(item,_q);
@@ -8099,7 +8102,6 @@ function dsRenderItem(rawItem,idx,accent){
     h+='<div class="ds-actionrow" style="display:flex;gap:6px;align-items:center;margin-top:8px">'
       +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
       +(st.sets.length?'<button class="ds-undobtn" onclick="dsUndoSet(\''+item.id+'\')" title="Remove last set" style="flex:0 0 auto;border:1px solid #444;background:none;color:#aaa;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">\u21B6</button>':'')
-      +'<button class="ds-btn ds-finishbtn '+(done?'ds-lit':'')+'" style="display:inline-block;width:auto;flex:1;padding:9px 6px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsFinishSets(\''+item.id+'\')">'+(done?'\u2713 Done':'Done ('+st.sets.length+')')+'</button>'
       +'</div>';
   } else if(item.log==='time'){
     if(rawItem.perSide){
@@ -8123,7 +8125,6 @@ function dsRenderItem(rawItem,idx,accent){
   } else {
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
-  h+=dsPainRow(item.id);
   h+='</div></div>'; return h;
 }
 // Two taps: level, then site. Collapsed to one line until something is flagged.
@@ -9166,7 +9167,7 @@ function dsLogSet(id,target){
   }
   st.sets.push(setObj);
   dsAutoregulate(id);
-  dsSyncPartialLog(dsViewOf(dsRawItem(id)));
+  if(st.sets.length>=(target||(_viewItem&&_viewItem.sets)||3)){ st.manualDone=true; dsLogComplete(_viewItem); } else dsSyncPartialLog(_viewItem);
   if(!(dsGP&&dsGP.noRest) && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){ftCaught(e,'dsLogSet');} }
   dsSaveUI(); dsRender(); renderAll();
 }
@@ -11018,9 +11019,9 @@ var DS_LOADTIPS=(function(){
   };
   return t;
 })();
-function dsLoadTipHtml(name){
+function dsLoadTipHtml(name,inner){
   var t=DS_LOADTIPS[name]; if(!t) return '';
-  return '<div class="ds-loadtip"><div class="ds-lt-h">💪 Load the stretch</div>'
+  return '<div class="'+(inner?'ds-lt-in':'ds-loadtip')+'"><div class="ds-lt-h">💪 Load the stretch</div>'
     +'<div class="ds-lt-r"><b>Setup</b> '+t[0]+'</div>'
     +'<div class="ds-lt-r"><b>Each rep</b> '+t[1]+'</div>'
     +'<div class="ds-lt-r"><b>Last set</b> '+t[2]+'</div></div>';
