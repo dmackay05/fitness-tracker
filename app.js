@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v497 — 2026-11-14";
+var APP_BUILD = "v498 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8126,7 +8126,7 @@ function dsRenderItem(rawItem,idx,accent){
   } else {
     h+='<button class="ds-btn '+(done?'ds-lit':'')+'" onclick="dsMarkDone(\''+item.id+'\')">'+(done?'\u2713 Done':'Mark done')+'</button>';
   }
-  h=_hb+_fig+(_box?'<div class="ds-loadtip ds-infobox" style="margin:10px 0;background:rgba(251,146,60,0.10);border-left:3px solid #fb923c;border-radius:6px;padding:8px 10px"><div class="ds-lt-h" style="font-size:13px;font-weight:700;color:#fdba74;margin-bottom:4px">💪 How to do it</div>'+_box+'</div>':'')+h;
+  h=_hb+_fig+(_box?'<details class="ds-loadtip ds-infobox" style="margin:10px 0;background:rgba(251,146,60,0.10);border-left:3px solid #fb923c;border-radius:6px;padding:8px 10px"><summary class="ds-lt-h" style="font-size:13px;font-weight:700;color:#fdba74;cursor:pointer">💪 How to do it</summary><div style="margin-top:4px">'+_box+'</div></details>':'')+h;
   h+='</div></div>'; return h;
 }
 // Two taps: level, then site. Collapsed to one line until something is flagged.
