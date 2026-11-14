@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v498 — 2026-11-14";
+var APP_BUILD = "v499 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8100,8 +8100,8 @@ function dsRenderItem(rawItem,idx,accent){
       if(_lastR!=null&&_lastR>=2.5) h+='<div class="ds-push-note">\ud83d\udd25 Easy means the set ended early. Do one more set now and keep going until another clean rep is unlikely.</div>';
     }
     h+='<div class="ds-actionrow" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px">'
-      +'<button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')" style="display:inline-block;width:auto;flex:0 0 auto;padding:8px 14px;font-size:12px;margin:0;border-radius:10px;white-space:nowrap">\u25b6 Guided</button>'
-      +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:auto;flex:0 0 auto;min-width:120px;padding:8px 14px;font-size:12px;margin-top:0;white-space:nowrap" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
+      +'<button class="ds-tp-btn" onclick="event.stopPropagation();dsTempoStart(\''+item.id+'\',\''+(item.tempo||'')+'\')" style="display:inline-block;width:140px;flex:0 0 140px;padding:8px 6px;font-size:12px;margin:0;border-radius:10px;white-space:nowrap;text-align:center">\u25b6 Guided</button>'
+      +'<button class="ds-btn ds-logsetbtn" style="display:inline-block;width:140px;flex:0 0 140px;padding:8px 6px;font-size:12px;margin-top:0;border-radius:10px;white-space:nowrap;text-align:center" onclick="dsLogSet(\''+item.id+'\','+target+')">Log set ('+st.sets.length+(st.sets.length>=target?'':'/'+target)+')</button>'
       +(st.sets.length?'<button class="ds-undobtn" onclick="dsUndoSet(\''+item.id+'\')" title="Remove last set" style="flex:0 0 auto;border:1px solid #444;background:none;color:#aaa;border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer">\u21B6</button>':'')
       +'</div>';
   } else if(item.log==='time'){

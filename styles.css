@@ -1093,3 +1093,9 @@ body:not(.is-owner) .owner-only{display:none!important}
 #panel-today .ds-infobox .ds-lt-in{margin:0;padding:0;border:0;background:none;}
 #panel-today .ds-infobox .ds-setup{color:#d6d6d6;margin:6px 0 0;}
 #panel-today .ds-infobox .ds-mtempo{border-top:1px solid #fb923c33;margin-top:8px;padding-top:6px;}
+
+/* v499: cards side by side match heights; any open How-to-do-it box lets them size naturally */
+#ds-session{align-items:stretch}
+#panel-today #ds-session .ds-move{display:flex;flex-direction:column;margin-bottom:0}
+#panel-today #ds-session .ds-move .ds-mbody{flex:1}
+#ds-session:has(details.ds-infobox[open]){align-items:start}
