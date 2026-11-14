@@ -1099,3 +1099,5 @@ body:not(.is-owner) .owner-only{display:none!important}
 #panel-today #ds-session .ds-move{display:flex;flex-direction:column;margin-bottom:0}
 #panel-today #ds-session .ds-move .ds-mbody{flex:1}
 #ds-session:has(details.ds-infobox[open]){align-items:start}
+/* v500: a closed card never stretches to match an opened neighbour */
+#panel-today #ds-session .ds-move:not(.ds-open){align-self:start}
