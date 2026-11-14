@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v490 — 2026-11-14";
+var APP_BUILD = "v491 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -1435,6 +1435,16 @@ function dsUsedMaintHtml(r){
 }
 function renderTdeePanel(){
   var el=document.getElementById("dash-tdee"); if(!el) return;
+  _renderTdeePanelFull(); var full=el.innerHTML;
+  var r=measuredTDEE(), target=calGoalForKey(todayKey()), m=GOAL_MODES[dsGoalMode()];
+  var head;
+  if(!r.ok){ head='<div style="color:#8b8b9c;line-height:1.45">Not enough data yet for a maintenance number.</div>'; }
+  else { var u=dsUsedMaint(r); head='<div style="font-size:15px;line-height:1.5">Maintenance <b style="color:#a78bfa">\u2248'+u.tdee+' kcal</b></div>'
+    +'<div style="line-height:1.5;color:'+m.col+'">'+m.label+' \u00b7 today\'s target <b>'+target+'</b></div>'; }
+  el.innerHTML=head+'<details style="margin-top:8px"><summary style="font-size:11px;color:#8b8b9c;cursor:pointer">How this is worked out</summary><div style="margin-top:6px">'+full+'</div></details>';
+}
+function _renderTdeePanelFull(){
+  var el=document.getElementById("dash-tdee"); if(!el) return;
   var r=measuredTDEE();
   if(!r.ok){
     var h0='<div style="color:#8b8b9c;line-height:1.45">Measured maintenance appears here once there is enough data \u2014 '+r.reason+'.</div>';
@@ -2056,7 +2066,7 @@ function renderDashFocus(){
 // ── DASHBOARD VIEWS: Daily / Progress, plus collapsible Progress cards ──
 // Display only. Every card keeps its element ids, so every renderer still works
 // whichever view is showing.
-var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['streaks','Streaks','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep'],['volume','Volume','deep'],['intake','Intake avg','deep'],['distance','Distance','deep']];
+var DASH_JUMPS=[['cal','Calories','today'],['macros','Macros','today'],['review','Week so far','week'],['activity','Activity','week'],['thisweek','This week','week'],['water','Water','checkins'],['supps','Supplements','checkins'],['readiness','Readiness','checkins'],['weight','Weight','progress'],['strength','Strength','progress'],['trends','Trends','progress'],['maint','Maintenance','deep']];
 function dashSecState(){ try{ return JSON.parse(store.get('ft_dash_secs')||'{}')||{}; }catch(e){ ftCaught(e,'dashSecState'); return {}; } }
 function dashJump(id,sec){
   var d=document.querySelector('#panel-dash details[data-dsec="'+sec+'"]'); if(d&&!d.open){ d.open=true; }
@@ -2313,8 +2323,7 @@ function renderDash(){
     {value:Math.round(t.protein),max:GOALS.protein,color:"#5eead4",label:"Protein",unit:"g"},
     {value:Math.round(t.carbs),max:GOALS.carbs,color:"#a78bfa",label:"Carbs",unit:"g"},
     {value:Math.round(t.fat),max:GOALS.fat,color:"#fbbf24",label:"Fat",unit:"g"},
-    {value:Math.round(t.fiber),max:GOALS.fiber,color:"#4ade80",label:"Fiber",unit:"g"},
-    {value:burned,max:GOALS.burned,color:"#fb923c",label:"Burned",unit:""}
+    {value:Math.round(t.fiber),max:GOALS.fiber,color:"#4ade80",label:"Fiber",unit:"g"}
   ]);
   var pr=GOALS.protein-Math.round(t.protein), hint=document.getElementById("protein-hint");
   if(pr>0 && isToday()){ hint.style.display="block"; hint.textContent="💡 "+pr+"g protein to go — try a shake + cottage cheese"; }
@@ -3502,9 +3511,7 @@ function renderWeekSummary(){
     tile(protDays?Math.round(protSum/protDays)+"g":"\u2014","Avg Protein","#fbbf24")+
     tile(fibDays?Math.round(fibSum/fibDays)+"g":"\u2014","Avg Fiber","#4ade80")+
     tile(strength,"Workouts","#a78bfa")+
-    tile(rides,"Rides","#fb923c")+
-    tile(waterDays?Math.round(waterSum/waterDays)+"oz":"\u2014","Avg Water","#38bdf8")+
-    (bpN?tile(Math.round(bpS/bpN)+"/"+Math.round(bpD/bpN),"Avg BP","#fbbf24"):"")+
+
   '</div>';
 }
 function _series(getter){

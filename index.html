@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=490">
+<link rel="stylesheet" href="styles.css?v=491">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -132,7 +132,7 @@
     <div class="panel" id="panel-dash">
 
       <!-- Alerts -->
-      <div class="dash-strip" id="dash-averages"></div>
+      <div class="dash-strip" id="dash-averages" style="display:none"></div>
       <div class="card" id="dash-pain" style="display:none"></div>
       <div class="card" id="dash-bigpic"></div>
       <div id="dash-view-bar"></div>
@@ -157,7 +157,7 @@
         <div class="card-title">Macros</div>
         <div class="radials" id="radials"></div>
         <div class="hint-box" id="protein-hint" style="display:none"></div>
-        <div class="hint-box" id="burned-note" style="opacity:.75;font-size:12px;"></div>
+        <div class="hint-box" id="burned-note" style="display:none"></div>
       </div>
 </div>
 <div class="dash-item" id="dj-mbreak">
@@ -192,7 +192,7 @@
         <div id="week-summary"></div>
       </div>
 </div>
-<div class="dash-item" id="dj-streaks">
+<div class="dash-item" id="dj-streaks" style="display:none">
       <div class="card">
         <div class="card-title">Streaks</div>
         <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:2px">🔥 Protein</div>
@@ -206,7 +206,7 @@
 <details class="info-sec dash-sec" data-dsec="checkins">
 <summary class="info-sec-hd"><span>Check-ins</span><span class="info-sec-chev">▸</span></summary>
 <div class="info-sec-body dash-sec-body">
-<div class="dash-item" id="dj-stiff">
+<div class="dash-item" id="dj-stiff" style="display:none">
       <div class="card">
         <div class="card-title" style="color:#c084fc">🦵 Lower-body check-in</div>
         <div id="dash-stiff-body"></div>
@@ -285,20 +285,20 @@
         <div id="dash-tdee" style="font-size:12px;line-height:1.5"></div>
       </div>
 </div>
-<div class="dash-item" id="dj-volume">
+<div class="dash-item" id="dj-volume" style="display:none">
       <div class="card" data-cid="volume" data-default="closed">
         <div class="card-title">📊 Weekly Volume &amp; Training Load</div>
         <div id="volume-needs-attention"></div>
         <div id="volume-tab-host"></div>
       </div>
 </div>
-<div class="dash-item" id="dj-intake">
+<div class="dash-item" id="dj-intake" style="display:none">
       <div class="card" data-cid="intakeavg" data-default="closed">
         <div class="card-title">Intake Averages</div>
         <div id="dash-intake-avgs" style="font-size:12px;line-height:1.5"></div>
       </div>
 </div>
-<div class="dash-item" id="dj-distance">
+<div class="dash-item" id="dj-distance" style="display:none">
       <div class="card" data-cid="distance" data-default="closed">
         <div class="card-title">🚴 Distance · last 7 days</div>
         <div id="dash-distance" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
@@ -1793,11 +1793,11 @@
   </div>
 </div>
 
-<script src="data-figures.js?v=490"></script>
-<script src="data-exercises.js?v=490"></script>
-<script src="data-food.js?v=490"></script>
-<script src="data-yoga.js?v=490"></script>
-<script src="app.js?v=490"></script>
+<script src="data-figures.js?v=491"></script>
+<script src="data-exercises.js?v=491"></script>
+<script src="data-food.js?v=491"></script>
+<script src="data-yoga.js?v=491"></script>
+<script src="app.js?v=491"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>
