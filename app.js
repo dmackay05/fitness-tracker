@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v504 — 2026-11-14";
+var APP_BUILD = "v505 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3384,6 +3384,8 @@ function ftApplyHiddenTabs(){
 }
 function ftToggleTab(t){ var hid=ftHiddenTabs(), i=hid.indexOf(t); if(i>=0) hid.splice(i,1); else hid.push(t); store.set('ft_hidden_tabs',JSON.stringify(hid)); ftApplyHiddenTabs(); }
 try{ ftApplyHiddenTabs(); }catch(e){ ftCaught(e,'startup'); }
+// v505: the app opens on Stats
+window.addEventListener('load',function(){ try{ switchTab('dash'); }catch(e){ ftCaught(e,'startup'); } });
 // v286: the app now opens on Today (index.html marks it active; renderAll renders it).
 
 setTimeout(renderAll, 0);
