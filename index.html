@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=488">
+<link rel="stylesheet" href="styles.css?v=489">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -99,29 +99,6 @@
         <div style="display:flex;gap:8px;margin-bottom:14px">
           <div class="eff-btn sel" id="trk-ride" onclick="setTrackActivity('ride')">🚵 Ride</div>
           <div class="eff-btn" id="trk-walk" onclick="setTrackActivity('walk')">🚶 Walk</div>
-          <div class="eff-btn" id="trk-run" onclick="setTrackActivity('run')">🏃 Run</div>
-          <div class="eff-btn" id="trk-ruck" onclick="setTrackActivity('ruck')">🎒 Ruck</div>
-        </div>
-        <input type="number" inputmode="decimal" id="trk-ruck-lb" placeholder="pack weight (lb)" style="display:none;width:100%;margin-bottom:14px;font-size:13px;padding:9px"/>
-        <div id="ivl-panel" style="border:1px solid #2a2a45;border-radius:12px;padding:10px 12px;margin-bottom:14px">
-          <div class="rlbl" style="margin-top:0">⚡ Intervals — <span id="ivl-hint">Optional push/ease surges</span></div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-            <button class="ivl-preset" id="ivl-preset-short" onclick="ivlSetPreset('short')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">30s/90s ×8</button>
-            <button class="ivl-preset" id="ivl-preset-std" onclick="ivlSetPreset('std')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">1:00/2:00 ×6</button>
-            <button class="ivl-preset" id="ivl-preset-long" onclick="ivlSetPreset('long')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">2:00/3:00 ×5</button>
-            <button class="ivl-preset" id="ivl-preset-walk1" onclick="ivlSetPreset('walk1')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:10px;border:1px solid #ffffff1a;background:transparent;color:#ccc;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">1:00/1:30 ×9 (walk)</button>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input type="number" inputmode="decimal" id="ivl-c-work" placeholder="push sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
-            <input type="number" inputmode="decimal" id="ivl-c-rest" placeholder="ease sec" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
-            <input type="number" inputmode="decimal" id="ivl-c-rounds" placeholder="rounds" style="flex:1;margin-bottom:0;font-size:12px;padding:8px"/>
-            <button onclick="ivlSetCustom()" style="padding:8px 12px;border-radius:10px;border:1px solid #5eead440;background:#5eead410;color:#5eead4;font-size:11px;cursor:pointer">Set</button>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-            <div id="ivl-status" style="font-size:11px;font-family:'DM Mono',monospace;color:#8b8b9c"></div>
-            <button onclick="ivlOff()" style="font-size:11px;color:#8b8b9c;background:transparent;border:none;cursor:pointer;text-decoration:underline">clear</button>
-          </div>
-          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:6px">A tone + vibration marks every push/ease switch — no need to watch the screen</div>
         </div>
         <div style="text-align:center;margin:6px 0 10px">
           <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px">
@@ -140,16 +117,6 @@
         </div>
         <div id="trk-status" style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:10px;min-height:14px">GPS ready · keep the screen on while tracking</div>
         <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:2px">Walks auto-add estimated steps to today's count (cadence-based, calibrate in Settings)</div>
-        <div style="border-top:1px solid #1e1e35;margin-top:14px;padding-top:12px">
-          <div class="rlbl" style="margin-top:0">Manual entry (no GPS)</div>
-          <div style="display:flex;gap:8px">
-            <input type="number" inputmode="decimal" id="trk-m-miles" placeholder="miles" step="0.1" style="flex:1;margin-bottom:0"/>
-            <input type="number" inputmode="decimal" id="trk-m-min" placeholder="minutes" style="flex:1;margin-bottom:0"/>
-            <input type="number" inputmode="decimal" id="trk-m-hr" placeholder="avg HR" style="flex:0 0 72px;margin-bottom:0"/>
-            <button class="bp" onclick="trkSaveManual()">Save</button>
-          </div>
-          <div style="font-size:11px;color:#8b8b9c;font-family:'DM Mono',monospace;text-align:center;margin-top:4px">Avg HR is optional — used to classify the ride into a heart-rate zone (Zone 2 = ~60–70% of max HR). Set your age or max HR in Settings first.</div>
-        </div>
       </div>
   </div>
 
@@ -1826,11 +1793,11 @@
   </div>
 </div>
 
-<script src="data-figures.js?v=488"></script>
-<script src="data-exercises.js?v=488"></script>
-<script src="data-food.js?v=488"></script>
-<script src="data-yoga.js?v=488"></script>
-<script src="app.js?v=488"></script>
+<script src="data-figures.js?v=489"></script>
+<script src="data-exercises.js?v=489"></script>
+<script src="data-food.js?v=489"></script>
+<script src="data-yoga.js?v=489"></script>
+<script src="app.js?v=489"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>
