@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v501 — 2026-11-14";
+var APP_BUILD = "v502 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8876,12 +8876,27 @@ function dsMvBreakdownHtml(muscle){
 
 // v481: the four numbers that matter during the cut, on top of the Today tab. Tap a tile to jump to where it's logged.
 // v484: Steps tile jumps straight to the steps box (Settings -> Nutrition) with the cursor in it.
+// v502: steps log in a small pop-up over the Today tab (no trip to Settings)
 function dsGoLogSteps(){
-  openSettings();
-  setTimeout(function(){ var d=document.getElementById('set-nutrition'); if(d) d.open=true;
-    var i=document.getElementById('steps-in'); if(!i) return;
-    i.scrollIntoView({behavior:'smooth',block:'center'});
-    setTimeout(function(){ try{ i.focus({preventScroll:true}); }catch(e){} },400); },150);
+  var o=document.getElementById('ds-steps-pop');
+  if(!o){ o=document.createElement('div'); o.id='ds-steps-pop'; document.body.appendChild(o); }
+  var cur=+(((appData[activeDate]||{}).wellness||{}).steps)||'';
+  o.setAttribute('style','position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px');
+  o.onclick=function(e){ if(e.target===o) dsStepsPopClose(); };
+  o.innerHTML='<div style="background:#1d1f15;border:1px solid #ffffff22;border-radius:14px;padding:16px;width:100%;max-width:300px">'
+    +'<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin-bottom:4px">👟 Steps</div>'
+    +'<div style="font-size:11px;color:#8b8b9c;margin-bottom:10px">'+(activeDate===todayKey()?'Today':prettyDate(activeDate))+'</div>'
+    +'<input id="ds-steps-pop-in" type="number" inputmode="numeric" placeholder="e.g. 7200" value="'+cur+'" style="width:100%;box-sizing:border-box;font-size:20px;padding:10px;margin-bottom:12px" onkeydown="if(event.key===\'Enter\')dsStepsPopSave()">'
+    +'<div style="display:flex;gap:8px"><button onclick="dsStepsPopClose()" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ffffff2a;background:transparent;color:#aaa;cursor:pointer">Cancel</button>'
+    +'<button onclick="dsStepsPopSave()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#5eead4;color:#0a0a12;font-weight:700;cursor:pointer">Save</button></div></div>';
+  setTimeout(function(){ var i=document.getElementById('ds-steps-pop-in'); if(i){ try{ i.focus(); i.select(); }catch(e){} } },50);
+}
+function dsStepsPopClose(){ var o=document.getElementById('ds-steps-pop'); if(o) o.remove(); }
+function dsStepsPopSave(){
+  var i=document.getElementById('ds-steps-pop-in'); var n=parseInt(String(i&&i.value||'').replace(/[^0-9]/g,''),10);
+  if(!(n>=0)){ if(i) i.focus(); return; }
+  dsSetStepsFor(activeDate,n); saveAll(); dsStepsPopClose(); renderAll(); try{ dsRenderStepsCard(); }catch(e){ftCaught(e,'dsStepsPopSave');}
+  toast('✓ '+n.toLocaleString()+' steps saved');
 }
 function dsRenderCutStrip(){
   var el=document.getElementById('ds-cutstrip'); if(!el) return;
