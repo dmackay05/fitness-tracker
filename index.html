@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@400;500;700;900&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 
 
-<link rel="stylesheet" href="styles.css?v=503">
+<link rel="stylesheet" href="styles.css?v=504">
 <script>(function(){try{var t=localStorage.getItem('ft_theme');if(t==='light'||t==='gray'){document.documentElement.className+=' th-pending';document.documentElement.style.background=t==='light'?'#f6f6f8':'#27272b';}}catch(e){}})();</script>
 <style>html.th-pending body{visibility:hidden}</style>
 </head>
@@ -62,10 +62,10 @@
   </div>
 
   <div class="tab-bar" id="main-tabs" role="tablist">
-    <button class="tab-btn active" data-tab="today" role="tab" aria-label="Today"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>Today</button>
+    <button class="tab-btn" data-tab="dash" role="tab" aria-label="Stats"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Stats</button>
+    <button class="tab-btn active" data-tab="today" role="tab" aria-label="Exercise"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>Exercise</button>
     <button class="tab-btn" data-tab="log" role="tab" aria-label="Log"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></span>Log</button>
     <button class="tab-btn" data-tab="food" role="tab" aria-label="Food"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1-3.5 3.5-3.5 7 0 2 1.5 3 3.5 3"/></svg></span>Food</button>
-    <button class="tab-btn" data-tab="dash" role="tab" aria-label="Stats"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Stats</button>
     <button class="tab-btn" data-tab="yoga" role="tab" aria-label="Yoga"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 8v6M5 11l7 3 7-3M7 20c2-3 3-4 5-6 2 2 3 3 5 6"/></svg></span>Yoga</button>
     <button class="tab-btn" data-tab="meals" role="tab" aria-label="Learn"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>Learn</button>
     <button class="tab-btn" data-tab="settings" role="tab" aria-label="Settings"><span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Settings</button>
@@ -1490,7 +1490,7 @@
       </div>
       <div class="card" data-mu="1">
         <div class="card-title">🏋️ Custom Exercise Set</div>
-        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Today tab.</div>
+        <div style="font-size:11px;color:#888;font-family:'DM Mono',monospace;margin-bottom:10px">Build your own set from gym exercise ideas or existing exercises and assign it to any day. Syncs to your Google Sheet. Shows alongside that day's routine on the Exercise tab.</div>
         <button class="bs bfull" onclick="dsCustomOpen()">⚙ Manage Custom Set</button>
       </div>
         </div>
@@ -1787,11 +1787,11 @@
   </div>
 </div>
 
-<script src="data-figures.js?v=503"></script>
-<script src="data-exercises.js?v=503"></script>
-<script src="data-food.js?v=503"></script>
-<script src="data-yoga.js?v=503"></script>
-<script src="app.js?v=503"></script>
+<script src="data-figures.js?v=504"></script>
+<script src="data-exercises.js?v=504"></script>
+<script src="data-food.js?v=504"></script>
+<script src="data-yoga.js?v=504"></script>
+<script src="app.js?v=504"></script>
 <div id="weighin-banner" aria-live="polite"></div>
 </body>
 </html>
