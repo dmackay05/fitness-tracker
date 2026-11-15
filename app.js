@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v511 — 2026-11-14";
+var APP_BUILD = "v512 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -11217,18 +11217,19 @@ function dsGPReps(){
     ? [['LOWER SLOW',tp.down,'#9fd3c7',440],['BOTTOM',tp.pause,'#f5c26b',330],['DRIVE UP',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100]]
     : [['WORK',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100],['SLOW BACK',tp.down,'#9fd3c7',440],['STRETCH',tp.pause,'#f5c26b',330]];
   phases=phases.filter(function(p){return p[1]>0;});
-  o.innerHTML=dsGPHead(c)+'<div class="gp-rep"><span id="gp-rep">1</span><small> / '+dsGP.target+'</small></div><div class="gp-phase" id="gp-ph"></div><div class="gp-huge gp-sec" id="gp-n"></div><div class="gp-sub" id="gp-hint">Tap anywhere to pause</div><button class="gp-end" onclick="event.stopPropagation();dsGPEnd()">End set</button>';
-  o.onclick=function(){ dsGP.paused=!dsGP.paused; var h=document.getElementById('gp-hint'); if(h)h.textContent=dsGP.paused?'\u23f8 Paused \u2014 tap to resume':'Tap anywhere to pause'; o.classList.toggle('gp-paused',dsGP.paused); };
+  o.innerHTML=dsGPHead(c)+'<div class="gp-rep"><span id="gp-rep">1</span><small> / '+dsGP.target+'</small></div><div class="gp-phase" id="gp-ph"></div><div class="gp-huge gp-sec" id="gp-n"></div><div class="gp-sub" id="gp-hint">Tap anywhere to stop the set</div><button class="gp-end" onclick="event.stopPropagation();dsGPEnd()">Stop set</button><button class="gp-end" id="gp-pause" style="opacity:.75" onclick="event.stopPropagation();dsGPTogglePause()">Pause</button>';
+  o.onclick=function(){ if(dsGP.paused){ dsGPTogglePause(); return; } dsTPVib([80]); dsGPEnd(); };
   var pi=-1, left=0;
   (function tick(){
     if(!dsGP.on||dsGP.state!=='reps')return;
     if(dsGP.paused){ dsGP.t=setTimeout(tick,250); return; }
-    if(left<=0){ pi++; if(pi>=phases.length){ pi=0; } if(pi===0){ dsGP.rep++; if(dsGP.rep>60){ dsGPEnd(); return; } if(dsGP.rep===dsGP.target+1){ dsTPBeep(1200,350); dsTPVib([200,80,200]); var hh=document.getElementById('gp-hint'); if(hh)hh.textContent='\u2705 Target hit \u2014 keep going until a clean rep won\u2019t happen, then tap Done'; var eb=document.querySelector('#ds-gp .gp-end'); if(eb)eb.textContent='Done'; } document.getElementById('gp-rep').textContent=dsGP.rep; }
+    if(left<=0){ pi++; if(pi>=phases.length){ pi=0; } if(pi===0){ dsGP.rep++; if(dsGP.rep>60){ dsGPEnd(); return; } if(dsGP.rep===dsGP.target+1){ dsTPBeep(1200,350); dsTPVib([200,80,200]); var hh=document.getElementById('gp-hint'); if(hh)hh.textContent='\u2705 Target hit \u2014 keep going until a clean rep won\u2019t happen, then tap anywhere'; var eb=document.querySelector('#ds-gp .gp-end'); if(eb)eb.textContent='Stop set'; } document.getElementById('gp-rep').textContent=dsGP.rep; }
       left=phases[pi][1]; var ph=document.getElementById('gp-ph'); ph.textContent=phases[pi][0]; ph.style.color=phases[pi][2]; o.style.setProperty('--gp-c',phases[pi][2]); dsTPBeep(phases[pi][3],180); dsTPVib(pi===0?[120]:[60]); }
     else dsTPBeep(phases[pi][3],40,0.06);
     document.getElementById('gp-n').textContent=left; left--; dsGP.t=setTimeout(tick,1000);
   })();
 }
+function dsGPTogglePause(){ var o=dsGPEl(); dsGP.paused=!dsGP.paused; var h=document.getElementById('gp-hint'); if(h)h.textContent=dsGP.paused?'\u23f8 Paused \u2014 tap anywhere to resume':'Tap anywhere to stop the set'; var b=document.getElementById('gp-pause'); if(b)b.textContent=dsGP.paused?'Resume':'Pause'; o.classList.toggle('gp-paused',dsGP.paused); }
 function dsGPEnd(fixed){
   dsGPClear(); var c=dsGPCtx(), o=dsGPEl(); o.onclick=null; o.classList.remove('gp-paused');
   var done=(fixed!=null)?fixed:Math.max(0,dsGP.rep-1);
