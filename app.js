@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v505 — 2026-11-14";
+var APP_BUILD = "v506 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6391,7 +6391,56 @@ function renderGrocery(targetId){
 var RL_CATS=[["breakfast","Breakfast"],["sweet","Sweet Breakfast"],["lunch","Lunch"],["dinner","Dinner"],["snack","Snacks & Treats"],["prep","Make-Ahead & Prep"]];
 // RL_TIPS, RL_DATA live in data-food.js
 var MP_TOPUPS=[{"id":"t1","name":"Almonds","note":"1 oz (28 g)","cal":162,"protein":6,"carbs":6,"fat":14,"fiber":4},{"id":"t2","name":"Peanut butter + celery","note":"1 Tbsp (16 g) PB, 2 celery sticks","cal":107,"protein":5,"carbs":6,"fat":8,"fiber":2},{"id":"t3","name":"Avocado","note":"1/3 avocado (50 g), salt and lemon","cal":80,"protein":1,"carbs":4,"fat":7,"fiber":3},{"id":"t4","name":"Cheese + cucumber","note":"1 oz (28 g) cheese, a cucumber","cal":128,"protein":7,"carbs":4,"fat":9,"fiber":0},{"id":"t5","name":"Berries & cream","note":"1/2 cup berries + 2 Tbsp heavy cream, whipped","cal":145,"protein":1,"carbs":12,"fat":11,"fiber":2}];
-var MP_ROTATION=[[["b1","l2","s4","d5"],["rb6","m41","m31","rd1"],["rs7","l4","m15","d3"],["rb1","w3","w12","d8"],["rs5","rl5","rn3","m9"],["w9","l1","m45","d13"],["rb4","l3","m16","rd5"]],[["rs2","l5","rn2","d10"],["m36","rl11","s4","d11"],["rb5","m1e","m30","d7"],["rb3","rl1","rs3","m5"],["rb7","rl9","m46","d12"],["rs4","w4","w12","rd2"],["rb2","rl7","m15","m2"]]];
+// v506: rotation rebuilt around the cookbook's own recipes (40 of 56 slots), one
+// breakfast-for-dinner every two weeks (never on an egg-breakfast day), and sized for the lean cut.
+var MP_ROTATION=[[["rb3","rl2","s1","rd1"],["rb5","rl11","rn2","d11"],["rs7","w3","m14","rd9"],["rb4","rl5","w11","d5"],["rb6","rl9","s1","rd4"],["rs5","rl3","rn2","d13"],["rb2","rl4","m14","rd5"]],[["rb7","l2","m14","rd6"],["rb1","rl1","w11","rd2"],["rs2","rl4","m30","d12"],["b1","rl7","w11","rd7"],["rs4","rl2","s1","d3"],["rs6","l4","m46","d8"],["rb3","rl11","rs3","rd8"]]];
+// Dinners that are breakfast-for-dinner; the rotation holds one per two weeks.
+var MP_BFD={d13:1,d6:1};
+// item text -> [rank, cal, protein, carbs, fat, fiber]  (removing the item)
+var MP_TRIMS={
+"Healthy-fat add: 1/3 avocado (50 g)":[1,80,1,4,7,3],
+"Healthy-fat add: 1/2 oz (14 g) almonds":[1,81,3,3,7,2],
+"1/3 avocado (50 g)":[1,80,1,4,7,3],
+"1/4 avocado (35 g)":[1,56,1,3,5,2],
+"1/4 avocado (30 g)":[1,48,1,3,4,2],
+"1 Tbsp (10 g) chopped walnuts":[1,65,2,1,7,1],
+"1 Tbsp (10 g) walnuts":[1,65,2,1,7,1],
+"1/2 oz (14 g) almonds":[1,81,3,3,7,2],
+"1 Tbsp (16 g) peanut butter":[1,94,4,3,8,1],
+"Crunch: 1 Tbsp (10 g) pumpkin seeds + 1 tsp (3 g) coconut":[1,77,3,1,7,1],
+"1 oz (28 g) cheese":[1,114,7,0,9,0],
+"3/4 oz (21 g) cheese":[1,85,5,0,7,0],
+"3/4 oz (21 g) cheddar":[1,85,5,0,7,0],
+"3/4 oz (20 g) feta":[1,53,3,1,4,0],
+"1 Tbsp (14 g) ground flax":[2,75,3,4,6,4],
+"Small starch: 1/3 cup (27 g) rolled oats, cooked or overnight":[2,103,4,18,2,3],
+"Small starch: 1/2 small sweet potato (100 g)":[2,86,2,20,0,3],
+"Optional small starch: 1 oz (28 g) dry whole-wheat spaghetti":[2,99,4,21,1,3],
+"Small starch: 1/4 cup (45 g) black beans":[2,59,4,11,0,4],
+"3/4 cup (170 g) 2% Greek yogurt on the side":[3,124,17,7,3,0],
+"1/2 cup (113 g) 2% cottage cheese on the side":[3,92,13,5,2,0],
+"1/2 cup (113 g) 2% cottage cheese":[3,92,13,5,2,0],
+"1/2 scoop (15 g) whey (optional)":[3,60,12,2,1,0],
+"Fiber add: 1/2 cup (80 g) chickpeas":[4,131,7,22,2,6],
+"Fiber add: 1/2 cup (90 g) white beans":[4,125,9,23,0,6],
+"Fiber add: 1/2 cup (90 g) black beans":[4,119,8,21,0,8],
+"Fiber add: 1/2 cup (75 g) shelled edamame":[4,91,8,7,4,4]
+};
+// Pick trims to bring a day's plan down to its calorie target without dropping
+// protein under the goal or fiber under fibMin. list: [{slot,meal}] ; returns {"slot|idx":true}
+function mpAutoTrims(list,goal,pGoal,fibMin){
+  var s=mpSum(list), gap=s.cal-goal, p=s.protein, fib=s.fiber, cands=[], out={};
+  if(gap<=60) return out;
+  list.forEach(function(x){ (x.meal.items||[]).forEach(function(it,i){ var t=MP_TRIMS[it]; if(t) cands.push({k:x.slot+"|"+i,t:t}); }); });
+  cands.sort(function(a,b){ return a.t[0]-b.t[0] || b.t[1]-a.t[1]; });
+  cands.forEach(function(c){
+    if(gap<=40) return;
+    if(c.t[2]>5 && p-c.t[2]<pGoal) return;
+    if(c.t[5]>2 && fib-c.t[5]<fibMin) return;
+    out[c.k]=true; gap-=c.t[1]; p-=c.t[2]; fib-=c.t[5];
+  });
+  return out;
+}
 var MP_MERGED={"b3":"rs5","b4":"rb2","s2":"rs3","s3":"rn2","d1":"rd1","d2":"rd2"};
 var RL_CAT=null, RL_Q="";
 function rlSetCat(c){ RL_CAT=(RL_CAT===c)?null:c; rlRender(); }
@@ -6479,14 +6528,14 @@ function renderMealsTab(){
 // Rotation anchored to Mon 2026-10-26 = Week 1, Monday. Breakfast and dinner
 // are family meals (family batch + picky-plate notes); lunch and snack are
 // David's. Macros are David's portion, computed from per-ingredient USDA-style
-// values. Base days land ~2,030–2,220 kcal, 175–212 g protein, 41–55 g fiber;
-// on higher-calorie days the Top-ups fill the gap to calGoalForKey().
+// values. v506: each day is fitted to calGoalForKey() by mpAutoTrims (skips add-ons, keeps protein at goal);
+// on days still under target the Top-ups fill the gap.
 // v454: the 2-week rotation now draws from the merged Recipe Library (cookbook rules).
 // Each library recipe with a David portion (r.me) and a slot is a plannable meal.
 var MP_DATA=(function(){
   var meals=RL_DATA.filter(function(r){return r.me&&r.slot;}).map(function(r){
     return {id:r.id,slot:r.slot,name:r.name,cal:r.me.cal,protein:r.me.protein,carbs:r.me.carbs,fat:r.me.fat,fiber:r.me.fiber,
-      mine:r.me.items.join('; ')+'.',family:r.family||'',picky:r.picky||'',shop:r.me.shop,tags:[]};
+      mine:r.me.items.join('; ')+'.',items:r.me.items,family:r.family||'',picky:r.picky||'',shop:r.me.shop,tags:[]};
   });
   return {meals:meals,topups:MP_TOPUPS,rotation:MP_ROTATION};
 })();
@@ -6515,13 +6564,44 @@ function mpMealsAt(week,day,dateKey){
 function mpSum(list){
   return list.reduce(function(a,x){ var m=x.meal||x; ["cal","protein","carbs","fat","fiber"].forEach(function(k){a[k]+=m[k]||0;}); return a; },{cal:0,protein:0,carbs:0,fat:0,fiber:0});
 }
+// v506: plate trims. Auto picks come from mpAutoTrims; a tap on an item overrides it for that date.
+function mpTrimOv(){ try{ return JSON.parse(store.get("ft_mp_trims")||"{}")||{}; }catch(e){ ftCaught(e,'mpTrimOv'); return {}; } }
+function mpTrimsFor(list,goal,dateKey){
+  var auto=mpAutoTrims(list,goal,GOALS.protein||185,30), ov=(dateKey&&mpTrimOv()[dateKey])||{}, out={};
+  list.forEach(function(x){ (x.meal.items||[]).forEach(function(it,i){ var k=x.slot+"|"+i;
+    if(!MP_TRIMS[it]) return; var on=(k in ov)?ov[k]:!!auto[k]; if(on) out[k]=true; }); });
+  return out;
+}
+function mpToggleTrim(dateKey,k,on){
+  var ov=mpTrimOv(); ov[dateKey]=ov[dateKey]||{}; ov[dateKey][k]=on;
+  try{ store.set("ft_mp_trims",JSON.stringify(ov)); }catch(e){ftCaught(e,'mpToggleTrim');}
+  try{ mpRenderToday(); }catch(e){ftCaught(e,'mpToggleTrim');}
+}
+// The meal's macros with the trimmed items taken out.
+function mpTrimmedMeal(m,slot,trims){
+  var o={cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,fiber:m.fiber,cut:[]};
+  (m.items||[]).forEach(function(it,i){ var t=MP_TRIMS[it]; if(t&&trims[slot+"|"+i]){
+    o.cal-=t[1]; o.protein-=t[2]; o.carbs-=t[3]; o.fat-=t[4]; o.fiber-=t[5]; o.cut.push(i); } });
+  return o;
+}
+function mpPlateHtml(m,slot,trims,dateKey){
+  var items=m.items||[]; if(!items.length) return m.mine?'<div class="mp-myplate"><b>Your plate:</b> '+m.mine+'</div>':'';
+  return '<div class="mp-myplate"><b>Your plate:</b> '+items.map(function(it,i){
+    var t=MP_TRIMS[it], k=slot+"|"+i, off=!!trims[k];
+    if(!t||!dateKey) return off?'<s style="opacity:.55">'+it+'</s>':it;
+    return '<span class="mp-trim'+(off?' off':'')+'" onclick="mpToggleTrim(\''+dateKey+'\',\''+k+'\','+(!off)+')">'+it+
+      ' <em>'+(off?'skipped · tap to add back':'tap to skip −'+t[1])+'</em></span>';
+  }).join('; ')+'.</div>';
+}
 function mpIsLogged(day,m,slot){
   return (day.foods||[]).some(function(f){ return f.mpId===m.id || (f.name===m.name && (!f.mealTag||f.mealTag===slot)); });
 }
 function mpLog(id,slot){
   var m=MP_BY[id]||MP_DATA.topups.filter(function(t){return t.id===id;})[0]; if(!m) return;
-  var day=getDay();
-  day.foods.push({name:m.name,cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,fiber:m.fiber,
+  var day=getDay(), adj=m, nm=m.name;
+  if(MP_BY[id]){ try{ var key=activeDate, pos=mpPos(key), list=mpMealsAt(pos.week,pos.day,key);
+    adj=mpTrimmedMeal(m,slot,mpTrimsFor(list,calGoalForKey(key),key)); if(adj.cut.length) nm=m.name+' (trimmed)'; }catch(e){ftCaught(e,'mpLog'); adj=m;} }
+  day.foods.push({name:nm,cal:adj.cal,protein:adj.protein,carbs:adj.carbs,fat:adj.fat,fiber:adj.fiber,
     id:Date.now().toString()+Math.floor(Math.random()*1000), mealTag:slot, mpId:m.id});
   saveDay(day); renderAll();
 }
@@ -6543,17 +6623,19 @@ function mpStatLine(s,goal){
 function mpRenderToday(){
   var el=document.getElementById("mp-today-card"); if(!el) return;
   var key=activeDate, pos=mpPos(key), list=mpMealsAt(pos.week,pos.day,key), day=getDay(key);
-  var goal=calGoalForKey(key), s=mpSum(list), gap=goal-s.cal;
-  var rows=list.map(function(x){
-    var m=x.meal, done=mpIsLogged(day,m,x.slot);
+  var goal=calGoalForKey(key), trims=mpTrimsFor(list,goal,key), nTrim=Object.keys(trims).length;
+  var adjList=list.map(function(x){ return {slot:x.slot,meal:mpTrimmedMeal(x.meal,x.slot,trims)}; });
+  var s=mpSum(adjList), gap=goal-s.cal;
+  var rows=list.map(function(x,xi){
+    var m=x.meal, am=adjList[xi].meal, done=mpIsLogged(day,m,x.slot);
     var opts=MP_DATA.meals.filter(function(o){return o.slot===x.slot;}).map(function(o){
-      return '<option value="'+o.id+'"'+(o.id===m.id?' selected':'')+'>'+o.name+'</option>'; }).join("");
+      return '<option value="'+o.id+'"'+(o.id===m.id?' selected':'')+'>'+o.name+(MP_BFD[o.id]?' (breakfast-for-dinner)':'')+'</option>'; }).join("");
     return '<div style="padding:9px 0;border-bottom:1px solid #ffffff0d">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
         '<div style="min-width:0"><div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+(x.swapped?' · swapped':'')+'</div>'+
         '<div style="font-size:14px;color:#e8e8e0;font-weight:600">'+m.name+'</div>'+
-        '<div style="font-size:11px;color:#888">'+m.cal+' kcal · '+m.protein+'g P · '+m.fiber+'g fiber</div>'+
-        (m.mine?'<div class="mp-myplate"><b>Your plate:</b> '+m.mine+'</div>':'')+'</div>'+
+        '<div style="font-size:11px;color:#888">'+am.cal+' kcal · '+am.protein+'g P · '+am.fiber+'g fiber'+(am.cut.length?' <span style="color:#5eead4">· trimmed '+(m.cal-am.cal)+'</span>':'')+'</div>'+
+        mpPlateHtml(m,x.slot,trims,key)+'</div>'+
         (done?'<span class="tag" style="background:#4ade8022;color:#4ade80;border:1px solid #4ade8055;flex-shrink:0">✓ Logged</span>'
              :'<button class="bs" style="flex-shrink:0" onclick="mpLog(\''+m.id+'\',\''+x.slot+'\')">Log</button>')+
       '</div>'+
@@ -6571,8 +6653,9 @@ function mpRenderToday(){
         '<span><b style="color:#d8d8d0">'+t.name+'</b> · '+t.note+' · '+t.cal+' kcal, '+t.protein+'g P</span>'+
         '<button class="bs" onclick="mpLog(\''+t.id+'\',\'Snack\')">Log</button></div>'; }).join("");
   } else if(gap<-120){
-    tu='<div style="margin-top:10px;font-size:12px;color:#fbbf24">Plan is '+(-gap)+' kcal over today\'s target. Trim the snack or use 1/2 the rice/pasta at dinner.</div>';
+    tu='<div style="margin-top:10px;font-size:12px;color:#fbbf24">Plan is '+(-gap)+' kcal over today\'s target'+(nTrim?' even with the trims above':'')+'. Tap more add-ons to skip them, or eat a smaller dinner portion.</div>';
   }
+  if(nTrim) tu='<div style="margin-top:8px;font-size:11px;color:#5eead4">Trimmed '+nTrim+' add-on'+(nTrim>1?'s':'')+' to fit your target with protein still at goal. Tap any add-on to skip it or add it back.</div>'+tu;
   el.innerHTML='<div class="card-title" style="margin-bottom:2px">📋 Today\'s Meal Plan</div>'+
     '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:4px">Week '+(pos.week+1)+' · '+MP_DOW[pos.day]+' · '+calGoalLabelForKey(key)+'</div>'+
     rows+
@@ -6587,7 +6670,7 @@ function mpRenderTomorrow(){
   var rows=list.filter(function(x){return x.slot==="Breakfast"||x.slot==="Lunch";}).map(function(x){
     var m=x.meal;
     var opts=MP_DATA.meals.filter(function(o){return o.slot===x.slot;}).map(function(o){
-      return '<option value="'+o.id+'"'+(o.id===m.id?' selected':'')+'>'+o.name+'</option>'; }).join("");
+      return '<option value="'+o.id+'"'+(o.id===m.id?' selected':'')+'>'+o.name+(MP_BFD[o.id]?' (breakfast-for-dinner)':'')+'</option>'; }).join("");
     return '<div style="padding:9px 0;border-bottom:1px solid #ffffff0d">'+
       '<div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+(x.swapped?' · swapped':'')+'</div>'+
       '<div style="font-size:14px;color:#e8e8e0;font-weight:600">'+m.name+'</div>'+
@@ -6646,16 +6729,20 @@ function mpRenderPlan(){
   var now=mpPos(todayKey());
   if(mpViewWeek==null) mpViewWeek=now.week;
   if(mpViewDay==null) mpViewDay=now.day;
-  var w=mpViewWeek, d=mpViewDay, list=mpMealsAt(w,d,null), s=mpSum(list);
+  var w=mpViewWeek, d=mpViewDay, list=mpMealsAt(w,d,null), vKey=null;
+  // v506: the next date that lands on this rotation day sets the calorie target for trims.
+  for(var i=0;i<14&&!vKey;i++){ var dd=mpParse(todayKey()); dd.setDate(dd.getDate()+i); var kk=localDateKey(dd), pp=mpPos(kk); if(pp.week===w&&pp.day===d) vKey=kk; }
+  var vGoal=vKey?calGoalForKey(vKey):0, trims=vGoal?mpTrimsFor(list,vGoal,null):{};
+  var s=mpSum(list.map(function(x){ return {meal:mpTrimmedMeal(x.meal,x.slot,trims)}; }));
   function chip(lbl,on,fn){ return '<span class="tag" style="cursor:pointer;background:'+(on?"#4ade8022":"#88888816")+';color:'+(on?"#4ade80":"#aaa")+';border:1px solid '+(on?"#4ade8055":"#88888830")+'" onclick="'+fn+'">'+lbl+'</span>'; }
   var wk=[0,1].map(function(i){ return chip("Week "+(i+1)+(i===now.week?" · now":""),i===w,"mpSetView("+i+",null)"); }).join(" ");
   var dy=MP_DOW.map(function(n,i){ return chip(n.slice(0,3)+(w===now.week&&i===now.day?" •":""),i===d,"mpSetView(null,"+i+")"); }).join(" ");
-  var cards=list.map(function(x){ var m=x.meal;
+  var cards=list.map(function(x){ var m=x.meal, am=mpTrimmedMeal(m,x.slot,trims);
     return '<div class="card" style="margin-top:10px">'+
       '<div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+'</div>'+
       '<div class="card-title" style="margin:2px 0 4px">'+m.name+'</div>'+
-      '<div style="font-size:11px;color:#888;margin-bottom:6px">'+m.cal+' kcal · '+m.protein+'g P · '+m.carbs+'g C · '+m.fat+'g F · '+m.fiber+'g fiber</div>'+
-      '<div style="font-size:12px;color:#9a9d8c;line-height:1.5"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:6px">'+am.cal+' kcal · '+am.protein+'g P · '+am.carbs+'g C · '+am.fat+'g F · '+am.fiber+'g fiber'+(am.cut.length?' <span style="color:#5eead4">· trimmed '+(m.cal-am.cal)+'</span>':'')+'</div>'+
+      mpPlateHtml(m,x.slot,trims,null)+
       (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
       (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
       mpRecipeBlock(m.id)+
@@ -6664,8 +6751,8 @@ function mpRenderPlan(){
       '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:10px">Two-week rotation from the Recipe Library. Breakfast and dinner feed the family; lunch and snack are yours. Numbers are your portion. Log meals from the Log tab.</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+wk+'</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap">'+dy+'</div>'+
-      '<div style="font-size:12px;color:#9a9d8c;margin-top:10px">Day total: '+mpStatLine(s,0)+'</div>'+
-      '<div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px">Every meal follows the cookbook: protein first, half the plate non-starchy vegetables, starch small or optional, no added sugar. Base days run about 1,950–2,250 kcal, 170–220 g protein and 37–53 g fiber; the Log tab suggests cookbook-friendly top-ups to reach your calorie target. Weigh portions against the gram amounts.</div>'+
+      '<div style="font-size:12px;color:#9a9d8c;margin-top:10px">Day total: '+mpStatLine(s,vGoal)+'</div>'+
+      '<div style="font-size:11px;color:#888;line-height:1.5;margin-top:6px">Every meal follows the cookbook: protein first, half the plate non-starchy vegetables, starch small or optional, no added sugar. Most meals are the cookbook\'s own recipes, with one breakfast-for-dinner every two weeks. Each day is fitted to your calorie target by skipping add-ons (nuts, avocado, small starch, extra sides) while keeping protein at goal; crossed-out items are skipped. On Today\'s Meal Plan, tap an add-on to skip it or add it back. Weigh portions against the gram amounts.</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+
         '<button class="bs" id="mp-gr-btn" onclick="mpAddGroceries('+w+')">Add Week '+(w+1)+' to grocery list</button>'+
         '<button class="bs" onclick="mpToggleWeekOff()">Swap which week is current</button>'+
