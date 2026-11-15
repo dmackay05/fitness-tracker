@@ -17,7 +17,7 @@ function ftErrLogSave(){ try{ localStorage.setItem('ft_errlog',JSON.stringify(FT
 function ftCaught(err,where){
   try{
     var log=ftErrLogLoad(), msg=String((err&&err.message)||err).slice(0,200), now=Date.now();
-    for(var i=0;i<log.length;i++){ var x=log[i]; if(x.w===where&&x.m===msg){ x.n++; x.t=now; if(x.n===10||x.n%100===0) ftErrLogSave(); return; } }
+    for(var i=0;i<log.length;i++){ var x=log[i]; if(x.w===where&&x.m===msg){ x.n++; x.t=now; x.b=String(typeof APP_BUILD==='string'?APP_BUILD:'').split(' ')[0]; if(x.n===10||x.n%100===0) ftErrLogSave(); return; } }
     log.push({w:where,m:msg,n:1,t:now,b:String(typeof APP_BUILD==='string'?APP_BUILD:'').split(' ')[0]});
     if(log.length>40) log.splice(0,log.length-40);
     ftErrLogSave();
@@ -165,8 +165,8 @@ var store = (function() {
     localStorage.setItem('__test__', '1');
     localStorage.removeItem('__test__');
     return {
-      get: function(k) { try { return localStorage.getItem(k); } catch(e) { ftCaught(e,'get'); return _memStore[k]||null; } },
-      set: function(k,v) { try { localStorage.setItem(k,v); } catch(e) { ftCaught(e,'set'); _memStore[k]=v; } },
+      get: function(k) { try { var v=localStorage.getItem(k); if(v==='undefined'){ localStorage.removeItem(k); return null; } return v; } catch(e) { ftCaught(e,'get'); return _memStore[k]||null; } },
+      set: function(k,v) { if(v===undefined||v==='undefined'){ try{ localStorage.removeItem(k); }catch(_){} return; } try { localStorage.setItem(k,v); } catch(e) { ftCaught(e,'set'); _memStore[k]=v; } },
       remove: function(k) { try { localStorage.removeItem(k); } catch(e) { ftCaught(e,'remove'); delete _memStore[k]; } }
     };
   } catch(e) { ftCaught(e,'startup');
@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v510 — 2026-11-14";
+var APP_BUILD = "v511 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3805,6 +3805,8 @@ function buildConfig(){
 function pushConfig(){ if(!SHEETS_URL) return Promise.resolve(); return postPayload({config:buildConfig()}).catch(function(){}); }
 function applyConfig(cfg){
   if(!cfg||typeof cfg!=="object") return false;
+  // A setting saved as the text "undefined" (from an old build) can't be parsed; drop it.
+  for(var _ck in cfg){ if(cfg[_ck]==='undefined'||cfg[_ck]===undefined) delete cfg[_ck]; }
   var allow={ft_stiff:1,ft_name:1,ft_start_weight:1,ft_goal_weight:1,ft_cal:1,ft_cal_rest:1,ft_goal_mode:1,ft_cal_maint:1,ft_last_deload:1,ft_cal_recovery:1,ft_cal_active:1,ft_cal_ride:1,ft_protein:1,ft_carbs:1,ft_fat:1,ft_burned:1,ft_water:1,ft_supps:1,ds_swaps:1,ds_usermoves:1,ds_ut_on:1,ds_lt_on:1,ds_backreset:1,ds_pain:1,ds_prog:1,ds_rotate:1,ds_var_rotate:1,ds_hidden:1,ds_flowcustom:1,ft_cfg_ts:1,ft_height_in:1,ft_age:1,ft_sex:1,ft_proj:1,ft_lr_force:1};
   // Settings saved on this device are timestamped (ft_cfg_ts). If the Sheet's copy is
   // older (e.g. a background pull lands before the Save push reaches Apps Script),

@@ -12,7 +12,7 @@
 // (Any byte change to this file triggers the update cycle on next launch.)
 // ═══════════════════════════════════════════════════════════════════════
 
-var CACHE_VERSION = "v510";
+var CACHE_VERSION = "v511";
 
 self.addEventListener("install", function (e) {
   self.skipWaiting();
