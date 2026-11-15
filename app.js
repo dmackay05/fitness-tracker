@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v509 — 2026-11-14";
+var APP_BUILD = "v510 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -11205,9 +11205,16 @@ function dsGPCount(){
   o.onclick=null;
   (function tick(){ if(!dsGP.on)return; if(left<=0){ dsGPReps(); return; } document.getElementById('gp-n').textContent=left; dsTPBeep(520,90); left--; dsGP.t=setTimeout(tick,1000); })();
 }
+// Squats, push-ups, hinges and lunges start at the top, so each rep opens with the slow lowering.
+// Everything else (band curls, presses, flies, rows, bridges) starts in the stretch and opens with the work.
+function dsGPLowerFirst(name){ return /squat|push-?up|deadlift|\brdl\b|hinge|good morning|lunge|step-?down|\bdip/i.test(String(name||'')) && !/thrust|bridge/i.test(String(name||'')); }
 function dsGPReps(){
   var c=dsGPCtx(), o=dsGPEl(), tp=dsTempoParse(dsGP.spec); dsGP.state='reps'; dsGP.rep=0; dsGP.paused=false;
-  var phases=[['WORK',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100],['SLOW BACK',tp.down,'#9fd3c7',440],['STRETCH',tp.pause,'#f5c26b',330]].filter(function(p){return p[1]>0;});
+  var _ecc=dsGPLowerFirst(c.item.name||c.raw.name);
+  var phases=_ecc
+    ? [['LOWER SLOW',tp.down,'#9fd3c7',440],['BOTTOM',tp.pause,'#f5c26b',330],['DRIVE UP',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100]]
+    : [['WORK',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100],['SLOW BACK',tp.down,'#9fd3c7',440],['STRETCH',tp.pause,'#f5c26b',330]];
+  phases=phases.filter(function(p){return p[1]>0;});
   o.innerHTML=dsGPHead(c)+'<div class="gp-rep"><span id="gp-rep">1</span><small> / '+dsGP.target+'</small></div><div class="gp-phase" id="gp-ph"></div><div class="gp-huge gp-sec" id="gp-n"></div><div class="gp-sub" id="gp-hint">Tap anywhere to pause</div><button class="gp-end" onclick="event.stopPropagation();dsGPEnd()">End set</button>';
   o.onclick=function(){ dsGP.paused=!dsGP.paused; var h=document.getElementById('gp-hint'); if(h)h.textContent=dsGP.paused?'\u23f8 Paused \u2014 tap to resume':'Tap anywhere to pause'; o.classList.toggle('gp-paused',dsGP.paused); };
   var pi=-1, left=0;
