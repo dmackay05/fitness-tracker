@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v506 — 2026-11-14";
+var APP_BUILD = "v507 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6712,7 +6712,7 @@ function rvOpen(id){
     (r.why?'<div class="rv-why">'+esc(r.why)+'</div>':'')+
     ((owner&&r.me)?'<div class="rv-box"><div class="rv-h" style="color:#5eead4">Your portion · '+r.me.cal+' kcal · '+r.me.protein+'g P · '+r.me.carbs+'g C · '+r.me.fat+'g F</div><ul>'+r.me.items.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul></div>':'')+
     (RL_SERVES[r.id]?'<div class="rv-serves">\ud83c\udf7d Makes: <b>'+esc(RL_SERVES[r.id])+'</b></div>':'')+
-    '<div class="rv-h">Ingredients'+(r.src==='plan'?' (family batch)':'')+'</div><ul>'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'+
+    '<div class="rv-h">Ingredients'+(/^(Family|About 16)/.test(RL_SERVES[r.id]||'')?' (family batch)':'')+'</div><ul>'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'+
     '<div class="rv-h">Directions</div><ol class="rv-steps">'+r.steps.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ol>'+
     (r.serve?'<div class="rv-note"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+
     (r.family?'<div class="rv-note"><b>Family:</b> '+esc(r.family)+'</div>':'')+
