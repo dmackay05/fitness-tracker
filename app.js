@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v507 — 2026-11-14";
+var APP_BUILD = "v508 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -6393,7 +6393,7 @@ var RL_CATS=[["breakfast","Breakfast"],["sweet","Sweet Breakfast"],["lunch","Lun
 var MP_TOPUPS=[{"id":"t1","name":"Almonds","note":"1 oz (28 g)","cal":162,"protein":6,"carbs":6,"fat":14,"fiber":4},{"id":"t2","name":"Peanut butter + celery","note":"1 Tbsp (16 g) PB, 2 celery sticks","cal":107,"protein":5,"carbs":6,"fat":8,"fiber":2},{"id":"t3","name":"Avocado","note":"1/3 avocado (50 g), salt and lemon","cal":80,"protein":1,"carbs":4,"fat":7,"fiber":3},{"id":"t4","name":"Cheese + cucumber","note":"1 oz (28 g) cheese, a cucumber","cal":128,"protein":7,"carbs":4,"fat":9,"fiber":0},{"id":"t5","name":"Berries & cream","note":"1/2 cup berries + 2 Tbsp heavy cream, whipped","cal":145,"protein":1,"carbs":12,"fat":11,"fiber":2}];
 // v506: rotation rebuilt around the cookbook's own recipes (40 of 56 slots), one
 // breakfast-for-dinner every two weeks (never on an egg-breakfast day), and sized for the lean cut.
-var MP_ROTATION=[[["rb3","rl2","s1","rd1"],["rb5","rl11","rn2","d11"],["rs7","w3","m14","rd9"],["rb4","rl5","w11","d5"],["rb6","rl9","s1","rd4"],["rs5","rl3","rn2","d13"],["rb2","rl4","m14","rd5"]],[["rb7","l2","m14","rd6"],["rb1","rl1","w11","rd2"],["rs2","rl4","m30","d12"],["b1","rl7","w11","rd7"],["rs4","rl2","s1","d3"],["rs6","l4","m46","d8"],["rb3","rl11","rs3","rd8"]]];
+var MP_ROTATION=[[["rb3","rl2","s1","rd1"],["rb5","rl11","rn2","d11"],["rs7","w3","m14","rd9"],["rb4","rl5","w11","d5"],["rb6","rl9","s1","rd4"],["rs5","l5","rn2","d13"],["rb2","rl4","m14","rd5"]],[["rb7","l2","m14","rd6"],["rb1","rl1","w11","rd2"],["rs2","rl4","m30","d12"],["b1","rl7","w11","rd7"],["rs4","rl2","s1","d3"],["rs6","m22","m30","d8"],["rb3","rl11","rs3","rd8"]]];
 // Dinners that are breakfast-for-dinner; the rotation holds one per two weeks.
 var MP_BFD={d13:1,d6:1};
 // item text -> [rank, cal, protein, carbs, fat, fiber]  (removing the item)
@@ -6465,7 +6465,8 @@ function rlCard(r){
     '<div style="margin-top:10px;font-size:12px;line-height:1.55;color:#ccc">'+
       '<div style="color:#9a9d8c;font-style:italic;margin-bottom:8px">'+esc(r.why)+'</div>'+
       (RL_SERVES[r.id]?'<div class="rv-serves">\ud83c\udf7d Makes: <b>'+esc(RL_SERVES[r.id])+'</b></div>':'')+
-      '<div style="font-weight:700;margin-bottom:2px">Ingredients</div><ul style="margin:0 0 8px 18px;padding:0">'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join("")+'</ul>'+
+      '<div style="font-weight:700;margin-bottom:2px">Ingredients'+(r.famIng?' · weekday, you and Adri (2)':'')+'</div><ul style="margin:0 0 8px 18px;padding:0">'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join("")+'</ul>'+
+      (r.famIng?'<div style="font-weight:700;margin-bottom:2px">Ingredients · weekend, whole family (5)</div><ul style="margin:0 0 8px 18px;padding:0">'+r.famIng.map(function(i){return '<li>'+esc(i)+'</li>';}).join("")+'</ul>':'')+
       '<div style="font-weight:700;margin-bottom:2px">Directions</div><ol style="margin:0 0 8px 18px;padding:0">'+r.steps.map(function(s){return '<li>'+esc(s)+'</li>';}).join("")+'</ol>'+
       (r.serve?'<div style="margin-bottom:6px"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+
       (r.family?'<div style="margin-bottom:6px;color:#5eead4"><b>Family:</b> '+esc(r.family)+'</div>':'')+
@@ -6642,7 +6643,7 @@ function mpRenderToday(){
       '<details style="margin-top:4px"><summary style="font-size:11px;color:#8b8b9c;cursor:pointer">Family plates, recipe &amp; swap</summary>'+
         (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
         (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
-        mpRecipeBlock(m.id)+
+        mpRecipeBlock(m.id,pos.day>=5)+
         '<select style="margin-top:6px;width:100%" onchange="mpSwap(\''+key+'\',\''+x.slot+'\',this.value)">'+opts+'</select>'+
       '</details></div>';
   }).join("");
@@ -6675,7 +6676,7 @@ function mpRenderTomorrow(){
       '<div style="font-size:11px;color:#9a9d8c;text-transform:uppercase;letter-spacing:.06em">'+x.slot+(x.swapped?' · swapped':'')+'</div>'+
       '<div style="font-size:14px;color:#e8e8e0;font-weight:600">'+m.name+'</div>'+
       '<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:2px"><b style="color:#d8d8d0">Your plate:</b> '+m.mine+'</div>'+
-      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+mpRecipeBlock(m.id)+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+mpRecipeBlock(m.id,pos.day>=5)+
       '<select style="margin-top:6px;flex:1;min-width:150px" onchange="mpSwap(\''+key+'\',\''+x.slot+'\',this.value)">'+opts+'</select></div>'+
     '</div>';
   }).join("");
@@ -6697,11 +6698,12 @@ function mpAddGroceries(w){
 }
 // v458: a recipe opens in its own full-screen view. The meal cards re-render often, which
 // collapsed an inline "How to make it"; the overlay lives outside them so it stays open.
-function mpRecipeBlock(id){
+// v508: weekend=true opens lunch recipes with the whole-family amounts first.
+function mpRecipeBlock(id,weekend){
   var r=RL_DATA.filter(function(x){return x.id===id;})[0]; if(!r||!r.steps) return '';
-  return '<button class="bs" style="margin-top:6px" onclick="rvOpen(\''+id+'\')">📖 Open recipe</button>';
+  return '<button class="bs" style="margin-top:6px" onclick="rvOpen(\''+id+'\','+(weekend?1:0)+')">📖 Open recipe</button>';
 }
-function rvOpen(id){
+function rvOpen(id,weekend){
   var r=RL_DATA.filter(function(x){return x.id===id;})[0]; if(!r) return;
   var esc=function(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");};
   var ov=document.getElementById('rv-overlay');
@@ -6711,8 +6713,15 @@ function rvOpen(id){
     '<div class="rv-title">'+esc(r.name)+'</div>'+
     (r.why?'<div class="rv-why">'+esc(r.why)+'</div>':'')+
     ((owner&&r.me)?'<div class="rv-box"><div class="rv-h" style="color:#5eead4">Your portion · '+r.me.cal+' kcal · '+r.me.protein+'g P · '+r.me.carbs+'g C · '+r.me.fat+'g F</div><ul>'+r.me.items.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul></div>':'')+
-    (RL_SERVES[r.id]?'<div class="rv-serves">\ud83c\udf7d Makes: <b>'+esc(RL_SERVES[r.id])+'</b></div>':'')+
-    '<div class="rv-h">Ingredients'+(/^(Family|About 16)/.test(RL_SERVES[r.id]||'')?' (family batch)':'')+'</div><ul>'+r.ing.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'+
+    ((RL_SERVES[r.id]&&!r.famIng)?'<div class="rv-serves">\ud83c\udf7d Makes: <b>'+esc(RL_SERVES[r.id])+'</b></div>':'')+
+    (function(){
+      var li=function(arr){ return '<ul>'+arr.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>'; };
+      if(r.famIng){
+        var two='<div class="rv-h">Weekday: you and Adri (2)</div>'+li(r.ing), fam='<div class="rv-h">Weekend: whole family (5)</div>'+li(r.famIng);
+        return weekend?fam+two:two+fam;
+      }
+      return '<div class="rv-h">Ingredients'+(/^(Family|About 16)/.test(RL_SERVES[r.id]||'')?' (family batch)':'')+'</div>'+li(r.ing);
+    })()+
     '<div class="rv-h">Directions</div><ol class="rv-steps">'+r.steps.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ol>'+
     (r.serve?'<div class="rv-note"><b>Serve with:</b> '+esc(r.serve)+'</div>':'')+
     (r.family?'<div class="rv-note"><b>Family:</b> '+esc(r.family)+'</div>':'')+
@@ -6745,10 +6754,10 @@ function mpRenderPlan(){
       mpPlateHtml(m,x.slot,trims,null)+
       (m.family?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Family:</b> '+m.family+'</div>':'')+
       (m.picky?'<div style="font-size:12px;color:#9a9d8c;line-height:1.5;margin-top:4px"><b style="color:#d8d8d0">Picky plate:</b> '+m.picky+'</div>':'')+
-      mpRecipeBlock(m.id)+
+      mpRecipeBlock(m.id,d>=5)+
     '</div>'; }).join("");
   el.innerHTML='<div class="card">'+
-      '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:10px">Two-week rotation from the Recipe Library. Breakfast and dinner feed the family; lunch and snack are yours. Numbers are your portion. Log meals from the Log tab.</div>'+
+      '<div style="font-size:11px;color:#888;font-family:\'DM Mono\',monospace;margin-bottom:10px">Two-week rotation from the Recipe Library. Breakfast and dinner feed the family; weekday lunch is for you and Adri, weekend lunch for the whole family; snacks are yours. Numbers are your portion. Log meals from the Log tab.</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+wk+'</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap">'+dy+'</div>'+
       '<div style="font-size:12px;color:#9a9d8c;margin-top:10px">Day total: '+mpStatLine(s,vGoal)+'</div>'+
