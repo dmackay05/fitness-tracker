@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v508 — 2026-11-14";
+var APP_BUILD = "v509 — 2026-11-14";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9179,7 +9179,7 @@ function dsMinBlur(id,perMin){ var raw=dsRawItem(id); var st=dsItemState(id); va
 function dsWantsLoad(item){ if(item.load===false)return false; if(item.load===true)return true; var e=(item.equip||''); return /tube|band|loop|\blb\b|kettlebell|dumbbell|\bkb\b/i.test(e) && !/^bodyweight/i.test(e.trim()); }
 // ── Tempo pacer: audio + vibration cues per rep phase. Spec 'down-pause-up-squeeze' in seconds.
 function dsTempoParse(t){ var p=String(t||'3-0-1-1').split('-').map(function(x){return Math.max(0,+x||0);}); while(p.length<4)p.push(0); return {down:p[0],pause:p[1],up:p[2],sq:p[3]}; }
-function dsTempoText(tp){ var a=['Lower '+tp.down+'s']; if(tp.pause)a.push('pause '+tp.pause+'s'); a.push('up '+(tp.up||1)+'s'); if(tp.sq)a.push('squeeze '+tp.sq+'s'); return a.join(' \u00b7 '); }
+function dsTempoText(tp){ var a=['Work '+(tp.up||1)+'s']; if(tp.sq)a.push('squeeze '+tp.sq+'s'); a.push('slow back '+tp.down+'s'); if(tp.pause)a.push('stretch '+tp.pause+'s'); return a.join(' \u00b7 '); }
 var dsTP={on:false,t:null,ctx:null,lock:null};
 function dsTPBeep(f,ms,vol){ try{ var C=window.AudioContext||window.webkitAudioContext; if(!C)return; if(!dsTP.ctx)dsTP.ctx=new C(); if(dsTP.ctx.state==='suspended')dsTP.ctx.resume(); var c=dsTP.ctx,o=c.createOscillator(),g=c.createGain(); o.frequency.value=f; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(vol||0.18,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+ms/1000); o.start(); o.stop(c.currentTime+ms/1000); }catch(e){ftCaught(e,'dsTPBeep');} }
 function dsTPVib(p){ try{ if(navigator.vibrate)navigator.vibrate(p); }catch(e){} }
@@ -11207,7 +11207,7 @@ function dsGPCount(){
 }
 function dsGPReps(){
   var c=dsGPCtx(), o=dsGPEl(), tp=dsTempoParse(dsGP.spec); dsGP.state='reps'; dsGP.rep=0; dsGP.paused=false;
-  var phases=[['DOWN',tp.down,'#9fd3c7',440],['HOLD',tp.pause,'#f5c26b',330],['UP',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100]].filter(function(p){return p[1]>0;});
+  var phases=[['WORK',Math.max(1,tp.up),'#7cd67c',880],['SQUEEZE',tp.sq,'#c49bff',1100],['SLOW BACK',tp.down,'#9fd3c7',440],['STRETCH',tp.pause,'#f5c26b',330]].filter(function(p){return p[1]>0;});
   o.innerHTML=dsGPHead(c)+'<div class="gp-rep"><span id="gp-rep">1</span><small> / '+dsGP.target+'</small></div><div class="gp-phase" id="gp-ph"></div><div class="gp-huge gp-sec" id="gp-n"></div><div class="gp-sub" id="gp-hint">Tap anywhere to pause</div><button class="gp-end" onclick="event.stopPropagation();dsGPEnd()">End set</button>';
   o.onclick=function(){ dsGP.paused=!dsGP.paused; var h=document.getElementById('gp-hint'); if(h)h.textContent=dsGP.paused?'\u23f8 Paused \u2014 tap to resume':'Tap anywhere to pause'; o.classList.toggle('gp-paused',dsGP.paused); };
   var pi=-1, left=0;
