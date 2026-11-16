@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v512 — 2026-11-14";
+var APP_BUILD = "v513 — 2026-11-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -4587,10 +4587,10 @@ function dsLayoutRemove(sk,id){
   ['w','m','c'].forEach(function(sec){ L[sec]=L[sec].filter(function(x){ return String(x).split('#')[0]!==base; }); });
   DS_LAYOUT[sk]=L; dsLayoutSave();
 }
-var DS_LAYOUT_SEC=null;
+var DS_LAYOUT_SEC=null, DS_LAYOUT_SHOWALL=false;
 function dsLayoutAdd(sec){
   var sk=dsSessionKey(activeDate);
-  DS_LAYOUT_SEC=sec;
+  DS_LAYOUT_SEC=sec; DS_LAYOUT_SHOWALL=false;
   DS_CUSTOM_PICK=dsLayoutGet(sk)[sec].slice();
   DS_CUSTOM_PICK_ORIGINAL=null; DS_CUSTOM_DAYS={};
   dsCustomSetMode('layout');
@@ -6834,15 +6834,23 @@ function dsCustomRenderLibrary(){
   var q=(document.getElementById("ds-custom-search").value||"").toLowerCase().trim();
   var pool=dsMasterPool();
   if(DS_CUSTOM_MODE==='layout') pool=pool.filter(function(m){ return !m.lib; });
+  // v513: in a Day Layout section, list only moves that belong to that section (Warm-Up / Main / Core).
+  var _secNote='';
+  if(DS_CUSTOM_MODE==='layout' && DS_LAYOUT_SEC && !DS_LAYOUT_SHOWALL){
+    var _want={w:'warmup',m:'main',c:'core'}[DS_LAYOUT_SEC];
+    var _n0=pool.length;
+    pool=pool.filter(function(m){ var b=dsSectionBucket(m); if(b==='main'&&/^prep\b/i.test(m.slot||'')) b='warmup'; return b===_want; }); // Prep moves (bird dog, clamshell, hinge drill) count as warm-up here
+    _secNote='<div style="font-size:11px;color:#8b8b9c;font-family:\'DM Mono\',monospace;margin:4px 0 6px">Showing '+({w:'warm-up',m:'main',c:'core'}[DS_LAYOUT_SEC])+' moves only · <span style="color:#5eead4;cursor:pointer;text-decoration:underline" onclick="DS_LAYOUT_SHOWALL=true;dsCustomRenderLibrary()">show all '+_n0+'</span></div>';
+  }
   if(q) pool=pool.filter(function(m){ return (m.name+" "+(m.target||"")+" "+(m.slot||"")).toLowerCase().indexOf(q)!==-1; });
   if(q && DS_CUSTOM_MODE==='today'){
     var _vr=[];
     dsMasterPool().forEach(function(m){ (m.variants||[]).forEach(function(v,i){ if(String(v.name).toLowerCase().indexOf(q)!==-1) _vr.push({id:m.id+'#'+(i+1),name:v.name,target:m.target,equip:v.equip||m.equip,lib:0,_of:m.name}); }); });
     pool=pool.concat(_vr);
   }
-  if(!pool.length){ el.innerHTML='<div style="text-align:center;color:#8b8b9c;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No matches.</div>'; return; }
+  if(!pool.length){ el.innerHTML=_secNote+'<div style="text-align:center;color:#8b8b9c;font-size:12px;font-family:\'DM Mono\',monospace;padding:14px 0">No matches.</div>'; return; }
   var _lastGrp=null;
-  el.innerHTML=pool.map(function(m){
+  el.innerHTML=_secNote+pool.map(function(m){
     var picked=DS_CUSTOM_PICK.indexOf(m.id)!==-1;
     var grp=m.lib?'Gym Exercise Ideas':'From Your Plan & Extras', hdr='';
     if(!q && grp!==_lastGrp){ _lastGrp=grp; hdr='<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5eead4;font-family:\'DM Mono\',monospace;margin:12px 0 4px">'+grp+'</div>'; }
