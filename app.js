@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v513 — 2026-11-16";
+var APP_BUILD = "v514 — 2026-11-16";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -9305,7 +9305,7 @@ function dsLogSet(id,target){
   st.sets.push(setObj);
   dsAutoregulate(id);
   if(st.sets.length>=(target||(_viewItem&&_viewItem.sets)||3)){ st.manualDone=true; dsLogComplete(_viewItem); } else dsSyncPartialLog(_viewItem);
-  if(!(dsGP&&dsGP.noRest) && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(DS_REST_SECS, (_rm&&_rm.name)||"", "REST"); }catch(e){ftCaught(e,'dsLogSet');} }
+  if(!(dsGP&&dsGP.noRest) && typeof DS_REST_SECS!=="undefined"){ try{ var _rm=dsViewOf(dsRawItem(id)); tgStartTimer(dsGPRestSecs(_rm||{}), (_rm&&_rm.name)||"", "REST"); }catch(e){ftCaught(e,'dsLogSet');} }
   dsSaveUI(); dsRender(); renderAll();
 }
 var DS_EFFORT_TAGS=[
@@ -11169,9 +11169,10 @@ function dsLoadTipHtml(name,inner){
 var dsGP={id:null,on:false,t:null,paused:false,state:'',target:10,rep:0,side:null,lock:null};
 function dsGPRestSecs(item){
   var rx=String(item.rx||''), m=rx.match(/(\d+(?:\.\d+)?)\s*min/i), s=rx.match(/(\d+)\s*s(?:ec)?\b/i);
-  if(m) return Math.round(parseFloat(m[1])*60);
-  if(s) return +s[1];
-  return dsIsCompound(item)?90:(typeof DS_REST_SECS!=='undefined'?DS_REST_SECS:60);
+  /* v514: compounds (press/row/pulldown/squat…) get at least 2.5 min so later sets keep their reps;
+     isolation keeps the rx rest (60–90 s). */
+  var base = m ? Math.round(parseFloat(m[1])*60) : s ? +s[1] : (typeof DS_REST_SECS!=='undefined'?DS_REST_SECS:60);
+  return dsIsCompound(item) ? Math.max(base,150) : base;
 }
 function dsGPTopReps(item){ var m=String(item.rx||'').match(/[×x]\s*(\d+)(?:\s*[–-]\s*(\d+))?/); return m?+(m[2]||m[1]):10; }
 /* v400 open-ended sets: every set targets the TOP of the rx rep range (e.g. 3×10–15 → 15),
