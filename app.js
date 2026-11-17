@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v514 — 2026-11-16";
+var APP_BUILD = "v515 — 2026-11-17";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3851,7 +3851,7 @@ function applyConfig(cfg){
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){ftCaught(e,'applyConfig');}
-  try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } dsLayoutMigrate515(true); }catch(e){ftCaught(e,'applyConfig');}
   try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){ftCaught(e,'applyConfig');}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
@@ -4560,6 +4560,36 @@ var DS_LAYOUT_SECS=[['w','Warm-Up'],['m','Main Work'],['c','Core']];
 var _dsLayCache={};
 function dsLayoutOn(sk){ return ftIsOwner() && !dsDayIsCustom(sk); }
 function dsLayoutSave(){ _dsLayCache={}; try{ store.set('ds_layout',JSON.stringify(DS_LAYOUT)); }catch(e){ftCaught(e,'dsLayoutSave');} try{ dsQueueConfigPush(); }catch(e){ftCaught(e,'dsLayoutSave');} }
+// v515 (Nov 17 2026): lower-day tidy for days already saved in ds_layout — prep moves go to
+// Warm-up, Friday's unloaded hinge becomes the banded RDL, and Main Work is put in lift order
+// (hardest first, fewest anchor moves). Runs on startup and on the first Sheet pull after the
+// update; days not yet edited already get this from the program defaults.
+var DS_LAY_MIG515={
+  tue:{prep:['tue-clamshell','tue-birddog'],order:['tue-spanish','sat-hipthrust','tue-legext','mon-calf','mon-elbow']},
+  fri:{prep:['fri-birddog','fri-sideplank'],order:['fri-slrdl','fri-hipthrust','fri-seatcurl','fri-add','fri-calf'],swap:['fri-hinge','fri-slrdl']}
+};
+function dsLayoutMigrate515(fromPull){
+  if(store.get('ds_lay_mig515')==='1') return;
+  var changed=false;
+  Object.keys(DS_LAY_MIG515).forEach(function(sk){
+    var L=DS_LAYOUT[sk]; if(!L||typeof L!=='object') return;
+    var R=DS_LAY_MIG515[sk], base=function(x){ return String(x).split('#')[0]; };
+    var w=(L.w||[]).slice(), m=(L.m||[]).slice(), c=(L.c||[]).slice(), before=JSON.stringify([w,m,c]);
+    if(R.swap){
+      var has=w.concat(m,c).some(function(x){ return base(x)===R.swap[1]; });
+      [w,m,c].forEach(function(a,ai){ for(var i=a.length-1;i>=0;i--){ if(base(a[i])===R.swap[0]){ a.splice(i,1); if(!has){ m.unshift(R.swap[1]); has=true; } } } });
+    }
+    R.prep.forEach(function(id){
+      [m,c].forEach(function(a){ for(var i=a.length-1;i>=0;i--){ if(base(a[i])===id){ a.splice(i,1); if(!w.some(function(x){return base(x)===id;})) w.push(id); } } });
+    });
+    var rank=function(x){ var k=R.order.indexOf(base(x)); return k<0?R.order.length:k; };
+    m=m.map(function(x,i){ return [x,i]; }).sort(function(a,b){ return (rank(a[0])-rank(b[0]))||(a[1]-b[1]); }).map(function(p){ return p[0]; });
+    if(JSON.stringify([w,m,c])!==before){ DS_LAYOUT[sk]={w:w,m:m,c:c}; changed=true; }
+  });
+  if(changed) dsLayoutSave();
+  if(fromPull) store.set('ds_lay_mig515','1');
+}
+try{ dsLayoutMigrate515(false); }catch(e){ ftCaught(e,'dsLayoutMigrate515'); }
 function dsLayoutDefault(sk){
   var S=(sk==='wed'?(dsWedFocusSession()||DS_SESSIONS.wed):DS_SESSIONS[sk])||{moves:[]};
   var hid=DS_HIDDEN[sk]||[], out={w:[],m:[],c:[]}, seen={};
