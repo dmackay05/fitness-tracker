@@ -332,7 +332,9 @@ var DS_RESERVE_MOVES=[
 
 // v516 (Nov 21 2026): one shared upper session on Mon/Thu/Sat. Same exercises (and ids) all
 // three days so double progression gets three exposures a week; the days differ by effort wave
-// only (Mon heavy · Thu medium · Sat light/high-rep). Moves that left the upper days go to the
+// only (Mon heavy · Thu medium · Sat light/high-rep).
+// v517 (Nov 22 2026): push-up, single-arm lat pulldown and overhead press added to all three days
+// (David had added them to Saturday's layout); they keep their own variant choice. Moves that left the upper days go to the
 // reserve list so the library and old logs keep them.
 (function(){
   var L=function(id){ var all=DS_SESSIONS.mon.moves.concat(DS_SESSIONS.thu.moves,DS_SESSIONS.sat.moves,DS_RESERVE_MOVES); for(var i=0;i<all.length;i++){ if(all[i]&&all[i].id===id) return all[i]; } return null; };
@@ -349,8 +351,11 @@ var DS_RESERVE_MOVES=[
     ['mon-tri',2,'2×12–15'],
     ['mon-inclinepress',3,'3×10–12'],
     [fly,2,'2×12–20'],
+    ['mon-pushup',3,'3×10–15',1],
     ['sat-curl',3,'3×12–15'],
     ['sat-ohtriceps',3,'3×12–15'],
+    ['ut-slpulldown',2,'2×12–20/side',1],
+    ['mon-ohp',3,'3×10–12',1],
     ['mon-lateral',3,'3×12–20'],
     ['thu-hammer',2,'2×12–15'],
     ['mon-forearm',2,'2×15–20/side'],
@@ -360,7 +365,7 @@ var DS_RESERVE_MOVES=[
   spec.forEach(function(r){
     var m=typeof r[0]==='string'?L(r[0]):r[0]; if(!m) return;
     var c={}; for(var k in m) c[k]=m[k];
-    c.sets=r[1]; if(r[2]) c.rx=r[2]; delete c.pair; if(c.variants&&c.variants.length) c.lockVar=0;
+    c.sets=r[1]; if(r[2]) c.rx=r[2]; delete c.pair; if(c.variants&&c.variants.length&&!r[3]) c.lockVar=0;
     keep[c.id]=1; moves.push(c);
   });
   var inRes={}; DS_RESERVE_MOVES.forEach(function(m){ if(m&&m.id) inRes[m.id]=1; });
