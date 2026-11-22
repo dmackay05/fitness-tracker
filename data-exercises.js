@@ -334,7 +334,8 @@ var DS_RESERVE_MOVES=[
 // three days so double progression gets three exposures a week; the days differ by effort wave
 // only (Mon heavy · Thu medium · Sat light/high-rep).
 // v517 (Nov 22 2026): push-up, single-arm lat pulldown and overhead press added to all three days
-// (David had added them to Saturday's layout); they keep their own variant choice. Moves that left the upper days go to the
+// (David had added them to Saturday's layout); they keep their own variant choice.
+// v518: straight-arm band pullover (thu-pullover) back in, after the single-arm pulldown. Moves that left the upper days go to the
 // reserve list so the library and old logs keep them.
 (function(){
   var L=function(id){ var all=DS_SESSIONS.mon.moves.concat(DS_SESSIONS.thu.moves,DS_SESSIONS.sat.moves,DS_RESERVE_MOVES); for(var i=0;i<all.length;i++){ if(all[i]&&all[i].id===id) return all[i]; } return null; };
@@ -355,6 +356,7 @@ var DS_RESERVE_MOVES=[
     ['sat-curl',3,'3×12–15'],
     ['sat-ohtriceps',3,'3×12–15'],
     ['ut-slpulldown',2,'2×12–20/side',1],
+    ['thu-pullover',2,'2×15–20',1],
     ['mon-ohp',3,'3×10–12',1],
     ['mon-lateral',3,'3×12–20'],
     ['thu-hammer',2,'2×12–15'],
