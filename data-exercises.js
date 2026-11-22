@@ -330,6 +330,48 @@ var DS_RESERVE_MOVES=[
   {"id":"wed-rotslam","name":"Rotational Slam","demo":"slam","slot":"Power (bonus) · Obliques","target":"Obliques","equip":"10 lb slam ball","rx":"3×8/side","cal":30,"cue":"Hips lead the rotation — arms just guide it. Moved from Wednesday — more dynamic than the static Pallof rotation above. ⚠️ SI joint flag — this loads the right SI joint directly through rotation. Control matters more than reps here: if form or hip-lead starts breaking down late in a set, stop the set there rather than grinding out the rest. Any SI joint response the next day is the signal to drop to the Pallof variant below for a while.","log":"setsreps","sets":3,"variants":[{"name":"Standing Pallof Rotation","equip":"Tube 10–20 lb · anchor to one side","rx":"3×8/side","cue":"Hold at your chest, rotate slowly toward the anchor and back — same oblique pattern as the slam, no ballistic force at all","demo":"pallof"}]},
 ];
 
+// v516 (Nov 21 2026): one shared upper session on Mon/Thu/Sat. Same exercises (and ids) all
+// three days so double progression gets three exposures a week; the days differ by effort wave
+// only (Mon heavy · Thu medium · Sat light/high-rep). Moves that left the upper days go to the
+// reserve list so the library and old logs keep them.
+(function(){
+  var L=function(id){ var all=DS_SESSIONS.mon.moves.concat(DS_SESSIONS.thu.moves,DS_SESSIONS.sat.moves,DS_RESERVE_MOVES); for(var i=0;i<all.length;i++){ if(all[i]&&all[i].id===id) return all[i]; } return null; };
+  var src=L('mon-standbandpress'), l2h=null;
+  (src.variants||[]).forEach(function(v){ if(v.name==='Low-to-High Band Fly') l2h=v; });
+  var fly={id:'up-l2hfly',name:'Low-to-High Band Fly',slot:'Push · Chest Fly',target:'Upper Chest',demo:'fly',log:'setsreps',cal:20};
+  for(var k in l2h) if(!(k in fly)||k==='name') fly[k]=l2h[k];
+  var spec=[
+    ['warmup-bandshoulder',1,null],
+    ['mon-standbandpress',3,'3×10–12'],
+    ['thu-row',3,'3×10–12'],
+    ['thu-facepull',2,'2×15–20'],
+    ['mon-pulldown',3,'3×10–12'],
+    ['mon-tri',2,'2×12–15'],
+    ['mon-inclinepress',3,'3×10–12'],
+    [fly,2,'2×12–20'],
+    ['sat-curl',3,'3×12–15'],
+    ['sat-ohtriceps',3,'3×12–15'],
+    ['mon-lateral',3,'3×12–20'],
+    ['thu-hammer',2,'2×12–15'],
+    ['mon-forearm',2,'2×15–20/side'],
+    ['mon-bandcrunch',3,'3×12–15']
+  ];
+  var keep={}, moves=[];
+  spec.forEach(function(r){
+    var m=typeof r[0]==='string'?L(r[0]):r[0]; if(!m) return;
+    var c={}; for(var k in m) c[k]=m[k];
+    c.sets=r[1]; if(r[2]) c.rx=r[2]; delete c.pair; if(c.variants&&c.variants.length) c.lockVar=0;
+    keep[c.id]=1; moves.push(c);
+  });
+  var inRes={}; DS_RESERVE_MOVES.forEach(function(m){ if(m&&m.id) inRes[m.id]=1; });
+  ['mon','thu','sat'].forEach(function(d){ DS_SESSIONS[d].moves.forEach(function(m){ if(m&&m.id&&!keep[m.id]&&!inRes[m.id]&&m.id.indexOf('warmup-')!==0){ inRes[m.id]=1; DS_RESERVE_MOVES.push(m); } }); });
+  var wave={
+    mon:['Upper — Heavy','Same upper session all 3 days · HEAVY day: heavier band, bottom of each rep range, 1–2 RIR · ~60–65 min'],
+    thu:['Upper — Medium','Same upper session all 3 days · MEDIUM day: ranges as written, 1–3 RIR · ~60–65 min'],
+    sat:['Upper — Light','Same upper session all 3 days · LIGHT day: lighter band, top of each range or past it, last set to failure · ~60–65 min']
+  };
+  ['mon','thu','sat'].forEach(function(d){ DS_SESSIONS[d].title=wave[d][0]; DS_SESSIONS[d].sub=wave[d][1]; DS_SESSIONS[d].moves=moves.slice(); });
+})();
 var DS_MV={
   'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-ohp':{'Shoulders':1,'Triceps':.5},
