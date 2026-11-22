@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v518 — 2026-11-22";
+var APP_BUILD = "v519 — 2026-11-22";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3852,7 +3852,7 @@ function applyConfig(cfg){
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } dsLayoutMigrate515(true); }catch(e){ftCaught(e,'applyConfig');}
-  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } dsLayoutMigrate516(true); }catch(e){ftCaught(e,'applyConfig');}
+  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } dsLayoutMigrate516(true); dsLayoutMigrate518(true); }catch(e){ftCaught(e,'applyConfig');}
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){ftCaught(e,'applyConfig');}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
@@ -4601,6 +4601,14 @@ function dsLayoutMigrate516(fromPull){
   if(fromPull) store.set('ds_lay_mig516','1');
 }
 try{ dsLayoutMigrate516(false); }catch(e){ ftCaught(e,'dsLayoutMigrate516'); }
+// v518 (Nov 22 2026): Saturday's saved layout matched the new shared default minus the pullover,
+// so drop it once and let Mon/Thu/Sat all follow the shared upper session.
+function dsLayoutMigrate518(fromPull){
+  if(store.get('ds_lay_mig518')==='1') return;
+  if(DS_LAYOUT.sat){ delete DS_LAYOUT.sat; dsLayoutSave(); }
+  if(fromPull) store.set('ds_lay_mig518','1');
+}
+try{ dsLayoutMigrate518(false); }catch(e){ ftCaught(e,'dsLayoutMigrate518'); }
 function dsLayoutDefault(sk){
   var S=(sk==='wed'?(dsWedFocusSession()||DS_SESSIONS.wed):DS_SESSIONS[sk])||{moves:[]};
   var hid=DS_HIDDEN[sk]||[], out={w:[],m:[],c:[]}, seen={};
