@@ -335,7 +335,8 @@ var DS_RESERVE_MOVES=[
 // only (Mon heavy · Thu medium · Sat light/high-rep).
 // v517 (Nov 22 2026): push-up, single-arm lat pulldown and overhead press added to all three days
 // (David had added them to Saturday's layout); they keep their own variant choice.
-// v518: straight-arm band pullover (thu-pullover) back in, after the single-arm pulldown. Moves that left the upper days go to the
+// v518: straight-arm band pullover (thu-pullover) back in, after the single-arm pulldown.
+// v520: band shrug (sat-shrug) added after face pulls, 2×12–20 with a 1–2 s top squeeze. Moves that left the upper days go to the
 // reserve list so the library and old logs keep them.
 (function(){
   var L=function(id){ var all=DS_SESSIONS.mon.moves.concat(DS_SESSIONS.thu.moves,DS_SESSIONS.sat.moves,DS_RESERVE_MOVES); for(var i=0;i<all.length;i++){ if(all[i]&&all[i].id===id) return all[i]; } return null; };
@@ -348,6 +349,7 @@ var DS_RESERVE_MOVES=[
     ['mon-standbandpress',3,'3×10–12'],
     ['thu-row',3,'3×10–12'],
     ['thu-facepull',2,'2×15–20'],
+    ['sat-shrug',2,'2×12–20',1],
     ['mon-pulldown',3,'3×10–12'],
     ['mon-tri',2,'2×12–15'],
     ['mon-inclinepress',3,'3×10–12'],
