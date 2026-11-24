@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v524 — 2026-11-23";
+var APP_BUILD = "v525 — 2026-11-23";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3852,7 +3852,7 @@ function applyConfig(cfg){
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } dsLayoutMigrate515(true); }catch(e){ftCaught(e,'applyConfig');}
-  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } dsLayoutMigrate516(true); dsLayoutMigrate518(true); dsLayoutMigrate524(true); }catch(e){ftCaught(e,'applyConfig');}
+  try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } dsLayoutMigrate516(true); dsLayoutMigrate518(true); dsLayoutMigrate524(true); dsLayoutMigrate525(true); }catch(e){ftCaught(e,'applyConfig');}
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){ftCaught(e,'applyConfig');}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
   if(store.get('ds_var_rotate')!=null) DS_VAR_ROTATE=(store.get('ds_var_rotate')==='1');
@@ -4626,6 +4626,15 @@ function dsLayoutMigrate524(fromPull){
   if(fromPull) store.set('ds_lay_mig524','1');
 }
 try{ dsLayoutMigrate524(false); }catch(e){ ftCaught(e,'dsLayoutMigrate524'); }
+// v525: Tue/Fri now share one lower session — clear saved layouts/hidden lists for them once.
+function dsLayoutMigrate525(fromPull){
+  if(store.get('ds_lay_mig525')==='1') return;
+  var lc=false, hc=false;
+  ['tue','fri'].forEach(function(sk){ if(DS_LAYOUT[sk]){ delete DS_LAYOUT[sk]; lc=true; } if(DS_HIDDEN[sk]){ delete DS_HIDDEN[sk]; hc=true; } });
+  if(lc) dsLayoutSave(); if(hc) dsHiddenSave();
+  if(fromPull) store.set('ds_lay_mig525','1');
+}
+try{ dsLayoutMigrate525(false); }catch(e){ ftCaught(e,'dsLayoutMigrate525'); }
 function dsLayoutDefault(sk){
   var S=(sk==='wed'?(dsWedFocusSession()||DS_SESSIONS.wed):DS_SESSIONS[sk])||{moves:[]};
   var hid=DS_HIDDEN[sk]||[], out={w:[],m:[],c:[]}, seen={};

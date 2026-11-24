@@ -404,6 +404,29 @@ var DS_RESERVE_MOVES=[
   };
   ['mon','thu','sat'].forEach(function(d){ DS_SESSIONS[d].title=wave[d][0]; DS_SESSIONS[d].sub=wave[d][1]; DS_SESSIONS[d].moves=moves.slice(); });
 })();
+// v525 (Nov 23 2026): Tue and Fri share one full lower session (quads, hamstrings, glutes 2x/week).
+// Tue = HEAVY, Fri = LIGHT. Moves that leave the lower days go to the reserve list.
+(function(){
+  var all=function(){ return DS_SESSIONS.tue.moves.concat(DS_SESSIONS.fri.moves,DS_RESERVE_MOVES); };
+  var L=function(id){ var a=all(); for(var i=0;i<a.length;i++){ if(a[i]&&a[i].id===id) return a[i]; } return null; };
+  var spec=[
+    ['warmup-hipflow-7'],['tue-birddog',2,'2×6–8/side'],['tue-clamshell',2,'2×12–15/side'],
+    ['tue-spanish',3,'3×15–25'],['fri-slrdl',3,'3×10–15'],['sat-hipthrust',3,'3×12–20'],
+    ['tue-legext',3,'3×15–25'],['fri-seatcurl',3,'3×12–20'],['fri-add',2,'2×12–15/leg'],
+    ['mon-calf',3,'3×15–20'],['mon-elbow',3,'3×15/side'],
+    ['tue-pallof',3,'3×10/side'],['thu-legraise',3,'3×10–12']
+  ];
+  var keep={}, moves=[];
+  spec.forEach(function(r){ var m=L(r[0]); if(!m) return; var c={}; for(var k in m) c[k]=m[k];
+    if(r[1]){ c.sets=r[1]; c.rx=r[2]; } delete c.pair; keep[c.id]=1; moves.push(c); });
+  var inRes={}; DS_RESERVE_MOVES.forEach(function(m){ if(m&&m.id) inRes[m.id]=1; });
+  ['tue','fri'].forEach(function(d){ DS_SESSIONS[d].moves.forEach(function(m){ if(m&&m.id&&!keep[m.id]&&!inRes[m.id]&&m.id.indexOf('warmup-')!==0){ inRes[m.id]=1; DS_RESERVE_MOVES.push(m); } }); });
+  var wave={
+    tue:['Lower — Heavy','Same lower session both days · HEAVY day: heavier band, bottom of each rep range, 1–2 RIR · ~50–55 min'],
+    fri:['Lower — Light','Same lower session both days · LIGHT day: lighter band, top of each range or past it, last set to failure · ~50–55 min']
+  };
+  ['tue','fri'].forEach(function(d){ DS_SESSIONS[d].title=wave[d][0]; DS_SESSIONS[d].sub=wave[d][1]; DS_SESSIONS[d].moves=moves.slice(); });
+})();
 var DS_MV={
   'mon-pushup':{'Chest':1,'Triceps':.5,'Shoulders':.5},
   'mon-ohp':{'Shoulders':1,'Triceps':.5},
@@ -507,6 +530,7 @@ var DS_MV={
   'mon-curl':{'Biceps':1,'Forearms':.3},
   'mon-tri':{'Triceps':1,'Forearms':.3},
   'up-kickback':{'Triceps':1},
+  'fri-add':{'Adductors':1},
   'up-reardeltfly':{'Rear Delts':1},
   'up-l2hfly':{'Chest':1,'Shoulders':.3},
   'mon-elbow':{'Forearms':.5},
