@@ -349,6 +349,14 @@ var DS_RESERVE_MOVES=[
   var pa=L('mon-pressaround');
   if(pa){ var pv={}; for(var q in pa) if(q!=='variants'&&q!=='id'&&q!=='pair'&&q!=='lockVar') pv[q]=pa[q];
     fly.variants=(pa.variants||[]).filter(function(v){ return v&&v.name!=='Low-to-High Band Fly'; }).concat([pv]); }
+  // v522: Band Triceps Kickback as its own exercise (copied from the pushdown's variant),
+  // swappable with the pushdown / overhead extension.
+  var tri=L('mon-tri'), kb=null;
+  (tri&&tri.variants||[]).forEach(function(v){ if(v.name==='Band Triceps Kickback') kb=v; });
+  var kick={id:'up-kickback',name:'Band Triceps Kickback',slot:'Push · Triceps',target:'Triceps',demo:'triceps',log:'setsreps',cal:15};
+  if(kb) for(var k2 in kb) if(!(k2 in kick)||k2==='name') kick[k2]=kb[k2];
+  if(tri){ var tv={}; for(var q2 in tri) if(q2!=='variants'&&q2!=='id'&&q2!=='pair'&&q2!=='lockVar') tv[q2]=tri[q2];
+    kick.variants=[tv].concat((tri.variants||[]).filter(function(v){ return v&&v.name!=='Band Triceps Kickback'; })); }
   var spec=[
     ['warmup-bandshoulder',1,null],
     ['mon-standbandpress',3,'3×10–12'],
@@ -362,6 +370,7 @@ var DS_RESERVE_MOVES=[
     ['mon-pushup',3,'3×10–15',1],
     ['sat-curl',3,'3×12–15'],
     ['sat-ohtriceps',3,'3×12–15'],
+    [kick,2,'2×15–20/side'],
     ['ut-slpulldown',2,'2×12–20/side',1],
     ['thu-pullover',2,'2×15–20',1],
     ['mon-ohp',3,'3×10–12',1],
@@ -488,6 +497,8 @@ var DS_MV={
   'bwl-liftoff':{'Glutes':1,'Hamstrings':.5,'Quads':.5},
   'mon-curl':{'Biceps':1,'Forearms':.3},
   'mon-tri':{'Triceps':1,'Forearms':.3},
+  'up-kickback':{'Triceps':1},
+  'up-l2hfly':{'Chest':1,'Shoulders':.3},
   'mon-elbow':{'Forearms':.5},
   'thu-elbow':{'Forearms':.5},
   'mon-inclinepress':{'Chest':1,'Triceps':.7,'Shoulders':.5},
