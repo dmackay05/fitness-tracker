@@ -357,11 +357,20 @@ var DS_RESERVE_MOVES=[
   if(kb) for(var k2 in kb) if(!(k2 in kick)||k2==='name') kick[k2]=kb[k2];
   if(tri){ var tv={}; for(var q2 in tri) if(q2!=='variants'&&q2!=='id'&&q2!=='pair'&&q2!=='lockVar') tv[q2]=tri[q2];
     kick.variants=[tv].concat((tri.variants||[]).filter(function(v){ return v&&v.name!=='Band Triceps Kickback'; })); }
+  // v523: Cross-Body Rear Delt Fly as its own exercise (copied from the face pull's variant).
+  var fp=L('thu-facepull'), rv=null;
+  (fp&&fp.variants||[]).forEach(function(v){ if(v.name==='Cross-Body Rear Delt Fly') rv=v; });
+  var rdf={id:'up-reardeltfly',name:'Cross-Body Rear Delt Fly',slot:'Pull · Rear Delts',target:'Rear Delts',demo:'fly',log:'setsreps',cal:15};
+  if(rv) for(var k3 in rv) if(!(k3 in rdf)||k3==='name') rdf[k3]=rv[k3];
+  var pa2=L('mon-pullapart');
+  if(pa2){ var pv2={}; for(var q3 in pa2) if(q3!=='variants'&&q3!=='id'&&q3!=='pair'&&q3!=='lockVar') pv2[q3]=pa2[q3];
+    rdf.variants=[pv2].concat((pa2.variants||[]).filter(function(v){ return v&&v.name!=='Cross-Body Rear Delt Fly'; })); }
   var spec=[
     ['warmup-bandshoulder',1,null],
     ['mon-standbandpress',3,'3×10–12'],
     ['thu-row',3,'3×10–12'],
     ['thu-facepull',2,'2×15–20'],
+    [rdf,2,'2×15–20/side'],
     ['sat-shrug',2,'2×12–20',1],
     ['mon-pulldown',3,'3×10–12'],
     ['mon-tri',2,'2×12–15'],
@@ -498,6 +507,7 @@ var DS_MV={
   'mon-curl':{'Biceps':1,'Forearms':.3},
   'mon-tri':{'Triceps':1,'Forearms':.3},
   'up-kickback':{'Triceps':1},
+  'up-reardeltfly':{'Rear Delts':1},
   'up-l2hfly':{'Chest':1,'Shoulders':.3},
   'mon-elbow':{'Forearms':.5},
   'thu-elbow':{'Forearms':.5},
