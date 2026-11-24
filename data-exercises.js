@@ -344,6 +344,11 @@ var DS_RESERVE_MOVES=[
   (src.variants||[]).forEach(function(v){ if(v.name==='Low-to-High Band Fly') l2h=v; });
   var fly={id:'up-l2hfly',name:'Low-to-High Band Fly',slot:'Push · Chest Fly',target:'Upper Chest',demo:'fly',log:'setsreps',cal:20};
   for(var k in l2h) if(!(k in fly)||k==='name') fly[k]=l2h[k];
+  // v521: give the stand-alone fly its own swap list (the other band flies + press-around),
+  // so it can be swapped even when the chest-press slot above is also set to this fly.
+  var pa=L('mon-pressaround');
+  if(pa){ var pv={}; for(var q in pa) if(q!=='variants'&&q!=='id'&&q!=='pair'&&q!=='lockVar') pv[q]=pa[q];
+    fly.variants=(pa.variants||[]).filter(function(v){ return v&&v.name!=='Low-to-High Band Fly'; }).concat([pv]); }
   var spec=[
     ['warmup-bandshoulder',1,null],
     ['mon-standbandpress',3,'3×10–12'],
