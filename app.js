@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v526 — 2026-11-25";
+var APP_BUILD = "v527 — 2026-11-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3869,7 +3869,7 @@ function applyConfig(cfg){
   try{ var pnv=JSON.parse(cfg.ds_pain||'null'); if(pnv&&typeof pnv==='object'){ for(var k3 in pnv) DS_PAIN[k3]=pnv[k3]; store.set('ds_pain',JSON.stringify(DS_PAIN)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var prv=JSON.parse(cfg.ds_prog||'null'); if(prv&&typeof prv==='object'){ for(var k4 in prv) DS_PROG[k4]=prv[k4]; store.set('ds_prog',JSON.stringify(DS_PROG)); } }catch(e){ftCaught(e,'applyConfig');}
   try{ var csv=JSON.parse(cfg.ds_custom||'null'); if(csv&&typeof csv==='object'){ for(var k5 in csv) DS_CUSTOM[k5]=csv[k5]; store.set('ds_custom',JSON.stringify(DS_CUSTOM)); } }catch(e){ftCaught(e,'applyConfig');}
-  try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } dsLayoutMigrate515(true); }catch(e){ftCaught(e,'applyConfig');}
+  try{ var lyv=JSON.parse(cfg.ds_layout||'null'); if(lyv&&typeof lyv==='object'){ for(var k7 in lyv) DS_LAYOUT[k7]=lyv[k7]; _dsLayCache={}; store.set('ds_layout',JSON.stringify(DS_LAYOUT)); } dsLayoutMigrate515(true); dsLayoutMigrate527(true); }catch(e){ftCaught(e,'applyConfig');}
   try{ var hdv=JSON.parse(cfg.ds_hidden||'null'); if(hdv&&typeof hdv==='object'){ for(var k6 in hdv) DS_HIDDEN[k6]=hdv[k6]; _dsHidCache=null; store.set('ds_hidden',JSON.stringify(DS_HIDDEN)); } dsLayoutMigrate516(true); dsLayoutMigrate518(true); dsLayoutMigrate524(true); dsLayoutMigrate525(true); }catch(e){ftCaught(e,'applyConfig');}
   try{ var fcv=JSON.parse(cfg.ds_flowcustom||'null'); if(fcv&&typeof fcv==='object'&&Array.isArray(fcv.ids)&&!(store.get('ds_flow_mig292')&&dsFlowIsOldDefault(fcv.ids))){ DS_FLOW_CUSTOM.active=!!fcv.active; DS_FLOW_CUSTOM.ids=fcv.ids; } }catch(e){ftCaught(e,'applyConfig');}
   if(store.get('ds_rotate')!=null) DS_ROTATE=(store.get('ds_rotate')==='1');
@@ -4608,6 +4608,23 @@ function dsLayoutMigrate515(fromPull){
   if(fromPull) store.set('ds_lay_mig515','1');
 }
 try{ dsLayoutMigrate515(false); }catch(e){ ftCaught(e,'dsLayoutMigrate515'); }
+// v527 (Nov 25 2026): add the Standing Band Chest Press to saved Mon/Thu/Sat layouts, right
+// after the low-to-high fly (or before the incline press). Same startup + first-pull pattern as 515.
+function dsLayoutMigrate527(fromPull){
+  if(store.get('ds_lay_mig527')==='1') return;
+  var changed=false, base=function(x){ return String(x).split('#')[0]; };
+  ['mon','thu','sat'].forEach(function(sk){
+    var L=DS_LAYOUT[sk]; if(!L||typeof L!=='object'||!L.m) return;
+    if((L.w||[]).concat(L.m,L.c||[]).some(function(x){ return base(x)==='mon-standbandpress'; })) return;
+    var m=L.m.slice(), i=m.map(base).indexOf('up-l2hfly');
+    if(i>=0) m.splice(i+1,0,'mon-standbandpress');
+    else { var j=m.map(base).indexOf('mon-inclinepress'); if(j>=0) m.splice(j,0,'mon-standbandpress'); else m.unshift('mon-standbandpress'); }
+    DS_LAYOUT[sk]={w:(L.w||[]).slice(),m:m,c:(L.c||[]).slice()}; changed=true;
+  });
+  if(changed) dsLayoutSave();
+  if(fromPull) store.set('ds_lay_mig527','1');
+}
+try{ dsLayoutMigrate527(false); }catch(e){ ftCaught(e,'dsLayoutMigrate527'); }
 // v516 (Nov 21 2026): Mon/Thu/Sat now share one upper session. Clear any saved layout or
 // hidden list for those days once so they pick up the new program default.
 function dsLayoutMigrate516(fromPull){

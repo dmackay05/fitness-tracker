@@ -365,8 +365,11 @@ var DS_RESERVE_MOVES=[
   var pa2=L('mon-pullapart');
   if(pa2){ var pv2={}; for(var q3 in pa2) if(q3!=='variants'&&q3!=='id'&&q3!=='pair'&&q3!=='lockVar') pv2[q3]=pa2[q3];
     rdf.variants=[pv2].concat((pa2.variants||[]).filter(function(v){ return v&&v.name!=='Cross-Body Rear Delt Fly'; })); }
+  // v527 (Nov 25 2026): default now matches David's own Mon/Thu/Sat layout, plus the
+  // Standing Band Chest Press back in as the second chest press.
   var spec=[
     ['warmup-bandshoulder',1,null],
+    [fly,4,'4×12–20'],
     ['mon-standbandpress',3,'3×10–12'],
     ['thu-row',3,'3×10–12'],
     ['mon-inclinepress',3,'3×10–12'],
@@ -374,7 +377,7 @@ var DS_RESERVE_MOVES=[
     ['mon-ohp',3,'3×10–12',1],
     ['ut-slpulldown',2,'2×12–20/side',1],
     ['mon-pushup',3,'3×10–15',1],
-    [fly,2,'2×12–20'],
+    ['mon-fly',3,'3×12–15'],
     ['thu-pullover',2,'2×15–20',1],
     ['mon-lateral',3,'3×12–20'],
     ['thu-facepull',2,'2×15–20'],
