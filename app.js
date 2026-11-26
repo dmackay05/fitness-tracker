@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v528 — 2026-11-25";
+var APP_BUILD = "v529 — 2026-11-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -8285,7 +8285,7 @@ function dsRenderItem(rawItem,idx,accent){
   }
   var _box=h; h='';
   if(DS_PR[item.id]){ h+='<button class="ds-prbtn" onclick="dsPRStart(\''+item.id+'\')">\u25B6 Guided PAILs/RAILs</button><div class="ds-prpanel" id="ds-prpanel-'+item.id+'"><div class="ds-prphase" id="ds-prphase-'+item.id+'"></div><div class="ds-prtime" id="ds-prtime-'+item.id+'"></div><div class="ds-prcue" id="ds-prcue-'+item.id+'"></div><button class="ds-prstop" onclick="dsPRStop(\''+item.id+'\')">stop</button></div>'; }
-  if(rawItem.variants&&rawItem.variants.length){
+  if(DS_CARD_SWAP&&rawItem.variants&&rawItem.variants.length){
     var _matchedOnlyViaVariant=_q&&!DS_CHIP_MODE&&!dsMainFieldsMatch(item,_q);
     var _chipBrowsing=_q&&DS_CHIP_MODE; // muscle-group chip: show every variant, not just the currently active one
     var _forceOpen=st._swapOpen||_matchedOnlyViaVariant||_chipBrowsing;
@@ -9293,6 +9293,10 @@ function dsUpdateStats(){
 }
 
 function dsToggleCard(id){ var st=dsItemState(id); st._open=!st._open; dsSaveUI(); dsRender(); }
+// v529: exercises are fixed — no swapping from the card. Whatever version each card showed
+// at v528 stays (existing picks in DS_SWAPS are kept, just no longer editable). To change the
+// routine, remove a move and use "Add to Main Work". Flip to true to bring the swap list back.
+var DS_CARD_SWAP=false;
 function dsToggleSwap(id){ var st=dsItemState(id); st._swapOpen=!st._swapOpen; dsSaveUI(); dsRender(); }
 function dsToggleMistakes(id){ var st=dsItemState(id); st._mistakesOpen=!st._mistakesOpen; dsSaveUI(); dsRender(); }
 function dsPickVariant(id,i){ var _ri=dsRawItem(id); DS_SWAPS[_ri?dsSwapKey(_ri):id]=i; dsSaveSwaps(); var st=dsItemState(id); st._swapOpen=false; dsSaveUI(); dsRender(); }
