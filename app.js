@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v527 — 2026-11-25";
+var APP_BUILD = "v528 — 2026-11-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -3856,7 +3856,7 @@ function applyConfig(cfg){
   WATER_GOAL=parseInt(store.get('ft_water'))||WATER_GOAL;
   try{ var sv=JSON.parse(store.get('ft_supps')||'null'); if(Array.isArray(sv)) SUPPS=sv; }catch(e){ftCaught(e,'applyConfig');}
   initHealthSettings();
-  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(dsMigrateSwaps()) dsSaveSwaps(); if(dsSwapShiftV302()) dsSaveSwaps(); } }catch(e){ftCaught(e,'applyConfig');}
+  try{ var swv=JSON.parse(store.get('ds_swaps')||'null'); if(swv&&typeof swv==='object'){ DS_SWAPS=swv; if(dsMigrateSwaps()) dsSaveSwaps(); if(dsSwapShiftV302()) dsSaveSwaps(); if(dsSwapResetV528()) dsSaveSwaps(); } }catch(e){ftCaught(e,'applyConfig');}
   // Merge (not overwrite) the four per-day/per-exercise maps below: each device may have
   // logged its own entries locally since the last sync, and a straight overwrite would
   // silently erase whichever side didn't happen to push last. Incoming keys win on conflict
@@ -5717,6 +5717,17 @@ function dsSwapShiftV302(){
   }catch(e){ ftCaught(e,'dsSwapShiftV302'); return false; }
 }
 dsSwapShiftV302();
+// v528: the press slot had been swapped to the Low-to-High Fly and the low-to-high slot to the
+// Standing Band Fly, so with the Standing Band Fly also in the session it showed twice and the
+// press never appeared. Clear both picks once (marker rides inside DS_SWAPS like __v302).
+function dsSwapResetV528(){
+  try{
+    if(!DS_SWAPS||typeof DS_SWAPS!=='object'||DS_SWAPS.__v528) return false;
+    ['mon-standbandpress','L:mon-standbandpress','up-l2hfly','L:up-l2hfly'].forEach(function(k){ delete DS_SWAPS[k]; });
+    DS_SWAPS.__v528=1; store.set('ds_swaps',JSON.stringify(DS_SWAPS)); return true;
+  }catch(e){ ftCaught(e,'dsSwapResetV528'); return false; }
+}
+if(dsSwapResetV528()) dsSaveSwaps();
 
 
 function dsSaveUI(){ try{store.set("ds_ui",JSON.stringify(DS_UI));}catch(e){ftCaught(e,'dsSaveUI');} }
