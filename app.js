@@ -179,7 +179,7 @@ var store = (function() {
 })();
 
 // ── SECRETS — stored in localStorage, entered via Settings UI ───────────
-var APP_BUILD = "v525 — 2026-11-23";
+var APP_BUILD = "v526 — 2026-11-25";
 try{ console.log("Fitness Tracker build:", APP_BUILD); }catch(e){}
 var SHEETS_URL   = store.get('ft_sheets_url')  || "";
 var APP_PIN = (function(){ var p=store.get('ft_pin'); p=(p==null?"":String(p)).trim(); return /^\d{4}$/.test(p)?p:""; })();
@@ -810,6 +810,23 @@ function buildWkPayload(){
   });
   return rides.length ? {rides:rides} : null;
 }
+// v526: the Progressive Overload tab is for strength work only. Warm-ups, mobility,
+// yoga flows, walks/rides and stray custom ids stay on the device but aren't sent.
+var OV_SKIP_RE=/^(warmup-|mob-|wed-flow-|atg-|desk-|user_|post-ride$|sun-walk$|sat-ride$)/;
+// v526: one name per band so a lift's history compares cleanly. Old logs used bare
+// numbers ("50") and older picker labels; map them to the current picker names.
+var OV_BAND_MAP={
+  "10":"10 lb tube","20":"20 lb tube","30":"30 lb tube","40":"40 lb tube","50":"50 lb tube",
+  "60":"50+10 tubes (~60)","70":"50+20 tubes (~70)","90":"50+40 tubes (~90)","100":"50+40+10 tubes (~100)",
+  "75":"Clench black (75)","clench 75 loop (black 41in)":"Clench black (75)",
+  "orange loop 41in (5–15)":"Clench orange (5–15)",
+  "clench 75 loop (black 41in":"Clench black (75)",
+  "green mini loop 13in (2–20)":"Clench green mini 13in (2–20)"
+};
+function ovNormBand(s){
+  if(!s) return "";
+  return String(s).split("|").map(function(p){ var t=p.trim(); return OV_BAND_MAP[t.toLowerCase()]||t; }).join("|");
+}
 function buildOverloadPayload(){
   var ov={};
   Object.keys(appData).forEach(function(k){
@@ -818,8 +835,9 @@ function buildOverloadPayload(){
       if(!e || !e.id || String(e.id).indexOf("sess_")!==0) return;
       if(!e.sets && !e.reps && !e.load) return;
       var exId=String(e.id).slice(5);
+      if(OV_SKIP_RE.test(exId)) return;
       if(!ov[exId]) ov[exId]=[];
-      ov[exId].push({date:k, band:e.load||"", reps:(e.reps!=null?String(e.reps):""), sets:(e.sets!=null?String(e.sets):""), rir:(e.rir!=null?e.rir:"")});
+      ov[exId].push({date:k, band:ovNormBand(e.load), reps:(e.reps!=null?String(e.reps):""), sets:(e.sets!=null?String(e.sets):""), rir:(e.rir!=null?e.rir:"")});
     });
   });
   return Object.keys(ov).length ? {overload:ov} : null;

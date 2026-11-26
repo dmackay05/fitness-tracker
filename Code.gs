@@ -403,6 +403,8 @@ function processDailyData(ss, data) {
     var _seenSupp = {};
     var suppsOn = Object.keys(sup).filter(function(k) { return sup[k]; })
       .map(function(k) { var base = String(k).replace(/^(n_)+/i, ""); return suppNames[k] || suppNames[base] || base; })
+      // v14: drop leftover bare ids ("s4") from supplements since removed from the app
+      .filter(function(n) { return !/^s\d+$/i.test(String(n)) && String(n).indexOf("[trimmed]") < 0; })
       .filter(function(n) { var l = String(n).toLowerCase(); if (_seenSupp[l]) return false; _seenSupp[l] = 1; return true; });
     row.push(suppsOn.join(", ").slice(0, 2000));
 
